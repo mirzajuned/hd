@@ -1,0 +1,878 @@
+<div class="show-patient-view">
+  <% history = patient_history(@opdrecord) %>
+  <% show_mimimized_view = history && (['eye', 'quickeye', 'lens', 'paediatrics', 'orthoptics', 'trauma'].include? @templatetype) %>
+  <% if ["optometrist", "nursing"].exclude?(@templatetype) && show_mimimized_view %>
+    <div class="row">
+      <div class="col-md-12 col-sm-12 col-xs-12" style="margin-left:17px;">
+        <button class="btn btn-primary pull-right" id="edit_patient_history" title="Edit History" style="margin-right: 22px;">Edit History</button>
+        <%= render partial: "opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_history", locals: {patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<div class="show-patient-history">
+  <% if @organisations_setting.mandatory_opd_templates == true %>
+    <div class="row">
+      <div class="col-md-10 col-sm-10" style="margin:10px 20px; color: red;">
+        Note - <b>Chief Complaints, Ophthalmic History, Systemic History and Allergies are mandatory. If there is nothing select "NIL"</b>
+      </div>
+    </div>
+  <% end %>
+  <% if @patient_self_history.present? %>
+    <div class="row" style="margin:10px 20px;">
+      <%= link_to patient_self_histories_last_history_path(patient_id: @patient.id), id: "verify-self-history", class: "btn pull-right btn-primary btn-primary-transparent btn-xs", :data => {:remote => true} do %><i class="fa fa-file-text"></i> Verify Self History<% end %>
+    </div>
+  <% end %>
+  <div class="row some-row mb5">
+    <div class="col-md-2 col-sm-2">
+      Visit: <small style="cursor: pointer;color: rgb(66, 139, 202);display: inline;border: 1px solid rgb(66, 139, 202);border-radius: 2px;" id="clear_checkuptype">clear</small>
+    </div>
+    <%= f.input :checkuptype, wrapper_html: {:class=>"col-md-4 col-sm-4"}, collection: ['General Checkup', 'Routine Checkup','PostOp Checkup'], :as => :hg_radio_button,:label => false, :required => false,:class => 'btn btn-xs btn-white checkuptype', :input_html => {:name => "opdrecord[checkuptype]" }, :checked => opdrecord.read_attribute(:checkuptype) %>
+    <div class="col-md-6 col-sm-6 encountertypecomments-input">
+      <%= f.input :checkuptypecomments, :label => false, :required => false, :input_html => {:class => "form-control checkuptypecomments complaints_select", :name => "opdrecord[checkuptypecomments]", :size => "80", :maxlength => "100", :value => opdrecord.read_attribute(:checkuptypecomments),:placeholder => "free text.." } %>
+    </div>
+  </div>
+  <% if @organisations_setting.mandatory_opd_templates == true %>
+    <div class="row eye-edit-row mb5">
+      <div class="col-md-12">
+        <div class="row">
+          <div class="col-md-12 col-sm-12 col-xs-12">
+            <div class="col-md-5 col-sm-5 col-xs-5">
+              <div class="complaint_list">
+                <div class="complaint_list_header">
+                  <h4 class="complaints">Chief Complaints<b style="color: red;">*</b></h4>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-12 col-sm-12 col-xs-12">
+            <div class="col-md-2 col-sm-2 chief_complaints_checkbox">
+              <div class="ckbox ckbox-success col-md-12">
+                <%= f.check_box :no_chief_complaints_advised, {class: "chief_complaints_advised_button", :value => opdrecord.read_attribute(:no_chief_complaints_advised)}, "true", "false" %>
+                <label for="opdrecord_no_chief_complaints_advised">NIL</label>
+              </div>
+              <span class="chief_complaints_msg" style="color: #f54b4b;font-size: 11px;display: none;">No chief complaints selected</span>
+            </div>
+            <div class="col-md-1 col-sm-1">OR</div>
+            <div class="list chief_complaints_list">
+              <%= f.input :complaints, wrapper_html: {:class=>"col-md-9" },collection: [["Blurring/Diminution of vision","blurring_diminution_of_vision"],["Redness","redness"],["Pain","pain"],["Injury","injury"],["Watering","watering"],["Discharge","discharge"],["Dryness","dryness"],["Itching","itching"],["FBsensation","FBsensation"],["Deviation/Squint","deviation_squint"],["Headache/Strain","headache_strain"],["Change in Size/Shape","change_in_size_shape"],["Other Visual Symptoms","other_visual_symptoms"],["Shadow/Defect in vision","shadow_defect_in_vision"],["Discoloration of Eye","discoloration_of_eye"],["Swelling","swelling"],["Burning Sensation","sensation_burning"]], :as => :hg_checkbox,:label => false, :required => false,:class => 'btn btn-xs btn-white complaint_button',style: "height:35px !important; font-size:13px !important;",  :input_html => {:name => "opdrecord[complaints]" }, :checked => opdrecord.checkboxes_checked(opdrecord.complaints.to_s) %>
+            </div>
+          </div>
+        </div>
+        <div class="row chief_complaints_details">
+          <%= f.fields_for :chief_complaints do |ff| %>
+            <fieldset>
+              <div class="col-md-12 col-sm-12 col-xs-12 complaint_title_field" style="">
+                <div class="col-md-2 col-sm-2 col-xs-2">
+                  <div class="title">
+                    <h5 class="f_complaint" style=" position: relative;left: -34px;">Name</h5>
+                  </div>
+                </div>
+                <div class="col-md-1 col-sm-1 col-xs-1">
+                  <div class="title">
+                    <h5 class="f_complaint">Side</h5>
+                  </div>
+                </div>
+                <div class="col-md-1 col-sm-1 col-xs-1">
+                  <div class="title">
+                    <h5 class="f_complaint">Duration</h5>
+                  </div>
+                </div>
+                <div class="col-md-1 col-sm-1 col-xs-1">
+                  <div class="title">
+                    <h5 class="f_complaint">Duration Unit</h5>
+                  </div>
+                </div>
+                <div class="col-md-3 col-sm-3 col-xs-3">
+                  <div class="title">
+                    <h5 class="f_complaint">Comment</h5>
+                  </div>
+                </div>
+                <div class="col-md-4 col-sm-4 col-xs-4">
+                  <div class="title">
+                    <h5 class="f_complaint">Options</h5>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-12 col-sm-12 col-xs-12" id="complaints_fields_add">
+                <% @opdrecord.chief_complaints.each_with_index do |complaint, i | %>
+                  <div class="col-md-12 col-sm-12 col-xs-12">
+                    <div class="col-md-12 col-sm-12 col-xs-12 complaint_name counter_rows <%= complaint.name %>_fields ">
+                      <div class="col-md-2 col-sm-2 col-xs-2">
+                        <h5 class="complaint_title">
+                          <%= complaint.name.split("_").map(&:capitalize).join(" ") %>
+                          <%= hidden_field_tag  "opdrecord[chief_complaints_attributes][#{i}][name]","" ,class: "form-control complaint_field_add_field", value: complaint.name%>
+                          <% if params[:action] != "new" %>
+                            <%= hidden_field_tag "opdrecord[chief_complaints_attributes][#{i}][_id]","" ,class: "form-control complaint_field_add_field", value: complaint._id%>
+                          <% end %>
+                          <%= hidden_field_tag "opdrecord[chief_complaints_attributes][#{i}][_destroy]", "" ,class: "form-control complaint_field_add_field "+complaint.name+"_destroy" %>
+                        </h5>
+                      </div>
+                      <div class="col-md-1 col-sm-1 col-xs-1">
+                        <div class="complaint_title">
+                        <%= @opdrecord.side %>
+                          <%= select_tag "opdrecord[chief_complaints_attributes][#{i}][side]", options_for_select(["L","R","B/E"], complaint.side), prompt: "Please Select", class:"form-control complaint_field_add_field" %>
+                          <%#= ff.select :side, options_for_select(["L","R","B/E"], complaint.side), {include_blank: "Please Select"},  {class: "form-control complaint_field_add_field"}%>
+                        </div>
+                      </div>
+                      <div class="col-md-1 col-sm-1 col-xs-1">
+                        <div class="complaint_title">
+                          <% duration_time = 1..40 %>
+                          <%= select_tag "opdrecord[chief_complaints_attributes][#{i}][duration]", options_for_select(duration_time, complaint.duration), prompt: "Please Select", class:"form-control complaint_field_add_field" %>
+                          <%#= ff.select :duration, options_for_select(duration_time, complaint.duration), {include_blank: "Please Select"},  {class: "form-control complaint_field_add_field"}  %>
+                        </div>
+                      </div>
+                      <div class="col-md-1 col-sm-1 col-xs-1">
+                        <div class="complaint_title">
+                          <%= select_tag "opdrecord[chief_complaints_attributes][#{i}][duration_unit]", options_for_select([["Days","days"],["Weeks","weeks"],["Months","months"],["Years","years"]], complaint.duration_unit), prompt: "Please Select", class:"form-control complaint_field_add_field" %>
+                          <%#= ff.select :duration_unit, options_for_select([["Days","days"],["Weeks","weeks"],["Months","months"],["Years","years"]], complaint.duration_unit), {include_blank: "Please Select"},  {class: "form-control complaint_field_add_field"} %>
+                        </div>
+                      </div>
+                      <div class="col-md-3 col-sm-3 col-xs-3">
+                        <div class="complaint_title">
+                          <%= text_field_tag  "opdrecord[chief_complaints_attributes][#{i}][comment]", "",class: "form-control complaint_field_add_comment", placeholder: "Comment ....", value: complaint.comment%>
+                          <%#= ff.text_field :comments,class: "form-control complaint_field_add_comment", placeholder: "Comment ....", value: complaint.comment %>
+                        </div>
+                      </div>
+                      <div class="col-md-4 col-sm-4 col-xs-4">
+                        <div class="complaint_title">
+                          <% if  complaint.name == "blurring_diminution_of_vision" %>
+                            <%= f.input :options_blurring, wrapper_html: {:class=>"col-md-12 col-sm-12 col-xs-12"}, collection: [ ['Distant','distant'], ['Near','near'], ['Pain','pain'], ['Using Glasses','usingglasses'] ], :as => :hg_checkbox,:label => false, :required => false,:class => 'btn btn-xs btn-white ',style: "height:35px !important; font-size:13px !important;",  :input_html => {:name => "opdrecord[chief_complaints_attributes][#{i}][complaint_options]" }, :checked => opdrecord.checkboxes_checked(complaint.complaint_options.to_s)%>
+                          <% elsif  complaint.name =="deviation_squint"%>
+                            <%= f.input :options_deviation, wrapper_html: {:class=>"col-md-12 col-sm-12 col-xs-12"}, collection:  [ ['Diplopia','diplopia'], ['Trauma','trauma'], ['Past Surgery','pastsurgery'] ], :as => :hg_checkbox,:label => false, :required => false,:class => 'btn btn-xs btn-white ',style: "height:35px !important; font-size:13px !important;",  :input_html => {:name => "opdrecord[chief_complaints_attributes][#{i}][complaint_options]" } , :checked => opdrecord.checkboxes_checked(complaint.complaint_options.to_s)%>
+                          <% elsif  complaint.name == "other_visual_symptoms"%>
+                            <%= f.input :options_symptoms, wrapper_html: {:class=>"col-md-12 col-sm-12 col-xs-12"}, collection:  [ ['Glare','glare'], ['Floaters','floaters'], ['Photophobia','photophobia'] , ['Colored Halos','coloredhalos'], ['Metamorphopsia','metamorphopsia'], ['Chromatopsia','chromatopsia'], ['Diminished Night Vision','diminishednightvision'], ['Diminished Day Vision','diminisheddayvision'] ], :as => :hg_checkbox,:label => false, :required => false,:class => 'btn btn-xs btn-white ',style: "height:35px !important; font-size:13px !important;",  :input_html => {:name => "opdrecord[chief_complaints_attributes][#{i}][complaint_options]" }, :checked => opdrecord.checkboxes_checked(complaint.complaint_options.to_s)  %>
+                          <% end %>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            </fieldset>
+          <% end %>
+        </div>
+      </div>
+      <div class="col-md-12">
+        <div class="row">
+          <div class="col-md-12 col-sm-12 col-xs-12">
+            <div class="col-md-2 col-xs-2 col-sm-2">
+              <h5 class="complaint_main_comment">Comments</h5>
+            </div>
+            <div class="col-md-10 col-sm-10 col-xs-10">
+              <%= f.input :chiefcomplaint_comments, wrapper_html: {:class=>"col-md-12 col-sm-12 col-xs-12"}, as: :text,  :label => false, :required => false, :input_html => {:class => "form-control", :rows => 2, :style => 'width:96%;', :required => false, :name => "opdrecord[chiefcomplaint_comments]", :value => opdrecord.read_attribute(:chiefcomplaint_comments) } %>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% else %>
+    <div class="row eye-edit-row mb5">
+      <div class="col-md-12">
+        <div class="row">
+          <div class="col-md-12 col-sm-12 col-xs-12">
+            <div class="col-md-5 col-sm-5 col-xs-5">
+              <div class="complaint_list">
+                <div class="complaint_list_header">
+                  <h4 class="complaints">Chief Complaints</h4>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-12 col-sm-12 col-xs-12">
+            <div class="list">
+              <%= f.input :complaints, wrapper_html: {:class=>"col-md-12" },collection: [["Blurring/Diminution of vision","blurring_diminution_of_vision"],["Redness","redness"],["Pain","pain"],["Injury","injury"],["Watering","watering"],["Discharge","discharge"],["Dryness","dryness"],["Itching","itching"],["FBsensation","FBsensation"],["Deviation/Squint","deviation_squint"],["Headache/Strain","headache_strain"],["Change in Size/Shape","change_in_size_shape"],["Other Visual Symptoms","other_visual_symptoms"],["Shadow/Defect in vision","shadow_defect_in_vision"],["Discoloration of Eye","discoloration_of_eye"],["Swelling","swelling"],["Burning Sensation","sensation_burning"]], :as => :hg_checkbox,:label => false, :required => false,:class => 'btn btn-xs btn-white complaint_button',style: "height:35px !important; font-size:13px !important;",  :input_html => {:name => "opdrecord[complaints]" }, :checked => opdrecord.checkboxes_checked(opdrecord.complaints.to_s) %>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <%= f.fields_for :chief_complaints do |ff| %>
+            <fieldset>
+              <div class="col-md-12 col-sm-12 col-xs-12 complaint_title_field" style="">
+                <div class="col-md-2 col-sm-2 col-xs-2">
+                  <div class="title">
+                    <h5 class="f_complaint" style=" position: relative;left: -34px;">Name</h5>
+                  </div>
+                </div>
+                <div class="col-md-1 col-sm-1 col-xs-1">
+                  <div class="title">
+                    <h5 class="f_complaint">Side</h5>
+                  </div>
+                </div>
+                <div class="col-md-1 col-sm-1 col-xs-1">
+                  <div class="title">
+                    <h5 class="f_complaint">Duration</h5>
+                  </div>
+                </div>
+                <div class="col-md-1 col-sm-1 col-xs-1">
+                  <div class="title">
+                    <h5 class="f_complaint">Duration Unit</h5>
+                  </div>
+                </div>
+                <div class="col-md-3 col-sm-3 col-xs-3">
+                  <div class="title">
+                    <h5 class="f_complaint">Comment</h5>
+                  </div>
+                </div>
+                <div class="col-md-4 col-sm-4 col-xs-4">
+                  <div class="title">
+                    <h5 class="f_complaint">Options</h5>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-12 col-sm-12 col-xs-12" id="complaints_fields_add">
+                <% @opdrecord.chief_complaints.each_with_index do |complaint, i | %>
+                  <div class="col-md-12 col-sm-12 col-xs-12">
+                    <div class="col-md-12 col-sm-12 col-xs-12 complaint_name counter_rows <%= complaint.name %>_fields ">
+                      <div class="col-md-2 col-sm-2 col-xs-2">
+                        <h5 class="complaint_title">
+                          <%= complaint.name.split("_").map(&:capitalize).join(" ") %>
+                          <%= hidden_field_tag  "opdrecord[chief_complaints_attributes][#{i}][name]","" ,class: "form-control complaint_field_add_field", value: complaint.name%>
+                          <% if params[:action] != "new" %>
+                            <%= hidden_field_tag "opdrecord[chief_complaints_attributes][#{i}][_id]","" ,class: "form-control complaint_field_add_field", value: complaint._id%>
+                          <% end %>
+                          <%= hidden_field_tag "opdrecord[chief_complaints_attributes][#{i}][_destroy]", "" ,class: "form-control complaint_field_add_field "+complaint.name+"_destroy" %>
+                        </h5>
+                      </div>
+                      <div class="col-md-1 col-sm-1 col-xs-1">
+                        <div class="complaint_title">
+                        <%= @opdrecord.side %>
+                          <%= select_tag "opdrecord[chief_complaints_attributes][#{i}][side]", options_for_select(["L","R","B/E"], complaint.side), prompt: "Please Select", class:"form-control complaint_field_add_field" %>
+                          <%#= ff.select :side, options_for_select(["L","R","B/E"], complaint.side), {include_blank: "Please Select"},  {class: "form-control complaint_field_add_field"}%>
+                        </div>
+                      </div>
+                      <div class="col-md-1 col-sm-1 col-xs-1">
+                        <div class="complaint_title">
+                          <% duration_time = 1..40 %>
+                          <%= select_tag "opdrecord[chief_complaints_attributes][#{i}][duration]", options_for_select(duration_time, complaint.duration), prompt: "Please Select", class:"form-control complaint_field_add_field" %>
+                          <%#= ff.select :duration, options_for_select(duration_time, complaint.duration), {include_blank: "Please Select"},  {class: "form-control complaint_field_add_field"}  %>
+                        </div>
+                      </div>
+                      <div class="col-md-1 col-sm-1 col-xs-1">
+                        <div class="complaint_title">
+                          <%= select_tag "opdrecord[chief_complaints_attributes][#{i}][duration_unit]", options_for_select([["Days","days"],["Weeks","weeks"],["Months","months"],["Years","years"]], complaint.duration_unit), prompt: "Please Select", class:"form-control complaint_field_add_field" %>
+                          <%#= ff.select :duration_unit, options_for_select([["Days","days"],["Weeks","weeks"],["Months","months"],["Years","years"]], complaint.duration_unit), {include_blank: "Please Select"},  {class: "form-control complaint_field_add_field"} %>
+                        </div>
+                      </div>
+                      <div class="col-md-3 col-sm-3 col-xs-3">
+                        <div class="complaint_title">
+                          <%= text_field_tag  "opdrecord[chief_complaints_attributes][#{i}][comment]", "",class: "form-control complaint_field_add_comment", placeholder: "Comment ....", value: complaint.comment%>
+                          <%#= ff.text_field :comments,class: "form-control complaint_field_add_comment", placeholder: "Comment ....", value: complaint.comment %>
+                        </div>
+                      </div>
+                      <div class="col-md-4 col-sm-4 col-xs-4">
+                        <div class="complaint_title">
+                          <% if  complaint.name == "blurring_diminution_of_vision" %>
+                            <%= f.input :options_blurring, wrapper_html: {:class=>"col-md-12 col-sm-12 col-xs-12"}, collection: [ ['Distant','distant'], ['Near','near'], ['Pain','pain'], ['Using Glasses','usingglasses'] ], :as => :hg_checkbox,:label => false, :required => false,:class => 'btn btn-xs btn-white ',style: "height:35px !important; font-size:13px !important;",  :input_html => {:name => "opdrecord[chief_complaints_attributes][#{i}][complaint_options]" }, :checked => opdrecord.checkboxes_checked(complaint.complaint_options.to_s)%>
+                          <% elsif  complaint.name =="deviation_squint"%>
+                            <%= f.input :options_deviation, wrapper_html: {:class=>"col-md-12 col-sm-12 col-xs-12"}, collection:  [ ['Diplopia','diplopia'], ['Trauma','trauma'], ['Past Surgery','pastsurgery'] ], :as => :hg_checkbox,:label => false, :required => false,:class => 'btn btn-xs btn-white ',style: "height:35px !important; font-size:13px !important;",  :input_html => {:name => "opdrecord[chief_complaints_attributes][#{i}][complaint_options]" } , :checked => opdrecord.checkboxes_checked(complaint.complaint_options.to_s)%>
+                          <% elsif  complaint.name == "other_visual_symptoms"%>
+                            <%= f.input :options_symptoms, wrapper_html: {:class=>"col-md-12 col-sm-12 col-xs-12"}, collection:  [ ['Glare','glare'], ['Floaters','floaters'], ['Photophobia','photophobia'] , ['Colored Halos','coloredhalos'], ['Metamorphopsia','metamorphopsia'], ['Chromatopsia','chromatopsia'], ['Diminished Night Vision','diminishednightvision'], ['Diminished Day Vision','diminisheddayvision'] ], :as => :hg_checkbox,:label => false, :required => false,:class => 'btn btn-xs btn-white ',style: "height:35px !important; font-size:13px !important;",  :input_html => {:name => "opdrecord[chief_complaints_attributes][#{i}][complaint_options]" }, :checked => opdrecord.checkboxes_checked(complaint.complaint_options.to_s)  %>
+                          <% end %>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            </fieldset>
+          <% end %>
+        </div>
+      </div>
+      <div class="col-md-12">
+        <div class="row">
+          <div class="col-md-12 col-sm-12 col-xs-12">
+            <div class="col-md-2 col-xs-2 col-sm-2">
+              <h5 class="complaint_main_comment">Comments</h5>
+            </div>
+            <div class="col-md-10 col-sm-10 col-xs-10">
+              <%= f.input :chiefcomplaint_comments, wrapper_html: {:class=>"col-md-12 col-sm-12 col-xs-12"}, as: :text,  :label => false, :required => false, :input_html => {:class => "form-control", :rows => 2, :style => 'width:96%;', :required => false, :name => "opdrecord[chiefcomplaint_comments]", :value => opdrecord.read_attribute(:chiefcomplaint_comments) } %>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+  <% if @templatetype == "paediatrics" %>
+    <%= f.fields_for :paediatrics_history do |ff| %>
+      <div class=" col-md-12 col-sm-12 col-xs-12">
+        <h5 style="color: #444;font-size: 18px;">Antenatal History</h5>
+      </div>
+      <div class=" col-md-12 col-sm-12 col-xs-12">
+        <div class="col-md-6 col-sm-6 col-xs-6">
+          <div class="col-md-12 col-sm-12 col-xs-12">
+            <div class="col-md-3 col-sm-4 col-xs-6">
+              <label class="control-label">Maternal vaccination :</label>
+            </div>
+            <div class="col-md-9 col-sm-8 col-xs-6">
+              <%= ff.text_field :antenatal_maternal_vaccination, class: "form-control", style: "margin: 0px 0px 5px 0px;;width: 90%;", placeholder: "", value: opdrecord.paediatrics_history.antenatal_maternal_vaccination %>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6 col-sm-6 col-xs-6">
+          <div class="col-md-12 col-sm-12 col-xs-12">
+            <div class="col-md-3 col-sm-4 col-xs-6">
+              <label class="control-label">Maternal Infection Or Other Complications :</label>
+            </div>
+            <div class="col-md-9 col-sm-8 col-xs-6">
+              <%= ff.text_field :antenatal_maternal_infection, class: "form-control", style: "margin: 0px 0px 5px 0px;;width: 90%;", placeholder: "" , value: opdrecord.paediatrics_history.antenatal_maternal_infection %>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-12 col-sm-12 col-xs-12" style="margin-top: 15px; margin-bottom: 14px;">
+        <div class="col-md-12 col-sm-12 col-xs-12">
+          <div class="col-md-1 col-sm-1 col-xs-1">
+            <label class="control-label" style="">Natal History</label>
+          </div>
+          <div class="col-md-1 col-sm-2 col-xs-1" style="left: 49px;">
+            <% if opdrecord.paediatrics_history.natal_history_normal == true%>
+              <% natal_history_normal = [true]%>
+            <% else %>
+              <% natal_history_normal = []%>
+            <% end %>
+            <%= ff.input :natal_history_normal, wrapper_html: {:class=>"col-md-12 col-sm-12" },collection: [["Normal",true]], :as => :hg_checkbox,:label => false, :required => false,:class => 'btn btn-xs btn-white',style: "height:35px !important; font-size:13px !important; margin-left: 47px;",  :input_html => {:name => "opdrecord[paediatrics_history][natal_history_normal]" }, :checked =>  natal_history_normal %>
+          </div>
+          <div class="col-md-1 col-sm-2 col-xs-1">
+            <% if opdrecord.paediatrics_history.natal_history_forceps == true%>
+              <% natal_history_forceps = [true]%>
+            <% else %>
+              <% natal_history_forceps = []%>
+            <% end %>
+            <%= ff.input :natal_history_forceps, wrapper_html: {:class=>"col-md-12 col-sm-12" },collection: [["Forceps",true]], :as => :hg_checkbox,:label => false, :required => false, :class => 'btn btn-xs btn-white forscope_button',style: "height:35px !important; font-size:13px !important; margin-left: 22px !important;",  :input_html => {:name => "opdrecord[paediatrics_history][natal_history_forceps]" }, :checked =>  natal_history_forceps %>
+            </span>
+          </div>
+          <div class="col-md-1 col-sm-2 col-xs-1">
+          <% if opdrecord.paediatrics_history.natal_history_caesarean == true%>
+              <% natal_history_caesarean = [true]%>
+            <% else %>
+              <% natal_history_caesarean = []%>
+            <% end %>
+            <%= ff.input :natal_history_caesarean, wrapper_html: {:class=>"col-md-12 col-sm-12" },collection: [["Caesarean",true]], :as => :hg_checkbox,:label => false, :required => false,:class => 'btn btn-xs btn-white',style: "height:35px !important; font-size:13px !important;",  :input_html => {:name => "opdrecord[paediatrics_history][natal_history_caesarean]" }, :checked =>  natal_history_caesarean %>
+          </div>
+          <div class="col-md-8 col-sm-5 col-xs-5">
+            <div class="col-md-4 col-sm-4">
+              <label class="control-label" style="float:right">Birth Weight:</label>
+            </div>
+            <div class="col-md-8 col-sm-8">
+              <%= ff.text_field :natal_birth_weight,{:class=> "form-control", :style=> "margin: 0px 0px 5px 0px;;width: 91%; height: 35px;", :placeholder=>"", value: opdrecord.paediatrics_history.natal_birth_weight} %>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-12 col-sm-12 col-xs-12">
+        <div class="col-md-12 col-sm-12 col-xs-12">
+          <div class="col-md-2 col-sm-2 row">
+            <label class="control-label" style=" position: relative; left: 18px;">Post natal History</label>
+          </div>
+          <div class="col-md-10 col-sm-10 mb15">
+            <%= ff.text_field :post_natal_history,{ :class=> "form-control", :style=> "margin: 0px 0px 5px 0px;;width: 98%; height: 35px;", :placeholder=>"", value: opdrecord.paediatrics_history.post_natal_history } %>
+          </div>
+          <div class="col-md-2 col-sm-2 row">
+            <label class="control-label" style="position: relative;left: 18px;">H/O Vaccination</label>
+          </div>
+          <div class="col-md-4 col-sm-4">
+            <%= ff.text_field :ho_vaccination,{ :class=> "form-control", :style=> "margin: 0px 0px 5px 0px;;width: 90%;height: 35px;", :placeholder=>"", value: opdrecord.paediatrics_history.ho_vaccination} %>
+          </div>
+          <div class="col-md-2 col-sm-2">
+            <label class="control-label">Developmental History</label>
+          </div>
+          <div class="col-md-4 col-sm-4">
+            <%= ff.text_field :developmental_history,{ :class=> "form-control", :style=> "margin: 0px 0px 5px 0px;;width: 95%;height: 35px;", :placeholder=>"", value: opdrecord.paediatrics_history.developmental_history } %>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  <%end%>
+  <% if @templatetype == "lens"%>
+    <%= f.fields_for :lens_history do |ff| %>
+      <div class="row">
+        <div class=" col-md-12 col-sm-12 col-xs-12">
+          <div class="col-md-12 col-sm-12 col-xs-12">
+            <label class="col-md-1 col-sm-1 col-xs-1"><b>Lens History</b></label>
+            <span class="col-md-11 col-sm-11">
+              <%= ff.text_field :lens_history_comment, :class=> "form-control col-md-12", :style=> "margin: 0px 0px 5px 0px;", :placeholder=>"comments..", value: opdrecord.lens_history.lens_history_comment %>
+            </span>
+          </div>
+          <div class="col-md-12 col-sm-12 col-xs-12" style="margin-bottom: 6px;">
+            <div class="col-md-6 col-sm-6 col-xs-6">
+              <div class="row">
+                <div class="">
+                  <div class="col-md-2 col-sm-2 col-xs-2">
+                    <span class="">
+                      <h5 class="" style="color:#444">Profession</h5>
+                    </span>
+                  </div>
+                  <div class="col-md-10 col-sm-10 col-xs-10">
+                    <span class="">
+                      <%= ff.text_field :profession,  :class=> "form-control lens_histories_fields", :style=> "margin: 0px 0px 5px 0px;;width: 100%;padding: 6px;", :placeholder=>"What is your profession?",value: opdrecord.lens_history.profession %>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6 col-xs-6 col-sm-6">
+              <div class="row">
+                <div class="">
+                  <div class="col-md-2 col-xs-2 col-sm-2">
+                    <span class="">
+                      Lens Needed
+                    </span>
+                  </div>
+                  <div class="col-md-10 col-sm-10 col-xs-10">
+                    <span class="">
+                      <%= ff.text_field :lens_needed, :class=> "form-control lens_histories_fields", :style=> "margin: 0px 0px 5px 0px;;width: 100%;padding: 6px;", :placeholder=>"Why you need a lens?" , value: opdrecord.lens_history.lens_needed %>
+                      </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-12 col-sm-12 col-xs-12" style="margin-bottom: 6px;">
+            <div class="col-md-6 col-sm-6 col-xs-6">
+              <div class="row">
+                <div class="">
+                  <div class="col-md-2 col-sm-2 col-xs-2">
+                    <span class="">
+                      <h5 class="" style="color:#444">Wearing Hour:</h5>
+                    </span>
+                  </div>
+                  <div class="col-md-10 col-sm-10 col-xs-10">
+                    <span class="">
+                      <%= ff.text_field :present_wearing_hour, :class=> "form-control lens_histories_fields ", :style=> "margin: 0px 0px 5px 0px;;width: 100%;padding: 6px;", :placeholder=>"How many hours do you wear lens?", value: opdrecord.lens_history.present_wearing_hour %>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6 col-xs-6 col-sm-6">
+              <div class="row">
+                <div class="">
+                  <div class="col-md-2 col-xs-2 col-sm-2">
+                    <span class="">
+                      Complaints:
+                    </span>
+                  </div>
+                  <div class="col-md-10 col-sm-10 col-xs-10">
+                    <span class="">
+                      <%= ff.text_field :complaint_with_existing_lens, :class=> "form-control lens_histories_fields lens_select_button", :style=> "margin: 0px 0px 5px 0px;;width: 100%;padding: 6px;", :placeholder=>"Any issue with present lens?", value: opdrecord.lens_history.complaint_with_existing_lens %>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-12 col-sm-12 col-xs-12" style="margin-bottom: 6px;">
+            <div class="col-md-6 col-sm-6 col-xs-6">
+              <div class="row">
+                <div class="">
+                  <div class="col-md-2 col-sm-2 col-xs-2">
+                    <span class="">
+                      <h5 class="" style="color:#444">Wearing Hour:</h5>
+                    </span>
+                  </div>
+                  <div class="col-md-10 col-sm-10 col-xs-10">
+                    <span class="">
+                      <%= ff.input :hour_of_using_lens, wrapper_html: {},collection: ['1-6', '6-12', '12-18', '18-24'], :as => :hg_radio_button, :label => false, :required => false, :class => 'btn btn-xs btn-white hour_of_using_lens', :input_html => {:name => "opdrecord[lens_history][hour_of_using_lens]" }, :checked => opdrecord.lens_history.read_attribute(:hour_of_using_lens) %>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6 col-xs-6 col-sm-6">
+              <div class="row">
+                <div class="">
+                  <div class="col-md-2 col-xs-2 col-sm-2">
+                    <span class="">
+                      Brand:
+                    </span>
+                  </div>
+                  <div class="col-md-4 col-sm-4 col-xs-4">
+                    <span class="">
+                      <%= ff.text_field :brand, :class=> "form-control lens_histories_fields", :style=> "margin: 0px 0px 5px 0px;;width: 39%;padding: 6px;", :placeholder=>"Brand using?", value: opdrecord.lens_history.brand %>
+                    </span>
+                  </div>
+                  <div class="col-md-5 col-sm-5 col-xs-5" style="margin-left: -3px;">
+                    <div class="row">
+                      <div class="col-md-6 col-sm-6 col-xs-6">
+                        <%= ff.select(:brand_duration, options_for_select(1..75, opdrecord.lens_history.brand_duration),  { :prompt => 'Select' } ,{ :class=> "form-control lens_select_button", :style=> "padding: 5px 0px;     height: 35px;" }) %>
+                      </div>
+                      <div class="col-md-6 col-sm-6 col-xs-6">
+                        <%= ff.select(:brand_duration_unit, options_for_select([["Days","days"],["Weeks","weeks"],["Months","months"],["Years","years"]], opdrecord.lens_history.brand_duration_unit), { :prompt => 'Select' } ,{ :class=> "form-control lens_select_button", :style=> "padding: 5px 0px;     height: 35px;" }) %>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-12 col-sm-12 col-xs-12" style="margin-bottom: 6px;">
+            <div class="col-md-6 col-sm-6 col-xs-6">
+              <div class="row">
+                <div class="">
+                  <div class="col-md-2 col-sm-2 col-xs-2">
+                    <span class="">
+                      <h5 class="" style="color:#444">Comfort Level</h5>
+                    </span>
+                  </div>
+                  <div class="col-md-10 col-sm-10 col-xs-10">
+                    <span class="">
+                      <%= ff.select(:comfort_level_time, options_for_select(1..24, opdrecord.lens_history.comfort_level_time ), { :prompt => 'Select' } ,{ :class=> "form-control", :style=> "padding: 5px 0px;     height: 35px;" }) %> Hour
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6 col-sm-6 col-xs-6">
+              <div class="row">
+                <div class="">
+                  <div class="col-md-2 col-sm-2 col-xs-2">
+                    <span class="">
+                      <h5 class="" style="color:#444">Lens Wearing</h5>
+                    </span>
+                  </div>
+                  <div class="col-md-10 col-sm-10 col-xs-10">
+                    <div class="row">
+                      <div class="col-md-6 col-sm-6 col-xs-6">
+                        <div class="row">
+                          <div class="col-md-12 col-ms-12 col-xs-12">
+                            <div class="col-md-10 col-sm-10 col-xs-10">
+                              <%= ff.select(:lens_weraing_duration, options_for_select(1..24, opdrecord.lens_history.lens_weraing_duration),  { :prompt => 'Select'} ,{ :class=> "form-control", :style=> "padding: 5px 0px;margin-left: -2px;width: 106%;   height: 35px;" }) %>
+                            </div>
+                            <div class="col-md-2 col-sm-2 col-xs-2" style="color: #444;position: relative; top: 7px;">
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-md-6 cols-sm-6 col-xs-6">
+                        <%= ff.select(:lens_weraing_duration_unit, options_for_select([["Days","days"],["Weeks","weeks"],["Months","months"],["Years","years"]], opdrecord.lens_history.lens_weraing_duration_unit), { :prompt => 'Select' }, { :class=> "form-control", :style=> "padding: 5px 0px;    height: 35px;  width: 75%;" }) %>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  <% end %>
+  <div class="row">
+    <div class="col-md-12 col-sm-12 col-xs-12">
+      <% if @specalityid == 309988001 && @organisations_setting.mandatory_opd_templates == true %>
+        <% if params[:action] == "new" %>
+          <%= render partial: 'opd_records/ophthalmology_notes/other_history_subjective.html.erb', locals: {f: f, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, patient_data: @patient, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, commen_form: "opdrecord", today: "no" } %>
+        <% elsif params[:action] == "edit" && @opdrecord.created_at.to_date == Date.current %>
+          <%= render partial: 'opd_records/ophthalmology_notes/other_history_subjective.html.erb', locals: {f: f, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, patient_data: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, commen_form: "opdrecord", today: "yes" }%>
+        <% elsif params[:action] == "edit" %>
+          <%= render partial: 'opd_records/ophthalmology_notes/other_history_subjective.html.erb', locals: {f: f, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, patient_data: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, commen_form: "opdrecord", today: "no"}%>
+        <% end %>
+      <% else %>
+        <% if params[:action] == "new" %>
+          <%= render partial: '/opd_records/patient_general_history', locals: {f: f, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, patient_data: @patient, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, commen_form: "opdrecord", today: "no" } %>
+        <% elsif params[:action] == "edit" && @opdrecord.created_at.to_date == Date.current %>
+          <%= render partial: '/opd_records/patient_general_history', locals: {f: f, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, patient_data: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, commen_form: "opdrecord", today: "yes" }%>
+        <% elsif params[:action] == "edit" %>
+          <%= render partial: '/opd_records/patient_general_history', locals: {f: f, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, patient_data: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, commen_form: "opdrecord", today: "no"}%>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+  <!--  Paediatric History Starts -->
+  <% if @templatetype == "paediatrics" %>
+    <% if params[:action] == "new" %>
+      <%= render partial: '/opd_records/ophthalmology_notes/peadiatrics_history_form.html.erb', locals: { f: f, patient_data: @patient, commen_form: "opdrecord" } %>
+    <% else %>
+      <%= render partial: '/opd_records/ophthalmology_notes/peadiatrics_history_form.html.erb', locals: { f: f, patient_data: @opdrecord, commen_form: "opdrecord" } %>
+    <% end %>
+    <hr/>
+  <% end %>
+  <!--  Paediatric History Ends -->
+</div>
+
+<script>
+  var natal_history =  $("#natal_history_forceps").val()
+  if(natal_history == "true"){
+   $('#natal_history_forceps').prop('checked', true);
+  }
+
+  var natal_history_normal = $("#natal_history_normal").val()
+  if(natal_history_normal == "true"){
+    $("#natal_history_normal").prop('checked', true);
+  }
+
+  var natal_history_caesarean = $("#natal_history_caesarean").val()
+  if(natal_history_caesarean == "true"){
+    $("#natal_history_caesarean").prop('checked', true);
+  }
+
+  $(".complaint_button").on('click', function(e){
+    var name_field = $(this).attr('data-value');
+    var length = $(".counter_rows").length;
+   //alert(length);
+    if(name_field == "blurring_diminution_of_vision" ){
+      var option = "<%= escape_javascript(render partial: 'opd_records/ophthalmology_notes/complain_fields.html.erb', locals: {f: f, name: 'blurring_diminution_of_vision' }) %>"
+    }else if(name_field == "other_visual_symptoms"){
+      var option = "<%= escape_javascript(render partial: 'opd_records/ophthalmology_notes/complain_fields.html.erb', locals: {f: f, name: 'other_visual_symptoms' }) %>"
+    }else if (name_field == "deviation_squint"){
+      var option = "<%= escape_javascript(render partial: 'opd_records/ophthalmology_notes/complain_fields.html.erb', locals: {f: f, name: 'deviation_squint' }) %>"
+    }else{
+      option = ""
+    }
+    var name = name_field.split("_").join(" ").toString();
+    var fields_line = "<div class='col-md-12 col-sm-12 col-xs-12'><div class='col-md-12 col-sm-12 col-xs-12 complaint_name counter_rows "+name_field+"_fields '><div class='col-md-2 col-sm-2 col-xs-2'><h5 class='complaint_title'>"+ name.replace(/\b\w/g, l => l.toUpperCase())+"<input type='hidden' class='form-control "+name_field+"_destroy' name='opdrecord[chief_complaints_attributes]["+length+"][_destroy]'> <input type='hidden' name='opdrecord[chief_complaints_attributes]["+length+"][name]' value="+name_field+"></h5></div><div class='col-md-1 col-sm-1 col-xs-1'> <div class='complaint_title'><select name='opdrecord[chief_complaints_attributes]["+length+"][side]' class='form-control complaint_field_add_field side'><option value=''>Please Select</option><option value='L'>L</option><option value='R'>R</option><option value='B/E'>B/E</option></select></div></div><div class='col-md-1 col-sm-1 col-xs-1'><div class='complaint_title'><select name='opdrecord[chief_complaints_attributes]["+length+"][duration]' class='form-control complaint_field_add_field duration_complaint duration'><option value=''>Please Select</option><option value='1'>1</option><option value='2'>2</option><option value='3'>3</option><option value='4'>4</option><option value='5'>5</option><option value='6'>6</option><option value='7'>7</option><option value='8'>8</option><option value='9'>9</option><option value='10'>10</option><option value='11'>11</option><option value='12'>12</option><option value='13'>13</option><option value='14'>14</option><option value='15'>15</option><option value='16'>16</option><option value='17'>17</option><option value='18'>18</option><option value='19'>19</option><option value='20'>20</option><option value='21'>21</option><option value='22'>22</option><option value='23'>23</option><option value='24'>24</option><option value='25'>25</option><option value='26'>26</option><option value='27'>27</option><option value='28'>28</option><option value='29'>29</option><option value='30'>30</option><option value='31'>31</option><option value='32'>32</option><option value='33'>33</option><option value='34'>34</option><option value='35'>35</option><option value='36'>36</option><option value='21'>21</option><option value='37'>37</option><option value='38'>38</option><option value='39'>39</option><option value='40'>40</option></select></div></div><div class='col-md-1 col-sm-1 col-xs-1'><div class='complaint_title'><select name='opdrecord[chief_complaints_attributes]["+length+"][duration_unit]' class='form-control complaint_field_add_field duration_unit_complaint duration_unit'><option value=''>Please Select</option><option value='days'>Days</option><option value='weeks'>Weeks</option><option value='months'>Months</option><option value='years'>Years</option></select></div></div><div class='col-md-3 col-sm-3 col-xs-3'> <div class='complaint_title'><input type='text' placeholder='Comment' name ='opdrecord[chief_complaints_attributes]["+length+"][comment]' class='form-control complaint_field_add_field comment'> <input type='hidden' name='opdrecord[chief_complaints_attributes]["+length+"][history_started]' class='history_complaint'></div></div><div class='col-md-4 col-sm-4 col-xs-4'><div class='complaint_title'>"+option+"</div>"
+
+    console.log("option")
+    var count_class= $('.'+name_field+'_fields').length;
+   if(count_class == 1){
+      $('.'+name_field+'_fields').toggle(0.5, function(){
+        if($('.'+name_field+'_fields').is(":visible")){
+          $('.'+name_field+'_destroy').val("0");
+        }else{
+          $('.'+name_field+'_destroy').val("1");
+        }
+      });
+    }else{
+      $(fields_line).appendTo("#complaints_fields_add").fadeIn('slow');
+      if(name_field == "blurring_diminution_of_vision" || name_field == "other_visual_symptoms" || name_field == "deviation_squint" ){
+        $('.'+name_field+'_option').attr("name", "opdrecord[chief_complaints_attributes]["+length+"][complaint_options]")
+      }
+    }
+  })
+
+  $(".edit-history-btn").on('click', function(e){
+    e.preventDefault();
+    $(".visit-row").toggle()
+    $(".eye-edit-row").toggle()
+    $(".general-row").toggle()
+    $(".show-history-view").toggle()
+    $(".edit-history-btn-row").hide()
+  });
+
+  let show_mimimized_view = '<%= show_mimimized_view %>'
+  if (show_mimimized_view == 'true') {
+    $('.show-patient-history').hide();
+    $('.summary-line-border').hide();
+  }
+
+  let templatetype = '<%= @templatetype %>'
+  if (templatetype == 'eye' || templatetype == 'quickeye' || templatetype == 'lens' || templatetype == 'paediatrics' || templatetype == 'orthoptics' || templatetype == 'trauma') {
+    $('#edit_patient_history').on('click', function(e) {
+      e.preventDefault();
+      $('.show-patient-history').show();
+      $('.show-patient-view').hide();
+    });
+  }
+</script>
+
+<style>
+  .cc_border
+  {
+    width: 98%;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    margin-top: 15px;
+    margin-left: 12px;
+  }
+  .cc_label
+  {
+    top: -10px;
+  }
+
+  .ckbox label, .rdio label {
+    padding-left: 10px;
+    cursor: pointer;
+    margin-bottom: 8px !important;
+  }
+  .copy_arrow_button{
+    color: #46b8da;
+    cursor: pointer;
+  }
+  .table>tbody>tr>th{
+    border-top: 0px solid #ddd;
+  }
+  .complaint_main_comment{
+    font-size: 18px;
+    color: #444;
+    margin-left: 20px;
+  }
+
+  .complaint_title{
+    color: #444;
+    font-size: 15px;
+
+  }
+  .complaint_field_add_field{
+    height: 30px !important;
+    border: 1px solid #ccc !important;
+    color: #666 !important;
+    width: 100% !important;
+    padding:  0px !important;
+    padding-left: 10px !important;
+  }
+  .speciality_fields_add_fields{
+    height: 30px;
+    border: 1px solid #ccc;
+    color: #666;
+    width: 100% !important;
+  }
+  .complaint_field_add_comment{
+    width: 100% !important;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    height: 30px;
+    color: #666;
+  }
+  .speciality_field_add_comment{
+    width: 100% !important;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    height: 30px;
+    color: #666;
+  }
+  .counter_rows{
+    margin-bottom: 10px;
+  }
+  #opdrecord_chiefcomplaint_comments{
+    width: 98%;
+    height: 90px;
+    margin-top: 20px;
+    margin-bottom: 20px;
+  }
+  #opdrecord_paediatrics_histories_antenatal_maternal_vaccination{
+    margin: 0px 0px 5px 0px;
+    width: 100%;
+    height: 35px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+  }
+  #opdrecord_paediatrics_histories_antenatal_maternal_infection{
+     margin: 0px 0px 5px 0px;
+    width: 100%;
+    height: 35px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+  }
+  #opdrecord_antenatal_maternal_infection{
+    margin: 0px 0px 5px 0px;
+    width: 100% !important;
+    height: 35px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+  }
+  #opdrecord_natal_birth_weight{
+    margin: 0px 0px 5px 0px;
+    width: 100% !important;
+    height: 35px;
+    border: 1px solid #ccc;
+    border-radius: 4PX;
+  }
+  #opdrecord_lens_history_comment{
+    margin: 0px 0px 5px 0px !important;
+    width: 101% !important;
+    height: 90px !important;
+    margin-left: -15px !important;
+    margin-bottom: 20px !important;
+  }
+  #opdrecord_other_histories_family_history{
+    width: 100%;
+    height: 35px;
+    margin-left: -51px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding-left: 10px;
+  }
+  #opdrecord_opthal_history_comment{
+    width: 101%;
+    height: 90px !important;
+    margin-left: -10px;
+  }
+  .specility_field_row{
+    margin-bottom: 10px;
+  }
+  .personal_field_row{
+    margin-bottom: 10px;
+  }
+  .personal_fields_add_fields{
+    width: 100% !important;
+    height: 35px;
+    border: 1px solid #ccc;
+    color: #666;
+  }
+  #opdrecord_history_comment{
+    width: 100%;
+    height: 90px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    color: #666;
+  }
+  .personal_field_add_comment{
+    width: 60% !important;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    height: 30px;
+    color: #666;
+    padding-left: 10px;
+  }
+  .forscope_button{
+    margin-left: 22px !important;
+  }
+  #opdrecord_other_histories_medical_history{
+   width: 100%;
+    height: 35px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    margin-left: -55px;
+    padding-left: 10px;
+  }
+  #opdrecord_lens_histories_lens_history_comment{
+    width: 95%;
+    margin-left: -6px !important;
+    height: 90px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    margin-bottom: 20px !important;
+  }
+  .lens_histories_fields{
+    width: 88% !important;
+    padding: 6px;
+    border: 1px solid #ccc;
+    height: 35px;
+    border-radius: 4px;
+    margin-left: -6px !important;
+    padding-left:10px !important;
+  }
+  #opdrecord_lens_histories_comfort_level_time{
+    padding: 5px 0px;
+    height: 35px;
+    width: 50%;
+  }
+  .lens_select_button{
+    padding: 5px 0px;
+    height: 35px;
+    margin-left: -10px;
+  }
+  .f_complaint{
+    text-align: center;
+    color: #444;
+  }
+  #opdrecord_checkuptypecomments{
+    height: 30px !important;
+  }
+  .Opth_his_name{
+    text-align: center;
+    color: #444;
+    font-size: 13px;
+  }
+  #opdrecord_others_allergies{
+        width: 97%;
+    height: 90px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+  }
+  .complaint_button{
+    height:33px !important;
+    font-size: 12px;
+  }
+</style>

@@ -1,0 +1,255 @@
+<%= simple_form_for patient_investigation, :method => :post, url: eval("patient_investigations_save_ophthal_investigation_path") ,:id => 'opthal-investigation', :class => 'form form-bordered', :remote => true  do |f| %>
+<%if @payment == 'Paid' %>
+<%= f.submit("Edit Receipt",{:class=>"btn btn-success btn-sm", :style=>"float: right; margin-top: -54px; margin-right: 80px", :id =>"submit-investigation"}) %>
+<% else %>
+  <%= f.submit("Save Receipt",{:class=>"btn btn-success btn-sm", :style=>"float: right; margin-top: -54px; margin-right: 80px", :id =>"submit-investigation"}) %>
+<% end %>
+<div class="row">
+   <table class="table table-striped table-bordered">
+      <thead>
+         <tr>
+            <td>
+               Investigation Name
+            </td>
+            <td>
+               Cost
+            </td>
+            <td>
+            <% inv_workflow = InvestigationWorkflow.find_by(appointment_id: patient_investigation.appointment_id)%>
+            <%unless @payment == 'Paid' || inv_workflow.state == 'patient_not_arrived' %>
+               
+               <a href="/opd_clinical_workflow/mark_patient_not_arrived?appointment_id=<%= patient_investigation.appointment_id%>&inv_workflow=<%= inv_workflow.id%>" data-remote="true" class="btn btn-xs btn-success btn-warning pull-right" id="inv_payment_status">Patient Not Arrived </a>
+            <% end %>
+            </td>
+         </tr>
+      </thead>
+      <tbody>
+      <input type="hidden" name="patient_investigation[opdrecord_id]" id="opdrecord_id" value="<%= @opdrecord.id %>">
+         <% patient_investigation.ophthal_investigations.each_with_index do |elem, i|  %>
+         <% @ophthal_investigation_invoice.try(:services).try(:each) do |service| %>
+         <% @falg = false %>
+         <% if elem[:investigationname] == service.label %>
+           <tr>
+              <td>
+                 <strong>
+                 <input type="text" name="patient_investigation[services_attributes][<%= i %>][label]" id="name" value="<%= elem[:investigationname] %>" class="form-control input input-sm">
+
+                 </strong>
+              </td>
+              <td style="width: 20%;">
+                 <input type="integer" name="patient_investigation[services_attributes][<%= i %>][unit_price]" id="cost_<%= i%>" value="<%= service.unit_price %>" class="form-control input input-sm">
+              </td>
+              <td>
+                <!-- <div class="input">
+                  <div class="btn-group" target-input-id="patient_investigation_services_attributes_<%= i %>_payment">
+                  <% if service.try(:payment) == 'Inhouse'%>
+                    <button type="button" input-value="Inhouse" class="btn btn-xs btn-white custom-radio-button btn-brown" name="payment">Inhouse</button>
+                    <button type="button" input-value="Outhouse" class="btn btn-xs btn-white custom-radio-button " name="payment">Outhouse</butto>
+                  <% end %>
+                  <% if service.try(:payment) == 'Outhouse'%>
+                    <button type="button" input-value="Inhouse" class="btn btn-xs btn-white custom-radio-button " name="payment">Inhouse</button>
+                    <button type="button" input-value="Outhouse" class="btn btn-xs btn-white custom-radio-button btn-brown" name="payment">Outhouse</button>
+                  <% end %>
+                  </div>
+                  <div class="input">
+                    <input class="hidden" type="hidden" value="Inhouse" name="patient_investigation[services_attributes][<%= i %>][payment]" id="patient_investigation_services_attributes_<%= i %>_payment">
+                  </div>
+                </div> -->
+
+              </td>
+           </tr>
+         <% @flag = true %>
+         <% break %>
+         <% end %>
+         <% end %>
+         <% if @flag == false %>
+         <tr>
+            <td>
+               <input type="text" name="patient_investigation[services_attributes][<%= i %>][label]" id="amount" value="<%= elem[:investigationname] %>" class="form-control input input-sm" maxlength="5">
+            </td>
+            <td style="width: 20%;">
+               <input type="integer" name="patient_investigation[services_attributes][<%= i %>][unit_price]" id="cost_<%= i%>" value="" class="form-control input input-sm" maxlength="5">
+            </td>
+            <td>
+              <!-- <div class="input">
+                <div class="btn-group" target-input-id="patient_investigation_services_attributes_<%= i %>_payment">
+                  <button type="button" input-value="Inhouse" class="btn btn-xs btn-white custom-radio-button " name="payment">Inhouse</button>
+                  <button type="button" input-value="Outhouse" class="btn btn-xs btn-white custom-radio-button " name="payment">Outhouse</button>
+                </div>
+                <div class="input">
+                  <input class="hidden" type="hidden" value="Inhouse" name="patient_investigation[services_attributes][<%= i %>][payment]" id="patient_investigation_services_attributes_<%= i %>_payment">
+                </div>
+              </div> -->
+            </td>
+         </tr>
+         <% end %>
+         <% end %>
+      </tbody>
+   </table>
+</div>
+<div class="row">
+   <%= hidden_field_tag "patient_investigation_id", @patient_investigation_id %>
+
+</div>
+<div class="row">
+   <div class="col-md-5">
+      <div class="row">
+         <div class ="col-md-12">
+            <%= hidden_field_tag "patient_investigation[mode_of_payment]", "cash", :id => "mop_value", :validate => true%>
+            <%= hidden_field_tag "patient_investigation[cash]", "", :id => "cash_value" %>
+            <%= hidden_field_tag "patient_investigation[card]", "", :id => "card_value" %>
+            <p>Please select Mode of payment</p>
+            <%= radio_button_tag "", "", checked = false, :value => "cash", :name => "mop", :id => "cash_radio" %>
+            <label>Cash</label>
+            <%= radio_button_tag "", "", checked = false, :value => "card", :name => "mop", :id => "card_radio" %>
+            <label>Card</label>
+            <%= radio_button_tag "", "", checked = false, :value => "cash_card", :name => "mop", :id => "cash_card_radio" %>
+            <label>Cash & Card</label>
+         </div>
+         <div class ="col-md-12">
+            <label for="mop" class="error" style="display:none;"></label>
+         </div>
+         <div id="cash" class="toHide col-md-6" style="display: none">
+            <%= text_field_tag "paid_via_cash", nil, :class => 'form-control', :readonly => "true" %>
+         </div>
+         <div id="card" class="toHide col-md-6" style="display: none">
+            <%= text_field_tag "paid_via_card", nil, :class => 'form-control', :readonly => "true" %>
+         </div>
+         <div id="cash_card" class="toHide col-md-6" style="display: none">
+            <p>Amount in Cash </p>
+            <%= text_field_tag "paid_via_both_cash", nil, :class => 'form-control paid_via_both_cash' %>
+            <p>Amount via Card </p>
+            <%= text_field_tag "paid_via_both_card", nil, :class => 'form-control paid_via_both_card' %>
+         </div>
+      </div>
+   </div>
+   <div class="col-md-7 text-right">
+      <div class="row mb5">
+         <div class="col-md-8 form-group mt10">Discount(Rs) :</div>
+         <div class="col-md-4 form-group "><input class=" input input-sm form-control invoice_discount" value="0.0" type="text" name="patient_investigation[discount]" id="patient_investigation_discount" aria-invalid="false"></div>
+      </div>
+      <div class="row mb5">
+         <div class="col-md-8 form-group mt10">Tax(%) :</div>
+         <div class="col-md-4 form-group "><input class=" input input-sm form-control" value="0.0" type="text" name="patient_investigation[tax]" id="patient_investigation_tax"></div>
+      </div>
+      <div class="row mb5">
+         <div class="col-md-8 form-group mt10">Total :</div>
+         <div class="col-md-4 form-group "><input class=" input input-sm form-control invoice_total" readonly="readonly" type="text" value="0.0" name="patient_investigation[total]" id="patient_investigation_total"></div>
+      </div>
+   </div>
+</div>
+<%end%>
+<script>
+   function calculate_all_totals() {
+       var advancepayments_row_count = jQuery("#advancepayments_row_count").val();
+       var total_price = 0
+   $("input[id^='cost_']").each(function(index,val){
+     total_price = parseInt(total_price) + parseInt($(val).attr("value"))
+   })
+
+
+       total_price += (total_price*$("#patient_investigation_tax").val()/100)
+       total_price -= ($("#patient_investigation_discount").val())
+
+
+
+       jQuery("#patient_investigation_total").val(total_price.toFixed(2))
+     jQuery("#paid_via_cash").val(total_price.toFixed(2))
+     jQuery("#paid_via_card").val(total_price.toFixed(2))
+
+     var cash = jQuery("#paid_via_both_cash").val()
+     var card = jQuery("#paid_via_both_card").val()
+
+   }
+
+   $("#patient_investigation_discount").on('change',function(){
+     calculate_all_totals()
+   })
+   $("#patient_investigation_tax").on('change',function(){
+     calculate_all_totals()
+   })
+     $("#submit-investigation").on('click',function(){
+       if ($(".add").find("tr").length > 0) {
+         <%= @add = true %>
+       }
+     })
+     $("input[id^='cost_']").on('change',function(){
+       calculate_all_totals()
+     });
+     function invoice_page() {
+
+       $("#new_invoice").validate({
+           rules: {
+             "mop": {
+               required: true,
+             },
+           },
+           messages: {
+             "mop": {
+               required: "Please select Mode of Payment."
+             },
+           },
+       });
+
+       $("#edit_invoice_form").validate({
+         rules: {
+           "mop": {
+             required: true,
+           },
+         },
+         messages: {
+           "mop": {
+             required: "Please select Mode of Payment."
+           },
+         },
+       });
+
+     }
+     invoice_page()
+     $(function() {
+         $("[name=mop]").click(function(){
+
+                 $('.toHide').hide();
+           $("#" + $(this).val()).show('slow')
+           var mode_payment = $(this).val();
+           var mode = mode_payment.split("_");
+           $('#mop_value').val(mode)
+           var val = 0;
+           if (mode_payment == "cash") {
+
+             $("#card_value").val(val)
+             jQuery("#cash_value").val($("#invoice_opd_total").val())
+
+
+           }
+
+           else if (mode_payment == "card") {
+             $("#cash_value").val(val)
+             jQuery("#card_value").val($("#invoice_opd_total").val())
+
+           }
+
+
+
+
+         });
+
+       $("#paid_via_both_cash").on('change', function () {
+         var cash = jQuery("#paid_via_both_cash").val()
+
+         $("#cash_value").val(cash)
+       });
+
+       $("#paid_via_both_card").on('change', function () {
+         var card = jQuery("#paid_via_both_card").val()
+
+         $("#card_value").val(card)
+       });
+
+     //  $("[id ^= invoice_services_attributes]").on('change', function(){
+     //    $('[name=mop]').trigger('click');
+     //  })
+
+      });
+      calculate_all_totals()
+</script>

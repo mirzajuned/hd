@@ -1,0 +1,139 @@
+<div class="col-md-12">
+  <div class="row">
+    <div class="col-md-3 col-md-5-shared">
+      <h4>Advised &nbsp;&nbsp;<label class="label label-primary label-counsellor-report"><%= @advised_count %></label></h4>
+    </div>
+    <div class="col-md-3 col-md-5-shared">
+      <h4>Counselled &nbsp;&nbsp;<label class="label label-info label-counsellor-report"><%= @counselled_count %></label></h4>
+    </div>
+    <div class="col-md-2">
+      <h4>Agreed &nbsp;&nbsp;<label class="label label-info label-counsellor-report"><%= @agreed_count %></label></h4>
+    </div>
+    <div class="col-md-3 col-md-5-shared">
+      <h4>Performed &nbsp;&nbsp;<label class="label label-success label-counsellor-report"><%= @performed_count %></label></h4>
+    </div>
+    <div class="col-md-3 col-md-5-shared">
+      <h4>Declined &nbsp;&nbsp;<label class="label label-danger label-counsellor-report"><%= @declined_count %></label></h4>
+    </div>
+  </div>
+  <div class="row">
+    <button class="btn btn-link" id="show_details">Show Details</button>
+    <button class="btn btn-link" id="hide_details" style="display: none;">Hide Details</button>
+  </div>
+  <div class="daily_reports row" style="margin: 20px 14px 30px 15px;background: #fff;box-shadow: 0 0 12px 0;display: none;">
+    <% if @case_sheets.count > 0 %>
+      <div class="col-md-12 view_tabular">
+        <table class="row title table data_table">
+          <thead class="data_thead">
+            <tr>
+              <th>S NO.</th>
+              <th>PATIENT</th>
+              <th>PAT-ID/MR NO.</th>
+              <th>ADVISED</th>
+              <th>COUNSELLED</th>
+              <th>COUNSELLED BY</th>
+              <th>AGREED</th>
+              <th>PERFORMED</th>
+              <th>DECLINED</th>
+            </tr>
+          </thead>
+          <tbody class="data_tbody" id="opd_invoices">
+            <% @case_sheets.each_with_index do |case_sheet, i| %>
+              <% patient = @patients_data.find { |k| k[:id] == case_sheet.patient_id } %>
+              <tr>
+                <td><%= i + 1 %></td>
+                <td><%= patient[:fullname] %></td>
+                <td>
+                  <%= patient[:patient_identifier] %>
+                  <% if patient[:patient_mrn].present? %>/<%= patient[:patient_mrn] %><% end %>
+                </td>
+                <% advised_list = [] %>
+                <% counselled_list = [] %>
+                <% agreed_list = [] %>
+                <% performed_list = [] %>
+                <% declined_list = [] %>
+                <% counselled_by_list = [] %>
+                <% if @find_for == 'investigation' %>
+                  <% case_sheet.ophthal_investigations.each do |investigation| %>
+                    <% investigation_name = "#{investigation.investigationname}(#{investigation.get_label_for_ophthal_investigation_side(investigation.investigationside)})" %>
+                    <% advised_list << (investigation.is_advised ? investigation_name : '-') %>
+                    <% counselled_list << (investigation.is_counselled ? investigation_name : '-') %>
+                    <% agreed_list << (investigation.has_agreed ? investigation_name : '-') %>
+                    <% performed_list << (investigation.is_performed ? investigation_name : '-') %>
+                    <% declined_list << (investigation.has_declined ? investigation_name : '-') %>
+                    <% counselled_by_list << investigation.counselled_by %>
+                  <% end %>
+                <% elsif @find_for == 'procedure' %>
+                  <% case_sheet.procedures.each do |procedure| %>
+                    <% procedure_name = "#{procedure.procedurename}(#{procedure.get_label_for_procedure_side(procedure.procedureside)})" %>
+                    <% advised_list << (procedure.is_advised ? procedure_name : '-') %>
+                    <% counselled_list << (procedure.is_counselled ? procedure_name : '-') %>
+                    <% agreed_list << (procedure.has_agreed ? procedure_name : '-') %>
+                    <% performed_list << (procedure.is_performed ? procedure_name : '-') %>
+                    <% declined_list << (procedure.has_declined ? procedure_name : '-') %>
+                    <% counselled_by_list << procedure.counselled_by %>
+                  <% end %>
+                <% end %>
+                <td><%= advised_list.join('<br/>').html_safe %></td>
+                <td><%= counselled_list.join('<br/>').html_safe %></td>
+                <td><%= counselled_by_list.join('<br/>').html_safe %></td>
+                <td><%= agreed_list.join('<br/>').html_safe %></td>
+                <td><%= performed_list.join('<br/>').html_safe %></td>
+                <td><%= declined_list.join('<br/>').html_safe %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <div class="col-md-12">
+        <h4 class="text-center">NOTHING TO SHOW</h4>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<style>
+  .view_tabular {
+    font-family: monospace;
+    color: dimgrey;
+    margin-bottom: 10px;
+    margin-top: 10px;
+  }
+  .range {
+    color: darkblue;
+  }
+  .label-counsellor-report {
+    border-radius: 50%;
+    padding: 8px 12px;
+    font-size: 16px;
+  }
+</style>
+
+<script>
+  $(".data_table").dataTable({
+    "aoColumns": [
+      {"sWidth": "10%"},
+      {"sWidth": "15%"},
+      {"sWidth": "15%", "bSortable": false},
+      {"sWidth": "12%", "bSortable": false},
+      {"sWidth": "12%", "bSortable": false},
+      {"sWidth": "14%", "bSortable": false},
+      {"sWidth": "12%", "bSortable": false},
+      {"sWidth": "12%", "bSortable": false},
+      {"sWidth": "12%", "bSortable": false},
+    ],
+  });
+
+  $("#show_details").on("click", function(){
+    $(".daily_reports").show()
+    $("#hide_details").show()
+    $("#show_details").hide()
+  })
+
+  $("#hide_details").on("click", function(){
+    $(".daily_reports").hide()
+    $("#show_details").show()
+    $("#hide_details").hide()
+  })
+</script>

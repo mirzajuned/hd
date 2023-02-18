@@ -1,0 +1,2 @@
+module Mis::AdministrativeReportsHelper
+end

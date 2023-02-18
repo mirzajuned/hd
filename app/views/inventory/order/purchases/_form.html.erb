@@ -1,0 +1,262 @@
+<% @purchase_types = ['Normal', 'Urgent'] %>
+<div class="row order-common-fields" style="">
+  <div class="row p7_10">
+    <div class="col-sm-3">
+      <div class="row">
+        <div class="col-sm-3"><strong>Note:</strong></div>
+        <div class="col-sm-9"><%= f.text_field :note, { class: 'form-control p7_10 fullname', placeholder: "Order Note" } %></div>
+      </div>
+    </div>
+    <div class="col-sm-3">
+      <div class="row">
+        <div class="col-sm-3"><strong>Type:</strong></div>
+        <div class="col-sm-9">
+          <% type = params[:action] == 'edit' ? @purchase_order.po_type : @indent&.indent_type %>
+          <%= f.select :po_type, options_for_select(@purchase_types, type), { include_blank: true }, { class: 'form-control',style: 'padding: 6px;' } %>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-sm-3">
+      <div class="row">
+        <div class="col-sm-4">
+          <strong>Order Date:</strong>
+        </div>
+        <div class="col-sm-8">
+          <% unless Authorization::PolicyHelper.verification(current_user.id,"HGP-100-112-103") %>
+            <%= f.text_field :order_date, { value: Date.current.strftime("%d/%m/%Y"), class: 'form-control p7_10 fullname', placeholder: "Date of order", readonly: 'readonly' } %>
+          <% else %>
+            <%= f.text_field :order_date, { value: Date.current.strftime("%d/%m/%Y"), class: 'form-control p7_10 fullname order-datepicker', placeholder: "Date of order" } %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-sm-3">
+      <div class="row">
+        <div class="col-sm-4">
+          <strong>Order Time:</strong>
+        </div>
+        <div class="col-sm-8">
+          <% unless Authorization::PolicyHelper.verification(current_user.id,"HGP-100-112-103") %>
+            <%= f.text_field :order_time_picker, { value: Time.current.strftime("%I:%M %p"), class: 'form-control p7_10', placeholder: "Time", readonly: true } %>
+          <% else %>
+            <%= f.text_field :order_time_picker, { value: Time.current.strftime("%I:%M %p"), class: 'form-control p7_10 order-timepicker', placeholder: "Time" } %>
+          <% end %>
+          <%= f.hidden_field :order_date_time, { value: Time.current } %>
+        </div>
+      </div>
+    </div>
+
+    <!-- <div class="col-sm-2">
+      <strong>Est. Delivery Date</strong><br>
+      <%#= f.text_field :estimated_delivery_date, { value: '', class: 'form-control p7_10 fullname est-delivery-datepicker', disabled: !Authorization::PolicyHelper.verification(current_user.id,"HGP_100054"), placeholder: "Optional", readonly: 'readonly' } %>
+    </div> -->
+  </div>
+
+  <div class="row p7_10">
+    <div class="col-sm-3">
+      <div class="row">
+        <div class="col-sm-4"><strong>Credit Days:</strong></div>
+        <div class="col-sm-8"><%= f.text_field :vendor_credit_days, { class: 'form-control p7_10 credit_days', placeholder: "Credit Days", readonly: true } %></div>
+      </div>
+    </div>
+
+    <div class="col-sm-3">
+      <div class="row">
+        <div class="col-sm-4">
+          <strong>PO Expiry:</strong>
+        </div>
+        <div class="col-sm-8">
+          <% expiry_days = @vendor&.po_expiry_days %>
+          <% po_expiry_days = expiry_days.present? ? (Date.current + expiry_days).strftime("%d/%m/%Y") : "" %>
+          <%= f.text_field :po_expiry_date, { value: po_expiry_days, class: 'form-control p7_10 fullname po-expiry-date', placeholder: "Date of expire", readonly: 'readonly' } %>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6">
+      <div class="row">
+        <div class="col-sm-2"><strong>Vendor:</strong></div>
+        <div class="col-sm-9">
+          <select class="form-control" name="inventory_order_purchase[vendor_location_id]" id="inventory_order_purchase_vendor_location_id" required="true" value="<%= @purchase_order.vendor_location_id %>">
+            <option value="">Select</option>
+            <% @vendor_locations.each do |vendor_location| %>
+              <% if params[:vendor_location_id].present? %>
+                <% selected_vendor = params[:vendor_location_id].to_s %>
+              <% elsif @indent.present? && @indent.vendor_id.present? %>
+                <% selected_vendor = @indent.vendor_id.to_s %>
+              <% elsif params[:action] == 'edit' %>
+                <% selected_vendor = @purchase_order.vendor_location_id.to_s %>
+              <% else %>
+                <% selected_vendor = '' %>
+              <% end %>
+              <% if params[:action] == "new_transaction"%>
+                <option value="<%= vendor_location.id %>" <%= 'selected' if vendor_location.id.to_s == selected_vendor %>>
+                  <%= po_vendor_format(vendor_location) %>
+                </option>
+              <% else %>
+               <option value="<%= vendor_location.id %>" <%= 'selected' if vendor_location.id.to_s == selected_vendor %>>
+                  <%= po_vendor_format(vendor_location) %>
+                </option>
+              <% end %>
+            <% end %>
+          </select>
+          <%= f.hidden_field :vendor_name, value: @vendor&.name %>
+          <%= f.hidden_field :vendor_id, value: @vendor&.id %>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="row p7_10">
+    <div class="col-sm-6">
+      <div class="row">
+        <div class="col-sm-3"><strong>Store GSTIN:</strong></div>
+        <div class="col-sm-9">
+          <%= f.text_field :store_gst, { value: @inventory_store&.gst , class: 'form-control p7_10 fullname store-gst', placeholder: "Store GSTIN", readonly: 'readonly' } %>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6">
+        <div class="row">
+          <div class="col-sm-2"><strong>Store:</strong></div>
+          <div class="col-sm-9">
+            <% if  params[:action] == "new_transaction"%>
+              <%= f.text_field :store_name, { value: @inventory_store.name, class: 'form-control p7_10', readonly: 'readonly' } %>
+              <%= f.hidden_field :store_id, { value: @store_id } %>
+              <%= f.hidden_field :create_from, value: @store_id %>
+            <% else %>
+              <script>$('#inventory_order_purchase_store_id').select2()</script>
+              <%= select_tag "inventory_order_purchase[store_id]", options_for_select(@receive_stores, @selected_store), { name: 'inventory_order_purchase[store_id]', include_blank: true, class: 'form-control inventory_order_purchase_store', id: 'inventory_order_purchase_store_id' } %>
+              <%= f.hidden_field :create_from, value: params[:store_id] %>
+              <%= f.hidden_field :store_name %>
+              <%#= f.hidden_field :create_store_name, value: @selected_store[0] %>
+              <input type="hidden" id="old_store_purchase_id" name="custId" value="<%= @inventory_store.id %>" >
+            <% end%>
+          </div>   
+        </div>      
+    </div>
+  </div> 
+  <!-- <div class="col-sm-2">
+    <strong>Est. Delivery Date</strong><br>
+    <%# unless Authorization::PolicyHelper.verification(current_user.id,"HGP-100-116-104") %>
+      <%#= f.text_field :estimated_delivery_date, { value: '', class: 'form-control p7_10 fullname', placeholder: "Optional", readonly: 'readonly' } %>
+    <%# else %>
+      <%#= f.text_field :estimated_delivery_date, { value: '', class: 'form-control p7_10 fullname est-delivery-datepicker', placeholder: "Optional" } %>
+    <%# end %>
+  </div> -->
+
+  <%#= f.hidden_field :vendor_name, { value: @indent.present? ? @indent.vendor_name : "" } %>
+  <%#= f.hidden_field :vendor_id, { value: @indent.present? ? @indent.vendor_id : params[:vendor_id] } %>
+  <%= f.hidden_field :entry_type, { value: "purchase" } %>
+  <%= f.hidden_field :entered_by, { value: current_user.fullname } %>
+  <%= f.hidden_field :user_id, { value: current_user.id } %>
+  <%#= f.hidden_field :store_id, { value: @store_id } %>
+  <%= f.hidden_field :facility_id, { value: current_facility.id } %>
+  <%= f.hidden_field :organisation_id, { value: current_user.organisation_id } %>
+  <%= f.hidden_field :department_id, { value: @inventory_store&.department_id } %>
+  <%= f.hidden_field :department_name, { value: @inventory_store&.department_name } %>
+  <%= f.hidden_field :purchase_display_id, { value: @purchase_order&.purchase_display_id } %>
+  <%= f.hidden_field :vendor_name, { value: @vendor&.name } %>
+  <%= f.hidden_field :global_discount, {value: 0, class: 'global-discount'} %>
+  <%= f.hidden_field :global_discount_type, { class: 'global-discount'} %>
+  <%= f.hidden_field :hdn_global_discount, {value: 0, class: 'global-discount-type'} %>
+  <%= f.hidden_field :po_total_paid_stock, { } %>
+  <%= f.hidden_field :remaining_po_total_paid_stock, { } %>
+</div>
+
+<% if @indent.present? %>
+  <%= f.hidden_field :indent_id, { value: @indent.id } %>
+  <div class="mb5" style="border-bottom:1px solid #eee;border-top:1px solid #eee;overflow-y: auto;padding:0">
+    <div class="transaction-lots-list" style="margin-top:15px;">
+      <table class="table transaction-lots-table" style="padding: 0;">
+        <thead class="transaction-table-head">
+          <tr class='thead-fixable'>
+            <th class='thead-fix' style="width: 30px;">#</th>
+            <th class='thead-fix' style="width: 180px;">Description</th>
+            <th class='thead-fix' style="width: 85px;">Rate</th>
+            <th class='thead-fix' style="width: 80px;">Indent Qty.</th>
+            <th class='thead-fix' style="width: 85px;">Pending Qty.</th>
+            <th class='thead-fix' style="width: 50px;">Tax</th>
+            <th class='thead-fix' style="width: 85px;">Paid Qty.</th>
+            <th class='thead-fix' style="width: 70px;">Free Qty.</th>
+           <!--  <th class='thead-fix'>Model No.</th>
+            <th class='thead-fix'>Expiry</th> -->
+            <th class='thead-fix' style="width: 100px;">Discount</th>
+            <th class='thead-fix' style="width: 60px;">Net Amount</th>
+            <%if @sub_stores.size > 1 %>
+              <th class='thead-fix' style="width: 70px;">Sub Store</th>
+            <% end %>
+            <th class='thead-fix' style="width: 85px;">Remarks</th>
+            <th class='thead-fix' style="width: 85px;">Action</th>
+          </tr>
+        </thead>
+        <tbody class="transaction-table-body" style="overflow-y: auto; font-size: 12px" id="tbody_transaction">
+          <%= render partial: '/inventory/order/indents/lot_form', locals: { f: f, index: nil } %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+<% else %>
+  <div class="row mb5" style="border-bottom:1px solid #eee;border-top:1px solid #eee;">
+    <!-- <div class="order-table-body" style="overflow-y: auto; min-height: 400px; font-size: 11px"> -->
+      <div class="order-lots-list" style="margin-top: 15px;">
+        <table class="table order-lots-table">
+          <thead class="order-table-head">
+            <tr class='thead-fixable'>
+              <td class='col-md-2 thead-fix'>Description</td>
+              <td class='col-md-1 thead-fix'>Rate</td>
+              <td class='col-md-1 thead-fix'>Tax Rate</td>
+              <td class='col-md-1 thead-fix'>Paid Qty.</td>
+              <td class='col-md-1 thead-fix'>Free Qty.</td>
+              <td class='col-md-1 thead-fix'>Discount</td>
+              <td class='col-md-1 thead-fix'>Net Amount</td>
+              <% if @sub_stores.size > 1 %>
+                <td class='col-md-1 thead-fix'>Sub-Store</td>
+              <% end %>
+              <td class='col-md-1 thead-fix'>Remarks</td>
+              <td class='col-md-1 thead-fix'>Action</td>
+            </tr>
+          </thead>
+        </table>
+      </div>
+    <!-- </div> -->
+    <div class="order-table-body" style="overflow-y: auto; font-size: 11px">
+      <% unless @purchase_order.new_record? %>
+        <%= render 'inventory/order/purchases/lots.html.erb', { f: f, purchase: @purchase_order } %>
+      <% end %>
+    </div>
+  </div>
+<% end %>
+
+  <div class="col-md-12 col-sm-6" style="background: white;border-top: 6px solid #e4e7ea;min-height: 65px;">
+    <%= render partial: 'inventory/order/purchases/other_charges.html.erb', locals: { f: f,model_name: "inventory_order_purchase" } %>
+
+  <div class="col-md-12 col-sm-6 " style="background: white;border-top: 6px solid #e4e7ea;min-height: 65px; padding: 4px;"> 
+    <%= render partial: 'inventory/order/purchases/tax_details.html.erb', locals: { f:f } %>
+  </div>
+
+<div class="col-md-12 col-sm-6" style="background: white;border-top: 6px solid #e4e7ea;min-height: 65px;">
+  <%= render partial: 'inventory/order/purchases/terms_and_conditions.html.erb', locals: { f: f, model_name: "inventory_order_purchase" } %>
+</div>
+
+<style>
+  .order-datepicker, .est-delivery-datepicker{
+    cursor: pointer !important;
+  }
+  
+  .est-delivery-datepicker:disabled, .order-datepicker:disabled {
+    cursor: not-allowed !important;
+  }
+  .transaction-lots-list .table thead th {
+    font-weight: strong;
+    background: #8c95b3;
+    color: white;
+    /*width: 80px;*/
+    vertical-align: middle;
+    padding: 6px 10px;
+    text-align: center;
+  }
+  .p7_10{
+    padding:  3px 4px;
+  }
+</style>

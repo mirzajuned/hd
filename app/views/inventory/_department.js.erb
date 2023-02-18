@@ -1,0 +1,90 @@
+sidebarHeight = $(window).height() - $(".navbar").height()
+inventoryItemsHeight = sidebarHeight - $(".toolbar").height() - 15
+$(".sidebar-main").height(sidebarHeight)
+$(".inventory_items").height(inventoryItemsHeight)
+
+$('.li-sidebar-filter').on('click', function(){
+  
+  filter_type = $(this).find('.filter_type').attr('filter')
+  department_id = $('#inventory_controller_department').val()
+  
+  _this = this
+
+  $.ajax({
+    type: "GET",
+    data: {
+      item_type: filter_type,
+      department_id: department_id
+    },
+    url: "/inventory/department/filter_type_items",
+    success: function(data) {
+      $(_this).closest('.'+department_id).find('.filter_type').find("i").addClass("fa-toggle-off").removeClass("fa-toggle-on")
+      $(_this).addClass("active");
+      $(_this).find("i").addClass("fa-toggle-on").removeClass("fa-toggle-off")
+      $('#refresh_inventory').trigger('click')
+    }
+  }) 
+})
+
+
+
+$("#inventory_search").on("keyup", function () {
+  department_id = $('#inventory_controller_department').val()
+  filter_type = $(".fa-toggle-on").parents('.filter_type').attr('filter')
+  query = $(this).val()
+//  if (query.length > 2) {
+  $.ajax({
+    type : 'get',
+    url: '/inventory/search_inventory_list',
+    data: {q: query, department_id: department_id,item_type: filter_type, remote: "true" },
+  })
+//  }
+})
+
+$("#refresh_inventory").on("click", function () {
+  $("#inventory_search").val("")
+  $(this).html("Reloading...&nbsp;&nbsp;<i class='fa fa-refresh' style='color: white;'></i>")
+  $(this).find("i").addClass("fa-spin fa-fw")
+  department_id = $('#inventory_controller_department').val()
+  filter_type = $(".fa-toggle-on").parents('.filter_type').attr('filter')
+  query = $(this).val()
+//  if (query.length > 2) {
+  $.ajax({
+    type : 'get',
+    url: '/inventory/refresh_inventory_list',
+    data: {q: query, department_id: department_id,item_type: filter_type, remote: "true" },
+    success: function(){
+      $("#refresh_inventory").html("Reload&nbsp;&nbsp;<i class='fa fa-refresh' style='color: white;'></i>")
+      $("#refresh_inventory").find("i").removeClass("fa-spin")
+    }
+  })
+//  }
+})
+
+$(".btnItemToFreeInvoice").on("click",function(){
+  var item_id = $(this).attr("data-model")
+  var department_id = $('#inventory_controller_department').val()
+  var in_cart
+  if ($(this).hasClass("btnAddItemToFreeInvoice")) {
+    in_cart = "true"
+  }
+  else {
+    in_cart = "false"
+  }
+  $.ajax({
+    type: "GET",
+    data: {
+      item_id: item_id,
+      in_cart: in_cart,
+      department_id: department_id
+    },
+    url: "/inventory/department/item/update_cart",
+    success: function(data) {
+      $("#free_invoice_item_count").text(data.cart_count)
+    }
+  })
+  $(this).toggleClass("btnAddItemToFreeInvoice btnRemoveItemToFreeInvoice");
+  $(this).find('i').toggleClass('fa-plus fa-minus')
+  $(this).toggleClass("btn-primary btn-warning")
+
+})

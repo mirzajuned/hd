@@ -1,0 +1,211 @@
+<div class="modal-dialog" style="width:65%;">
+  <div class="modal-content">
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal">&times;</button>
+      <h4 class="modal-title"><%= @common_procedure.name %>(<%= @common_procedure.code %>)</h4>
+    </div>
+    <%= form_tag '/common_procedures/append_procedure_details', method: "post", remote: true, id: 'procedure-form', class: "procedure-form" do %>
+        <% if @flag == "new" %>
+            <input type="hidden" name="procedure[count]" id='procedure-count' value="" />
+        <% end %>
+        <div class="modal-body">
+          <div class="row mb10">
+            <div class="col-md-3">
+              <b style="color:#000;">State :</b>
+              <div class="row">
+                <div class="col-sm-12">
+                  <div class="rdio rdio-primary">
+                    <input id="stage_advised" name="procedure[stage]" class="procedure-stage" type="radio" value="A" <%= 'checked="checked"' if @status == 'A' %> />
+                    <label for="stage_advised">Advised</label>
+                  </div>
+                </div>
+                <div class="col-sm-12">
+                  <div class="rdio rdio-primary">
+                    <input id="stage_performed" name="procedure[stage]" class="procedure-stage" type="radio" value="P" <%= 'checked="checked"' if @status == 'P' %> />
+                    <label for="stage_performed">Performed</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <b style="color:#000;">Name :</b>
+              <input type="text" name="procedure[name]" class="form-control" id='procedure-name' value="<%= @common_procedure.name %>" readonly='readonly'/>
+            </div>
+            <div class="col-md-3">
+              <% if @common_procedure.has_laterality %>
+                  <b style="color:#000;">Side :</b>
+                  <select class="form-control procedure-side" name='procedure[side]'>
+                    <% @common_procedure.laterality.each do |common_procedure| %>
+                        <option value='<%= common_procedure[:side_id] %>' <%= "selected='selected'" if @side_id == common_procedure[:side_id] %>><%= common_procedure[:side_name] %></option>
+                    <% end %>
+                  </select>
+              <% end %>
+            </div>
+          </div>
+          <div class="row mb10">
+            <div class="col-md-3">
+              <b style="color:#000;">Procedure Comments :</b>
+            </div>
+            <div class="col-md-9">
+              <textarea class="form-control procedure-comment" name='procedure[procedure_comment]'><%= @procedure_comment.to_s %></textarea>
+            </div>
+          </div>
+          <div class="row mb10">
+            <div class="col-md-3">
+              <b style="color:#000;">User Comments :</b>
+            </div>
+            <div class="col-md-9">
+              <textarea class="form-control users-comment" name='procedure[users_comment]'><%= @users_comment.to_s %></textarea>
+            </div>
+          </div>
+          <div class="row mb10">
+            <div class="col-md-4">
+              <b style="color:#000;">Procedure Code :</b>
+              <input type="text" name="procedure[code]" class="form-control" id='procedure-code' value="<%= @common_procedure.code %>" readonly='readonly'/>
+            </div>
+            <div class="col-md-4">
+              <b style="color:#000;">Entered By :</b>
+              <input type="hidden" name="procedure[entered_by_id]" class="form-control" id='user-id' value="<%= current_user.id %>" />
+              <input type="text" name="procedure[entered_by]" class="form-control" id='user-name' value="<%= current_user.fullname %>" readonly='readonly'/>
+              <input type="hidden" name="procedure[entered_at_facility_id]" class="form-control" id='facility-id' value="<%= current_facility.id %>" />
+              <input type="hidden" name="procedure[entered_at_facility]" class="form-control" id='facility-name' value="<%= current_facility.name %>" />
+              <% if @id.present? %>
+                  <!-- Updater -->
+                  <input type="hidden" name="procedure[updated_by_id]" class="form-control" id='update-user-id' value="<%= current_user.id %>" />
+                  <input type="hidden" name="procedure[updated_by]" class="form-control" id='update-user-name' value="<%= current_user.fullname %>" />
+                  <input type="hidden" name="procedure[updated_at_facility_id]" class="form-control" id='update-facility-id' value="<%= current_facility.id %>" />
+                  <input type="hidden" name="procedure[updated_at_facility]" class="form-control" id='update-facility-name' value="<%= current_facility.name %>" />
+              <% end %>
+            </div>
+            <div class="col-md-4">
+              <b style="color:#000;">Entry Date & Time :</b>
+              <input type="hidden" name="procedure[entered_datetime]" class="form-control" id='procedure-time' value="<%= Time.current %>" />
+              <input type="text" name="" class="form-control" id='procedure-date-time' value="<%= Time.current.strftime('%d/%m/%Y %I:%M %p') %>" readonly='readonly'/>
+              <% if @id.present? %>
+                  <!-- Updater -->
+                  <input type="hidden" name="procedure[updated_datetime]" class="form-control" id='procedure-update-time' value="<%= Time.current.strftime('%d/%m/%Y at %I:%M %p') %>" />
+              <% end %>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <% if @flag == "new" %>
+              <button class="btn btn-success" id='save-procedure-details'>Save</button>
+          <% else %>
+              <button class="btn btn-success" id='update-procedure-details'>Update</button>
+          <% end %>
+          <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+        </div>
+    <% end %>
+  </div>
+</div>
+
+<style type="text/css">
+    .textcomplete-dropdown {
+        z-index: 1500 !important;
+    }
+</style>
+
+<script type="text/javascript">
+    var procedure_list_count = $('.table-row-procedure').length
+    $("#procedure-count").val(procedure_list_count)
+
+
+    $("#update-procedure-details").on('click', function(e){
+        e.preventDefault();
+
+        var status = $("input[name='procedure[stage]']:checked").val();
+        var side_id = $('.procedure-side').val()
+        var side_name = $(".procedure-side option[value=" + side_id + "]").text()
+        var procedure_comment = $('.procedure-comment').val()
+        var users_comment = $('.users-comment').val()
+        var update_user_id = $('#update-user-id').val()
+        var update_user_name = $('#update-user-name').val()
+        var update_facility_id = $('#update-facility-id').val()
+        var update_facility_name = $('#update-facility-name').val()
+        var updated_datetime = $('#procedure-update-time').val()
+
+        if(status == 'A'){
+            var status_color = "#c9302c"
+        } else {
+            var status_color = "#1CAF9A"
+        }
+
+        var id_attr = '#opdrecord_procedure_attributes_<%= @counter %>_'
+
+        if(status == 'P' && $('.table-row-procedure').find(id_attr + 'procedurestage').val() != 'P'){
+            $('.table-row-procedure').find(id_attr + 'performed_by').val("<%= current_user.fullname %>")
+            $('.table-row-procedure').find(id_attr + 'performed_by_id').val("<%= current_user.id %>")
+            $('.table-row-procedure').find(id_attr + 'performed_at_facility').val("<%= current_facility.name %>")
+            $('.table-row-procedure').find(id_attr + 'performed_at_facility_id').val("<%= current_facility.id %>")
+            $('.table-row-procedure').find(id_attr + 'performed_date').val("<%= Date.current %>")
+            $('.table-row-procedure').find(id_attr + 'performed_time').val("<%= Time.current %>")
+            $('.table-row-procedure').find(id_attr + 'performed_datetime').val("<%= Time.current %>")
+        } else if(status == 'A') {
+            $('.table-row-procedure').find(id_attr + 'performed_by').val("")
+            $('.table-row-procedure').find(id_attr + 'performed_by_id').val("")
+            $('.table-row-procedure').find(id_attr + 'performed_at_facility').val("")
+            $('.table-row-procedure').find(id_attr + 'performed_at_facility_id').val("")
+            $('.table-row-procedure').find(id_attr + 'performed_date').val("")
+            $('.table-row-procedure').find(id_attr + 'performed_time').val("")
+            $('.table-row-procedure').find(id_attr + 'performed_datetime').val("")
+        }
+
+        $('.table-row-procedure').find(id_attr + 'procedurestage').val(status)
+        $('.table-row-procedure').find(id_attr + 'procedureside').val(side_id)
+        $('.table-row-procedure').find(id_attr + 'procedure_comment').val(procedure_comment)
+        $('.table-row-procedure').find(id_attr + 'procedure_performed').val(procedure_comment)
+        $('.table-row-procedure').find(id_attr + 'users_comment').val(users_comment)
+        $('.table-row-procedure').find(id_attr + 'updated_by_id').val(update_user_id)
+        $('.table-row-procedure').find(id_attr + 'updated_by').val(update_user_name)
+        $('.table-row-procedure').find(id_attr + 'updated_at_facility_id').val(update_facility_id)
+        $('.table-row-procedure').find(id_attr + 'updated_at_facility').val(update_facility_name)
+        $('.table-row-procedure').find(id_attr + 'updated_datetime').val(updated_datetime)
+
+        $('.table-row-procedure').find('#procedure_stage_<%= @counter %>_p').html(status + " - ").css('color', status_color)
+
+        if(side_name == "Bilateral"){
+            $('.table-row-procedure').find('#procedure_side_<%= @counter %>_p').html("B/E")
+        } else {
+            $('.table-row-procedure').find('#procedure_side_<%= @counter %>_p').html(side_name + ' Eye')
+        }
+
+        if(procedure_comment.trim().length > 0){
+            $('.table-row-procedure').find('#procedure_comments_<%= @counter %>_p').find('#procedure_comment_<%= @counter %>_p').remove()
+            $('.table-row-procedure').find('#procedure_comments_<%= @counter %>_p').append('<li id="procedure_comment_<%= @counter %>_p"><span style="font-size:12px;">' + procedure_comment + '</span></li>')
+        } else {
+            $('.table-row-procedure').find('#procedure_comments_<%= @counter %>_p').find('#procedure_comment_<%= @counter %>_p').remove()
+        }
+
+        if(users_comment.trim().length > 0){
+            $('.table-row-procedure').find('#procedure_comments_<%= @counter %>_p').find('#users_comment_<%= @counter %>_p').remove()
+            $('.table-row-procedure').find('#procedure_comments_<%= @counter %>_p').append('<li id="users_comment_<%= @counter %>_p"><span style="font-size:12px;">' + users_comment + '</span></li>')
+        } else {
+            $('.table-row-procedure').find('#procedure_comments_<%= @counter %>_p').find('.users_comment_<%= @counter %>_p').remove()
+        }
+
+        if(update_user_name != undefined && updated_datetime != undefined){
+            $('.table-row-procedure').find('#procedure_added_updated_<%= @counter %>_p').find('#edited_by_<%= @counter %>_p').remove();
+            $('.table-row-procedure').find('#procedure_added_updated_<%= @counter %>_p').append('<span id="edited_by_<%= @counter %>_p" style="color:#f00;"><hr style=margin:2px;><b style="font-size:12px;">You Edited on '+ updated_datetime +'</b></span>')
+        }
+
+        $("#procedure-detail-modal").modal('hide')
+    })
+
+
+    setTimeout(function() {
+        var words = <%= raw @doctors_array %>
+                $('.users-comment').textcomplete([{
+                    match: /@(\w*)$/,
+                    search: function (term, callback) {
+                        callback($.map(words, function (word) {
+                            return word[0].toLowerCase().indexOf(term.toLowerCase()) === 0 ? word[0] : null;
+                        }));
+                    },
+                    index: 1,
+                    replace: function (word) {
+                        return '@' + word + ' ';
+                    }
+                }]);
+    }, 100);
+</script>

@@ -1,0 +1,348 @@
+<div class="fuelux">
+  <div class="wizard" id="admissionWizard">
+    <ul class="steps" id="discharge-note-steps">
+        <li data-step="1" class="dischargenote_steps dscharge-checklist-step active"><span class="badge">1</span> Discharge Checklist<span class="chevron"></span></li>
+        <li data-step="2" class="dischargenote_steps discharge-details-step"><span class="badge">2</span> Discharge Details<span class="chevron"></span></li>
+        <li data-step="3" class="dischargenote_steps advice-on-discharge-step"><span class="badge">3</span> Advice On Discharge<span class="chevron"></span></li>
+        <li data-step="4" class="dischargenote_steps advice-on-discharge-step"><span class="badge">4</span> Follow Up<span class="chevron"></span></li>
+    </ul>
+
+    <div class="actions">
+      <button type="button" class="btn btn-default btn-prev" disabled="disabled"><span class="glyphicon glyphicon-arrow-left"></span>Prev</button>
+      <button type="button" class="btn btn-default btn-next">Next<span class="glyphicon glyphicon-arrow-right"></span></button>
+    </div>
+    
+    <div class="step-content" style="overflow:scroll;">
+      <%= f.simple_fields_for :discharge_note,@discharge_note do |discharge| %>
+        <div class="step-pane active" data-step="1">
+          <%= render partial: 'inpatient/ipd_record/discharge_note/common/checklist_form.html.erb', locals: {f: discharge} %>
+        </div>
+
+        <div class="step-pane" data-step="2">
+          <%= render partial: 'details_form.html.erb', locals: {f: discharge} %>
+        </div>
+
+        <div class="step-pane" data-step="3">
+          <%= render partial: 'advice_form.html.erb', locals: {f: discharge} %>
+        </div>
+        <div class="step-pane" data-step="4">
+          <%= render partial: 'follow_up.html.erb', locals: {f: discharge} %>
+        </div>
+
+        <%= discharge.simple_fields_for :record_histories,@record_history do |record| %>
+          <%= record.hidden_field :user_id,value: current_user.id %>
+          <% if @method == "POST" %>
+              <%= record.hidden_field :action,value: "C" %>
+          <% else %>
+              <%= record.hidden_field :action,value: "U" %>
+          <% end %>
+          <%= record.hidden_field :actiontime,value: Time.current %>
+          <%= record.hidden_field :template_type,value: "Discharge Note" %>
+      <% end %>
+    <% end %>
+    </div>
+  </div>
+</div>
+
+<style type="text/css">
+  .dischargenote_steps {
+    cursor: pointer !important;
+  }
+</style>
+<script type="text/javascript">
+  $(document).ready(function(){
+    var wind = $(window).height()
+    $(".step-content").css('height', wind - 230)
+    // Initialize Wizard
+    $("#admissionWizard").wizard();
+    // Disable Enable Prev Next On First and Last Step respectively
+    $('#admissionWizard').on('actionclicked.fu.wizard', function (evt, data) {
+      // Disable Prev Button on First Step
+      if(data.step == 0 || (data.step == 2 && data.direction == "previous")) {
+        $(".btn-prev").attr('disabled','disabled');
+      } else {
+        $(".btn-prev").removeAttr('disabled','disabled');
+      }
+      // Disable Next Button on First Step
+      if(data.step == 3 && data.direction == "next") {
+        $(".btn-next").attr('disabled','disabled');
+      } else {
+        $(".btn-next").removeAttr('disabled','disabled');
+      }
+    });
+
+    //  Step Name Click Option
+    $(".dischargenote_steps").on('click',function(){
+      // Disable Enable Prev Next button
+      if($(this).attr('data-step') == 1) {
+        $(".btn-prev").attr('disabled','disabled');
+      } else {
+        $(".btn-prev").removeAttr('disabled','disabled');
+      }
+
+      if($(this).attr('data-step') == 4) {
+        $(".btn-next").attr('disabled','disabled');
+        $("#admissionWizard").wizard('next').wizard('next').wizard('next');
+      } else {
+        $(".btn-next").removeAttr('disabled','disabled');
+      }
+        if($(this).attr('data-step') == 3) {
+            $("#admissionWizard").wizard('next').wizard('next');
+        }
+
+      if($(this).attr('data-step') == 2) {
+        $("#admissionWizard").wizard('next');
+      }
+    })
+
+    // Add Appointment
+    $(".add_followup_appointment").on('click', function(e){
+      e.preventDefault();
+      var click = $(this).attr("data-click-name")
+      var admission_id = $("#inpatient_ipd_record_admission_id").val()
+      var appointment_time = $("#inpatient_ipd_record_followup_time").val()
+      var appointment_date = $("#inpatient_ipd_record_followup_date").val()
+      var followup_doctor = $("#inpatient_ipd_record_followup_doctor").val()
+      var appointment_type = $(".appointment_type").find('label')
+      for (var i = appointment_type.length - 1; i >= 0; i--) {
+        if($(appointment_type[i]).find('input').is(':checked')) {
+          var new_appointment_type = $(appointment_type[i]).find('input').val()
+        }
+      }
+      _this = this
+      jQuery.ajax({
+        type: "GET",
+        data: {
+          admission_id: admission_id,
+          appointment_time: appointment_time,
+          appointment_date: appointment_date,
+          followup_doctor: followup_doctor,
+          appointment_type: new_appointment_type,
+          click: click
+        },
+        dataType: "json",
+        url: "/inpatient/ipd_records/followup_appointment",
+        success: function(response){
+          // $(_this).hide();
+          $(_this).text("Edit Follow-Up Appointment");
+          $(_this).hide();
+          $(".notice_followup").text("Note: Appointment Scheduled")
+        },
+        error: function(err){
+        }
+      })
+    })
+
+    $("#inpatient_ipd_record_followup_date").on('change',function(){
+      $(".add_followup_appointment").show();
+    })
+    $("#inpatient_ipd_record_followup_time").on('change',function(){
+      $(".add_followup_appointment").show();
+    })
+    $("#inpatient_ipd_record_followup_doctor").on('change',function(){
+      $(".add_followup_appointment").show();
+    })
+  });
+
+
+  // Do Not Disturb ....Medication Table Logic
+  
+  jQuery(document).ready(function(){
+    function _add_button_at_last() {
+      var row_count = jQuery("[id^='addnewmedicationbutton']").parents('.treatmentmedications:visible').length
+      jQuery("[id^='addnewmedicationbutton']:lt("+(row_count-1)+")").addClass("hidden")
+      jQuery("[id^='addnewmedicationbutton']:eq("+(row_count-1)+")").removeClass("hidden")
+    }
+    _add_button_at_last()
+    jQuery('tbody').on('click', "a[name*='addnewmedicationbutton']", function() {
+      var fieldcounter;
+      if (jQuery(".medication-table-body-added > .treatmentmedications").length == 0){
+        fieldcounter = 0;
+      } else {
+        fieldcounter = jQuery(".medication-table-body-added > .treatmentmedications").length;
+      }
+      var params = { counter: fieldcounter };
+      jQuery.ajax({
+        type: "GET",
+        dataType: "script",
+        url: "/inpatient/ipd_records/ipdaddmedication",
+        data: {ajax: params, remote: "true" },
+        async: false,
+        success: function(){
+          // taper_form();
+        }
+      });
+      _renumber_id_after_remove("tbody.medication-table-body-added", "div.medication-table-body-removed");
+      medi_autocomplete_bind()
+    })
+
+    jQuery('.medication-table-body-added').on('click', "a[name*='removemedicationbutton']", function() {
+      event.preventDefault();
+      var medications_removed_tr_html;
+      var fieldcounter;
+      fieldcounter = jQuery(this).attr('id').slice(-1);
+      var medications_tr_array = jQuery(this).parents('.treatmentmedications').find(".id");
+      if (medications_tr_array.length > 0) {
+        jQuery(this).parents('.treatmentmedications').find("input[name*='_destroy']").val("1");
+        medications_removed_tr_html = jQuery(this).parents('.treatmentmedications').wrap('<p/>').parent().html();
+        jQuery(this).parents('.treatmentmedications').unwrap();
+        jQuery('.medication-table-body-removed').append(medications_removed_tr_html);
+        jQuery(this).parents('.treatmentmedications').remove();
+        _renumber_id_after_remove("tbody.medication-table-body-added", "div.medication-table-body-removed");
+      } else {
+        jQuery(this).parents('.treatmentmedications').remove();
+        _renumber_id_after_remove("tbody.medication-table-body-added", "div.medication-table-body-removed");
+      }
+    });
+
+    function _renumber_id_after_remove(added, removed) {
+      var counter = 0;
+      jQuery(added).find("tr").each(function() {
+        jQuery(this).find("input").each(function(index, element) {
+          var nameattr, idattr;
+          nameattr = element.name.replace(/\[[0-9]+\]/g, '['+counter+']');
+          idattr = element.id.replace(/\_[0-9]+\_/g, '_'+counter+'_');
+          jQuery(this).attr('name', nameattr);
+          jQuery(this).attr('id', idattr);
+        });
+        jQuery(this).find("select").each(function(index, element) {
+          var nameattr, idattr;
+          nameattr = element.name.replace(/\[[0-9]+\]/g, '['+counter+']');
+          idattr = element.id.replace(/\_[0-9]+\_/g, '_'+counter+'_');
+          jQuery(this).attr('name', nameattr);
+          jQuery(this).attr('id', idattr);
+        });
+        jQuery(this).find("a").each(function(index, element) {
+          var idattr;
+          idattr = element.id.replace(/[0-9]/g, counter);
+          jQuery(this).attr('id', idattr);
+        });
+        counter++;
+      });
+      jQuery(removed).find("tr").each(function() {
+        jQuery(this).find("input").each(function(index, element) {
+          var nameattr, idattr;
+          nameattr = element.name.replace(/\[[0-9]+\]/g, '['+counter+']');
+          idattr = element.id.replace(/\_[0-9]+\_/g, '_'+counter+'_');
+          jQuery(this).attr('name', nameattr);
+          jQuery(this).attr('id', idattr);
+        });
+        jQuery(this).find("select").each(function(index, element) {
+          var nameattr, idattr;
+          nameattr = element.name.replace(/\[[0-9]+\]/g, '['+counter+']');
+          idattr = element.id.replace(/\_[0-9]+\_/g, '_'+counter+'_');
+          jQuery(this).attr('name', nameattr);
+          jQuery(this).attr('id', idattr);
+        });
+        jQuery(this).find("a").each(function(index, element) {
+          var idattr;
+          idattr = element.id.replace(/[0-9]/g, counter);
+          jQuery(this).attr('id', idattr);
+        });
+        counter++;
+      });
+
+
+      _add_button_at_last()
+    }
+
+    medi_autocomplete_bind()
+  })
+  function medi_autocomplete_bind(){
+    x = []
+    medication_type = []
+    category = []
+    jQuery(".medicinename").autocomplete({
+      minLength: 3,
+      source: function(request, response) {
+        jQuery.ajax({
+          dataType: "json",
+          type : 'get',
+          url: '/icdtree/getitems',
+          //data: {searchpatient: params, remote: "true" },
+          data: {q: request.term, remote: "true" },
+          success: function(data) {
+            //jQuery('#searchpatientkeyword').removeClass('ui-autocomplete-loading')
+            items = [];
+            for(i = 0; i < data.length; i++){
+              items[i] = data[i]
+            }
+            //Find Unique items from array
+            //http://stackoverflow.com/questions/1960473/unique-values-in-an-array
+            function onlyUnique(value, index, self) {
+              return self.indexOf(value) === index;
+            }
+            unique = items.filter( onlyUnique );
+            response(unique);
+          },
+          error: function(data) {
+          }
+        });
+      },
+      focus: function(event, ui) {
+        //return false;
+      },
+      select: function( event, ui ) {
+        var itemname = ui.item.value;
+        jQuery(this).val(itemname);
+
+
+
+        // name = $(this).attr('name').replace('medicinename', 'pharmacy_item_id', 'medicinetype'); #Who used this and why
+        // $('<input>').attr({
+        //     type: 'hidden',
+        //     // id: 'foo',
+        //     name: name, // Where is name defined
+        //     value: ui.item.item_id
+        // }).appendTo($(this).parent());
+
+        jQuery(this).closest('.medicinetype').val(itemname);
+        $(this).closest(".treatmentmedications").find('.medicinetype').val(ui.item.med_type)
+        $(this).closest(".treatmentmedications").find('.pharmacy_item_id').val(ui.item.item_id)
+        $(this).closest(".treatmentmedications").find('.generic_display_ids').val(ui.item.generic_display_ids)
+        $(this).closest(".treatmentmedications").find('.generic_display_name').val(ui.item.generic_display_name)
+        $(this).closest(".treatmentmedications").find('.medicine_from').val(ui.item.medicine_from)
+        // jQuery(this).val(dosage);
+        jQuery(this).closest('div').next().find('textarea').val(itemname);
+        //                jQuery(this).val(medicinemame);
+        //                jQuery(this).closest('div').next().find('textarea').val(presentation);
+        //            }
+
+        return false;
+      },
+      create: function () {
+        $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+          if (item.med_type && item.stock) {
+            return $('<li>')
+                .append('<a>' + item.label + '(' + item.med_type + ')' +'<label class=\"badge\">'+ item.stock + '</label>' + '&nbsp; &nbsp; &nbsp;' + "<span class=\"badge pull-right\">" + item.type + "</span>" + '</a>')
+                .appendTo(ul);
+         }
+        else if (item.med_type) {
+          return $('<li>')
+              .append('<a>' + item.label + '(' + item.med_type + ')' + '&nbsp; &nbsp; &nbsp;' + "<span class=\"badge pull-right\">" + item.type + "</span>" + '</a>')
+              .appendTo(ul);
+        }
+        else if (item.stock) {
+          return $('<li>')
+              .append('<a>' + item.label +'&nbsp;'+'<label class=\"badge\">'+ item.stock + '</label>'+ '&nbsp; &nbsp; &nbsp;' + "<span class=\"badge pull-right\">" + item.type + "</span>" + '</a>')
+              .appendTo(ul);
+        }
+        else {
+          return $('<li>')
+              .append('<a>' + item.label + '&nbsp; &nbsp; &nbsp;' + "<span class=\"badge pull-right\">" + item.type + "</span>" + '</a>')
+              .appendTo(ul);
+        }
+        };
+      }
+    })
+
+    // jQuery(".medication_group").on('click',"[id^=remove_medication_item_]",function(e){
+
+    //     var id = e.currentTarget.id
+
+    //     jQuery("#"+id).parent().parent().remove()
+    // })
+
+
+  }
+</script>

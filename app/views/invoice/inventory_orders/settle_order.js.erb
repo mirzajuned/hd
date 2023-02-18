@@ -1,0 +1,54 @@
+$("#invoice-detail-modal").html('<%= escape_javascript(render "settle_order.html.erb") %>')
+$("#invoice-detail-modal").modal('show')
+
+$(".settle-invoice-form").validate({
+  onfocusout: false,
+  onkeyup: false,
+  onclick: false,
+  errorPlacement: function (error, element) {
+    error.insertAfter(element);
+  }
+});
+
+// $.validator.addMethod("AmountRequired", $.validator.methods.required, "*Required");
+
+$.validator.addMethod("ModeOfPayment", function(value, element) {
+  var mop = $(element).closest(".payment_received_row").find(".payment_received_breakups_mode_of_payment").val()
+  var amount = $(element).closest(".payment_received_row").find(".amount_received").val()
+  if((mop != "") && (parseFloat(amount) == 0)){
+    return confirm("Amount received is zero, are you sure want to continue?")
+  } else if((parseFloat(amount) > 0) && (mop == "")) {
+    return false
+  } else {
+    return true
+  }
+}, "MOP Required");
+
+$.validator.addClassRules("payment_received_breakups_mode_of_payment", { ModeOfPayment: true });
+// $.validator.addClassRules("payment_received_breakups_settle_amount", { AmountRequired: true });
+
+$(".has_extra_vals").on('click', function(e){
+  var chk_id = $(this).attr('id');
+  var txt_class = chk_id.replace("chk_", "txt_");
+  var hdn_class = chk_id.replace("chk_", "hdn_");
+  var is_checked = $(this).is(":checked");
+  var txt_val = $('.'+txt_class).val();
+  var hdn_val = $('.'+hdn_class).val();
+  if(is_checked == true || is_checked == 'true'){
+    $('.'+hdn_class).val(txt_val).trigger('change');
+    $('.'+txt_class).removeClass('hidden')
+  } else {
+    $('.'+hdn_class).val(0).trigger('change');
+    $('.'+txt_class).addClass('hidden')
+  }
+  if($(this).closest('.payment_received_row').find('[type=checkbox]').is(":checked") == true) {
+    $(this).closest(".payment_received_row").find('.div_internal_comment').removeClass('hidden')
+  } else {
+    $(this).closest(".payment_received_row").find('.div_internal_comment').addClass('hidden')
+  }
+});
+
+$('.extra_payments').on('change keyup', function (e) {
+  $(this).siblings('input:hidden').val($(this).val());
+  $(this).siblings('.payment_received_breakups_settle_amount').trigger('change');
+})

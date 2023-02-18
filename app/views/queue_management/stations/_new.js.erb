@@ -1,0 +1,295 @@
+const organisationId = "<%= current_facility.organisation_id.to_s %>"
+const userId = "<%= current_user.id.to_s %>"
+
+const stationValidation = () => {
+  $("#new-station-form").validate({
+    rules: {
+      "facility_id": {
+        required: true,
+      },
+      "area_id": {
+        required: true,
+      },
+    },
+    messages: {
+      "facility_id": {
+        required: "Facility is required."
+      },
+      "area_id": {
+        required: "Area is required."
+      },
+    },
+  });
+
+  // Station Validation
+  $.validator.addClassRules("station-type", { required: true });
+
+  $.validator.addMethod("NotEqualStationCode", function(value, element) {
+    var $element = $(element);
+    var $stations = $('.station-display_code:visible').not($element);
+    var stationsArray = $.map($stations, function(station) {
+        return $(station).val().toLowerCase().trim();
+    });
+    if ($.inArray($element.val().toLowerCase().trim(), stationsArray) >= 0) {
+        return false;
+    } else {
+        return true;
+    }
+  }, "Please select Unique Code");
+  $.validator.addClassRules("station-display_code", { required: true, NotEqualStationCode: true });
+
+  $.validator.addMethod("NotEqualStationName", function(value, element) {
+    var $element = $(element);
+    var $stations = $('.station-name:visible').not($element);
+    var stationsArray = $.map($stations, function(station) {
+        return $(station).val().toLowerCase().trim();
+    });
+    if ($.inArray($element.val().toLowerCase().trim(), stationsArray) >= 0) {
+        return false;
+    } else {
+        return true;
+    }
+  }, "Please select Unique Name");
+
+  $.validator.addClassRules("station-name", { required: true, NotEqualStationName: true });
+
+  // SubStation Validation
+  $.validator.addMethod("NotEqualSubStationCode", function(value, element) {
+    var $element = $(element);
+    var $subStations = $('.sub_station-display_code:visible').not($element);
+    var subStationsArray = $.map($subStations, function(subStation) {
+        return $(subStation).val().toLowerCase().trim();
+    });
+    if ($.inArray($element.val().toLowerCase().trim(), subStationsArray) >= 0) {
+        return false;
+    } else {
+        return true;
+    }
+  }, "Please select Unique Code");
+  $.validator.addClassRules("sub_station-display_code", { required: true, NotEqualSubStationCode: true });
+};
+stationValidation();
+
+const usersDropdownOptions = (facilityId) => {
+  let userIdDropdown = $('.sub_station-user_id:first')
+  $('.latest-user_id').html($(userIdDropdown).html()).val('')
+}
+
+const toggleRemoveStationBtn = () => {
+  // if($(".station-form:visible").length > 1){
+  //   $(".btn-remove-station").removeAttr('disabled', 'disabled')
+  // } else {
+  //   $(".btn-remove-station").attr('disabled', 'disabled')
+  // }
+}
+
+const toggleRemoveSubStationBtn = (stationRow) => {
+  if($(stationRow).find(".sub_station-row:visible").length > 1){
+    $(stationRow).find(".btn-remove-sub_station").removeAttr('disabled', 'disabled')
+  } else {
+    $(stationRow).find(".btn-remove-sub_station").attr('disabled', 'disabled')
+  }
+}
+
+// Select2
+$('.area_facility_id').select2();
+$('.area_id').select2();
+
+// Load Area Dropdown
+$(".area_facility_id").on('change', function(){
+  let facilityId = $(this).val();
+
+  fetch('/queue_management/stations/set_areas?' + new URLSearchParams({ facility_id: facilityId }))
+  .then(data => data.json())
+  .then(function(data) {
+    let areas = data['areas']
+    $(".area_id").html('')
+    for(let area of areas){
+      $(".area_id").append(`<option value=${area[1]}>${area[0]}</option>`)
+    }
+    $(".area_id").trigger('change')
+  })
+})
+
+// Load Stations based on Area
+$(".area_id").on('change', function(){
+  let areaId = $(this).val();
+  let facilityId = $('.area_facility_id').val();
+  $('#btn-add-station').hide()
+  $('.btn-save-station').hide()
+
+  if(areaId != null){
+    $(".station-form-row").html(`
+      <div class="col-md-12">
+        <div class="row station-message">
+          <hr>
+          <div class="col-md-12">
+            <b>Hold on tight as we load stations...</b>
+          </div>
+        </div>
+      </div>
+    `)
+
+    $.ajax({
+      type: "get",
+      dataType: "script",
+      url: '/queue_management/stations/set_stations',
+      data: {
+        area_id: areaId,
+        facility_id: facilityId
+      },
+      success: function(response){
+        $('#btn-add-station').show()
+        $('.btn-save-station').show()
+      }
+    })
+  } else {
+    $(".station-form-row").html(`
+      <div class="col-md-12">
+        <div class="row station-message">
+          <hr>
+          <div class="col-md-12">
+            <b>Oops!! Seems like this facility has no Areas.</b>
+          </div>
+        </div>
+      </div>
+    `)
+  }
+}).trigger('change')
+
+// Add Stations
+$("#btn-add-station").on("click", function(e){
+  e.preventDefault();
+  let facilityId = $("#facility_id").val()
+  let areaId = $("#area_id").val()
+
+  let stationRowCount = $(".station-row").length
+  let stationDetails = `
+    <div class="row station-form">
+      <hr>
+      <input type="hidden" name="stations[${stationRowCount}][is_updated]" class="stations_is_updated" id="stations_${stationRowCount}_is_updated" value="true">
+      <input type="hidden" name="stations[${stationRowCount}][organisation_id]" class="stations_organisation_id" id="stations_${stationRowCount}_organisation_id" value="${organisationId}">
+      <input type="hidden" name="stations[${stationRowCount}][facility_id]" class="stations_facility_id" id="stations_${stationRowCount}_facility_id" value="${facilityId}">
+      <input type="hidden" name="stations[${stationRowCount}][user_id]" class="stations_user_id" id="stations_${stationRowCount}_user_id" value="${userId}">
+      <input type="hidden" name="stations[${stationRowCount}][area_id]" class="stations_area_id" id="stations_${stationRowCount}_area_id" value="${areaId}">
+      <div class="col-md-12">
+        <b>Step 3 : Add Station & Sub Stations</b>
+      </div>
+      <div class="col-md-4">
+        <b style="color:#000;">Station Name</b>
+        <input type="text" class="form-control p5_10 station-name" name="stations[${stationRowCount}][name]" id="stations_${stationRowCount}_name">
+      </div>
+      <div class="col-md-3">
+        <b style="color:#000;">Station Type</b>
+        <select class="form-control station-type" name="stations[${stationRowCount}][type]" id="stations_${stationRowCount}_type">
+          <% @station_types.each do |station_type| %>
+            <option value="<%= station_type %>"><%= station_type.to_s.titleize %></option>
+          <% end %>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <b style="color:#000;">Station Code</b>
+        <input type="text" class="form-control p5_10 station-display_code" name="stations[${stationRowCount}][display_code]" id="stations_${stationRowCount}_display_code" maxlength="4" style="text-transform: uppercase;">
+      </div>
+      <div class="col-md-3">
+        <b style="color:#000;">Actions</b><br>
+        <button class="btn btn-primary btn-add-sub_station btn-xs" id="stations_${stationRowCount}_add"><i class="fa fa-plus"></i>&nbsp;Sub</button>
+        <button class="btn btn-danger btn-remove-station btn-xs removeable" id="stations_${stationRowCount}_remove"><i class="fa fa-trash-alt"></i></button>
+      </div>
+    </div>
+  `
+
+  let subStationDetails = addSubStationRow(stationRowCount, 0)
+
+  let stationRow = `
+    <div class="col-md-12 station-row">
+      ${stationDetails}
+      <div class="row sub_station-form-row">
+        ${subStationDetails}
+      </div>
+    </div>
+  `
+
+  $(".station-form-row").append(stationRow)
+  $(".station-type").select2();
+
+  usersDropdownOptions(facilityId)
+
+  toggleRemoveStationBtn()
+});
+
+// Add Sub Stations
+$("#station-block").on("click", ".btn-add-sub_station", function(e){
+  e.preventDefault();
+  let facilityId = $("#facility_id").val()
+  let stationRow = $(this).closest(".station-row")
+  let stationRowCount = parseInt($(this).attr("id").match(/\d+/)[0])
+  let subStationRowCount = $(stationRow).find(".sub_station-row").length
+
+  let subStationDetails = addSubStationRow(stationRowCount, subStationRowCount)
+
+  $(stationRow).find(".sub_station-form-row").append(subStationDetails)
+  // $(stationRow).find(".sub_station-header:first").show()
+  // $(stationRow).find('.sub_station-header:first').siblings(".sub_station-header").remove()
+
+  usersDropdownOptions(facilityId)
+
+  toggleRemoveSubStationBtn(stationRow)
+});
+
+// Remove Stations
+$("#station-block").on("click", ".btn-remove-station", function(e){
+  e.preventDefault();
+  if($(this).hasClass("removeable")){
+    // Remove Station added via Javascript
+    $(this).closest(".station-row").remove();
+
+    let stationRows = $("#station-block").find(".station-row")
+    renumberIndex(stationRows, ["input", "select", "button"], 1)
+  } else {
+    // Remove Stations already in Database by changing is_deleted from 0 to 1
+    $(this).closest(".station-row").find(".station-is_deleted").val("1")
+    $(this).closest(".station-row").find(".sub_station-is_deleted").val("1")
+    $(this).closest(".station-row").hide();
+  }
+
+  toggleRemoveStationBtn()
+});
+
+// Remove Sub Stations
+$("#station-block").on("click", ".btn-remove-sub_station", function(e){
+  e.preventDefault();
+  let stationRow = $(this).closest(".station-row")
+  let subStationFormRow = $(this).closest(".sub_station-form-row")
+  let subStationRowCount = $(stationRow).find(".sub_station-row").length
+
+  if($(this).hasClass("removeable")){
+    // Remove Sub Stations added via Javascript
+    $(this).closest(".sub_station-row").remove();
+
+    let subStationRows = $(stationRow).find('.sub_station-row')
+    renumberIndex(subStationRows, ["input", "select", "button"], 2)
+  } else {
+    // Remove Sub Stations already in Database by changing _destroy from 0 to 1
+    // $(this).closest(".sub_station-row").find(".station-_destroy").val("1")
+    $(this).closest(".sub_station-row").find(".sub_station-is_deleted").val("1")
+    $(this).closest(".sub_station-row").hide();
+  }
+
+  toggleRemoveSubStationBtn(stationRow)
+});
+
+// Set Updated true to avoid unneccesary saves in DB
+$("#station-block").on("keyup", "input", function(e){
+  $(this).closest('.station-row').find('.station-is_updated').val(true)
+});
+
+$("#station-block").on("change", "select", function(e){
+  $(this).closest('.station-row').find('.station-is_updated').val(true)
+});
+
+$("#new-station-form").css('height', $(window).height() - 100 + "px").css('overflow', 'scroll')
+
+$(window).resize(function() {
+  $("#new-station-form").css('height', $(window).height() - 100 + "px").css('overflow', 'scroll')
+})

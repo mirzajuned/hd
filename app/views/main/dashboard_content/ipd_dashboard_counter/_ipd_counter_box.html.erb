@@ -1,0 +1,67 @@
+<div class="panel panel-warning">
+  <div class="panel-heading" style="border-bottom:1px solid #fff;border-color: rgba(255, 255, 255, 0.2) !important;padding-top:8px;padding-bottom:8px;">                  
+    <div class="row">
+      <div class="col-sm-2" style="display:inline;">
+      <h4 class="panel-title" style="display:inline;">IPD</h4>
+      </div>
+      <div class="col-sm-10" style="text-align:right;display:inline;">
+
+          <%= hidden_field_tag "facilitylistipd", current_facility.id %>
+
+        <% if current_user.has_role?(:nurse) || current_user.has_role?(:receptionist) %>
+          <span style="font-size:10px;">U:</span>
+          <%= select_tag "userlistipd", options_for_select(""), { :class=> "userlistipd form-control" } %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel-body panel-stat" id="ipd_dashboard_counter" style="background:#F0AD4E; padding:15px;min-height: 92px;">
+    <%= render partial: "main/dashboard_content/ipd_dashboard_counter/ipd_counter"%>
+  </div>
+
+  <% if current_user.role_ids[0] != 6868009 %>
+    <div class="panel-footer" style="padding: 5px 10px;">
+        <div class="pull-right">
+          <%= link_to ipd_patients_makeadmission_path, :class => "btn btn-sm btn-darkblue new-event hg-tooltip",:title => "New Admission", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#inpatient-modal'} do %> <i class="fa fa-plus"></i><% end %>
+          <%= link_to '/inpatients/admission_management', :data => {:remote => true}, :class => "ps btn btn-sm btn-darkblue show-calendar hg-tooltip",:title => "Link to IPD", :id => "navigate_ipd" do %> <span><i class="fa fa-ambulance"></i></span> <% end %>
+        </div>
+    </div>
+  <% end %>
+
+</div><!-- panel -->
+
+<style type="text/css">
+#facilitylistipd, #userlistipd {
+  width:37%;
+  display: inline-block;
+}
+</style>
+
+<script>
+jQuery(document).ready(function(){
+  jQuery('#facilitylistipd').on("change",function(){
+    var fac_id_ipd = jQuery("#facilitylistipd").val();
+    //load users
+    jQuery.ajax({
+      type: "GET",
+      dataType: "json",
+      url: "/main/get_user_id_admission_count",
+      data: {facility_id: fac_id_ipd},
+      success: function(response){
+        jQuery('#userlistipd').children().remove();
+        jQuery('#userlistipd').append(jQuery("<option></option>").attr("value",0).text("All User"));
+        jQuery.each(response, function(key, value) {  
+          jQuery('#userlistipd').append(jQuery("<option></option>").attr("value",value[1]).text(value[0]));
+        });
+        loadFacilityCount(fac_id_ipd, jQuery("#userlistipd").val(),"/main/get_ipd_admission_count");
+      }
+    });
+  });
+
+  jQuery('#userlistipd').on("change",function(){
+    loadFacilityCount(jQuery("#facilitylistipd").val(), jQuery("#userlistipd").val(),"/main/get_ipd_admission_count");
+  });
+  jQuery('#facilitylistipd').trigger("change");
+});
+</script>

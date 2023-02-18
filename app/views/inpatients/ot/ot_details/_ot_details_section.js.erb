@@ -1,0 +1,270 @@
+$(".edit_patient_info").on('hover', function(){
+  $(this).append("&nbsp;Edit")
+})
+$(".edit_patient_info").on('mouseleave', function(){
+  $(this).html("<i class='fa fa-edit'></i>")
+})
+
+$(".assign_new_bed").on('hover', function(){
+  $(this).append("&nbsp;Assign Bed")
+})
+$(".assign_new_bed").on('mouseleave', function(){
+  $(this).html("<i class='fa fa-edit'></i>")
+})
+
+$(".edit_existing_bed").on('hover', function(){
+  $(this).append("&nbsp;Change Bed")
+})
+$(".edit_existing_bed").on('mouseleave', function(){
+  $(this).html("<i class='fa fa-edit'></i>")
+})
+
+$(".remove-existing-bed").on('hover', function(){
+  $(this).append("&nbsp;Remove Bed")
+})
+$(".remove-existing-bed").on('mouseleave', function(){
+  $(this).html("<i class='fa fa-times'></i>")
+})
+
+$("#patient-summary-timeline-link").on('click', function(){
+  var doctor_id = $("#sidebar_doctors_ot .active").find('a').attr('data-user-id')
+  var active_tab = $(".tab_active").find(".active").attr('data-tab-id')
+  var users_list = $(".toggle-sidebar-users").attr('data-toggle-position')
+  $.ajax({
+    type: "GET",
+    dataType: "script",
+    url: "/patient_summary/<%= @patient.id.to_s %>",
+    data: {
+      ot_id: "<%= @ot.id.to_s %>",
+      active_tab: active_tab,
+      active_doctor: doctor_id,
+      users_list: users_list,
+      current_date: "<%= @current_date %>",
+      url: "/inpatients/ot_management"
+    }
+  });
+  history.pushState('', '', '/patient_summary/<%= @patient.id.to_s %>'); // history.pushState([data], [title], [url]);
+})
+
+$(".ipd_invoice_action").on('click', function(e){
+  e.preventDefault();
+  var _this = this;
+  $.ajax({
+    url: $(_this).attr('data-path'),
+    dataType: 'script',
+    data: {
+      type: $(_this).attr('data-type'),
+      cash_register_template: $(_this).attr('data-cash-register-template'),
+      typeid: $(_this).attr('data-typeid'),
+      admissionid: "<%= @admission.id %>",
+      admission_id: "<%= @admission.id %>"
+    }
+  })
+})
+
+// $(".doc_reminder_text").on('focusout',function(e){
+//   $(this).attr('title',$(this).val())
+//   $.ajax({
+//     type: "GET",
+//     url: '/patients/save_doc_reminder_note',
+//     data: {
+//       reminder_text: $(this).val(),
+//       patient_id:'<%= @ot.patient.id.to_s %>',
+//       doctor_id: '<%= @ot.surgeonname.to_s %>',
+//       remote: "true"
+//     },
+//     success: function(res){
+//     }
+//   });
+// })
+
+$(".remove-existing-bed").on('click', function(){
+  $.ajax({
+    type: "GET",
+    dataType: "JSON",
+    url: "/admissions/"+ '<%= @admission.id.to_s %>' +"/unassign_bed",
+    data: {
+      id: '<%= @admission.id.to_s %>'
+    },
+    success: function(res){
+      if($(".ot-panel").length > 0){
+        var doctor_id = $("#sidebar_doctors_ot .active").find('a').attr('data-user-id')
+        var active_tab = $(".tab_active").find(".active").attr('data-tab-id')
+        refresh_ot_management(doctor_id,active_tab,'<%= @ot.id.to_s %>')
+      } else if($(".ot-calendar-panel").length > 0){
+        $("#ot-calendar").fullCalendar('refetchEvents');
+      }
+    }
+  })
+})
+
+// $("#ot_schedule_0a").on('click', function(){
+//   ot_id = $(this).attr('data-ot-id')
+//   $.ajax({
+//     url: "/ipd_patients/deleteot",
+//     data: {
+//       ot_id: ot_id
+//     },
+//     dataType: 'json',
+//     success: function(res){
+//       var doctor_id = $("#sidebar_doctors_ot .active").find('a').attr('data-user-id')
+//       var active_tab = $(".tab_active").find(".active").attr('data-tab-id')
+//       refresh_ot_management(doctor_id,active_tab,"")
+//     },
+//     error: function(err){
+//     }
+//   })
+// })
+// $(".otschedule_list").on('click', function(){
+//   ot_id = $(this).attr('data-ot-id')
+//   $.ajax({
+//     url: "/ipd_patients/deleteot",
+//     data: {
+//       ot_id: ot_id
+//     },
+//     dataType: 'json',
+//     success: function(res){
+//       var doctor_id = $("#sidebar_doctors_ot .active").find('a').attr('data-user-id')
+//       var active_tab = $(".tab_active").find(".active").attr('data-tab-id')
+//       refresh_ot_management(doctor_id,active_tab,"<%= @ot.id.to_s %>")
+//     },
+//     error: function(err){
+//     }
+//   })
+// })
+
+$(".btn-engage-ot").on('click', function(){
+  ot_id = $(this).attr('data-ot-id')
+  _this = this
+  $.ajax({
+    url: "/ipd_patients/engageot",
+    data: {
+      ot_id: ot_id
+    },
+    dataType: 'json',
+    success: function(res){
+      if($(".ot-panel").length > 0){
+        var doctor_id = $("#sidebar_doctors_ot .active").find('a').attr('data-user-id')
+        var active_tab = $(".tab_active").find(".active").attr('data-tab-id')
+        if(active_tab != "All"){
+          if(res.status == false){
+            active_tab = "Admitted"
+          } else {
+            active_tab = "Engaged"
+          }
+        }
+        refresh_ot_management(doctor_id,active_tab,"<%= @ot.id.to_s %>")
+      } else if($(".ot-calendar-panel").length > 0){
+        $("#ot-calendar").fullCalendar('refetchEvents');
+      }
+    },
+    error: function(err){
+    }
+  })
+})
+
+$(".btn-completed-ot").on('click', function(){
+  ot_id = $(this).attr('data-ot-id')
+  _this = this
+  $.ajax({
+    url: "/ipd_patients/completeot",
+    data: {
+      ot_id: ot_id
+    },
+    dataType: 'json',
+    success: function(res){
+      if(res.status == "Discharged"){
+        notice = new PNotify({
+          title: 'Error',
+          text: 'Cannot Change Status as patient is Discharged.',
+          type: 'error'
+        })
+        notice.get().click(function(){ notice.remove() });
+      } else {
+        if($(".ot-panel").length > 0){
+          var doctor_id = $("#sidebar_doctors_ot .active").find('a').attr('data-user-id')
+          var active_tab = $(".tab_active").find(".active").attr('data-tab-id')
+          if(active_tab != "All"){
+            if(res.status == false){
+              active_tab = "Engaged"
+            } else {
+              active_tab = "Completed"
+            }
+          }
+          refresh_ot_management(doctor_id,active_tab,"<%= @ot.id.to_s %>")
+        } else if($(".ot-calendar-panel").length > 0){
+          $("#ot-calendar").fullCalendar('refetchEvents');
+        }
+      }
+    },
+    error: function(err){
+    }
+  })
+})
+
+$(".link-to-ot").on('click', function(e){
+  e.preventDefault();
+  var current_date = $(this).attr("data-ot-date")
+  var active_doctor = $("#sidebar_doctors_ot .active").find('a').attr('data-user-id')
+  var ot_id = $(this).attr("data-ot-id")
+  if($(this).siblings().html()  == "OT Done"){
+    var active_tab = "Completed"
+  } else if($(this).siblings().html()  == "OT Engaged"){
+    var active_tab = "Engaged"
+  } else {
+    var active_tab = $(this).attr("data-ot-state")
+  }
+  refresh_ot_management(active_doctor,active_tab,ot_id,current_date)
+})
+
+
+$(".link-to-admission").on('click', function(e){
+  e.preventDefault();
+  var active_doctor = $("#sidebar_doctors_admission .active").find('a').attr('data-user-id')
+  var admission_id = $(this).attr("data-admission-id")
+  var active_tab = $(this).attr('data-admission-state')
+  if(active_tab == "Discharged"){
+    var current_date = $(this).attr("data-discharge-date")
+  } else {
+    var current_date = $(this).attr("data-admission-date")
+  }
+  $("#modalCalendarOtDetails").modal("hide")
+  $.ajax({
+    type: "GET",
+    dataType: "script",
+    data: {
+      active_tab: active_tab,
+      current_date: current_date,
+      active_doctor: active_doctor,
+      admission_id: admission_id,
+      message: "To Admission"
+    },
+    url: "/inpatients/admission_management",
+    success: function(){
+      if($('.departments_button').length > 0){
+        $('.departments_button').html("<span class='fa-color departments_span'><i class='fa fa-ambulance' style='font-size:15px;'><strong> IPD </strong><span class='caret fa-color'></span></span>")
+      }
+      else{
+        $("#ot-management").removeClass("activate")
+        $("#admission-management").addClass("activate")
+      }
+    }
+  })
+  history.pushState('', '', '/inpatients/admission_management'); // history.pushState([data], [title], [url]);
+})
+
+// Minimize Patient Note Box
+$('.minimize-box').on('click', function(e){
+  e.preventDefault();
+  $(".patient-note-section").toggle();
+})
+
+$(".btn-initial-more-detail").on('click', function(){
+  if($(this).html() == "More"){
+    $(this).html("Less")
+    $("#initial-more-detail").show()
+  } else {
+    $(this).html("More")
+    $("#initial-more-detail").hide()
+  }
+})

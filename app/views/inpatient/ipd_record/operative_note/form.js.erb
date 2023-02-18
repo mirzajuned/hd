@@ -1,0 +1,331 @@
+jQuery("#ipdrecord-modal").html("<%= escape_javascript(render 'inpatient/ipd_record/operative_note/form') %>")
+jQuery("#ipdrecord-modal").modal("show")
+
+var datepicker_options = {
+  dateFormat: 'dd/mm/yy'
+}
+
+$(".note-created-date").datepicker(datepicker_options)
+
+$(".note-created-date").on('change', function(e){
+  e.preventDefault()
+  var date = $(this).val()
+  var time = $('.note-created-time').val()
+  $("#inpatient_ipd_record_operative_notes_attributes_0_note_created_at").val(date + " " + time)
+}).trigger('change')
+
+$(".edit-saved-procedure-btn").on('click', function(e){
+  e.preventDefault();
+  var table_row = $(this).closest('.table-row-procedure')
+  var counter = $(this).attr('id').slice(-1)
+  $(this).attr('disabled', 'disabled');
+
+  // Params
+
+  var id = $(table_row).find('#inpatient_ipd_record_procedure_attributes_' + counter + '_id').val()
+  var code = $(table_row).find('#inpatient_ipd_record_procedure_attributes_' + counter + '_procedurefullcode').val()
+  var status = $(table_row).find('#inpatient_ipd_record_procedure_attributes_' + counter + '_procedurestage').val()
+  var side_id = $(table_row).find('#inpatient_ipd_record_procedure_attributes_' + counter + '_procedureside').val()
+  var procedure_comment = $(table_row).find('#inpatient_ipd_record_procedure_attributes_' + counter + '_procedure_comment').val()
+  var users_comment = $(table_row).find('#inpatient_ipd_record_procedure_attributes_' + counter + '_users_comment').val()
+  var procedure_type = $(table_row).find('#inpatient_ipd_record_procedure_attributes_' + counter + '_procedure_type').val()
+  var data = {id: id, procedure_type: procedure_type, code: code, procedure_code: code, counter: counter, status: status, side_id: side_id, procedure_comment: procedure_comment, users_comment: users_comment,source: 'inpatient_ipd_record',admission_id: '<%= @admission.id.to_s %>', flag: 'edit', remote: true}
+  get_procedure_details('edit', data, $(this))
+})
+
+function get_procedure_details(flag, data, _this){
+  $.ajax({
+    dataType: "script",
+    type: 'get',
+    url: '/common_procedures/get_procedure_details',
+    data: data,
+    success: function(){
+      $(_this).removeAttr('disabled')
+    }
+  });
+}
+
+$('.procedure-added').on('click', "a[name*='removeprocedurebutton']", function(e) {
+  if ($('.procedure-added').children().length == 1){
+    if ($('.ui-pnotify').length > 0) { $('.ui-pnotify').remove() } notice = new PNotify({ title: 'Cannot Remove Procedure', text: 'Atleast one procedure equired to save Operative Note', type: 'warning' }); notice.get().click(function(){ notice.remove() });
+  }
+  else{
+    e.preventDefault();
+    var fieldcounter = $(this).attr('id').slice(-1);
+    var procedurelist_tr_array = $(this).parents('.table-row-procedure').find(".id");
+    if (procedurelist_tr_array.length > 0) {
+      $(this).parents('.table-row-procedure').find("input[name*='_destroy']").val("1");
+      $(this).parents('.table-row-procedure').find("input[name*='operative_note_id']").val("");
+      var procedurelist_removed_tr_html = $(this).parents('.table-row-procedure').wrap('<p/>').parent().html();
+      $(this).parents('.table-row-procedure').unwrap();
+      $('.procedure-removed').append(procedurelist_removed_tr_html);
+      $(this).parents('.table-row-procedure').remove();
+      _renumber_id_after_remove("tbody.procedure-added", "div.procedure-removed");
+    } else {
+      $(this).parents('.table-row-procedure').remove();
+      _renumber_id_after_remove("tbody.procedure-added", "div.procedure-removed");
+    }
+  }
+
+  var procedure_count = $("#inpatient_ipd_record_operative_notes_attributes_0_ot_note_procedures").val()
+  if (procedure_count > 0){
+    $("#inpatient_ipd_record_operative_notes_attributes_0_ot_note_procedures").val(parseInt(procedure_count)-1)
+  }
+
+});
+
+$('#search_procedure_keyword').autocomplete({
+  minLength: 2,
+  source: function(request, response) {
+    $.ajax({
+      dataType: "json",
+      type: 'get',
+      url: '/common_procedures/search',
+      data: {
+        search: request.term,
+        speciality_id: '309988001',
+        remote: "true" },
+      success: function(data) {
+        response(data);
+      },
+      error: function(data) {
+      }
+    });
+  },
+  select: function( event, ui ) {
+    var data = {code: ui.item['code'], procedure_code: ui.item['code'], flag: 'new',source:'inpatient_ipd_record', procedure_type: ui.item['procedure_type'], remote: "true"}
+    get_procedure_details('new', data)
+    setTimeout(function() {
+      $("#search-procedure").val("")
+    }, 50);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+      // if (item.type) {
+      return $('<li>')
+        .append('<a>' + item.label  + '&nbsp; &nbsp; &nbsp;' + "<span class=\"badge pull-right\">" + item.procedure_type_label + "</span>" + '</a>')
+        .appendTo(ul);
+      // }
+    };
+  },
+});
+
+$(".chk_ipd_procedure").on('click', function(e) {
+  var procedure_ele_id = this.id.split("_").pop(-1);
+  var procedure_id = $('#ipd_record_procedure_'+procedure_ele_id+'_id').val();
+
+  var ipd_record_id = $('#hdn_ipd_record_id').val();
+  var operative_note_id = $('#hdn_operative_note_id').val();
+  var params = { ipd_record_id: ipd_record_id, operative_note_id: operative_note_id, procedure_id: procedure_id, procedure_count: procedure_ele_id };
+
+  if($(this).is(":checked")) {
+    if ($("#div_procedure_"+procedure_id).length) {
+      $("#div_procedure_"+procedure_id).show();
+    } else {
+      call_url = "/inpatient/ipd_records/complication_procedure";
+      send_params = { ajax: params, remote: "true" }
+      call_ajax(call_url, send_params);
+    }
+  } else {
+    if($('#procedure_has_complications_'+procedure_id).val() == 'Yes') {
+      notice = new PNotify({ title: 'Warning', text: 'Complications are available with this procedure. Check step 5 Complications ', type: 'warning' }); notice.get().click(function(){ notice.remove() });
+      e.preventDefault();
+      return false;
+    } else {
+      var user_name = $('#hdn_by').val();
+      var user_id = $('#hdn_by_id').val();
+      var performed_time = $('#hdn_datetime').val();
+      toggle_tr(procedure_id);
+
+      $("#div_procedure_"+procedure_id).hide();
+    }
+  }
+});
+
+function call_ajax(call_url, send_params, hide_tr=false) {
+  $.ajax({
+    type: "GET",
+    url: call_url,
+    data: send_params,
+    async: false,
+    success: function(suc){
+      // console.log('success of call_ajax');
+    },
+    error: function(err){
+      // console.log('error for onclick of chk_ipd_procedure ====', err);
+    }
+  });
+}
+
+function create_procedure_complication(name, c_code, name_cls, procedure_id, procedure_code) {
+  var operative_note_id = $('#hdn_operative_note_id').val();
+  var ipd_record_id = $('#hdn_ipd_record_id').val();
+  var complication_original_side = $('#hdn_complication_original_side_'+procedure_id).val();
+  var field_class = name_cls+'_'+procedure_id;
+  var has_complications = $('#procedure_has_complications_'+procedure_id).val();
+  var length = $(".counter_rows_complications").length;
+  var hdn_action = $('#hdn_action_'+procedure_id).val();
+  var hidden_html = "";
+
+  var user_name = $('#hdn_by').val();
+  var user_id = $('#hdn_by_id').val();
+  var at_facility = $('#hdn_at_facility').val();
+  var at_facility_id = $('#hdn_at_facility_id').val();
+  var performed_time = $('#hdn_datetime').val();
+
+  // console.log('complication hidden action:: ' + hdn_action);
+  // console.log('user_name:: ' + user_name);
+  // console.log('user_id:: ' + user_id);
+
+  if (hdn_action == 'edit') {
+    hidden_html = "<input type='hidden' name='inpatient_ipd_record[complications_attributes]["+length+"][updated_by]' class='form-control "+field_class+"_complication_updated_by' value='"+user_name+"'><input type='hidden' name='inpatient_ipd_record[complications_attributes]["+length+"][updated_by_id]' class='form-control "+field_class+"_complication_updated_by_id' value='"+user_id+"'><input type='hidden' name='inpatient_ipd_record[complications_attributes]["+length+"][updated_at_facility]' class='form-control "+field_class+"_complication_updated_at_facility' value='"+at_facility+"'><input type='hidden' name='inpatient_ipd_record[complications_attributes]["+length+"][updated_at_facility_id]' class='form-control "+field_class+"_complication_updated_at_facility_id' value='"+at_facility_id+"'><input type='hidden' name='inpatient_ipd_record[complications_attributes]["+length+"][updated_datetime]' class='form-control "+field_class+"_complication_updated_datetime' value='"+performed_time+"'>";
+  } else {
+    hidden_html = "<input type='hidden' name='inpatient_ipd_record[complications_attributes]["+length+"][entered_by]' class='form-control "+field_class+"_complication_entered_by' value='"+user_name+"'><input type='hidden' name='inpatient_ipd_record[complications_attributes]["+length+"][entered_by_id]' class='form-control "+field_class+"_complication_entered_by_id' value='"+user_id+"'><input type='hidden' name='inpatient_ipd_record[complications_attributes]["+length+"][entered_at_facility]' class='form-control "+field_class+"_complication_entered_at_facility' value='"+at_facility+"'><input type='hidden' name='inpatient_ipd_record[complications_attributes]["+length+"][entered_at_facility_id]' class='form-control "+field_class+"_complication_entered_at_facility_id' value='"+at_facility_id+"'><input type='hidden' name='inpatient_ipd_record[complications_attributes]["+length+"][entered_datetime]' class='form-control "+field_class+"_complication_entered_datetime' value='"+performed_time+"'>";
+  }
+
+  var fields_line = "<div class='counter_rows_complications "+field_class+"_fields '><input type='hidden' class='form-control complication_is_deleted "+field_class+"_is_deleted' name='inpatient_ipd_record[complications_attributes]["+length+"][is_deleted]' value='0'><input type='hidden' name='inpatient_ipd_record[complications_attributes]["+length+"][complication_name]' value='"+name+"'><input type='hidden' name='inpatient_ipd_record[complications_attributes]["+length+"][procedure_id]' value='"+procedure_id+"'><input type='hidden' name='inpatient_ipd_record[complications_attributes]["+length+"][procedure_code]' value='"+procedure_code+"'><input type='hidden' name='inpatient_ipd_record[complications_attributes]["+length+"][code]' value='"+c_code+"'><input type='hidden' name='inpatient_ipd_record[complications_attributes]["+length+"][operative_note_id]' value='"+operative_note_id+"'><input type='hidden' name='inpatient_ipd_record[complications_attributes]["+length+"][ipd_record_id]' value='"+ipd_record_id+"'><input type='hidden' name='inpatient_ipd_record[complications_attributes]["+length+"][complication_original_side]' value='"+complication_original_side+"'>"+hidden_html+"</div>";
+
+  var count_class= $('.'+field_class+'_fields').length;
+  console.log('count_class == ', count_class);
+
+  if(count_class >= 1){
+    $('.'+field_class+'_fields').toggle(0.5, function(){
+      if($('.'+field_class+'_fields').is(":visible")){
+        console.log('yes, visible');
+        $('.'+field_class+'_is_deleted').val("0");
+      }else{
+        if($('.'+field_class+'_is_deleted').val() == '1') {
+          $('.'+field_class+'_is_deleted').val("0");
+        } else {
+          $('.'+field_class+'_is_deleted').val("1");
+          $('.'+field_class+'_complication_entered_by').val('');
+          $('.'+field_class+'_complication_entered_by_id').val('');
+          $('.'+field_class+'_complication_entered_at_facility').val('');
+          $('.'+field_class+'_complication_entered_at_facility_id').val('');
+          $('.'+field_class+'_complication_entered_datetime').val('');
+
+          $('.'+field_class+'_complication_updated_by').val(user_name);
+          $('.'+field_class+'_complication_updated_by_id').val(user_id);
+          $('.'+field_class+'_complication_updated_at_facility').val(at_facility);
+          $('.'+field_class+'_complication_updated_at_facility_id').val(at_facility_id);
+          $('.'+field_class+'_complication_updated_datetime').val(performed_time);
+        }
+      }
+    });
+  } else {
+    $(fields_line).appendTo("#div_complaint_procedure_fields_add_"+procedure_id);
+  }
+}
+
+function toggle_tr(procedure_id) {
+  $('#procedure_has_complications_'+procedure_id).val('No');
+
+  $("#div_complaint_procedure_fields_add_"+procedure_id+" > div > .complication_is_deleted").val('1');
+
+  $('#hdn_action_'+procedure_id).val('edit');
+
+  $("#div_"+procedure_id+" > div.input > div.btn-group button").removeClass("btn-darkblue");
+  $("#div_"+procedure_id).hide();
+  $("#txt_complication_comment_"+procedure_id).val('');
+}
+
+$('.complication_btns').click(function(e) {
+  e.preventDefault();
+  if($(this).attr("input-value") == "No") {
+    if (confirm("All the complication related data will be lost once you save, are you sure?")) {
+      // make all the procedure default no
+      var procedure_ids = $('.div-shadow').map(function() {
+        procedure_id = $(this).attr('id').split("_").pop(-1);
+        $('#procedure_has_complications_'+procedure_id).val('No');
+
+        $('#hdn_complication_comment_entered_by_id_'+procedure_id).val('');
+        $('#hdn_complication_comment_entered_by_'+procedure_id).val('');
+        $('#hdn_complication_comment_entered_at_facility_id_'+procedure_id).val('');
+        $('#hdn_complication_comment_entered_at_facility_'+procedure_id).val('');
+        $('#hdn_complication_comment_entered_datetime_'+procedure_id).val('');
+
+        $('#hdn_complication_comment_updated_by_id_'+procedure_id).val('');
+        $('#hdn_complication_comment_updated_by_'+procedure_id).val('');
+        $('#hdn_complication_comment_updated_at_facility_id_'+procedure_id).val('');
+        $('#hdn_complication_comment_updated_at_facility_'+procedure_id).val('');
+        $('#hdn_complication_comment_updated_datetime_'+procedure_id).val('');
+
+        $('#hdn_has_complication_removed_by_id_'+procedure_id).val('');
+        $('#hdn_has_complication_removed_by_'+procedure_id).val('');
+        $('#hdn_has_complication_removed_by_datetime_'+procedure_id).val('');
+
+        $('#has_complication_created_by_id'+procedure_id).val('');
+        $('#has_complication_created_by'+procedure_id).val('');
+        $('#hdn_has_complication_created_by_datetime_'+procedure_id).val('');
+      });
+      $(".div-shadow div.has_complications > div.btn-group button:first-child").addClass("btn-brown");
+      $(".div-shadow div.has_complications > div.btn-group button:last-child").removeClass("btn-brown");
+
+      $('.procedure_complication_comment').val('');
+      $('.procedure_complication_comment').removeClass("valid");
+
+      // make procedure related user data to nil
+      $('.hdn_action').val('new');
+      // make all the procedure default no
+
+      // remove all the complications
+      $('.div_toggle_complication_list > div.input > div.btn-group button').removeClass("btn-darkblue");
+      $('.div_toggle_complication_list').hide();
+      $('.complication_is_deleted').val('1');
+      // EOF remove all the complications
+
+      $('.div_procedure_added_removed').hide();
+      $('.div_complication_added_removed').hide();
+      $('.div_procedure_created_removed').hide();
+    } else {
+      e.stopPropagation();
+      return false;
+    }
+  }
+});
+
+function div_complications_toggle() {
+  _this = $(".complication");
+  if(_this.find('.btn-brown').text() == "Yes") {
+    _this.next().css("display", "block")
+    $(".Procedure_perform_details").css("display", "block");
+    $(".add_name_complication").val("<%= current_user.id.to_s %>");
+    $("#div_complications").css("display", "block");
+  } else {
+    _this.next().css("display", "none");
+    $(".Procedure_perform_details").css("display", "none");
+    $(".add_name_complication").val("");
+    $("#div_complications").css("display", "none");
+  }
+}
+
+function procedure_comment_user_details(_this) {
+  _this = _this;
+  var procedure_id = _this.id.split("_").pop(-1);
+  var user_name = $('#hdn_by').val();
+  var user_id = $('#hdn_by_id').val();
+  var at_facility = $('#hdn_at_facility').val();
+  var at_facility_id = $('#hdn_at_facility_id').val();
+  var performed_time = $('#hdn_datetime').val();
+
+  console.log('text value in procedure_comment_user_details === ' + $(_this).val());
+  console.log($('#hdn_is_new_procedure_comment_'+procedure_id).val());
+
+  if($('#hdn_is_new_procedure_comment_'+procedure_id).val() == "true" || $('#hdn_is_new_procedure_comment_'+procedure_id).val() == true) {
+    $('#hdn_complication_comment_entered_by_id_'+procedure_id).val(user_id);
+    $('#hdn_complication_comment_entered_by_'+procedure_id).val(user_name);
+    $('#hdn_complication_comment_entered_at_facility_id_'+procedure_id).val(at_facility_id);
+    $('#hdn_complication_comment_entered_at_facility_'+procedure_id).val(at_facility);
+    $('#hdn_complication_comment_entered_datetime_'+procedure_id).val(performed_time);
+  } else {
+    $('#hdn_complication_comment_updated_by_id_'+procedure_id).val(user_id);
+    $('#hdn_complication_comment_updated_by_'+procedure_id).val(user_name);
+    $('#hdn_complication_comment_updated_at_facility_id_'+procedure_id).val(at_facility_id);
+    $('#hdn_complication_comment_updated_at_facility_'+procedure_id).val(at_facility);
+    $('#hdn_complication_comment_updated_datetime_'+procedure_id).val(performed_time);
+  }
+}
+
+$('.procedure_complication_comment').change(function() {
+  procedure_comment_user_details(this);
+});

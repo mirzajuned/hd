@@ -1,0 +1,213 @@
+<div class="modal-dialog modal-lg">
+
+  <!-- Modal content-->
+  <div class="modal-content">
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal">&times;</button>
+      <h4 class="modal-title">Insurance Receipt View</h4>
+    </div>
+    <div class="modal-body">
+      <div class="container-fluid">
+        <%= hidden_field_tag :invoice_id, @invoice.id %>
+        <div class="row mb10" id="patient_button" style="border-bottom: 1px solid #eee;font-size:12px;">
+          <%= render partial: 'invoice/insurance_estimates/overall_info.html.erb', locals: {patient: @patient, admission: @admission, invoice: @invoice, tpa: @tpa, flag: "Invoice"} %>
+        </div>
+        <div class="row">
+          <div class="row mb5" style="border-bottom:1px solid #eee;">
+            <div class="col-md-1"><b style="color:#000;">S.No</b></div>
+            <div class="col-md-3"><b style="color:#000;">Service Name</b></div>
+            <div class="col-md-2"><b style="color:#000;">Quantity</b></div>
+            <div class="col-md-2 text-right"><b style="color:#000;">Unit Price</b></div>
+            <div class="col-md-2 text-right"><b style="color:#000;">Price</b></div>
+            <% if @tpa.insurance_status == "Approved" || @tpa.insurance_status == "Waiting" %>
+              <div class="col-md-2 text-center"><b style="color:#000;">Approved</b> <i class="fa fa-question-circle fa-xs hg-tooltip" title="&#x2610; Uncheck if Not Approved"></i></div>
+            <% else %>
+              <div class="col-md-2 text-center"><b style="color:#000;">-</b></div>
+            <% end %>
+          </div>
+
+        </div>
+        <% @patient_payment_amount = 0 %>
+        <% @invoice.services.each.with_index do |serv, i| %>
+          <div class="row service_item_list">
+            <% @service_total = 0 %>
+            <div class="row service_list">
+              <div class="col-md-1">
+                <b style="color:#000;"><%= i + 1 %>.</b>
+              </div>
+              <div class="col-md-7">
+                <b style="color:#000;"><%= InvoiceServiceCard.find(serv.name).service_name %></b>
+              </div>
+              <div class="col-md-2 text-right">
+                <b style="color:#000;"><%= serv.service_total %>0</b>
+              </div>
+              <div class="col-md-2 text-center">
+                <% if @tpa.insurance_status == "Approved" || @tpa.insurance_status == "Waiting" %>
+                  <input type="checkbox" name="check_all" class="check_all_child">
+                <% else %>
+                  -
+                <% end %>
+              </div>
+            </div>
+            <div class="row item_list">
+              <% serv.items.each.with_index do |it, c| %>
+                <% if it.patient_payed == "Yes" %>
+                  <% @patient_payment_amount += it.price %>
+                <% end %>
+                <div class="item">
+                  <% @invoice_item_card = InvoiceItemCard.find(it.description) %>
+                  <div class="col-md-3 col-md-offset-1" style='padding-left:20px;'><%= @invoice_item_card.item_name %>
+                  <% if @invoice_item_card.user_name %>-<%= @invoice_item_card.user_name %><% end %></div>
+                  <div class="col-md-2"><%= it.quantity %></div>
+                  <div class="col-md-2 text-right"><%= it.unit_price %>0</div>
+                  <div class="col-md-2 text-right" style = "margin-left:-10px;"><%= it.price %>0</div>
+                  <div class="col-md-2 text-center">
+                    <% if @tpa.insurance_status == "Approved" || @tpa.insurance_status == "Waiting" %>
+                      <% if it.patient_payed == "No" %>
+                        <%= check_box_tag 'patient_listing', 'yes', true, class: 'insurance_patient_pay',title: i.to_s + " " + c.to_s  %>
+                      <% else %>
+                        <%= check_box_tag 'patient_listing', 'no', false, class: 'insurance_patient_pay',title: i.to_s + " " + c.to_s  %>
+                      <% end %>
+                    <% else %>
+                      <b>-</b>
+                    <% end %>
+                  </div>
+                </div><!-- .item -->
+              <% end %>
+            </div><!-- .item_list -->
+          </div>
+        <% end %>
+        <hr>
+        <div class="row invoice_calculation_list">
+          <div class="row mb5">
+            <% unless @tpa.insurance_status == "Approved" || @tpa.insurance_status == "Waiting" %>
+              <div class="col-md-5 text-right">
+                <b class="mr20">Mode Of Payment</b>
+                <label>
+                  <input type="radio" value="Cash" name="mode_of_payment" class="mopi_field" <%= 'checked="checked"' if @invoice.mode_of_payment == 'Cash' %>> &nbsp;Cash
+                </label>
+                <label>
+                  <input type="radio" value="Card" name="mode_of_payment" class="mopi_field" <%= 'checked="checked"' if @invoice.mode_of_payment == 'Card' %>> &nbsp;Card
+                </label>
+              </div>
+              <div class="col-md-3 text-right">
+            <% else %>
+              <div class="col-md-3 col-md-offset-5 text-right">
+            <% end %>
+              <b>Gross Bill Total :</b>
+            </div>
+            <div class="col-md-2 text-right">
+              <b style="color:#000;"><%= @invoice.total %>0</b>
+            </div>
+          </div>
+          <div class="row mb5">
+            <div class="col-md-3 col-md-offset-5 text-right">
+              <b>Discount :</b>
+            </div>
+            <div class="col-md-2 text-right">
+              <b><%= @invoice.additional_discount %>0</b>
+              <% if @invoice.additional_discount? %>
+                <%  @patient_payment_amount = @patient_payment_amount - @invoice.additional_discount %>
+              <% end %>
+            </div>
+          </div>
+          <div class="row mb5">
+            <div class="col-md-3 col-md-offset-5 text-right">
+              <b>Net Amount :</b>
+            </div>
+            <div class="col-md-2 text-right">
+              <b class="im_net" style="color:#000;"><%= @invoice.net_amount %>0</b>
+            </div>
+          </div>
+          <% if @tpa.insurance_status == "Approved" || @tpa.insurance_status == "Waiting" %>
+            <div class="row mb5">
+              <div class="col-md-5 text-right mopi_toggle" style="display:none;">
+                <b class="mr20">Mode Of Payment</b>
+                <label>
+                  <input type="radio" value="Transfer" name="mode_of_payment_insurance" class="mopins_field" <%= 'checked="checked"' if @invoice.mode_of_payment_insurance == 'Transfer' %>> &nbsp;Transfer
+                </label>
+                <label>
+                  <input type="radio" value="Cheque" name="mode_of_payment_insurance" class="mopins_field" <%= 'checked="checked"' if @invoice.mode_of_payment_insurance == 'Cheque' %>> &nbsp;Cheque
+                </label> 
+              </div>
+              <div class="col-md-3 text-right adjust_colmd">
+                <i class="fa fa-arrow-right arrow_toggle mr10" style="display:none;"></i>
+                <b>Balance Amount Insurance :</b>
+              </div>
+              <div class="col-md-2 text-right">
+                <b class="also_respond_here"><%= @invoice.amount_paid_tpa %>0</b>
+              </div>
+              <div class="col-md-2">
+                <% unless @invoice.insurance_payed? %>
+                  <%= check_box_tag 'insurance_payed', 'No', false, class: 'insurance_payed', id: "insurance_payed" %>&nbsp;<label for="insurance_payed">Payment Done</label>
+                <% else %>
+                  <%= check_box_tag 'insurance_payed', 'Yes', true, class: 'insurance_payed', id: "insurance_payed" %>&nbsp;<label for="insurance_payed">Payment Done</label>
+                <% end %>
+              </div>
+            </div>
+            <div class="row mb5">
+              <div class="col-md-5 text-right">
+                <b class="mr20">Mode Of Payment</b>
+                <label>
+                  <input type="radio" value="Cash" name="mode_of_payment" class="mopi_field" <%= 'checked="checked"' if @invoice.mode_of_payment == 'Cash' %>> &nbsp;Cash
+                </label>
+                <label>
+                  <input type="radio" value="Card" name="mode_of_payment" class="mopi_field" <%= 'checked="checked"' if @invoice.mode_of_payment == 'Card' %>> &nbsp;Card
+                </label>
+                <label>
+                  <input type="radio" value="Cheque" name="mode_of_payment" class="mopi_field" <%= 'checked="checked"' if @invoice.mode_of_payment == 'Cheque' %>> &nbsp;Cheque
+                </label> 
+              </div>
+              <div class="col-md-3 text-right">
+                <i class="fa fa-arrow-right mr10"></i>
+                <b>Balance Amount Patient :</b>
+              </div>
+              <div class="col-md-2 text-right">
+                <b style="color:#000;"><%= @invoice.amount_paid_patient %></b>
+              </div>
+              <div class='col-md-2'>
+                <b class="respond_here" style="color:#000;"><i class="fa fa-arrow-left"></i>&nbsp;&nbsp; <%= @patient_payment_amount %> </b>&nbsp;&nbsp;<i class='fa fa-question-circle hg-tooltip' title="These Values Should Match"></i> 
+              </div>
+            </div>
+          <% end %>
+          <div class="row mb5">
+            <div class="col-md-5" style="margin-left:5.5%;">
+              <b>Comments:</b>
+              <%= @invoice.comments %>
+            </div>
+          </div>
+        </div>
+        <!-- <div class='row'>
+          <div class="col-md-8"></div>
+        </div> -->
+      </div>
+    </div>
+    <div class="modal-footer" style="text-align:left">
+      <div class="col-md-6">
+        <% if @tpa.insurance_status == "Approved" || @tpa.insurance_status == "Waiting" %>
+          <ul class="nav navbar-nav navbar-main">
+            <li class="print-dropdown">
+              <button type="button" class="btn btn-info btn-sm dropdown-toggle" data-toggle="dropdown" style="border-radius:0px;">
+                <span class=""><i class="fa fa-print"></i> Print Receipt</span><!-- &nbsp;&nbsp;<span class="caret"></span> -->
+              </button>
+              <ul class="dropdown-menu children" style="width:100% !important;padding:0px;text-align:center;">
+                <li style=""><%= link_to invoice_insurances_print_tpa_invoice_path(invoice_id: @invoice.id, :format => :pdf), :target => "_blank" do %>Send Insurance<% end %></li>
+                <li style=""><%= link_to invoice_insurances_print_service_invoice_path(invoice_id: @invoice.id, :format => :pdf), :target => "_blank" do %>Service Level<% end %></li>
+                <li style=""><%= link_to invoice_insurances_print_insurance_invoice_path(invoice_id: @invoice.id, :format => :pdf), :target => "_blank" do %>Insurance Payable<% end %></li>
+                <li style=""><%= link_to invoice_insurances_print_patient_invoice_path(invoice_id: @invoice.id, :format => :pdf), :target => "_blank" do %>Patient Payable<% end %></li>
+                <li style=""><%= link_to invoice_insurances_print_full_invoice_path(invoice_id: @invoice.id, :format => :pdf), :target => "_blank" do %>Full Receipt<% end %></li>
+              </ul>
+            </li>
+          </ul>
+        <% else %>
+          <%= link_to invoice_insurances_print_full_invoice_path(invoice_id: @invoice.id, :format => :pdf), :target => "_blank", :class => "btn btn-info btn-sm" do %><i class="fa fa-print"></i> Receipt<% end %>
+        <% end %>
+      </div>
+      <div class="col-md-6 text-right">
+        <%= link_to edit_invoice_insurance_path(id: @invoice.id), :data => {:remote => true, 'target' => '#insurance-modal', 'disable-with': 'Please Wait...'}, class: "btn btn-primary", id: "edit_ins_invoice_path" do %>Edit<% end %>
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+
+</div>

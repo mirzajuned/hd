@@ -1,0 +1,226 @@
+<div class="modal-dialog" style="width: 95%">
+  <div class="modal-content">
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal">&times;</button>
+       <h4 class="modal-title" style="color: #00BFFF"><%= @inventory_invoice.department_name %> Bill Details</h4>
+    </div>
+    <div class="modal-body window-body">
+      <% content_for :left_part do %>
+        <div class="row">
+          <div class="col-md-1"></div>
+          <div class="col-md-8 checkbox" style="color: red;">
+            <input type="checkbox" id='accept' class="accept-checkbox">
+            <label id='accept-label' for="accept">
+              <span>All the items in the bill have been returned/taken back.</span>
+            </label>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-md-1"></div>
+          <div class="col-md-4">
+            <% @mop_list = ["", "Cash", "Others"] %>
+            <div class="col-md-12"> <b>Mode of Payment </b>
+              <%= select_tag :mode_of_payment, options_for_select(@mop_list), {include_blank: "Please Select" ,  class: "form-control p7_10 mode_of_payment", style: "height:34px;" ,required: true} %>
+            </div>
+            <div class="col-sm-12">
+            <div class="mode_of_payment_details mb10">
+            </div>
+          </div>
+          </div>
+          <div class="col-md-4">
+            <b>Amount (Refunded)</b>
+            <% if @inventory_invoice.net_amount.present? %>
+              <% net_amount = @inventory_invoice.net_amount.to_f.round(2) %>
+            <% else %>
+              <% net_amount = @inventory_invoice.total.to_f.round(2) %>
+            <% end %>
+            <%= text_field_tag :payment_received, net_amount, { class: "form-control p7_10", style: "height:34px;" ,readonly: true} %>
+          </div>
+        </div>      
+        <div class="row">
+          <div class="col-md-1"></div>
+          <div class="col-md-8">
+            <strong style="font-size: 15px;" id="cancel_reason_label">Reason For Cancellation: (min. 3 letters)</strong>
+            <input type="textarea" class="form-control mb7" name="" required placeholder="Comments" id="inventory_cancel_reason">
+          </div>
+        </div>
+      <% end %>
+      <%= render partial: '/invoice/inventory_invoices/view.html.erb' %>
+    </div>
+    <div class="modal-footer window-footer">
+      <button class="btn btn-danger" id="cancel_invoice">Cancel Bill</button>
+    </div>
+  </div>
+</div>
+
+<script type="text/javascript">
+  $('#accept').change(function() {
+    var accept = $(this).is(":checked")
+    if (accept == true){
+      $('#accept-label').addClass('valid')
+      $('#accept-label').removeClass('error')
+    }else{
+      $('#accept-label').addClass('error')
+      $('#accept-label').removeClass('valid')
+    }
+  })
+  $('#inventory_cancel_reason').keyup(function() {
+    var reason = $(this).val()
+    if (reason.length > 2){
+      $('#inventory_cancel_reason, #cancel_reason_label').addClass('valid')
+      $('#inventory_cancel_reason, #cancel_reason_label').removeClass('error')
+    }else{
+      $('#inventory_cancel_reason, #cancel_reason_label').addClass('error')
+      $('#inventory_cancel_reason, #cancel_reason_label').removeClass('valid')
+    }
+  })
+  $('#mode_of_payment').change(function() {
+    var mode_of_payment = $(this).val()
+    if (mode_of_payment.length > 2){
+      $('#mode_of_payment').addClass('valid')
+      $('#mode_of_payment').removeClass('error')
+    }else{
+      $('#mode_of_payment').addClass('error')
+      $('#mode_of_payment').removeClass('valid')
+    }
+  })
+
+  function allowCancelButton(reason, accept, mode_of_payment){
+    if (mode_of_payment.length > 2){
+      $('#mode_of_payment').addClass('valid')
+      $('#mode_of_payment').removeClass('error')
+    }else{
+      $('#mode_of_payment').addClass('error')
+      $('#mode_of_payment').removeClass('valid')
+    }
+    if (reason.length > 2){
+      $('#inventory_cancel_reason, #cancel_reason_label').addClass('valid')
+      $('#inventory_cancel_reason, #cancel_reason_label').removeClass('error')
+    }else{
+      $('#inventory_cancel_reason, #cancel_reason_label').addClass('error')
+      $('#inventory_cancel_reason, #cancel_reason_label').removeClass('valid')
+    }
+    if (accept == true){
+      $('#accept-label').addClass('valid')
+      $('#accept-label').removeClass('error')
+    }else{
+      $('#accept-label').addClass('error')
+      $('#accept-label').removeClass('valid')
+    }
+  }
+
+  $('#cancel_invoice').on('click', function() {
+    var reason = $('#inventory_cancel_reason').val()
+    var mode_of_payment = $('#mode_of_payment').val()
+    var transaction_id = $('#other_transaction_id').val()
+    var transaction_note = $('#other_note').val()
+    var accept = $('#accept').is(":checked")
+    allowCancelButton(reason, accept, mode_of_payment)
+    if ((accept == true) && (reason.length > 2) && (mode_of_payment.length > 2)) {
+      cancelBill(reason, mode_of_payment, transaction_id, transaction_note)
+    }
+  })
+
+  function cancelBill(reason, mode_of_payment, transaction_id, transaction_note){
+    $.ajax({
+      type : 'get',
+      url: '/invoice/inventory_invoices/disable',
+      data: {
+        id: '<%= @inventory_invoice.id %>',
+        date: '<%= Date.current %>',
+        from: '<%= params[:from] %>',
+        reason: reason,
+        mode_of_payment: mode_of_payment,
+        transaction_id: transaction_id,
+        transaction_note: transaction_note,
+        remote: 'true'
+      },
+    })
+  }
+  $(".mode_of_payment").on('change', function(){
+  var mode_of_payment = $(this).val()
+  var amount = $("#payment_received").val()
+  if(mode_of_payment.length > 0){
+    if(mode_of_payment == "Cash"){
+      $(".mode_of_payment_details").html('')
+      $(".mode_of_payment_details").hide()
+    } else if(mode_of_payment == "Others"){
+      $(".mode_of_payment_details").html('<div class="row"><div class="other_details"><div class="col-md-6"><b>Transaction Id</b><input type="text" name="other_transaction_id" id="other_transaction_id" class="form-control p7_10" value="" placeholder="Transaction Id"></div><div class="col-md-6"><b>Transaction Note</b><input type="text" name="other_note" id="other_note" class="form-control p7_10" value="" placeholder="Transaction Note"></div></div></div>')
+      $(".mode_of_payment_details").show()
+    } else {
+      $(".mode_of_payment_details").html('')
+      $(".mode_of_payment_details").hide()
+    }
+  } else {
+    $(".mode_of_payment_details").html('')
+    $(".mode_of_payment_details").hide()
+  }
+
+  // $("#inventory_transaction_return_cheque_date").datepicker(datepicker_options)
+  // $("#inventory_transaction_return_transfer_date").datepicker(datepicker_options)
+});
+</script>
+<style>
+  .accept-checkbox:not(:checked),
+  .accept-checkbox:checked {
+    position: absolute;
+    left: -9999px;
+  }
+  .accept-checkbox:not(:checked) + label,
+  .accept-checkbox:checked + label {  
+    position: relative;
+    overflow: hidden;
+    padding-left: 30px;
+    cursor: pointer;
+    display: inline-block;
+    height: 25px;
+    line-height: 25px;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -khtml-user-select: none;
+    -ms-user-select: none;
+  }
+
+  .accept-checkbox + label:before,
+  .accept-checkbox + label:after {
+    content: '';
+    position: absolute;
+    left: 0;
+    z-index: 1;
+  }
+  .accept-checkbox:not(:checked) + label:before {
+    top: 0px;
+    width: 19px; height: 19px;
+    border: 2px solid gray;
+  }
+  .accept-checkbox:not(:checked) + .error:before {
+    border: 2px solid #b94a48 !important;
+  }
+
+  .accept-checkbox:not(:checked) + label:after {
+    top: 0px;
+    width: 19px; height: 19px;
+    border: 2px solid red;
+    z-index: 0;
+  }
+  .accept-checkbox:checked + label:before {
+    top: 2px;
+    width: 7px;
+    height: 14px;
+    border-top: 1px solid transparent;
+    border-left: 1px solid transparent;
+    border-right: 2px solid #28a745;
+    border-bottom: 2px solid #28a745;
+    -webkit-transform: rotateZ(37deg);
+    transform: rotateZ(37deg);
+
+    -webkit-transform-origin: 20% 40%;
+    transform-origin: 100% 100%;
+  }
+  .accept-checkbox:checked + label:after {
+    top: 0px;
+    width: 19px; height: 19px;
+    border: 2px solid #28a745;
+    z-index: 0;
+  }
+</style>

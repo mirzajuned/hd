@@ -1,0 +1,443 @@
+var today = '<%= Date.current.strftime("%d/%m/%Y") %>'
+$('.pharmacy-panel').html('').hide()
+$('.optical-panel').html('').hide()
+$('.store-content-panel').show()
+
+$('.leftpanelinner li').removeClass('active nav-active')
+$('.leftpanelinner .children').css('display', 'none')
+$('.transaction-parent').trigger('click')
+$('.transaction-parent ul').css('display', 'block')
+$('.sale-transaction-list').addClass('active')
+
+$('.store-content-list').html('<%= escape_javascript(render partial: '/invoice/inventory_invoices/index') %>')
+jQuery(".store-content-details").html("<%= escape_javascript(render partial: 'invoice/inventory_invoices/default_details.html') %>")
+
+function filter_index(query) {
+  if (query.length > 0){
+    $(".inventory_search_panel").find(".fa").show()
+  }
+  else {
+    $(".inventory_search_panel").find(".fa").hide()
+  }
+  $('#show_more_inventory').show();
+  $.ajax({
+    type : 'get',
+    url: '/invoice/inventory_invoices/filter_index',
+    data: {
+      q: query, 
+      store_id: "<%=@store_id %>",
+      filter_type: "recipient",
+      start_date: "<%= @start_date%>",
+      end_date: "<%= @end_date%>",
+      fitter_id: "<%= @fitter_id %>",
+      state_name: "<%= @state_name %>",
+      sort_by: "<%= @sort_by %>",
+      home_delivery: "<%= @home_delivery %>",
+      remote: "true"
+    },
+  })
+}
+
+$(".inventory_search_panel").find(".fa").on('click',function(){
+  $("#inventory_search").val("")
+  filter_index("")
+})
+
+$("#inventory_search").on("keyup", function () {
+  query = $(this).val()
+  filter_index(query)
+})
+
+$(".btn-inventory-refresh").on("click", function () {
+  query = $("#inventory_search").val()
+  filter_index(query)
+})
+
+adjust_height()
+function adjust_height(){
+  inventoryHeight = $(window).height() - $(".navbar").height() - 3
+  $(".sidebar-main").height(inventoryHeight)
+  $(".store-content").height(inventoryHeight)
+  toolbar2Height = $(".inventory-toolbar2").height()
+  $(".inventory-show-panel").height(inventoryHeight - toolbar2Height)
+  storeListHeight = inventoryHeight - $('.inventory-toolbar').height()
+  storeBodyHeight = storeListHeight - $('.inventory-table-head').height()
+  $('.inventory-table-body').height(storeBodyHeight)
+}
+
+$(window).resize(function() {
+  adjust_height()
+})
+
+$('.inventory-items .inventory-list-row').unbind()
+$('.inventory-items .inventory-list-row').on('click', function(e){
+  e.preventDefault();
+  var _id =  $(this).attr('id');
+  $('.inventory-list-row').css('background-color', '')
+  $(this).css('background-color', '#cfe8d2')
+  $.ajax({
+    type: 'GET',
+    data: {
+      remote: true
+    },
+    url: '/invoice/inventory_invoices/'+_id,
+    success: function(){
+    }
+  })
+})
+
+function isScrolledIntoLastRow(last_row_elem, scrollable_container) {
+  if (last_row_elem.length == 1) {
+    var top_of_element = $(last_row_elem).offset().top - $(scrollable_container).offset().top ;
+    var table_height = $(scrollable_container).innerHeight()
+    return top_of_element <= table_height
+  }
+}
+
+scrollinventory()
+function scrollinventory(){
+  $(".inventory-table-body").scroll(function() {
+
+    last_row_elem = $('.inventory-table-body').find('tr:nth-last-child(1)')
+    scrollable_container = $(".inventory-table-body")
+
+    if (isScrolledIntoLastRow(last_row_elem, scrollable_container)) {
+      $("#show_more_inventory").trigger("click")
+      $(".inventory-table-body").off('scroll');
+      setTimeout(function() {   //calls click event after a certain time
+        scrollinventory()
+      }, 500);
+    }
+  })
+}
+$("#show_more_inventory:visible").on('click', function(e){
+  e.preventDefault();
+  var total_count_row =  $('.inventory-table-body tr').length;
+  $.ajax({
+    type: "GET",
+    dataType: "script",
+    data: {
+      total_count_row: total_count_row,
+      store_id: "<%= @store_id %>",
+      start_date: "<%= @start_date %>",
+      end_date: "<%= @end_date %>",
+      fitter_id: "<%= @fitter_id %>",
+      state_name: "<%= @state_name %>",
+      sort_by: "<%=@sort_by%>",
+      home_delivery: "<%= @home_delivery %>",
+    },
+    url: "/invoice/inventory_invoices/append_index",
+  })
+})
+
+$(".mis-date-filter-custom").on("click", function(e){
+  e.preventDefault();
+  var offset = $('.mis-dropdown-title').offset();
+  $("#mis-modal").html("<%= escape_javascript(render partial: '/invoice/inventory_invoices/custom_dates.html.erb') %>")
+  $('.daterangepicker').css({"margin-top" : (offset.top+25)+"px", "margin-left": (offset.left+25)+"px"})
+})
+
+$(".mis-date-range-picker").on("click", function(e){
+  e.preventDefault();
+  var offset = $(this).offset();
+  $("#mis-modal").html("<%= escape_javascript(render partial: '/invoice/inventory_invoices/custom_dates.html.erb') %>")
+  $('.daterangepicker').css({"margin-top" : (offset.top+25)+"px", "margin-left": (offset.left+25)+"px"})
+})
+
+$(".date_range_field").on("click", function(e){
+  e.preventDefault();
+  var offset = $(this).offset();
+  $("#mis-modal").html("<%= escape_javascript(render partial: '/invoice/inventory_invoices/custom_dates.html.erb', locals: {immediate: true}) %>")
+  $('.daterangepicker').css({"margin-top" : (offset.top+25)+"px", "margin-left": (offset.left+25)+"px"})
+})
+
+$('#filterModal').on('hidden.bs.modal', function () {
+  $("#order_status").val("<%= @state_name %>")
+  $("#order_status").trigger('change')
+  $('#mis-date-filter').text("<%= @time_period %>")
+  $('#mis-date-filter').attr("start-date", "<%=@start_date%>")
+  $('#mis-date-filter').attr("end-date", "<%=@end_date%>")
+  $('#date_range_field').val("<%=@start_date%>" + " To " + "<%=@end_date%>")
+  if ("<%= @time_period %>" == 'Today')
+  {
+    $('#default-period').hide()
+  }
+  else
+  {
+    $('#default-period').show()
+  }
+  $("#fitter_id").val("<%= @fitter_id %>")
+  $("#fitter_id").trigger('change')
+  $("#sort_by").val('<%=@sort_by%>')
+  $("#sort_by").trigger('change')
+  $("#home_delivery").val('<%=@home_delivery%>')
+  $("#home_delivery").trigger('change')
+})
+
+<% if @inventory_store.department_id == '50121007' %>
+  $(".mis-date-filter").on("click", function(e){
+    e.preventDefault();
+    var start_date = $(this).attr("start-date")
+    var end_date = $(this).attr("end-date")
+    var time_period = $(this).text()
+    $('#mis-date-filter').text(time_period)
+    $('#mis-date-filter').attr("start-date", start_date)
+    $('#mis-date-filter').attr("end-date", end_date)
+    $('#date_range_field').val(start_date + " To " + end_date)
+    if (time_period == 'Today')
+    {
+      $('#default-period').hide()
+    }
+    else
+    {
+      $('#default-period').show()
+    }
+  })
+  <% if @time_period != 'Today' %>
+    $('#default-period').show()
+  <% end %>
+  <% if @fitter_id != 'all' %>
+    $('#default-fitter-ddlb').show() 
+  <%end%>
+  <% if @sort_by != 'newest_first' %>
+    $('#default-sort-by').show() 
+  <%end%>
+  <% if @home_delivery != 'all' %>
+    $('#default-home-delivery-by').show() 
+  <%end%>
+  <% if @state_name != 'all' %>
+    $('#default-order-status').show()
+  <% end %>
+  <% if @time_period != 'Today' ||  @fitter_id != 'all' || @sort_by != 'newest_first' || @state_name != 'all' || @home_delivery != 'all' %>
+    $('.filter-button').addClass('btn-success')
+    $('.filter-button').removeClass('btn-primary-transparent')
+  <% end %>
+<%else%>
+  $(".mis-date-filter").on("click", function(e){
+    e.preventDefault();
+    var start_date = $(this).attr("start-date")
+    var end_date = $(this).attr("end-date")
+    var store_id = '<%= @store_id %>'
+    var time_period = $(this).text()
+    var fitter_name = $('#inventory_fitter_name').text()
+    var fitter_id = '<%= @fitter_id %>'
+    var state_name = '<%= @state_name %>'
+    $("#mis-modal").modal("hide")
+
+    jQuery.ajax({
+      type: 'get',
+      dataType: 'script',
+      data: {
+        store_id: store_id,
+        start_date: start_date,
+        end_date: end_date,
+        data_from: 'filter',
+        time_period: time_period,
+        fitter_name: fitter_name,
+        fitter_id: fitter_id,
+        state_name: state_name,
+        remote: true
+      },
+      url: '/invoice/inventory_invoices'
+    });
+  })
+<%end%>
+
+$(".fitter-filter").on("click", function(e) {
+  e.preventDefault();
+  var start_date = '<%= @start_date %>'.replace(/\//g, "-");
+  var end_date = '<%= @end_date %>'.replace(/\//g, "-");
+  var store_id = '<%= @store_id %>'
+  var fitter_id = $(this).attr("fitter_id")
+  var fitter_name = $(this).attr("fitter_name")
+  var time_period = $('#time_period').text()
+  var state_name = '<%= @state_name %>'
+  jQuery.ajax({
+    type: 'get',
+    dataType: 'script',
+    data: {
+      store_id: store_id,
+      start_date: start_date,
+      end_date: end_date,
+      fitter_id: fitter_id,
+      fitter_name: fitter_name,
+      time_period: time_period,
+      state_name: state_name,
+      remote: true
+    },
+    url: '/invoice/inventory_invoices'
+  });
+})
+
+$(".state-name").on("click", function(e) {
+  e.preventDefault();
+  var start_date = '<%= @start_date %>'.replace(/\//g, "-");
+  var end_date = '<%= @end_date %>'.replace(/\//g, "-");
+  var store_id = '<%= @store_id %>'
+  var fitter_id = '<%= @fitter_id %>'
+  var fitter_name = $('#inventory_fitter_name').text()
+  var state_name = $(this).attr("state_name")
+  var time_period = $('#time_period').text()
+  jQuery.ajax({
+    type: 'get',
+    dataType: 'script',
+    data: {
+      store_id: store_id,
+      start_date: start_date,
+      end_date: end_date,
+      fitter_id: fitter_id,
+      state_name: state_name,
+      time_period: time_period,
+      fitter_name: fitter_name,
+      remote: true
+    },
+    url: '/invoice/inventory_invoices'
+  });
+})
+
+$("#order_status").on("change", function(e) {
+  if ($(this).val() == 'all')
+  {
+    $('#default-order-status').hide() 
+  }
+  else
+  {
+    $('#default-order-status').show()
+  }
+  
+});
+
+$("#fitter_id").on("change", function(e) {
+  if ($(this).val() == 'all')
+  {
+    $('#default-fitter-ddlb').hide()
+  }
+  else
+  {
+    $('#default-fitter-ddlb').show()
+  }
+});
+
+$("#sort_by").on("change", function(e) {
+  if ($(this).val() == 'newest_first')
+  {
+    $('#default-sort-by').hide()
+  }
+  else
+  {
+    $('#default-sort-by').show()
+  } 
+});
+
+$("#home_delivery").on("change", function(e) {
+  if ($(this).val() == 'all')
+  {
+    $('#default-home-delivery-by').hide()
+  }
+  else
+  {
+    $('#default-home-delivery-by').show()
+  } 
+});
+
+$('#default-period').on("click", function(e) {
+  $(this).hide()
+  $('#date_range_field').val(today + " To " + today)
+  $('#mis-date-filter').text('Today')
+  $('#mis-date-filter').attr("start-date", today)
+  $('#mis-date-filter').attr("end-date", today)
+});
+
+$('#default-order-status').on("click", function(e) {
+  $(this).hide()
+  $("#order_status").val('all')
+});
+
+$('#default-fitter-ddlb').on("click", function(e) {
+  $(this).hide()
+  $("#fitter_id").val('all')
+});
+
+$('#default-sort-by').on("click", function(e) {
+  $(this).hide()
+  $("#sort_by").val('newest_first')
+});
+
+$('#default-home-delivery-by').on("click", function(e) {
+  $(this).hide()
+  $("#home_delivery").val('all')
+});
+
+$('#submit-filter').on('click', function(e){
+  e.preventDefault();
+  $('#filterModal').modal('hide');
+  $('.modal-backdrop').hide()
+  var start_date = $('#mis-date-filter').attr("start-date")
+  var end_date = $('#mis-date-filter').attr("end-date")
+  var store_id = '<%= @store_id %>'
+  var time_period = $('#mis-date-filter').text()
+  var fitter_id = $("#fitter_id").val()
+  var fitter_name = $("#fitter_id option:selected").text()
+  var sort_by = $("#sort_by").val()
+  var home_delivery = $("#home_delivery").val()
+  var state_name = $("#order_status").val()
+  jQuery.ajax({
+    type: 'get',
+    dataType: 'script',
+    data: {
+      store_id: store_id,
+      start_date: start_date,
+      end_date: end_date,
+      fitter_id: fitter_id,
+      fitter_name: fitter_name,
+      time_period: time_period,
+      state_name: state_name,
+      sort_by: sort_by,
+      home_delivery: home_delivery,
+      remote: true
+    },
+    url: '/invoice/inventory_invoices'
+  });
+});
+
+$('.clear-to-default').on('click', function(e){
+  e.preventDefault();
+  $('#filterModal').modal('hide');
+  $('.modal-backdrop').hide()
+  var store_id = '<%= @store_id %>'
+  jQuery.ajax({
+    type: 'get',
+    dataType: 'script',
+    data: {
+      store_id: store_id,
+      start_date: today,
+      end_date: today,
+      fitter_id: 'all',
+      fitter_name: 'All',
+      time_period: 'Today',
+      state_name: 'all',
+      sort_by: 'newest_first',
+      home_delivery: 'all',
+      remote: true
+    },
+    url: '/invoice/inventory_invoices'
+  });
+});
+
+function show_selected_details() {
+  let id = '<%= params[:id] %>'
+  if (id != '') {
+    $('.inventory-list-row').css('background-color', '')
+    $('#'+id).css('background-color', '#cfe8d2')
+    $.ajax({
+      type: 'GET',
+      data: {
+        remote: true
+      },
+      url: '/invoice/inventory_invoices/'+id,
+      success: function(){
+      }
+    })
+  }
+}
+show_selected_details()

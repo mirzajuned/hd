@@ -1,0 +1,2 @@
+module TrustedDomainsHelper
+end

@@ -1,0 +1,81 @@
+<% if current_user.facility_ids.map(&:to_s).include?(timeline['pst'][0]['links']['appointment']['facility_id'].to_s) %>
+  <% if timeline['pst'][0]['links']['appointment']['state'] == "not_arrived" || timeline['pst'][0]['links']['appointment']['current_state'] == "Scheduled" %>
+    <% @current_facility_time_zone = current_facility.time_zone %>
+    <% if timeline['pst'][0]['encounter_date_time'].in_time_zone(@current_facility_time_zone).strftime("%d/%m/%Y") == Date.current.in_time_zone(@current_facility_time_zone).strftime("%d/%m/%Y") %>
+      <% @token_setting = TokenSetting.find_by(facility_id: timeline['pst'][0]['links']['appointment']['facility_id'].to_s) %>
+      <% if @token_setting.try(:token_enabled) %>
+        <%= link_to token_settings_show_tokens_path(token_setting_id: @token_setting.id.to_s, appointment_id: timeline['pst'][0]['query']['_id']), data: { remote: true, toggle: 'modal', target: '#appointment-modal' }, class: 'btn btn-xs btn-danger btn-danger-transparent btn-circle btn-xs' do %><i class="fa fa-sign-in-alt"></i><% end %>
+      <% else %>
+        <% if current_facility.clinical_workflow %>
+          <a href="/opd_clinical_workflow/patient_arrived?appointment_id=<%= timeline['pst'][0]['query']['_id'] %>" title="Mark Patient Arrived" data-remote="true" class="btn btn-xs btn-danger btn-danger-transparent btn-circle"><i class="fa fa-sign-in-alt"></i></a>
+        <% else %>
+          <%= link_to opd_clinical_workflow_mark_as_arrived_path(id: timeline['pst'][0]['query']['_id'], appointment_id: timeline['pst'][0]['query']['_id'], patient_arrived: true), title: 'Mark Patient Arrived', data: { remote: true }, class: 'btn btn-danger btn-danger-transparent btn-circle btn-xs' do %><i class="fa fa-sign-in-alt"></i><% end %>
+        <% end %>
+      <% end %>
+    <% end %>
+    <% if Authorization::PolicyHelper.verification(current_user.id, 'HGP-102-104-103') %>
+      <%= link_to opd_appointments_rescheduleappointment_path(appointment_id: timeline['pst'][0]['query']['_id']), class: 'timeline-viewsummary-html btn btn-xs btn-circle btn-info btn-info-transparent', title: 'Reschedule Appointment', data: { :remote => true, 'toggle' => 'modal', 'target' => '#appointment-modal' } do %>R<% end %>
+    <% else %>
+      <a class='timeline-viewsummary-html btn btn-xs btn-circle btn-info disabled' style='cursor:not-allowed;pointer-events:all' title='Not Authorized'> R </a>
+    <% end %>
+  <% else %>
+    <% if current_facility.clinical_workflow %>
+      <a href="/opd_clinical_workflow/patient_complete?appointment_id=<%= timeline['pst'][0]['query']['_id'] %>" title="Complete Appointment" data-remote="true" class="btn btn-xs btn-darkblue btn-darkblue-transparent btn-circle"><i class="fa fa-sign-out-alt"></i></a>
+    <% else %>
+      <%= link_to opd_clinical_workflow_patient_completed_path(id: timeline['pst'][0]['query']['_id'], appointment_id: timeline['pst'][0]['query']['_id'], patient_completed: true), data: { remote: true }, title: 'Complete Appointment', class: 'btn btn-darkblue btn-darkblue-transparent btn-circle btn-xs' do %><i class="fa fa-sign-out-alt"></i><% end %>
+    <% end %>
+    <% unless current_user.role_ids.include?(46255001) || current_user.role_ids.include?(387619007) || current_user.role_ids.include?(499992366) %>
+      <% if Authorization::PolicyHelper.verification(current_user.id, "HGP-102-106-100") %>
+        <button type="button" class="btn btn-warning btn-warning-transparent btn-circle btn-opd-templates-<%= timeline['pst'][0]['query']['_id'] %>" title="OPD Templates" id="templates_opd" data-toggle="dropdown"><i class="fa fa-file"></i></button>
+        <ul class="dropdown-menu opd-templates opd-templates-<%= timeline['pst'][0]['query']['_id'] %>" role="menu" aria-labelledby="opd-templates-dropdown"></ul>
+      <% else %>
+        <button type="button" class='btn btn-warning btn-circle disabled' title="Not Authorized" style='pointer-events:all;cursor-pointer:not-allowed'><i class="fa fa-file"></i></button>
+      <% end %>
+      &nbsp;&nbsp;|&nbsp;&nbsp;
+    <% end %>
+  <% end %>
+  <% if Authorization::PolicyHelper.verification(current_user.id, "HGP-102-104-101") %>
+    <%= link_to edit_appointment_path(id: timeline['pst'][0]['query']['_id']), class: 'timeline-viewsummary-html btn btn-xs btn-circle btn-primary btn-primary-transparent', title: 'Edit', data: { :remote => true, 'toggle' => 'modal', 'target' => '#appointment-modal' } do %><i class="fa fa-edit"></i><% end %>
+  <% else %>
+    <a class='timeline-viewsummary-html btn btn-xs btn-circle btn-primary disabled' style='pointer-events:all;cursor:not-allowed' title='Not Authorized'><i class="fa fa-edit"></i></a>
+  <% end %>
+  <% if Authorization::PolicyHelper.verification(current_user.id, "HGP-102-104-102") %>
+    <%= link_to opd_appointments_cancelappointmentform_path(appointment_id: timeline['pst'][0]['query']['_id']), class: 'timeline-viewsummary-html btn btn-xs btn-circle btn-danger btn-danger-transparent', title: 'Cancel Appointment', data: { :remote => true, 'toggle' => 'modal', 'target' => '#appointment-modal' } do %><i class="fa fa-trash-alt"></i><% end %>
+  <% else %>
+    <a class='timeline-viewsummary-html btn btn-xs btn-circle btn-danger disabled' style='pointer-events:all;cursor:not-allowed' title='Not Authorized'><i class="fa fa-trash-alt"></i></a>
+  <% end %>
+<% end %>
+
+<script type="text/javascript">
+  $(".btn-opd-templates-<%= timeline['pst'][0]['query']['_id'] %>").on('click', function(){
+    if($(this).closest('.full-view').hasClass('open')){
+    } else {
+      $(this).siblings(".opd-templates").html('<li class="text-center">Loading..</li>')
+      $.ajax({
+        type: "GET",
+        dataType: "script",
+        data: {
+          appointment_id: "<%= timeline['pst'][0]['query']['_id'] %>",
+          mode: "<%= @mode %>"
+        },
+        url: "/patient_summary_timelines/opd_templates"
+      })
+    }
+  })
+
+  $(".btn-opd-invoice-<%= timeline['pst'][0]['query']['_id'] %>").on('click', function(){
+    if($(this).closest('.full-view').hasClass('open')){
+    } else {
+      $(this).siblings(".opd-invoices").html('<li class="text-center">Loading..</li>')
+      $.ajax({
+        type: "GET",
+        dataType: "script",
+        data: {
+          appointment_id: "<%= timeline['pst'][0]['query']['_id'] %>",
+          patient_id: "<%= @patient.id.to_s %>"
+        },
+        url: "/patient_summary_timelines/opd_invoices"
+      })
+    }
+  })
+</script>

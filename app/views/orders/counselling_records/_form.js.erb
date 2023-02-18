@@ -1,0 +1,229 @@
+$(".procedure-added").on('click', ".btn-remove-procedure", function(e){
+  e.preventDefault();
+  $(this).closest(".table-row-procedure").remove();
+  if($(".table-row-procedure").length == 0){
+    $(".no-procedure").show();
+  }
+})
+
+$("#order_counselling_record_counselled_by_id").change(function(){
+  $("#order_counselling_record_counselled_by").val($("#order_counselling_record_counselled_by_id option:selected").html())
+}).trigger("change")
+
+  $('#search_procedure_keyword').autocomplete({
+    minLength: 2,
+    source: function(request, response) {
+      var speciality_id = $(".admission_specialty").val()
+      if (speciality_id == undefined) {
+        speciality_id = "<%= @case_sheet.specialty_id %>"
+      }
+      $.ajax({
+        dataType: "json",
+        type: 'get',
+        url: '/common_procedures/search',
+        data: {
+          search: request.term,
+          speciality_id: speciality_id,
+          remote: "true" },
+        success: function(data) {
+          response(data);
+        },
+        error: function(data) {
+        }
+      });
+    },
+    select: function( event, ui ) {
+      var counter = $(".table-row-procedure").length
+      var data = {counter: counter, code: ui.item['code'], procedure_code: ui.item['code'], flag: "new", procedure_type: ui.item['procedure_type'], source: "ipd_record", remote: "true"}
+      get_procedure_details(data)
+      setTimeout(function() {
+        $("#search_procedure_keyword").val("")
+      }, 50);
+    },
+    create: function () {
+      $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+        return $('<li>')
+            .append('<a>' + item.label  + '&nbsp; &nbsp; &nbsp;' + "<span class=\"badge pull-right\">" + item.procedure_type_label + "</span>" + '</a>')
+            .appendTo(ul);
+      };
+  },
+  });
+
+  function get_procedure_details(data){
+    $.ajax({
+        dataType: "script",
+        type: 'get',
+        url: '/common_procedures/get_procedure_details?from=counselling_record',
+        data: data,
+        success: function(response){}
+    });
+  }
+  
+<!--  $("#new_order_counselling_record, #edit_order_counselling_record").submit(function(e){-->
+<!--    var values = $(".counselling-status").map((_,el) => el.value).get()-->
+
+<!--    if (values.filter(n=> n !== '').length == 0) {-->
+<!--      if ($('.ui-pnotify').length > 0) {-->
+<!--        $('.ui-pnotify').remove()-->
+<!--      }-->
+<!--      notice = new PNotify({ title: 'Warning', text: 'Please take any action to save counselling record.', type: 'warning' });-->
+<!--      notice.get().click(function(){-->
+<!--        notice.remove()-->
+<!--      });-->
+<!--      return false-->
+<!--    }-->
+<!--  })-->
+
+  $(".remove-recounsel").on('click', function(){
+    $(this).closest(".orders-data").remove()
+    $("#recounsel-<%= params[:order_advised_id] %>").show()
+  })
+
+$('#search_ophthal_investigations').autocomplete({
+  minLength: 2,
+  source: function(request, response) {
+    $.ajax({
+      dataType: "json",
+      type: 'get',
+      url: '/ophthalmology_investigation_data/search',
+      data: {
+        search: request.term,
+        speciality_id: "<%=  @case_sheet.specialty_id %>",
+        remote: "true" },
+      success: function(data) {
+        response(data);
+      },
+      error: function(data) {
+      }
+    });
+  },
+  select: function( event, ui ) {
+    var data = { case_sheet_id: "<%=@case_sheet.id.to_s%>", investigation_id: ui.item['investigation_id'], investigation_type: ui.item['investigation_type'], remote: true}
+    get_ophthal_investigation_details(data)
+    setTimeout(function() {
+      $("#search_ophthal_investigations").val("")
+    }, 50);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+      return $('<li>')
+          .append('<a>' + item.label  + '&nbsp; &nbsp; &nbsp;' + "<span class=\"badge pull-right\">" + item.investigation_type_label + "</span>" + '</a>')
+          .appendTo(ul);
+    };
+  },
+});
+
+function get_ophthal_investigation_details(data){
+  $.ajax({
+    dataType: 'html',
+    url: '/orders/counselling_records/get_investigation_details',
+    data: data,
+    success: function(response){
+      $("#ophthalmology").append($(response).html())
+      $('#ophthalmology').find('.no-orders-data').remove()
+      $(".remove-procedure").on('click', function(){
+        $(this).closest(".orders-data").remove()
+      })
+    }
+  });
+}
+
+$('#search_laboratory_investigations').autocomplete({
+  minLength: 2,
+  source: function(request, response) {
+    $.ajax({
+      dataType: "json",
+      type: 'get',
+      url: '/laboratory_investigation_data/search',
+      data: {
+        search: request.term,
+        speciality_id: "<%= @case_sheet.specialty_id %>",
+        remote: "true" },
+      success: function(data) {
+        response(data);
+      },
+      error: function(data) {
+      }
+    });
+  },
+  select: function( event, ui ) {
+    var data = { case_sheet_id: "<%=@case_sheet.id.to_s%>", investigation_id: ui.item['investigation_id'], investigation_type: ui.item['investigation_type'], remote: true}
+    get_laboratory_investigation_details(data)
+    setTimeout(function() {
+      $("#search_laboratory_investigations").val("")
+    }, 50);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+      return $('<li>')
+          .append('<a>' + item.label  + '&nbsp; &nbsp; &nbsp;' + "<span class=\"badge pull-right\">" + item.investigation_type_label + "</span>" + '</a>')
+          .appendTo(ul);
+    };
+ },
+});
+
+function get_laboratory_investigation_details(data){
+  $.ajax({
+    dataType: "html",
+    type: 'get',
+    url: '/orders/counselling_records/get_investigation_details',
+    data: data,
+    success: function(response){
+      $("#laboratory").append($(response).html())
+      $('#laboratory').find('.no-orders-data').remove()
+      $(".remove-procedure").on('click', function(){
+        $(this).closest(".orders-data").remove()
+      })
+    }
+  });
+}
+
+
+$('#search_radiology_investigations').autocomplete({
+  minLength: 2,
+  source: function(request, response) {
+    $.ajax({
+      dataType: "json",
+      type: 'get',
+      url: '/radiology_investigation_data/search',
+      data: {
+        search: request.term,
+        speciality_id: "<%=  @case_sheet.specialty_id %>",
+        remote: "true" },
+      success: function(data) {
+        response(data);
+      },
+      error: function(data) {
+      }
+    });
+  },
+  select: function( event, ui ) {
+    var data = { case_sheet_id: "<%=@case_sheet.id.to_s%>", investigation_id: ui.item['investigation_id'], investigation_type: ui.item['investigation_type'], remote: true}
+    get_radiology_investigation_details(data)
+    setTimeout(function() {
+      $("#search_radiology_investigations").val("")
+    }, 50);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+      return $('<li>')
+          .append('<a>' + item.label  + '&nbsp; &nbsp; &nbsp;' + "<span class=\"badge pull-right\">" + item.investigation_type_label + "</span>" + '</a>')
+          .appendTo(ul);
+    };
+  },
+});
+
+function get_radiology_investigation_details(data){
+  $.ajax({
+    dataType: 'html',
+    url: '/orders/counselling_records/get_investigation_details',
+    data: data,
+    success: function(response){
+      $("#radiology").append($(response).html())
+      $('#radiology').find('.no-orders-data').remove()
+      $(".remove-procedure").on('click', function(){
+        $(this).closest(".orders-data").remove()
+      })
+    }
+  });
+}

@@ -1,0 +1,77 @@
+<div class="modal-dialog" style="width: 60%">
+  <div class="modal-content">
+    <div class="modal-header">
+        <button type="button" class="close close_unit_lot_form" data-dismiss="modal">&times;</button>
+        <h4 class="modal-title" style="color: #00BFFF"><%= @lot.description %></h4>
+      </div>
+      <%= form_tag "/invoice/inventory_orders/add_lot", method: "post", remote: true, id: 'inventory_order_add_lot_form', class: "inventory_order-add-lot-form" do %>
+        <%= hidden_field_tag :lot_id, @lot.id %>
+        <%= hidden_field_tag :embedded_item_id, params[:item_id] %>
+        <%= hidden_field_tag :transaction_id, params[:transaction_id] %>
+        <%= hidden_field_tag :class_val, params[:class_val] %>
+        <% lot_unit_ids = params[:lot_unit_ids] %>
+        <% lot_units = @lot_units.where(available_stock: 1) %>
+        <div class="modal-body window-body">
+          <div class="lot-unit-details">
+            <table class="table inventory_table_center">
+              <thead class="inventory-table-head">
+                <tr>
+                  <th>Sl. No.</th>
+                  <th>Description</th>
+                  <th>Barcode</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody class="inventory-table-body">
+                <% lot_units.each_with_index do |lot_unit, index| %>
+                  <tr>
+                    <td><%= index+1 %></td>
+                    <td><%= lot_unit.description %></td>
+                    <td><%= lot_unit.barcode_id %></td>
+                    <%= hidden_field_tag :lot_unit_id, lot_unit.id, name: "item[#{index}][lot_unit_id]" %>
+                    <% if lot_unit_ids.present? %>
+                      <% is_checked = (lot_unit_ids.include? lot_unit.id.to_s) ? true : false %>
+                    <% else %>
+                      <% is_checked = false %>
+                    <% end %>
+                    <td><%= check_box_tag "item[#{index}][lot_unit_checked]", true, is_checked, {id: "lot_#{index}_unit_checked", class: '', style: 'height: 20px; width: 20px'} %></td>
+                  </tr>
+                <% end %>
+                <% if params[:from] == 'edit_inventory_order' && lot_unit_ids.present? %>
+                <% lot_unit_size = lot_units.length %>
+                  <% lot_unit_ids.each_with_index do |lot_unit_id, index| %>
+                    <% lot_unit = Inventory::Item::LotUnit.find_by(id: lot_unit_id) %>
+                    <tr>
+                      <% index = lot_unit_size + 1 + index %>
+                      <td><%= index %></td>
+                      <td><%= lot_unit.description %></td>
+                      <td><%= lot_unit.barcode_id %></td>
+                      <%= hidden_field_tag :lot_unit_id, lot_unit.id, name: "item[#{index}][lot_unit_id]" %>
+                      <td><%= check_box_tag "item[#{index}][lot_unit_checked]", true, true, {id: "lot_#{index}_unit_checked", class: '', style: 'height: 20px; width: 20px'} %></td>
+                    </tr>
+                  <% end %>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer window-footer">
+          <%= submit_tag "Save Changes", { class: 'btn btn-success', onclick: 'validate_inventory_order_add_lot_unit_form()', data: { disable_with: "Please Wait..."} } %>
+        </div>
+      <% end %>
+  </div>
+</div>
+
+<script type="text/javascript">
+  function validate_inventory_order_add_lot_unit_form() {
+
+  }
+
+  validate_inventory_order_add_lot_unit_form()
+
+  $('.close_unit_lot_form').on('click', function() {
+        jQuery(document).on('hidden.bs.modal', '.modal', function () {
+        jQuery('.modal:visible').length && $(document.body).addClass('modal-open');
+    });
+  })
+</script>

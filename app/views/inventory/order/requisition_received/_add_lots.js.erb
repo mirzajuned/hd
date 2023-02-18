@@ -1,0 +1,72 @@
+$('.transaction-table-body').append(`
+  <table width="100%" style='margin-top: 1%;' class="transfer-transaction-log-item lot-table-<%=@variant.id%>">
+    <tr>
+      <td style="text-align: right"><strong id='<%=@variant.id%>_issue_quantity'>Total: <%= @issue_quantity %></strong></td>
+       <td style="width:75px">
+       <div class="btn-sm edit-lots" onclick="edit_lots('<%=@variant.id%>', <%=@items.to_json%>, '<%= @issue_quantity %>', '<%= @remaining_quantity %>', '<%= @balance_quantity %>')" style='float: right;'><i class="fa fa-edit" style="color:#0000FF;"></i></div>
+      </td>
+    </tr>
+  </table>
+`)
+<% @items.each do |k, item|%>
+  <% transfer_transaction = Inventory::Transaction::Transfer.new({items_attributes: [item] }) %>
+  $('.transaction-table-body').append($("<%= escape_javascript(render partial: 'inventory/order/requisition_received/add_lots.html.erb', locals: { transfer_transaction: transfer_transaction } ) %>").html());
+<% end %>
+$('.transaction-table-body').append('<hr/>')
+$("#add_lot_modal").html("").modal("hide")
+<%= render partial: 'inventory/transaction/transfers/form.js.erb' %>
+calTotalPrice()
+
+$('#requisition-item-<%=@req_variant_id%>').css("pointer-events", "none")
+$('#requisition-item-<%=@req_variant_id%> td').css("background-color", "#dff0d8 !important")
+
+function edit_lots(variant_id, items, issue_quantity, remaining_quantity, balance_quantity) {
+  console.log(items)
+  $.ajax({
+    type : 'get',
+    url: '/inventory/order/requisition_received/edit_lots',
+    data: {
+	  variant_id: variant_id,
+	  items: items,
+	  remaining_quantity, remaining_quantity,
+	  balance_quantity: balance_quantity,
+	  id: $('#inventory_transaction_transfer_requisition_received_id').val(),
+	  issue_quantity: issue_quantity,
+	  remote: "true"
+    }
+  })
+}
+updateIndex()
+function updateIndex(){
+  var count = 1
+  $(".treatmentmedications").each(function(){
+    $(this).find(".set_s_no").text(count)
+    count += 1
+  })
+}
+
+$(document).ready(function(){
+  $(".treatmentmedications").each(function(){
+    calculate_without_tax_unit_price($(this))
+    calculate_total_cost_price($(this))    
+  })
+})
+
+function calculate_total_cost_price(_this){
+  stock = parseFloat($(_this).find(".item_quantity").val()) || 0
+  unit_cost_price = parseFloat($(_this).find(".item_unit_cost").val()) || 0
+  var unit_purchase_tax_amount = parseFloat($(_this).find('.unit_purchase_tax_amount').val()) || 0
+  var unit_cost_without_tax = parseFloat($(_this).find('.unit_cost_without_tax').val()) || 0
+  var purchase_tax_amount = unit_purchase_tax_amount * stock
+  $(_this).find('.purchase_tax_amount').val(purchase_tax_amount.toFixed(2))
+  var item_cost_without_tax = unit_cost_without_tax * stock
+  $(_this).find('.item_cost_without_tax').val(item_cost_without_tax.toFixed(2))
+}
+
+function calculate_without_tax_unit_price(_this) {
+  var unit_cost_price = parseFloat($(_this).find(".item_unit_cost").val()) || 0
+  var tax_rate = parseFloat($(_this).find(".tax_rate").val()) || 0
+  var tax_amount = (unit_cost_price * tax_rate)/(100 + tax_rate)
+  var unit_cost_without_tax = unit_cost_price - tax_amount
+  $(_this).find('.unit_purchase_tax_amount').val(tax_amount)
+}

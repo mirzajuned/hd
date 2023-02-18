@@ -1,0 +1,81 @@
+
+$('.lot-stock').on('input', function(e) {
+  e.preventDefault()
+  issue_quantity = issueQuantity()
+  $('#issue_quantity').val(issue_quantity)
+  remaining_quantity = parseFloat($('#balance_quantity').val()) || 0
+  $('#remaining_quantity').val(remaining_quantity - issue_quantity)
+  calItemPrice($(this))
+})
+
+function issueQuantity(){
+  sum = 0
+  $(".lot-stock").each(function(){
+    sum += parseFloat($(this).val()) || 0
+  });
+  return sum
+}
+
+function calItemPrice(_this) {
+  var parent = _this.closest('tr')
+  var quantity = _this.val() || 0
+  var item_unit_cost = parseFloat(parent.find('.item_unit_cost').val() || 0)
+  var item_total_cost = item_unit_cost * quantity
+  parent.find('.price_including_tax').val(item_total_cost.toFixed(2))
+}
+
+
+$.validator.addMethod("Quantity", function(value, element) {
+  var available_stock = $(element).closest('tr').find('.lot-available-stock').text()
+  return value <= parseFloat(available_stock)
+}, "Issue quantity should not be grater than available stock");
+
+function validate_lots_form() {
+  $("#lot_form").validate({
+    rules: {
+      "issue_quantity": {
+        required: true,
+        min: 1,
+      },
+      "remaining_quantity": {
+        required: true,
+        min: 0,
+        max: <%= @max_stock %>
+      }
+    },    
+
+    errorPlacement: function (error, element) {
+      var elem = $(element);
+      error.insertAfter(element);
+      if(elem.hasClass("select2-hidden-accessible")) {
+        element = $("#select2-" + elem.attr("id") + "-container").parent();
+        error.insertAfter(element);
+      } else {
+        error.insertAfter(element);
+      }
+    }
+  });
+}
+validate_lots_form()
+
+$.validator.addClassRules("lot-stock", { Quantity: true });
+
+jQuery.extend(jQuery.validator.messages, {
+  required: "Required",
+  remote: "Please fix this field.",
+  email: "Please enter a valid email address.",
+  url: "Please enter a valid URL.",
+  date: "Please enter a valid date.",
+  dateISO: "Invalid date.",
+  number: "Invalid No.",
+  digits: "Please enter only digits.",
+  creditcard: "Please enter a valid credit card number.",
+  equalTo: "Please enter the same value again.",
+  accept: "Please enter a value with a valid extension.",
+  maxlength: jQuery.validator.format("Please enter no more than {0} characters."),
+  minlength: jQuery.validator.format("Please enter at least {0} characters."),
+  rangelength: jQuery.validator.format("Please enter a value between {0} and {1} characters long."),
+  range: jQuery.validator.format("Please enter a value between {0} and {1}."),
+  max: jQuery.validator.format("Please enter a value less than or equal to {0}."),
+  min: jQuery.validator.format("Please enter a value greater than or equal to {0}.")
+});

@@ -1,0 +1,213 @@
+<div class="modal-dialog modal_ipdrecord">
+  <div class="modal-content">
+
+    <div class="modal-header">
+      <div class="pull-right"> <!-- Action Buttons starts -->
+        <button aria-hidden="true" class="btn btn-default" data-dismiss="modal">Close</button>
+      </div>
+      <div class="text-center">
+        <h4 class="nomargin">IPD Summary</h4>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div class="row mb20">
+        <div class="col-md-9">
+          <!-- Action Button -->
+            <div class="row mb10">
+              <div class="col-md-12 mb5">
+                <div class="ipd-review-actions">
+                  <div class="btn-group mr10">
+                    <%= link_to edit_inpatient_ipd_record_path(:id => @ipdrecord.id, :admission_id => @admission.id, :templatetype => @template_type), :class => "btn btn-primary", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#ipdrecord-modal', method: :get } do %> <i class="fa fa-edit"></i> Edit <% end %>
+                    <%= link_to inpatient_ipd_records_print_summary_path(:id => @ipdrecord.id, :admission_id => @admission.id, :templatetype => @templatetype, :format => :pdf), :class => "btn btn-primary", :target => "_blank", :data => {method: :get} do %><i class="fa fa-print"></i> Summary <% end %>
+                    <%= link_to inpatient_ipd_records_print_path(:id => @ipdrecord.id, :admission_id => @admission.id, :templatetype => @templatetype, :format => :pdf), :class => "btn btn-primary", :target => "_blank", :data => {method: :get} do %><i class="fa fa-print"></i> Note <% end %>
+                  </div>
+                </div>
+              </div>
+            </div>
+          <!-- Action Button Ends -->
+          <!--  Print Flags -->
+          <% if @template_type == "dischargenote" %>
+            <div class="row mb10">
+              <div class="col-md-1">
+                Print :
+              </div>
+              <div class="col-md-4">
+                <div class="ckbox ckbox-primary">
+                  <input type="checkbox" name="print_procedure_note" id="print-procedure-note" class="print-procedure-note" checked>
+                  <label for="print-procedure-note"><b style="color:#000">Procedure Note (Operative Note)</b></label>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="ckbox ckbox-primary">
+                  <input type="checkbox" name="print_investigation" id="print-investigation" class="print-investigation"  checked>
+                  <label for="print-investigation"><b style="color:#000">Investigation</b></label>
+                </div>
+              </div>
+            </div>
+          <% end %>
+          <!--  Print Flags Ends -->
+          <!-- View Skeleton -->
+            <div class="summary-template paper_view">
+              <%= render partial: "inpatient/ipd_records/views/summary/ipd_common_view_summary", locals: { ipdrecord: @ipdrecord, admission: @admission, patient: @patient, tpa: @tpa, template_type: @template_type } %>
+            </div>
+            <% unless @template_type == "wardnote" %>
+              <br>
+              <hr>
+              <br>
+              <div class="summary-template paper_view">
+                <%= render partial: "inpatient/ipd_records/views/notes/ipd_common_view_notes", locals: { ipdrecord: @ipdrecord, admission: @admission, patient: @patient, tpa: @tpa, template_type: @template_type,procedure: @procedure} %>
+              </div>
+            <% end %>
+          <!-- View Skeleton Ends -->
+        </div>
+
+        <div class="col-md-3" style="border-left: 1px solid #ddd;">
+          <!-- Comments Form -->
+            <!-- <div class="opd-record-comment-form">
+              Hehehe
+            </div> -->
+          <!-- Comments Form Ends -->
+          <!-- Show Comments Starts -->
+            <!-- <div class="show-opd-record-comments-bydoctors">
+
+            </div> -->
+          <!-- Show Comments Ends -->
+          <!-- Show History Logic Starts -->
+            <div class="show-history text-center">
+              <div class="row mb10">
+                <div class="col-md-12">
+                  <h4 style="margin:0px;">Template History(<%= @template_type.capitalize %>)</h4>
+                </div>
+              </div>
+              <div class="row" style="background:#1CAF9A;padding: 6px;">
+                <% @ipd_history_creator = @ipdrecord.record_histories.where(:template_type => @template_type).first %>
+                <div class="col-md-1">
+                  <span style="color:#1CAF9A;">|</span>
+                </div>
+                <div class="col-md-2">
+                  <div style="margin-top:7px;"><span style="border-radius: 100%;background-color: #fff;padding: 7px 10px;font-size: 12px;color: #1CAF9A;">C</span>&nbsp;<span style="color:#fff;">reated</span></div>
+                </div>
+                <div class="col-md-9">
+                  <p style="margin-bottom:-7px;font-size:16px;color: #fff;"><b><%= User.find_by(id: @ipd_history_creator.user_id.to_s).fullname %></b></p>
+                  <span style="font-size:9px;color: #fff;"><%= @ipd_history_creator.actiontime.strftime("%I:%M%P, %d %B") %></span>
+                </div>
+                <!-- For Using Toggle uncomment this & add display:none; to show-history-details & info-history-abbv..also uncomment the js written in show_ipd_record.js under //for toggle history -->
+                <!-- <div class="col-md-12 text-center">
+                  <button class="btn btn-link btn-xs show-history-toggle" style="color:#fff;text-decoration:underline;">Show Details</button>
+                </div> -->
+              </div>
+              <div class="show-history-details" style="max-height:300px;overflow:scroll;margin-top:10px;">
+                <div class="col-md-12 mt5 mb5" style="border-bottom:1px solid #ddd;">
+                  <p class="info-history-abbv" style="font-size:10px;">
+                    <span style="border-radius: 100%;background-color: #d9534f;padding: 3px 5px;font-size: 12px;color: #fff;">U</span> = <b>Update</b> ,&nbsp;&nbsp; <span style="border-radius: 100%;background-color: #428bca;padding: 3px 5px;font-size: 12px;color: #fff;">P</span> = <b>Print</b>
+                  </p>
+                </div>
+                <% @ipd_history = @ipdrecord.record_histories.where(:template_type => @template_type).order(actiontime: :desc) %>
+                <% @ipd_history.each do |ipd_history| %>
+                  <% if ipd_history.action != "C" %>
+                    <div class="row" style="border-bottom:1px solid #ddd; padding: 7px 0;">
+                      <div class="col-md-1">
+                        <span style="color:#fff;">|</span>
+                      </div>
+                      <div class="col-md-2">
+                        <div style="margin-top:7px;">
+                          <% if ipd_history.action == "U" %>
+                            <span style="border-radius: 100%;background-color: #d9534f;padding: 7px 10px;font-size: 12px;color: #fff;">U
+                            </span>
+                          <% elsif ipd_history.action == "C" %>
+                            <span style="border-radius: 100%;background-color: #1CAF9A;padding: 7px 10px;font-size: 12px;color: #fff;">C
+                            </span>
+                          <% elsif ipd_history.action == "P" %>
+                            <span style="border-radius: 100%;background-color: #428bca;padding: 7px 10px;font-size: 12px;color: #fff;">P
+                            </span>
+                          <% end %>
+                        </div>
+                      </div>
+                      <div class="col-md-9">
+                        <p style="margin-bottom:-7px;font-size:16px;"><b><%= User.find_by(id: ipd_history.user_id.to_s).fullname %></b></p>
+                        <span style="font-size:9px;"><%= ipd_history.actiontime.strftime("%I:%M%P, %d %B") %></span>
+                      </div>
+                    </div>
+                  <% end %>
+                <% end %>
+              </div>
+            </div>
+          <!-- Show History Logic Ends -->
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<style>
+  .paper_view {
+    box-shadow: 0 0 6px #ccc;
+    max-width: 90%;
+    padding: 0 0.400000in 0 0.550000in;
+    font-family: 'Open Sans';
+  }
+
+  .updated_by, .printed_by, .created_by {
+    border-radius: 100%;
+    background-color: #d9534f;
+    padding: 7px 10px;
+    font-size: 12px;
+    color: #fff;
+  }
+
+  .printed_by {
+    background-color: #428bca;
+  }
+
+  .created_by {
+   background-color: #fff;
+   color: #1CAF9A;
+  }
+
+  <% unless @template_type == "wardnote" %>
+    .modal_ipdrecord {
+      width: 98%;
+    }
+  <% else %>
+    .modal_ipdrecord {
+      width: 98%;
+    }
+  <% end %>
+</style>
+
+<script type="text/javascript">
+  jQuery(document).ready(function(){
+    $("#print-procedure-note").on('click', function(){
+      if($(this).attr('checked') == 'checked'){
+        var flag = true
+      } else {
+        var flag = false
+      }
+      var flag_name = 'print_procedure'
+      print_toggle(flag, flag_name)
+    });
+
+    $("#print-investigation").on('click', function(){
+      if($(this).attr('checked') == 'checked'){
+        var flag = true
+      } else {
+        var flag = false
+      }
+      var flag_name = 'print_investigation'
+      print_toggle(flag, flag_name)
+    });
+
+    function print_toggle(flag, flag_name){
+      var params = { flag: flag, flag_name: flag_name, id: "<%= @discharge_note.id.to_s %>",
+                    admission_id: "<%= @discharge_note.admission_id.to_s %>"}
+      $.ajax({
+        dataType: "JSON",
+        type: "GET",
+        data: params,
+        url: "/inpatient/ipd_record/discharge_notes/print_flags"
+      })
+    }
+  });
+</script>

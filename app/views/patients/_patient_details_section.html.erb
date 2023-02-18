@@ -1,0 +1,140 @@
+<div class="row no_margin" style="padding: 10px 5px;">
+  <div class="row no_margin no_padding" style="padding: 5px;">
+    <div class="col-sm-3 text-center no_padding">
+      <% if @patient_asset.present? %>
+        <%= image_tag(@patient_asset, class: "patient_profile_pic") %>
+      <% else %>
+        <%= image_tag('placeholder.png', class: "patient_profile_pic") %>
+      <% end %>
+
+      <% if @patient.one_eyed == "Yes" %>
+        <div style="margin-top:4px;"><b style="background:#ff8735;color:#fff;padding:2px 5px;">One Eyed</b></div>
+      <% end %>
+
+      <div><% if @patient.rating.present? %> <b style="color: #f5bf18;"><%= @patient.rating.round(2).to_s %> <i class="glyphicon glyphicon-star"></i> </b><% end %></div>
+    </div>
+    <div class="col-sm-9" id="modalCalendarAppointmentDetailsId">
+      <div class="row no_margin">
+        <h4 class="" style="display: inline">
+          <span>Patient Details</span>
+          <%= link_to edit_patient_path(id: @patient.id), :class => "btn btn-link btn-xs edit_patient_info", data: { remote: true, 'toggle': "modal", 'target': '#patient-modal' },  style: "padding: 2px;" do %><i class="fa fa-edit"></i><% end %>
+          <%= link_to patient_cards_print_path(patient_id: @patient.id, format: :pdf), class: 'btn btn-link btn-xs print_patient_card', style: 'padding: 2px;', target: '_blank' do %><i class="fa fa-print"></i><% end %>
+        </h4>
+        <% if @patient.reg_status %>
+          <button class="pull-right btn btn-default btn-xs" id="patient-summary-timeline-link" title="Patient Summary">Summary</button>
+        <% end %>
+      </div>
+      <div id='patient-details'>
+        <%= render partial: 'patients/patient_details.html.erb' %>
+      </div>
+    </div>
+
+
+
+<!--    other details-->
+    <hr style="margin:15px;">
+    <div class="row">
+      <div class="col-sm-12"  id="patient-history-details">
+        <%= render partial: "patient_summary_timelines/patient_details/patient_history.html.erb" %>
+      </div>
+    </div>
+    <hr style="margin:15px;">
+    <div class="row">
+      <div class="col-sm-12" id="patient-allergy-details">
+        <%= render partial: "patient_summary_timelines/patient_details/patient_allergy.html.erb" %>
+      </div>
+    </div>
+
+
+
+
+    <% unless @current_user.role_ids.any? { |ele| [46255001, 387619007, 573021946].include?(ele) } %>                          <!-- pharmacist, optician, tpa -->
+      <hr style="margin:15px;">
+      <div class="row">
+        <div class="col-sm-12" id="all-actions-timeline">
+
+
+          <div class="row" style="margin:0px;">
+            <div class="col-sm-12">
+              <h4 class="" style="display: inline;font-size:18px;"><b>Actions</b></h4>
+            </div>
+          </div>
+          <div class="row">
+            <div id="appointment-details" class="col-md-6 text-center" style="padding:5px 0px;">
+              <%= render partial: "patient_summary_timelines/other_details/appointment.html.erb" %>
+            </div>
+            <div id="upload-details" class="col-md-6 text-center" style="padding:5px 0px;">
+              <%= render partial: "patient_summary_timelines/other_details/uploads.html.erb" %>
+            </div>
+          </div>
+          <div class="row">
+            <div id="admission-details" class="col-md-6 text-center" style="padding:5px 0px;">
+              <%= render partial: "patient_summary_timelines/other_details/admission.html.erb" %>
+            </div>
+            <div id="ot-details" class="col-md-6 text-center" style="padding:5px 0px;">
+              <%= render partial: "patient_summary_timelines/other_details/ot.html.erb" %>
+            </div>
+          </div>
+
+
+
+          <div class="row">
+
+            <% if current_organisation["specialty_ids"].size == 1 %>
+              <div id="investigation-details" class="col-md-6 text-center" style="padding:5px 0px;">
+                <%= render partial: "patient_summary_timelines/other_details/investigation.html.erb" %>
+              </div>
+            <% end %>
+
+            <div id="consolidate-report-timeline" class="col-md-6 text-center" style="padding:5px 0px;">
+              <%= render partial: "patient_summary_timelines/other_details/consolidate_report_timeline" %>
+            </div>
+
+            <div id="adverse-event-timeline" class="col-md-6 text-center" style="padding:5px 0px;">
+              <%= render partial: "patient_summary_timelines/other_details/adverse_event.html.erb" %>
+            </div>
+
+          </div>
+
+          <script type="text/javascript">
+            $(".link-to-admission").on('click', function(e){
+              e.preventDefault();
+              var current_date = $(this).attr("data-admission-date")
+              var active_user = "<%= @existing_admission.try(:admitting_doctor_id) %>"
+              var admission_id = $(this).attr("data-admission-id")
+              var active_tab = $(this).attr("data-admission-state")
+              $('#modalCalendarAppointmentDetails').modal('hide')
+              $.ajax({
+                type: "GET",
+                dataType: "script",
+                data: {
+                  active_tab: active_tab,
+                  current_date: current_date,
+                  active_user: active_user,
+                  admission_id: admission_id,
+                  message: "From OPD"
+                },
+                url: "/inpatients/admission_management",
+                success: function(){
+                  $("#patient-management").removeClass("activate")
+                  $("#admission-management").addClass("activate")
+                }
+              })
+              history.pushState('', '', '/inpatients/admission_management'); // history.pushState([data], [title], [url]);
+            })
+          </script>
+
+
+        </div>
+      </div>
+    <% end %>
+
+    <hr style="margin:15px;">
+    <div class="row">
+      <div class="col-sm-12" id="all-actions-timeline">
+        <%= render partial: "patient_summary_timelines/other_details/patient_note_details.html.erb" %>
+      </div>
+    </div>
+
+  </div>
+</div>

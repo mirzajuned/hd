@@ -1,0 +1,172 @@
+// Window Size
+var window_height = $(window).height() - 50
+$(".sidebar_area").css('height',window_height)
+$(".ot_main_content").css('height',window_height)
+
+$(window).resize(function() {
+  var window_height = $(window).height() - 50
+  $(".sidebar_area").css('height',window_height)
+  $(".ot_main_content").css('height',window_height)
+})
+
+// To Refresh Admission Management Page
+function refresh_ot_management(doctor_id, active_tab, ot_id, current_date="<%= @current_date %>", specialty_id){
+  $.ajax({
+    type: "GET",
+    dataType: "script",
+    data: {
+      current_date: current_date,
+      active_doctor: doctor_id,
+      active_tab: active_tab,
+      specialty_id: specialty_id,
+      ot_id: ot_id,
+      users_list: $(".toggle-sidebar-users").attr('data-toggle-position'),
+      ot_rooms_dropdown_id: "<%= params[:ot_rooms_dropdown_id] %>"
+    },
+    url: "/inpatients/ot_management"
+  })
+}
+
+$(document).ready(function(){
+
+  $(".datepicker-for-btn").datepicker();
+  $('#ot-datepicker-inline').datepicker({
+    dateFormat: "dd/mm/yy",
+    showOn: "button",
+    buttonText: '<i class="fa fa-calendar"></i>',
+    onSelect: function (dateText,obj) {
+      jQuery.ajax({
+        type: "GET",
+        dataType: "script",
+        url: '/inpatients/ot_management?current_date='+moment(dateText, "DD/MM/YYYY").format('DD-MMMM-YYYY')+'&active_doctor='+$("#sidebar_doctors_ot .active").find('a').attr('data-user-id')+'&message=true&active_tab=All&users_list=' + $(".toggle-sidebar-users").attr('data-toggle-position') + '&specialty_id=' + $(".specialty_section").find('.dropdown-menu').find('.active').attr('data-id'),
+      })
+    }
+  })
+  $(".ui-datepicker-trigger").addClass("btn btn-danger calender-btn navbar-btn navbar-btn-calender navbar-btn-hover")
+
+  $("#btn-ot-backdate").on('click',function(){
+    var doctor_id = $("#sidebar_doctors_ot .active").find('a').attr('data-user-id')
+    // var active_tab = $(".tab_active").find(".active").attr('data-tab-id')
+    $.ajax({
+      type: "GET",
+      dataType: "script",
+      data: {
+        current_date: "<%= @current_date.yesterday %>",
+        active_doctor: doctor_id,
+        active_tab: "All",
+        specialty_id: "<%= @selected_specialty %>",
+        users_list: $(".toggle-sidebar-users").attr('data-toggle-position'),
+        ot_rooms_dropdown_id: "<%= params[:ot_rooms_dropdown_id] %>"
+      },
+      url: "/inpatients/ot_management"
+    })
+  })
+
+  $("#btn-ot-frontdate").on('click',function(){
+    var doctor_id = $("#sidebar_doctors_ot .active").find('a').attr('data-user-id')
+    // var active_tab = $(".tab_active").find(".active").attr('data-tab-id')
+    $.ajax({
+      type: "GET",
+      dataType: "script",
+      data: {
+        current_date: "<%= @current_date.tomorrow %>",
+        active_doctor: doctor_id,
+        active_tab: "All",
+        specialty_id: "<%= @selected_specialty %>",
+        users_list: $(".toggle-sidebar-users").attr('data-toggle-position'),
+        ot_rooms_dropdown_id: "<%= params[:ot_rooms_dropdown_id] %>"
+      },
+      url: "/inpatients/ot_management"
+    })
+  })
+
+  $("#btn-ot-today").on('click',function(){
+    var doctor_id = $("#sidebar_doctors_ot .active").find('a').attr('data-user-id')
+    // var active_tab = $(".tab_active").find(".active").attr('data-tab-id')
+    $.ajax({
+      type: "GET",
+      dataType: "script",
+      data: {
+        current_date: "<%= Date.current %>",
+        active_doctor: doctor_id,
+        active_tab: "All",
+        specialty_id: "<%= @selected_specialty %>",
+        users_list: $(".toggle-sidebar-users").attr('data-toggle-position'),
+        ot_rooms_dropdown_id: "<%= params[:ot_rooms_dropdown_id] %>"
+      },
+      url: "/inpatients/ot_management"
+    })
+  })
+
+  $("#btn-ot-management-refresh").on('click', function(){
+    var doctor_id = $("#sidebar_doctors_ot .active").find('a').attr('data-user-id')
+    var active_tab = $(".tab_active").find(".active").attr('data-tab-id')
+    var ot_id = $(".ot_today").find('.active').find('.active-ot').attr('data-ot-id')
+    var specialty_id = "<%= @selected_specialty %>";
+    refresh_ot_management(doctor_id,active_tab,ot_id,"<%= @current_date %>", specialty_id)
+  })
+
+  $(".ot_specialty_dropdown_options").on('click',function(){
+    var doctor_id = $("#sidebar_doctors_ot .active").find('a').attr('data-user-id')
+    var active_tab = $(".tab_active").find(".active").attr('data-tab-id')
+    var selected_specialty = $(this).attr('data-id');
+
+    $.ajax({
+      type: "GET",
+      dataType: "script",
+      data: {
+        specialty_id: selected_specialty,
+        current_date: "<%= @current_date %>",
+        active_user: doctor_id,
+        active_tab: active_tab,
+        users_list: $(".toggle-sidebar-users").attr('data-toggle-position'),
+        ot_rooms_dropdown_id: "<%= params[:ot_rooms_dropdown_id] %>"
+      },
+      url: "/inpatients/ot_management"
+    })
+  })
+
+  jQuery("#search_ot").autocomplete({
+        minLength: 4,
+        source: function(request, response) {
+            jQuery.ajax({
+                dataType: "json",
+                type : 'get',
+                url: '/ots/search_ot_list',
+                //data: {searchpatient: params, remote: "true" },
+                data: {
+                    current_date: '<%= @current_date %>',
+                    source: "list",
+                    specialty_id: "<%= @selected_specialty %>",
+                    active_doctor: $(".sidebar-users-filter-ot.active").find("a").attr("data-user-id"),
+                    active_tab: $(".tab_active").find(".active").attr('data-tab-id'),
+                    q: $( "#search_ot").val()
+                },
+                success: function(data) {
+                    //jQuery('#searchpatientkeyword').removeClass('ui-autocomplete-loading')
+                    console.log("data",data)
+                    response( data)
+                },
+                error: function(data) {
+                    //jQuery('#searchpatientkeyword').removeClass('ui-autocomplete-loading');
+                }
+            })
+        },
+        select: function( event, ui ) {
+            console.log("UI",ui.item["id"])
+            var classname = $(".tab_active").find(".active").attr('data-tab-id').toLowerCase()
+            var idname;
+            if (classname == "admitted"){
+                idname = $("#"+classname+"_patient_list")
+            }
+            else {
+                idname = $("#"+classname+"_ot_list")
+            }
+
+            $(idname).find("[data-ot-id='" + ui.item["id"] + "']").trigger('click').addClass('active-ot');
+        },
+        close: function() {
+
+        }
+    })
+})

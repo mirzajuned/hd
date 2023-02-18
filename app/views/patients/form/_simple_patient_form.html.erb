@@ -1,0 +1,493 @@
+<%= hidden_field_tag "patient_other_identifier[mr_no]", @patient.patient_mrn %>
+<% if (['admissions','ots'].include?(params[:controller]) && (@patient.try(:reg_status) == false))  %>
+  <%= hidden_field_tag "patient[reg_facility_id]", current_facility.id.to_s, {} %>
+  <%= hidden_field_tag "patient[reg_date]", Date.current, {} %>
+  <%= hidden_field_tag "patient[reg_time]", Time.current, {} %>
+  <%= hidden_field_tag "patient[reg_status]", true, {} %>
+<% end %>
+<% if @patient.camp_patient_identifier.present? %>
+  <%= hidden_field_tag "patient[camp_patient_identifier]", @patient.camp_patient_identifier, { class: 'form-control p7_10', validate: true} %>
+  <%= hidden_field_tag "patient[camp_patient_id]", @patient.camp_patient_id, { class: 'form-control p7_10', validate: true} %>
+<% end %>
+<div class="row mb10">
+  <div class="col-md-12">
+    <div class="col-md-7"></div>
+    <div class="col-md-5">
+      <span class='required-message' style="font-size: 12px;"><b style="color:#a94442">Patient Name</b> and <b style="color:#a94442">Mobile Number</b> are <b style="color:#a94442">Compulsory.</b></span>
+    </div>
+  </div>
+  <div class="col-sm-3">
+    <%= hidden_field_tag "patient[patientassets_attributes][0][asset_path_data_uri]", @patient&.patientassets[0].try(:asset_path_data_uri) %>
+    <% if @patient.patientassets[0].try(:asset_path).present? %>
+      <%= file_field_tag "patient[patientassets_attributes][0][asset_path]", { value: "~/#{@patient.patientassets[0].asset_path.try(:file).try(:filename)}", style: "visibility:hidden;width:0px;height:0px;", id: 'upload-patient-picture', onchange: "readURL(this)" } %>
+    <% else %>
+      <%= file_field_tag "patient[patientassets_attributes][0][asset_path]", { style: "visibility:hidden;width:0px;height:0px;", id: 'upload-patient-picture', onchange: "readURL(this)" } %>
+    <% end %>
+    <div class="col-sm-12">
+      <b style="color:#000;">Patient Image</b>&nbsp;
+      <a href="" class="clear-patient-asset" id="image_clear_button" style="font-size: 10px;">Clear</a>
+    </div>
+    <div class="col-sm-12">
+      <span class="btn btn-default btn-patient-asset" id="results" style="padding:2px;">
+        <% if @patient&.patientassets.count > 0 && @patient.patientassets[0].asset_path_url.present? %>
+          <% patient_asset = (@patient.patientassets[-1].asset_path_url  ) %>
+        <% else %>
+          <% patient_asset = "photos/no_picture_available.png" %>
+        <% end %>
+        <%= image_tag(patient_asset, width: "75", height: "75", class: "thumb", onclick: "$('#upload-patient-picture').click();") %>
+      </span>
+      <div class="btn-group mt5" title="Camera">
+        <a class="btn btn-xs btn-primary" style="background-color: transparent; color: black;" id="open_webcam">
+          <span><i class="fa fa-camera"></i></span>
+        </a>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-9">
+    <div class="row mb5">
+      <div class="col-sm-8">
+        <b style="color:#000;">Patient Name</b><br/>
+        <%= text_field_tag "patient[fullname]", @patient.fullname, { class: 'form-control patient-fullname p5_10', placeholder: "Patient Name", validate: true} %>
+        <div id="patient_fullname_error"></div>
+      </div>
+      <div class="col-sm-4">
+        <b style="color:#000;">VSS Number</b><br/>
+        <%= text_field_tag "patient[social_security_number]", @patient.social_security_number, { class: 'form-control patient-social_security_number p5_10', placeholder: "VSS Number" } %>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-sm-4" id="mobilenumber-number">
+        <b style="color:#000;">Contact</b><br/>
+        <%= hidden_field_tag "patient[mobilenumber_country_code]",@patient.try(:mobilenumber_country_code) %>
+        <%= hidden_field_tag "patient[mobilenumber_flag_code]",@patient.try(:mobilenumber_flag_code)  %>
+        <%= text_field_tag "patient[mobilenumber]", @patient.mobilenumber, { minlength: Facility.find(current_facility.id).country.minimum_phone_no_length.to_i, maxlength: Facility.find(current_facility.id).country.maximum_phone_no_length.to_i, class: 'form-control patient-mobilenumber p5_10', placeholder: "Mobile Number", validate: true, onkeypress: 'return event.charCode >= 48 && event.charCode <= 57' } %>
+      </div>
+      <div class="col-sm-8">
+        <div class="row mb10" id="whatsapp-number">
+          <div class="col-sm-7">
+            <b style="color:#000;">Whatsapp Number</b>
+
+            <%= hidden_field_tag "patient[whatsapp_country_code]",@patient.try(:whatsapp_country_code) %>
+            <%= hidden_field_tag "patient[whatsapp_flag_code]",@patient.try(:whatsapp_flag_code)  %>
+            <%= text_field_tag "patient[whatsappnumber]", @patient.whatsappnumber, { minlength: 0, maxlength: 10, class: 'form-control patient-whatsapp p5_10', placeholder: "Whatsapp Number", validate: false, onkeypress: 'return event.charCode >= 48 && event.charCode <= 57' } %>
+            <div id="valid-msg" class="hide">✓ Valid</div>
+            <div id="error-msg" class="hide"></div>
+          </div>
+
+          <div class="col-md-5" style="padding-top:25px;">
+            <input type="checkbox" id="patient_same_as_mobilenumber" name="patient[same_as_mobilenumber]" <%= @patient.try(:same_as_mobilenumber) == true ? "checked" : nil %> value= <%= @patient.try(:same_as_mobilenumber) == true ? true : false %>>
+            <input type="hidden" id="patient_same_as_mobilenumber_false" name="patient[same_as_mobilenumber]" value= <%= @patient.try(:same_as_mobilenumber) == true ? true : false %>>
+            <b style="color:#000;">Same as contact number</b>
+          </div>
+        </div>
+
+      </div>      
+    </div>
+    <div class="row">
+      <div class="col-sm-4">
+        <!-- <b style="color:#000;">Contact</b><br/> -->
+        <%#= text_field_tag "patient[mobilenumber]", @patient.mobilenumber, { minlength: Facility.find(current_facility.id).country.minimum_phone_no_length.to_i, maxlength: Facility.find(current_facility.id).country.maximum_phone_no_length.to_i, class: 'form-control patient-mobilenumber p5_10', placeholder: "Mobile Number", validate: true, onkeypress: 'return event.charCode >= 48 && event.charCode <= 57' } %>
+      </div>
+      <div class="col-sm-4">
+        <b style="color:#000;"></b><br/>
+        <%= text_field_tag "patient[secondarymobilenumber]", @patient.secondarymobilenumber, { maxlength: 10, class: 'form-control patient-secondarymobilenumber p5_10', placeholder: "Secondary Number", onkeypress: 'return event.charCode >= 48 && event.charCode <= 57' } %>
+      </div>
+      <div class="col-sm-4">
+        <b style="color:#000;"></b><br/>
+        <%= text_field_tag "patient[email]", @patient.email, { class: 'form-control patient-email p5_10', placeholder: "Email"} %>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="row mb10">
+  <div class="col-sm-2" style="border-right:1px solid #eee;">
+    <div class="row">
+      <div class="col-sm-12">
+        <b style="color:#000;">Gender</b>
+      </div>
+      <% genders = ['Male', 'Female', 'Transgender'] %>
+      <% genders.each do |gender| %>
+        <div class="col-sm-12">
+          <div class="rdio rdio-primary">
+            <input id="gender_<%= gender %>" class="patient-gender" name="patient[gender]" type="radio" value="<%= gender %>" <%= 'checked' if @patient.gender == gender %> />
+            <label for="gender_<%= gender %>" style='font-size:12px;'><%= gender %></label>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+  <div class="col-sm-4" style="border-right:1px solid #eee;">
+    <div class="row">
+      <div class="col-sm-12">
+        <b style="color:#000;">DOB</b>&emsp;<span class="dob-error-message"></span>
+        <a href="" class="clear-date" style="display:none;font-size: 10px;margin-top: -7px;">Clear</a>
+      </div>
+    </div>
+    <div class="row mb10">
+      <div class="col-sm-12">
+        <% if @patient.dob.present? %><% @dob = @patient.dob.strftime("%d/%m/%Y") %><% else %><% @dob = "" %><% end %>
+        <div class="input-group">
+          <span class="input-group-addon" style="padding: 5px 10px;"><i class="glyphicon glyphicon-calendar"></i></span>
+          <%= text_field_tag "patient[dob]", @dob, { maxlength: 10, class: 'form-control patient-dob p5_10', placeholder: "dd/mm/yyyy" } %>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-sm-2">
+        <b style="color:#000;">Age</b>
+      </div>
+      <div class="col-sm-5">
+        <% if @patient.age.present? || @patient.age_month.present? %>
+          <% @calculated_age = @patient.calculate_age(true)[0] %>
+        <% end %>
+        <%= text_field_tag 'patient[age]', @calculated_age, { maxlength: 3, class: 'form-control patient-age p5_10', placeholder: "Years", onkeypress: 'return event.charCode >= 48 && event.charCode <= 57' } %>
+      </div>
+      <div class="col-sm-5">
+        <% if @patient.age_month.present? %>
+          <% @calculated_age_month = @patient.calculate_age(true)[1] %>
+        <% end %>
+        <%= text_field_tag 'patient[age_month]', @calculated_age_month, { maxlength: 3, class: 'form-control patient-age_month age_month p5_10', placeholder: 'Months', onkeypress: 'return event.charCode >= 48 && event.charCode <= 57' } %>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3" style="border-right:1px solid #eee;">
+    <div class="row">
+      <div class="col-sm-12">
+        <b style="color:#000;">Patient Type</b>
+      </div>
+    </div>
+    <div class="row mb10">
+      <div class="col-sm-12">
+        <%= select_tag "patient[patient_type_id]", options_for_select(@patient_type, selected: @patient&.patient_type_id), { include_blank: 'Select', class: 'form-control patient-patient_type_id p5_10', style: 'height: 30px;' } %>
+      </div>
+    </div>
+    <div class="row show-patient-type-comment mb10" style="display: none;">
+      <div class="col-sm-12">
+        <%= text_field_tag "patient[patient_type_comment]", @patient.patient_type_comment, { class: 'form-control patient-patient_type_comment p5_10', placeholder: "Comment"} %>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="row">
+      <div class="col-sm-12">
+        <b style="color:#000;">Occupation</b>
+      </div>
+    </div>
+    <div class="row mb10">
+      <div class="col-sm-12">
+        <%= select_tag "patient[occupation]", options_for_select(@occupation_list, selected: @patient&.occupation), { include_blank: 'Select', class: 'form-control patient-occupation-dropdown p5_10', style: 'height: 30px;' } %>
+      </div>
+    </div>
+    <div class="row mb10" style="border-top:1px solid #eee;">
+      <div class="col-sm-10 col-sm-offset-2">
+        <div class="ckbox ckbox-primary mt10">
+          <input type="hidden" name="patient[one_eyed]" value='No'>
+          <% one_eyed = @patient&.one_eyed == "Yes" ? true : false %>
+          <%= check_box_tag 'patient[one_eyed]', "Yes", one_eyed, {id: "one_eyed_patient"} %>
+          <label for="one_eyed_patient">One Eyed</label>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="row mb10">
+  <div class="col-md-12">
+    <span class="patient_address_label"><b style="color:#000;">Address</b></span>
+    <a href="" class="clear-commune" style="display:none;font-size: 10px;margin-top: -7px;">Clear</a>
+  </div>
+  <div class="col-sm-4">
+    <%= text_field_tag "patient[city]", @patient.city, { id: 'search_city', validate: true, class: 'form-control patient-city patient-address p5_10', placeholder: "City"} %>
+  </div>
+  <div class="col-sm-4">
+    <%= text_field_tag "patient[district]", @patient.district, { id: 'search_district', validate: true, class: 'form-control patient-district patient-address p5_10', placeholder: "District" } %>
+  </div>
+  <div class="col-sm-4">
+    <%= text_field_tag "patient[commune]", @patient.commune, {id: 'search_commune', validate: true, class: 'form-control patient-commune patient-address p5_10', placeholder: "Commune"} %>
+  </div>
+</div>
+<div class="row mb10">
+  <div class="col-sm-6">
+    <%= text_field_tag "patient[address_1]", @patient.address_1, { class: 'form-control patient-address_1 p5_10', placeholder: "Address 1"} %>
+  </div>
+  <div class="col-sm-6">
+    <%= text_field_tag "patient[address_2]", @patient.address_2, { class: 'form-control patient-address_2 p5_10', placeholder: "Address 2"} %>
+  </div>
+</div>
+<div class="row mb10">
+  <div class="col-sm-2">
+    <b style="color:#000;">Emergency Contact</b>
+  </div>
+  <div class="col-sm-3" style="width:27.77%;">
+    <%= text_field_tag "patient[emergencycontactname]", @patient.emergencycontactname, { class: 'form-control patient-emergencycontactname p5_10', placeholder: "Name" } %>
+  </div>
+  <div class="col-sm-3" style="width:27.77%;">
+    <%= text_field_tag "patient[emergencymobilenumber]", @patient.emergencymobilenumber, { minlength: Facility.find(current_facility.id).country.minimum_phone_no_length.to_i, maxlength: Facility.find(current_facility.id).country.maximum_phone_no_length.to_i, class: 'form-control patient-emergencymobilenumber p5_10', placeholder: "Number", onkeypress: 'return event.charCode >= 48 && event.charCode <= 57' } %>
+  </div>
+  <div class="col-sm-3" style="width:27.77%;">
+    <%= select_tag "patient[emergency_relation]", options_for_select(['Father', 'Mother', 'Brother', 'Sister', 'Relative', 'Friend', 'Acquaintance'], selected: @patient&.emergency_relation), { include_blank: 'Select Relation', class: 'form-control patient-emergency_relation p5_10', style: 'height: 30px;' } %>
+  </div>
+</div>
+<!-- Patient Referral Form -->
+<% if @initial_referral_type.present? %>
+  <div class="row mb10">
+    <div class="col-sm-4">
+      <b style="color:#000;">Patient Referral Source</b>
+    </div>
+    <div class="col-sm-8">
+      <% if @initial_referral_type.referral_type_id != "FS-RT-0010" %>
+        <%= @initial_referral_type.referral_type.name %><br/>
+        <%= render partial: '/patient_referral_types/views/sub_referral_view.html.erb', locals: { sub_referral_type: @initial_referral_type.sub_referral_type } %>
+      <% else %>
+        <%= @initial_referral_type.sub_referral_type.name %>
+      <% end %>
+    </div>
+  </div>
+<% end %>
+<% if params[:controller] == "appointments" && @initial_referral_type.try(:referral_type_id) != "FS-RT-0010" %>
+  <div class="row mb10">
+    <div class="col-sm-4">
+      <b style="color:#000;"><%= @initial_referral_type.present? ? 'Appointment' : 'Patient' %> Referral Source</b>
+    </div>
+    <% if params[:patient_origin] == 'camp' %>
+      <div class="col-sm-3">
+        <%= select_tag "patient_referral_type[referral_type_id]", options_for_select(@referral_types.pluck(:name, :id), selected: @camp_referral_type_id), {include_blank: true, class: 'patient-referral_type_id form-control p7_10' } %>
+      </div>
+      <div class="col-sm-3 sub-referral-types-section" style="display: none;">
+        <div id="sub_referral" data-value-id="<%= @sub_referral[0].to_s%>" data-display-id="<%= @sub_referral[1]%>"> </div>
+        <select name="patient_referral_type[sub_referral_type_id]" id="patient_referral_type_sub_referral_type_id" class="sub-referral-types form-control p7_10">
+        </select>
+      </div>
+    <% else %>
+      <div class="col-sm-3">
+        <%= select_tag "patient_referral_type[referral_type_id]", options_for_select(@referral_types.pluck(:name, :id), selected: @patient_referral_type.try(:id)), {include_blank: true, class: 'patient-referral_type_id form-control p5_10' } %>
+      </div>
+      <div class="col-sm-3 sub-referral-types-section" style="display: none;">
+        <select name="patient_referral_type[sub_referral_type_id]" id="patient_referral_type_sub_referral_type_id" class="sub-referral-types form-control p5_10">
+        </select>
+      </div>
+    <% end %>
+    <div class="col-sm-2">
+      <button id="btn-add-sub-referral-type" class="btn btn-link btn-xs"><i class='fa fa-plus'></i> Add</button>
+    </div>
+  </div>
+  <div id='patient_referral_form'>
+    <!-- In Case of PatientReferralType Relative -->
+    <%#= render partial: 'appointments/form/relative_referral_form.html.erb' %>
+  </div>
+<% end %>
+
+<style type="text/css">
+  #error-msg {
+    color: red;
+  }
+  #valid-msg {
+    color: #00C900;
+  }
+  input.error {
+    border: 1px solid #FF7C7C;
+  }
+  .hide {
+    display: none;
+  }
+  .patient-dob, #patient_registration_source_source_date {
+    background-color: #fff !important;
+    cursor: pointer !important;
+  }
+
+  input.valid, select.valid {
+    border-color: #ccc;
+    box-shadow: none;
+    background-image: none;
+  }
+
+  #patient_firstname-error, #patient_mobilenumber-error {
+    margin: 0px !important;
+  }
+
+  .bigdrop {
+    width: 200px !important;
+  }
+
+  .ui-menu-item a.ui-state-focus {
+    background-color: #929090;
+    color: #fff;
+  }
+  .intl-tel-input .country-list{
+    z-index: 999 !important;
+  }
+  #patient_same_as_mobilenumber{
+    width: auto;
+    display: inline-block;
+  }
+  .intl-tel-input.allow-dropdown input, .intl-tel-input.allow-dropdown input[type=text], .intl-tel-input.allow-dropdown input[type=tel], .intl-tel-input.separate-dial-code input, .intl-tel-input.separate-dial-code input[type=text], .intl-tel-input.separate-dial-code input[type=tel]{
+    padding-left: 80px !important;
+  }
+  .intl-tel-input.allow-dropdown .selected-flag, .intl-tel-input.separate-dial-code .selected-flag{
+    width: 80px !important;
+  }
+</style>
+<script type="text/javascript">
+  $("#patient_whatsappnumber").keyup(function(){
+    if(this.value.length == 0){
+      $('#error-msg').html('')
+      $('#error-msg').addClass('hide')
+      $('#valid-msg').addClass('hide')
+      $('.btn-success').attr('disabled', false)
+    }
+    if(this.value.length == 1){
+      $('.btn-success').attr('disabled', true)
+    }
+    code = $("#whatsapp-number .intl-tel-input .flag-container .selected-flag .selected-dial-code")[0].innerHTML
+    full_number = code+this.value
+    if(isValidNumber(full_number) == false){
+      $('.btn-success').attr('disabled', true)
+      $('#valid-msg').addClass('hide')
+      $('#error-msg').removeClass('hide')
+      $('#error-msg').html('Invalid Number')
+    }
+    else{
+      $('#error-msg').html('')
+      $('#error-msg').addClass('hide')
+      $('#valid-msg').removeClass('hide')
+      $('.btn-success').attr('disabled', false)
+    }
+  })
+  $("#patient_same_as_mobilenumber").change(function(){
+    code = $("#whatsapp-number .intl-tel-input .flag-container .selected-flag .selected-dial-code")[0].innerHTML
+    full_number = code+$("#patient_mobilenumber").val();
+    if($("#patient_same_as_mobilenumber").is(':checked')){
+      if(isValidNumber(full_number) == false){
+        $('.btn-success').attr('disabled', true)
+        $('#valid-msg').addClass('hide')
+        $('#error-msg').removeClass('hide')
+        $('#error-msg').html('Invalid Number')
+      }
+      else{
+        $('#error-msg').html('')
+        $('#error-msg').addClass('hide')
+        $('#valid-msg').removeClass('hide')
+        $('.btn-success').attr('disabled', false)
+      }
+    }
+    else{
+      $('#error-msg').html('')
+      $('#error-msg').addClass('hide')
+      $('#valid-msg').addClass('hide')
+    }
+  })
+
+  function isValidNumber(number) {
+    return new libphonenumber.parsePhoneNumber(number).isValid()
+  }
+
+  var auto_facility = "<%= current_facility.try(:country).try(:abbreviation1).try(:downcase) %>"
+  if(auto_facility == "us"){
+    var second_country = "in"
+  }
+  else{
+    var second_country = "us"
+  }
+  $("#patient_mobilenumber").intlTelInput({
+    formatOnInit: true,
+    separateDialCode: true,
+    utilsScript: "../assets/libphonenumber/utils.js",
+    preferredCountries: [( auto_facility || "in" ), second_country]
+  });
+
+  $("#patient_whatsappnumber").intlTelInput({
+    formatOnInit: true,
+    separateDialCode: true,
+    utilsScript: "../assets/libphonenumber/utils.js",
+    preferredCountries: [( auto_facility || "in" ), second_country]
+  });
+
+  if($("#patient_same_as_mobilenumber").is(':checked')){
+    $("#patient_whatsappnumber").attr('disabled',true)
+  }
+
+  <% if @patient.persisted? %>
+    var mobile_code = "<%= @patient.mobilenumber_country_code %>"
+    var mobile_flag = "<%= @patient.mobilenumber_flag_code %>"
+    var whatsapp_code = "<%= @patient.whatsapp_country_code %>"
+    var whatsapp_flag = "<%= @patient.whatsapp_flag_code %>"
+    $("#patient_whatsapp_country_code").val(mobile_code)
+    $("#patient_whatsapp_flag_code").val(mobile_flag)
+    if(whatsapp_code != '' && whatsapp_flag != ''){
+      $("#patient_mobilenumber_country_code").val(whatsapp_code)
+      $("#patient_mobilenumber_flag_code").val(whatsapp_flag)
+      $("#whatsapp-number .intl-tel-input .flag-container .selected-flag .iti-flag").addClass(whatsapp_flag)
+      $("#whatsapp-number .intl-tel-input .flag-container .selected-flag .selected-dial-code").html(whatsapp_code);
+    }
+    $("#mobilenumber-number .intl-tel-input .flag-container .selected-flag .iti-flag").addClass(mobile_flag)
+    $("#mobilenumber-number .intl-tel-input .flag-container .selected-flag .selected-dial-code").html(mobile_code);
+  <% end %>
+  $("#patient_same_as_mobilenumber").change(function(){
+    var  patient_mobilenumber_country_code = $("#mobilenumber-number .intl-tel-input .flag-container .selected-flag .selected-dial-code").html();
+    if($("#patient_same_as_mobilenumber").is(':checked')){
+
+      var patient_mobilenumber_country_flag = $("#mobilenumber-number .intl-tel-input .flag-container .selected-flag .iti-flag")[0].className.split(" ")[1]
+      var patient_whatsapp_country_flag = $("#whatsapp-number .intl-tel-input .flag-container .selected-flag .iti-flag")[0].className.split(" ")[1]
+      $("#whatsapp-number .intl-tel-input .flag-container .selected-flag .iti-flag").removeClass(patient_whatsapp_country_flag)
+      $("#whatsapp-number .intl-tel-input .flag-container .selected-flag .iti-flag").addClass(patient_mobilenumber_country_flag)
+
+      $("#whatsapp-number .intl-tel-input .flag-container .selected-flag .selected-dial-code").html(patient_mobilenumber_country_code);
+      $("#patient_whatsappnumber").val($("#patient_mobilenumber").val());
+      updateBothCountryCode(patient_mobilenumber_country_code)
+      $("#patient_whatsappnumber").attr('disabled', true)
+      $("#patient_same_as_mobilenumber").val(true)
+      $("#patient_same_as_mobilenumber").attr("checked", true)
+      $("#patient_same_as_mobilenumber_false").val(true)
+    }
+    else{
+      var patient_whatsappnumber_country_flag = $("#whatsapp-number .intl-tel-input .flag-container .selected-flag .iti-flag")[0].className.split(" ")[1]
+      $("#whatsapp-number .intl-tel-input .flag-container .selected-flag .iti-flag").removeClass(patient_whatsappnumber_country_flag)
+      var default_value = $("#mobilenumber-number .intl-tel-input .flag-container .selected-flag .selected-dial-code").html();
+      $("#whatsapp-number .intl-tel-input .flag-container .selected-flag .iti-flag").addClass(auto_facility);
+      $("#whatsapp-number .intl-tel-input .flag-container .selected-flag .selected-dial-code").html( default_value || "+91");
+      $("#patient_whatsappnumber").val('');
+      $("#patient_whatsappnumber").attr('disabled', false)
+      $("#patient_same_as_mobilenumber").val(false)
+      $("#patient_same_as_mobilenumber").attr("checked", false)
+      $("#patient_same_as_mobilenumber_false").val(false)
+    }
+  })
+
+  $("#patient_mobilenumber").keyup(function(){
+    updateCountryCode()
+  })
+
+  $("#patient_whatsappnumber").keyup(function(){
+    var whatsapp_number_code = $("#whatsapp-number .intl-tel-input .flag-container .selected-flag .selected-dial-code")[0].innerHTML
+    var whatsapp_number_flag = $("#whatsapp-number .intl-tel-input .flag-container .selected-flag .iti-flag")[0].classList[1]
+    $("#patient_whatsapp_country_code").val(whatsapp_number_code)
+    $("#patient_whatsapp_flag_code").val(whatsapp_number_flag)
+  })
+
+  function updateBothCountryCode(patient_mobilenumber_country_code){
+    var whatsapp_country_code = $("#mobilenumber-number .intl-tel-input .flag-container .selected-flag .selected-dial-code")[0].innerHTML
+    var whatsapp_flag_code = $("#mobilenumber-number .intl-tel-input .flag-container .selected-flag .iti-flag")[0].classList[1]
+    $("#patient_whatsapp_country_code").val(whatsapp_country_code)
+    $("#patient_whatsapp_flag_code").val(whatsapp_flag_code)
+  }
+  
+  function updateCountryCode(){
+    var mobile_number_code = $("#mobilenumber-number .intl-tel-input .flag-container .selected-flag .selected-dial-code")[0].innerHTML
+    var mobile_number_flag = $("#mobilenumber-number .intl-tel-input .flag-container .selected-flag .iti-flag")[0].classList[1]
+    $("#patient_mobilenumber_country_code").val(mobile_number_code)
+    $("#patient_mobilenumber_flag_code").val(mobile_number_flag)
+  }
+
+  $("#mobilenumber-number .country").click(function(){
+    var mobile_number_code = this.dataset.dialCode
+    var mobile_number_flag = this.dataset.countryCode
+    $("#patient_mobilenumber_country_code").val('+'+mobile_number_code)
+    $("#patient_mobilenumber_flag_code").val(mobile_number_flag)
+  })
+
+  $("#whatsapp-number .country").click(function(){
+    var whatsapp_country_code = this.dataset.dialCode
+    var whatsapp_flag_code = this.dataset.countryCode
+    $("#patient_whatsapp_country_code").val('+'+whatsapp_country_code)
+    $("#patient_whatsapp_flag_code").val(whatsapp_flag_code)
+  })
+</script>

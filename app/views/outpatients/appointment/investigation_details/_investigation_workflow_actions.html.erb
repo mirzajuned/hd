@@ -1,0 +1,143 @@
+<!-- Note: Any Changes Here May also be needed in Investigation Module file with the same name -->
+<% if investigation.state == "advised" %>
+
+  <% display_action = OrganisationsSetting.find_by(organisation_id: current_user.try(:organisation_id)).try(:disable_default_investigation) ? 'none' : 'inline-block' %>
+
+  <% if @counsellors.count > 0 or current_user.role_ids.include?499992366 %>
+    <%= link_to investigation_investigation_details_counselling_done_path(investigation_id: investigation.id.to_s, state: 'counselled'), class: "btn btn-xs btn-success btn-success-transparent counselled", style: "display: #{display_action}", data: { remote: true,investigation_id: investigation.id.to_s} do %>Counselled<% end %>
+    <% if !current_facility.counsellor_counsels_investigation %>
+     <%= link_to investigation_investigation_details_payment_done_path(investigation_id: investigation.id.to_s, state: 'payment_taken'), class: "btn btn-xs btn-success btn-success-transparent payments", style: "display: #{display_action}", data: { remote: true,investigation_id: investigation.id.to_s } do %>Payment Taken<% end %>
+    <% end %>
+  <% else %>
+    <%= link_to investigation_investigation_details_payment_done_path(investigation_id: investigation.id.to_s, state: 'payment_taken'), class: "btn btn-xs btn-success btn-success-transparent payments", style: "display: #{display_action}", data: { remote: true,investigation_id: investigation.id.to_s } do %>Payment Taken<% end %>
+  <% end %>
+  <%= link_to investigation_investigation_details_investigation_performed_form_path(investigation_id: investigation.id.to_s, state: 'performed'), class: "btn btn-xs btn-info btn-info-transparent", style: "display: #{display_action}", data: { remote: true, 'toggle': 'modal', 'target': '#investigation-modal' } do %>Performed<% end %>
+  <%= link_to investigation_investigation_details_investigation_declined_path(investigation_id: investigation.id.to_s, state: 'declined'), class: "btn btn-xs btn-danger btn-danger-transparent", style: "display: #{display_action}", data: { remote: true } do %>Declined<% end %>
+  <%= link_to investigation_investigation_details_investigation_removed_form_path(investigation_id: investigation.id.to_s, state: 'removed'), class: "btn btn-xs btn-danger btn-danger-transparent", style: "display: #{display_action}", data: { remote: true, 'toggle': 'modal', 'target': '#investigation-modal' } do %>Remove<% end %>
+<% elsif investigation.state == "counselled" %>
+
+  <%= link_to investigation_investigation_details_payment_done_path(investigation_id: investigation.id.to_s, state: 'payment_taken'), class: "btn btn-xs btn-success btn-success-transparent payments", data: { remote: true,investigation_id: investigation.id.to_s } do %>Payment Taken<% end %>
+  <%= link_to investigation_investigation_details_investigation_declined_path(investigation_id: investigation.id.to_s, state: 'declined'), class: "btn btn-xs btn-danger btn-danger-transparent", data: { remote: true } do %>Declined<% end %>
+  <%= link_to investigation_investigation_details_investigation_removed_form_path(investigation_id: investigation.id.to_s, state: 'removed'), class: "btn btn-xs btn-danger btn-danger-transparent", data: { remote: true, 'toggle': 'modal', 'target': '#investigation-modal' } do %>Remove<% end %>
+  <% if investigation.counselled_by == current_user.id %>
+    <%= link_to investigation_investigation_details_undo_state_path(investigation_id: investigation.id.to_s, state: 'payment_taken'), class: "btn btn-xs btn-danger btn-danger-transparent", data: { remote: true } do %>Undo<% end %>
+  <% end %>
+
+<% elsif investigation.state == "payment_taken" %>
+
+  <%= link_to investigation_investigation_details_sent_outside_path(investigation_id: investigation.id.to_s, state: 'sent_outside'), class: "btn btn-xs btn-orange btn-orange-transparent", data: { remote: true } do %>Send Outside<% end %> |
+  <!-- <button class="btn btn-xs btn-success btn-success-transparent">Start Test</button> -->
+  <%= link_to investigation_investigation_details_start_test_path(investigation_id: investigation.id.to_s, state: 'test_started'), class: "btn btn-xs btn-success btn-success-transparent", data: { remote: true } do %>Start Test<% end %>
+  <% if investigation.collected_by == current_user.id %>
+    <%= link_to investigation_investigation_details_undo_state_path(investigation_id: investigation.id.to_s, state: 'payment_taken'), class: "btn btn-xs btn-danger btn-danger-transparent", data: { remote: true } do %>Undo<% end %>
+  <% end %>
+
+<% elsif ["performed","template_created","reviewed"].include?investigation.state  %>
+
+  <div class="dropdown" style="display: inline;">
+    <button type="button" class="btn btn-primary btn-primary-transparent btn-xs" title="Patient File Manager" id="patient-file-manager-dropdown" data-toggle="dropdown">
+      <i class="fa fa-user"></i> Upload
+    </button>
+    <ul class="dropdown-menu" role="menu" aria-labelledby="patient-file-manager-dropdown">
+      <!-- <li><a target="_blank" href="/paperrecords/upload_patient_asset?patientid=<%#= @patient.id.to_s%>&investigation_id=<%#= investigation.id.to_s%>&type=<%#= investigation._type.split("::")[1].downcase%>"> <i class="glyphicon glyphicon-cloud-upload"></i>Upload Paper</a></li> -->
+
+      <li><%= link_to new_patient_summary_asset_upload_path(investigation_id: investigation.id.to_s), target: '_blank' do %><i class="glyphicon glyphicon-cloud-upload"></i>Upload Paper<% end %></li>
+
+      <li><%= link_to patient_summary_asset_uploads_new_dicom_upload_path(investigation_id: investigation.id.to_s), target: '_blank' do %><i class="glyphicon glyphicon-cloud-upload"></i>Upload Dicom<% end %></li>
+
+        <!-- <li><a target="_blank" href="/dicomrecords/upload_patient_asset?patientid=<%#= @patient.id.to_s%>&investigation_id=<%#= investigation.id.to_s%>&type=<%#= investigation._type.split("::")[1].downcase%>"> <i class="glyphicon glyphicon-cloud-upload"></i> Upload Dicom</a></li> -->
+      </ul>
+    </div>
+    <% if investigation.try(:ehr_investigation_record_id) %>
+        <a class="btn btn-xs btn-success btn-success-transparent edit-template" data-template-id="<%= investigation.ehr_investigation_record_id.to_s%>" data-remote="true" href="/ehr_investigation/records/<%= investigation.ehr_investigation_record_id.to_s%>"><i class="fa fa-edit"></i> Template</a>
+    <% else %>
+        <a class="btn btn-xs btn-success btn-success-transparent create-template" data-investigation-id="<%= investigation.id.to_s%>" data-remote="true" href="/ehr_investigation/records/new?investigation_id=<%= investigation.id%>">Template</a>
+    <% end %>
+
+    <% if (["template_created","performed"].include?investigation.state) && (current_user.role_ids.include?(158965000)) %>
+        | <%= link_to investigation_investigation_details_reviewed_path(investigation_id: investigation.id, state: 'performed'), class: "btn btn-xs btn-success btn-success-transparent reviewed", data: { "investigation-id": investigation.id.to_s,remote: true } do %>Approved<% end %>
+    <% end %>
+
+    <% if investigation.state == "performed" %>
+      <% if investigation.performed_by == current_user.id %>
+        | <%= link_to investigation_investigation_details_undo_state_path(investigation_id: investigation.id, state: investigation.state), class: "btn btn-xs btn-danger btn-danger-transparent", data: { remote: true } do %>Undo<% end %>
+      <% end %>
+    <% end %>
+
+    <% if investigation.state == "reviewed" %>
+      <% if investigation.reviewed_by == current_user.id %>
+        | <%= link_to investigation_investigation_details_undo_state_path(investigation_id: investigation.id, state: investigation.state), class: "btn btn-xs btn-danger btn-danger-transparent", data: { remote: true } do %>Undo<% end %>
+      <% end %>
+    <% end %>
+
+<% elsif investigation.state == "test_started" %>
+
+  <%= link_to investigation_investigation_details_investigation_performed_form_path(investigation_id: investigation.id.to_s, state: 'performed', flag: 'inside'), class: "btn btn-xs btn-info btn-info-transparent", data: { remote: true, 'toggle': 'modal', 'target': '#investigation-modal' } do %>Performed<% end %>
+  <% if investigation.try(:test_started_by) == current_user.id %>
+    <%= link_to investigation_investigation_details_undo_state_path(investigation_id: investigation.id.to_s, state: 'test_started'), class: "btn btn-xs btn-danger btn-danger-transparent", data: { remote: true } do %>Undo<% end %>
+  <% end %>
+
+<% elsif investigation.state == "sent_outside" %>
+
+  <%= link_to investigation_investigation_details_investigation_performed_form_path(investigation_id: investigation.id.to_s, state: 'performed'), class: "btn btn-xs btn-info btn-info-transparent", data: { remote: true, 'toggle': 'modal', 'target': '#investigation-modal' } do %>Performed<% end %>
+  <% if investigation.sent_outside_by == current_user.id %>
+    <%= link_to investigation_investigation_details_undo_state_path(investigation_id: investigation.id.to_s, state: 'sent_outside'), class: "btn btn-xs btn-danger btn-danger-transparent", data: { remote: true } do %>Undo<% end %>
+  <% end %>
+
+<% elsif investigation.state == "removed" %>
+
+  <% if investigation.removed_by == current_user.id %>
+    <%= link_to investigation_investigation_details_undo_state_path(investigation_id: investigation.id.to_s, state: 'removed'), class: "btn btn-xs btn-danger btn-danger-transparent", data: { remote: true } do %>Undo<% end %>
+  <% end %>
+
+<% elsif investigation.state == "declined" %>
+
+  <% if investigation.declined_by == current_user.id %>
+    <%= link_to investigation_investigation_details_undo_state_path(investigation_id: investigation.id.to_s, state: 'declined'), class: "btn btn-xs btn-danger btn-danger-transparent", data: { remote: true } do %>Undo<% end %>
+  <% end %>
+
+<% end %>
+
+<!-- Stage 1 -->
+<!-- <button class="btn btn-xs btn-success btn-success-transparent">Performed</button> --><!-- Case 1 -->
+<!-- <button class="btn btn-xs btn-info btn-info-transparent">Perform Now</button> --><!-- Case 2 -->
+<!-- <button class="btn btn-xs btn-danger btn-danger-transparent">Remove</button><br> --><!-- Case 3 -->
+<!-- Stage 2 -->
+  <!-- (Case 1) -->
+  <!-- <button class="btn btn-xs btn-success btn-success-transparent">Investigation Template</button>
+  <button class="btn btn-xs btn-info btn-info-transparent">Upload</button>
+  <button class="btn btn-xs btn-danger btn-danger-transparent">Back</button> -->
+  <!-- Workflow Ends<br> -->
+
+  <!-- (Case 2) -->
+  <!-- <button class="btn btn-xs btn-success btn-success-transparent">Take Payment</button>
+  <button class="btn btn-xs btn-danger btn-danger-transparent">Back</button><br> -->
+  
+  <!-- (Case 3) -->
+  <!-- <button class="btn btn-xs btn-danger btn-danger-transparent">Back</button> -->
+  <!-- Workflow Ends<br> -->
+
+<!-- Stage 3 -->
+  <!-- Stage 2 (Case 3) -->
+  <!-- <button class="btn btn-xs btn-info btn-info-transparent">InHouse</button>
+  <button class="btn btn-xs btn-info btn-info-transparent">OutHouse</button><br> -->
+
+<!-- Stage 4 -->
+  <!-- Stage 3 (Case 1) -->
+  <!-- <button class="btn btn-xs btn-info btn-info-transparent">Start Test</button>
+  <button class="btn btn-xs btn-danger btn-danger-transparent">Back</button><br> -->
+
+  <!-- Stage 3 (Case 2) -->
+<!--   <button class="btn btn-xs btn-success btn-success-transparent">Investigation Template</button>
+  <button class="btn btn-xs btn-info btn-info-transparent">Upload</button>
+  <button class="btn btn-xs btn-orange btn-orange-transparent">Senior Approved</button><br> -->
+
+<!-- Stage 5 -->
+  <!-- Stage 4 Stage 3 (Case 1)  -->
+  <!-- <button class="btn btn-xs btn-success btn-success-transparent">Test Completed</button>
+  <button class="btn btn-xs btn-danger btn-danger-transparent">Back</button><br> -->
+
+<!-- Stage 5 (Case 1) -->
+<!-- <button class="btn btn-xs btn-success btn-success-transparent">Investigation Template</button>
+<button class="btn btn-xs btn-info btn-info-transparent">Upload</button>
+<button class="btn btn-xs btn-orange btn-orange-transparent">Senior Approved</button><br> -->

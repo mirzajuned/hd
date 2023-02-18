@@ -1,0 +1,60 @@
+function validate_inventory_sub_category_form() {
+  $('#inventory_sub_category_form').validate({
+    rules: {
+      "inventory_sub_category[name]": {
+        required: true,
+        remote: "/inventory/sub_categories/check_name?existing_name=<%= @inventory_sub_category.try(:name) %>"
+      },
+      "inventory_sub_category[category_id]": {
+        required: true,
+      }
+    },
+    messages: {
+      "inventory_sub_category[name]": {
+        required: "Required.",
+        remote: "Already in use."
+      },
+      "inventory_sub_category[category_id]": {
+        required: "Required."
+      }
+    },
+    errorPlacement: function (error, element) {
+      var elem = $(element);
+      error.insertAfter(element);
+      if(elem.hasClass("select2-hidden-accessible")) {
+        element = $("#select2-" + elem.attr("id") + "-container").parent();
+        error.insertAfter(element);
+      } else {
+        error.insertAfter(element);
+      }
+    }
+  });
+}
+validate_inventory_sub_category_form()
+
+$.validator.addMethod("checkFullName", function(value) {
+  var ajaxResult = null;
+  $.ajax({
+    type: "GET",
+    dataType: "JSON",
+    async: false,
+    data: {
+      category_id: $('#inventory_sub_category_category_id').val(),
+      existing_name: '<%= @inventory_sub_category.try(:name) %>',
+      name: value
+    },
+    url: "/inventory/sub_categories/check_name",
+    success: function(response) {
+      ajaxResult = response;
+    }
+  })
+  if (value.trim() == '' || ajaxResult == false) {
+    text = 'Already in use.'
+    return false
+  } else {
+    text = 'Required'
+    return true
+  }
+}, "Already in use.");
+
+$.validator.addClassRules("fullname", { required: true, checkFullName: true});

@@ -1,0 +1,89 @@
+<% partial_name = @partial_name.present? %>
+<% data = {
+  service_name: "InvestigationsData",
+  action_name: "ophthal_investigation_data",
+  partial_name: "ophthal_investigation_data"
+} %>
+<div class="row">
+  <div class="<%= partial_name ? 'col-md-6': 'col-md-12' %>">
+    <div class="panel panel-default panel_b borderd_panel">
+        <div class="panel-heading to_add_expand_button">
+          <h5 class="subtitle mb5"><i class="fa fa-bar-chart" aria-hidden="true"></i><strong>  &nbsp;&nbsp;  Ophthal Investigations</strong> &nbsp;&nbsp;
+            <a href="#" data-toggle="tooltip" data-placement="bottom" title="This Graph Shows List wise Procedure count according to Eye Regions"><i class="fa fa-info-circle" aria-hidden="true"></i></a>
+          </h5>
+          <%= render partial: "/analytics/shared/expand_button", locals:{partial_name: partial_name, data: data } %>
+        </div>
+
+      <div class="panel-body reduced_padding">
+        <%= select_tag "eye_regions", options_for_select(get_procedures_eye_region.reject{ |ele| ele[1]=='plasty' }, @selected_ophthal_region), class: "form-control eye_regions_list_#{partial_name}" %>
+        <canvas id="ophthal-investigation-chart_<%= partial_name%>" width="800" height="335"></canvas>
+      </div>
+    </div>
+  </div>
+  <% if partial_name %>
+    <div class="col-md-6">
+      <div class="table_wrapper">
+      <table class="table table_data table-bordered table-hover">
+        <thead>
+          <tr>
+            <th>Investigation Name</th>
+            <th>Count</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @investigation_ophthal_label.each_with_index do |f_name, indx|%>
+            <tr>
+              <td><%= f_name %></td>
+              <td><%= @investigation_ophthal_data[indx].to_i %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+
+<script>
+  new Chart(document.getElementById("ophthal-investigation-chart_<%= partial_name%>"), {
+    type: 'pie',
+    data: {
+      labels: <%= raw @investigation_ophthal_label  %>,
+      datasets: [{
+        data: <%= raw @investigation_ophthal_data %>,
+        label: "Total",
+        borderWidth: 0,
+        backgroundColor:<%= raw get_chart_dataset_color %>
+      }]
+    },
+    options: {
+      rotation: -0.7 * Math.PI,
+      legend: { display: false },
+      responsive: true,
+      title: {
+        display: false,
+        text: 'Total Investigations in each Category'
+      },
+    }
+  });
+
+  $(".eye_regions_list_<%= partial_name%>").select2();
+  $(".eye_regions_list_<%= partial_name%>").on("change", function(e){
+    var filtered_facility = $(".dropdown-facilitymenu-button").attr("data-facility-id")
+    var filtered_specialty = $(".dropdown-specialtymenu-button").attr("data-specialty-id")
+    var analytics_to_date = $("#analytics-to-datepicker").val()
+    var analytics_from_date = $("#analytics-from-datepicker").val()
+    var partial_name  = <%= partial_name %>;
+    var region = $(this).val();
+    var data = { filtered_facility: filtered_facility, filtered_specialty: filtered_specialty, analytics_to_date: analytics_to_date, analytics_from_date: analytics_from_date, region: region, remote: true,partial_name: partial_name }
+    
+    $.ajax({
+      method: "GET",
+      dataType: "script",
+      url:"/analytics/clinicals/get_ophthal_investigations_list",
+      data: data,
+    })
+  })
+
+</script>

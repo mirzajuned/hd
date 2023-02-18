@@ -1,0 +1,101 @@
+$("#invoice-modal").html("<%= escape_javascript(render 'invoice/opd/show') %>")
+$("#invoice-modal").modal("show")//.css('z-index', 1100 )
+
+<% if params[:action] == 'create' && @invoice.service_type == "General Consultation" %>
+  $.ajax({
+    type: "GET",
+    dataType: "script",
+    data: {
+      id: '<%= @appointment.id  %>',
+      appointment_id: '<%= @appointment.id  %>',
+      patient_arrived: true,
+    },
+    url: "<%= @url %>"
+  })
+<% end %>
+
+<% unless params[:action] == 'show' %>
+  $('.search-button').trigger('click')
+  // Appointment Management
+  if($(".appointment-panel").length > 0){
+    $(".appointment_today").find('.active').find("[data-appointment-id='<%= @appointment.id.to_s %>']").trigger('click');
+  }
+
+  // Appointment Scheduler
+  if($(".appointment-calendar-panel").length > 0){
+    $("#opd-calendar").fullCalendar('refetchEvents')
+  }
+
+  if($(".patient-timeline-panel").length > 0){
+    $("#btn-timeline-refresh").trigger('click')
+  }
+
+  if($(".laboratory-panel").length > 0){
+   $("#btn-investigation-management-refresh").trigger('click') 
+  }
+<% end %>
+
+$(document).ready(function(){
+  $('.tooltip-icon')
+    .on( "click", function(){
+      $('.tooltip-data-show').css({visibility: 'hidden'})
+      $('span[tooltip_target=' + this.id + ']').css({visibility: 'visible'})
+    })
+    .css({ cursor: "pointer" });
+}).click(function(e){
+  var target = e.target.getAttribute('tooltip_target')
+  var id = e.target.id
+  if($('#'+id).hasClass('tooltip-icon') == false) {
+    $('.tooltip-data-show').css({visibility: 'hidden'})
+  }
+})
+
+print_investigations_flag()
+function print_investigations_flag(){
+  if("<%= @invoice.try(:print_investigations_flag).to_s %>" == 'true'){
+    $("#print-investigation").attr('checked',"checked")
+  } else {
+    $("#print-investigation").attr('checked',false)
+  }
+}
+
+print_diagnosis_flag()
+function print_diagnosis_flag(){
+  if("<%= @invoice.try(:print_diagnosis_flag).to_s %>" == 'true'){
+    $("#print-diagnosis").attr('checked',"checked")
+  } else {
+    $("#print-diagnosis").attr('checked',false)
+  }
+}
+
+
+$("#print-investigation").on('click', function(){
+  if($(this).attr('checked') == 'checked'){
+    var flag = true
+  } else {
+    var flag = false
+  }
+  var flag_name = 'print_investigations_flag'
+  print_toggle(flag, flag_name)
+});
+
+$("#print-diagnosis").on('click', function(){
+  if($(this).attr('checked') == 'checked'){
+    var flag = true
+  } else {
+    var flag = false
+  }
+  var flag_name = 'print_diagnosis_flag'
+  print_toggle(flag, flag_name)
+});
+
+
+function print_toggle(flag, flag_name){
+  var params = { flag: flag, flag_name: flag_name, invoice_id: "<%= @invoice.id.to_s %>"}
+  $.ajax({
+    dataType: "JSON",
+    type: "GET",
+    data: params,
+    url: "/invoice/invoices/print_flags"
+  })
+}

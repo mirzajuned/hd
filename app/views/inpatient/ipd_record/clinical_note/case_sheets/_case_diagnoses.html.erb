@@ -1,0 +1,182 @@
+<div class="row mb5">
+  <div class="col-md-4">
+    <b style="text-decoration: underline;">DIAGNOSIS</b>
+  </div>
+  <div class="col-md-8">
+    <input type="text" name="diagnoses-search" class="form-control p3_10" id="search_diagnosis_keyword" placeholder="Search Diagnosis" />
+  </div>
+</div>
+<div class="row diagnosis-added">
+  <% if @case_sheet.diagnoses.count > 0 %>
+    <% counter = 0 %>
+    <% @case_sheet.diagnoses.where(is_disabled: false).group_by(&:icddiagnosiscode).each do |icddiagnosiscode, diagnoses| %>
+      <div class="col-md-12 diagnosislist mb5">
+        <%= hidden_field_tag "case_sheet[diagnoses][#{counter}][id]", diagnoses[0].id %>
+        <%= hidden_field_tag "case_sheet[diagnoses][#{counter}][diagnosisname]", diagnoses[0].diagnosisname %>
+        <%= hidden_field_tag "case_sheet[diagnoses][#{counter}][diagnosisoriginalname]", diagnoses[0].diagnosisoriginalname %>
+        <%= hidden_field_tag "case_sheet[diagnoses][#{counter}][icddiagnosiscode]", diagnoses[0].icddiagnosiscode %>
+        <%= hidden_field_tag "case_sheet[diagnoses][#{counter}][saperatedicddiagnosiscode]", diagnoses[0].saperatedicddiagnosiscode %>
+        <%= hidden_field_tag "case_sheet[diagnoses][#{counter}][icddiagnosiscodelength]", diagnoses[0].icddiagnosiscodelength %>
+        <%= hidden_field_tag "case_sheet[diagnoses][#{counter}][record_id]", diagnoses[0].record_id %>
+        <%= hidden_field_tag "case_sheet[diagnoses][#{counter}][icd_type]", diagnoses[0].icd_type %>
+        <!-- Entered Details -->
+        <%= hidden_field_tag "case_sheet[diagnoses][#{counter}][entered_by]", diagnoses[0].entered_by %>
+        <%= hidden_field_tag "case_sheet[diagnoses][#{counter}][entered_by_id]", diagnoses[0].entered_by_id %>
+        <%= hidden_field_tag "case_sheet[diagnoses][#{counter}][entered_datetime]", diagnoses[0].entered_datetime %>
+        <%= hidden_field_tag "case_sheet[diagnoses][#{counter}][entered_from]", diagnoses[0].entered_from %>
+        <%= hidden_field_tag "case_sheet[diagnoses][#{counter}][entered_at_facility]", diagnoses[0].entered_at_facility %>
+        <%= hidden_field_tag "case_sheet[diagnoses][#{counter}][entered_at_facility_id]", diagnoses[0].entered_at_facility_id %>
+        <!-- Comments -->
+        <%= hidden_field_tag "case_sheet[diagnoses][#{counter}][diagnosis_comment]", diagnoses[0].diagnosis_comment %>
+        <%= hidden_field_tag "case_sheet[diagnoses][#{counter}][users_comment]", diagnoses[0].users_comment %>
+        <!-- Advised Details -->
+        <%= hidden_field_tag "case_sheet[diagnoses][#{counter}][advised_by]", diagnoses[0].advised_by %>
+        <%= hidden_field_tag "case_sheet[diagnoses][#{counter}][advised_by_id]", diagnoses[0].advised_by_id %>
+        <%= hidden_field_tag "case_sheet[diagnoses][#{counter}][advised_datetime]", diagnoses[0].advised_datetime %>
+        <%= hidden_field_tag "case_sheet[diagnoses][#{counter}][advised_from]", diagnoses[0].advised_from %>
+        <%= hidden_field_tag "case_sheet[diagnoses][#{counter}][advised_at_facility]", diagnoses[0].advised_at_facility %>
+        <%= hidden_field_tag "case_sheet[diagnoses][#{counter}][advised_at_facility_id]", diagnoses[0].advised_at_facility_id %>
+        <% if params[:controller].include?("clinical_note") && diagnoses[0].entered_from != "opd_record" %>
+          <span class="ckbox ckbox-primary mb5">
+            <input type="hidden" name="case_sheet[diagnoses][<%=counter%>][flow_in_ipd]" value='true'>
+            <button class="btn btn-primary btn-xs btn-remove-diagnosis" style="padding: 0px 4px;">&times;</button>
+          </span>
+        <% else %>
+          <span class="ckbox ckbox-primary mb5">
+            <input type="hidden" name="case_sheet[diagnoses][<%=counter%>][flow_in_ipd]" value='false'>
+            <%= check_box_tag "case_sheet[diagnoses][#{counter}][flow_in_ipd]", true, diagnoses[0].flow_in_ipd, {id: "diagnosis_flow_in_ipd_#{counter}"} %>
+            <label for="diagnosis_flow_in_ipd_<%=counter%>"></label>
+          </span>
+        <% end %>
+        <% if diagnoses[0].icd_type == 'TranslatedIcdDiagnosis' %>
+          <span><b style="color: #333;"><%= diagnoses[0].diagnosisname.to_s %> - <%= diagnoses[0].icddiagnosiscode.to_s.upcase.insert(3, '.') %></b></span>
+        <% else %>
+          <span><b style="color: #333;"><%= diagnoses[0].diagnosisoriginalname.to_s %> - <%= diagnoses[0].icddiagnosiscode.to_s.upcase.insert(3, '.') %></b></span>
+        <% end %>
+        <% counter += 1 %>
+      </div>
+    <% end %>
+  <% else %>
+    <div class="col-md-12 no-diagnosis"><span>No Diagnosis</span></div>
+  <% end %>
+</div>
+<% free_diagnosis_text_ipdrecord = @case_sheet.free_form_diagnoses["#{@ipdrecord.try(:id).to_s}"] %>
+<% if @case_sheet.free_form_diagnoses.count > 0 %>
+  <div class="row view_diagnosis_text" <%= "style=display:none;" if free_diagnosis_text_ipdrecord.present? %>>
+    <div class="col-md-12" style="text-decoration: underline;">
+      <b>DIAGNOSIS</b>
+      <button class="btn btn-link btn-xs toggle_diagnosis_text"><i class="fa fa-edit"></i></button>
+    </div>
+    <% uniq_array = [] %>
+    <% diagnosis_free_text = "" %>
+    <% diagnosis_counter = 0 %>
+    <% @case_sheet.free_form_diagnoses.each do |key, diagnosis| %>
+      <% unless uniq_array.include?(diagnosis[:content].to_s.html_safe()) %>
+        <div class="col-md-12">
+          <span><b style="color: #333;"><%= diagnosis[:content].to_s.html_safe() %></b></span>
+        </div>
+        <% if diagnosis_counter == 0 %>
+          <% diagnosis_free_text = diagnosis_free_text + diagnosis[:content].to_s %>
+        <% else %>
+          <% diagnosis_free_text = diagnosis_free_text + "<br>" + diagnosis[:content].to_s %>
+        <% end %>
+
+        <% uniq_array << diagnosis[:content].to_s.html_safe() %>
+        <% diagnosis_counter += 1 %>
+      <% end %>
+    <% end %>
+  </div>
+<% end %>
+
+<div class="row edit_diagnosis_text" <%= "style=display:none;" if @case_sheet.free_form_diagnoses.count > 0 && !free_diagnosis_text_ipdrecord.present? %>>
+  <div class="col-md-12" style="text-decoration: underline;">
+    <b>DIAGNOSIS TEXTBOX</b>
+    <!-- <button class="btn btn-link btn-xs reset_diagnosis_value">Reset</button> -->
+  </div>
+  <div class="col-md-12">
+    <% free_diagnosis_text_content = (free_diagnosis_text_ipdrecord[:content].to_s.html_safe() if params[:controller].include?("clinical_note") && free_diagnosis_text_ipdrecord.present?) || diagnosis_free_text.to_s.html_safe %>
+    <%= text_area_tag "case_sheet[free_diagnosis_text]", free_diagnosis_text_content, class: "form-control p7_10", id: "case_sheet_free_diagnosis_text", placeholder: "Diagnosis Notes" %>
+  </div>
+</div>
+
+<script type="text/javascript">
+  $(".diagnosis-added").on('click', ".btn-remove-diagnosis", function(e){
+    e.preventDefault();
+    $(this).closest(".diagnosislist").remove();
+    if($(".diagnosislist").length == 0){
+      $(".no-diagnosis").show();
+    }
+  })
+
+  jQuery('#search_diagnosis_keyword').autocomplete({
+    minLength: 3,
+    source: function(request, response) {
+      var template_id = "ipd"
+      var speciality_id = "<%= @case_sheet.specialty_id %>"
+      
+      jQuery.ajax({
+        dataType: "json",
+        type : 'get',
+        url: '/icdtree/searchdiagnosis',
+        data: { q: request.term, template_id: template_id, speciality_id: speciality_id, remote: "true" },
+        success: function(data) {
+            response(data);
+        },
+        error: function(data) {
+        }
+      });
+    },
+    select: function( event, ui ) {
+      $(".diagnosis-tooltip").hide()
+      params = ui.item["code"]
+      name = ui.item["code"]
+      icd_type = ui.item["icd_type"]
+      modal_diagnosis_icd();
+      setTimeout(function() {
+        jQuery("#search_diagnosis_keyword").val("")
+      }, 50);
+    },
+    create: function () {
+      $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+        return $('<li>')
+            .append('<a>' + item.label  + '&nbsp; &nbsp; &nbsp;' + "<span class=\"badge pull-right\">" + item.icd_type_label + "</span>" + '</a>')
+            .appendTo(ul);
+      };
+    }
+  });
+
+  function modal_diagnosis_icd(){
+    event.preventDefault();
+    jQuery.ajax({
+      type: "GET",
+      url: "/icdtree/modal_diagnosis_icd",
+      data: {ajax: params, icd_type: icd_type, source: 'inpatient_ipd_record', remote: "true" },
+
+    })
+  }
+
+
+  var summernote_options = {
+    toolbar: [],
+    height: 100
+  };
+
+  $('#case_sheet_free_diagnosis_text').summernote(summernote_options);
+
+  $(".toggle_diagnosis_text").on('click', function(e){
+    e.preventDefault();
+    $(".view_diagnosis_text").hide()
+    $(".edit_diagnosis_text").show()
+  })
+
+  // $(".reset_diagnosis_value").on('click', function(e){
+  //   e.preventDefault();
+  //   $('#case_sheet_free_diagnosis_text').code("<%#= diagnosis_free_text.to_s %>")
+  // })
+</script>
+
+<style type="text/css">
+  .note-editable {
+    overflow-y: scroll !important;
+  }
+</style>

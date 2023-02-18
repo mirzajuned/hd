@@ -1,0 +1,112 @@
+// Enable Tokens 251-500
+$(".btn-500").on('click', function(){
+  $(this).removeClass('btn-primary-transparent')
+  $(".btn-250").addClass('btn-primary-transparent')
+  $(".token-250").hide()
+  $(".token-500").show()
+})
+
+// Enable Tokens 001-250
+$(".btn-250").on('click', function(){
+  $(this).removeClass('btn-primary-transparent')
+  $(".btn-500").addClass('btn-primary-transparent')
+  $(".token-500").hide()
+  $(".token-250").show()
+})
+
+if(parseInt("<%= @last_token_used %>") > 251){
+  $(".btn-500").trigger('click')
+}
+
+if(parseInt("<%= @existing_token %>") > 251){
+  $(".btn-500").trigger('click')
+}
+
+// Activate Token
+$(".btn-save-token-direct").on('click', function(){
+  $(".btn-save-token-direct").removeClass('btn-activate-token')
+  $(".btn-save-token-direct").addClass('btn-primary-transparent')
+  $(this).addClass('btn-activate-token')
+  $(this).removeClass('btn-primary-transparent')
+})
+
+// Activate Token & Save Directly
+$(".btn-save-token-direct").on('dblclick', function(){
+  var token_number = $(this).attr('data-token-value');
+  $.ajax({
+    type: "GET",
+    url: "/token_settings/save_token",
+    data: {
+      token_number: token_number,
+      existing_token: '<%= @existing_token %>',
+      appointment_id: '<%= @appointment.id.to_s %>',
+      to_station: '<%= params[:to_station] %>',
+      assigned_as: '<%= params[:assigned_as] %>',
+      from: '<%= params[:from] %>'
+    },
+    success: function(){
+      $("#appointment-modal").modal('hide')
+    }
+  })
+})
+
+// Save Token via 'Save' Button
+$(".btn-save-token").on('click', function(){
+  $('.btn-save-token').prop('disabled', true)
+  var token_number = $(".btn-activate-token").attr('data-token-value');
+  if(token_number != undefined){
+    $.ajax({
+      type: "GET",
+      url: "/token_settings/save_token",
+      data: {
+        token_number: token_number,
+        existing_token: '<%= @existing_token %>',
+        appointment_id: '<%= @appointment.id.to_s %>',
+        to_station: '<%= params[:to_station] %>',
+        assigned_as: '<%= params[:assigned_as] %>',
+        from: '<%= params[:from] %>'
+      },
+      success: function(){
+        $("#appointment-modal").modal('hide')
+      }
+    })
+  } else {
+    if ($('.ui-pnotify').length > 0) { $('.ui-pnotify').remove() }
+    notice = new PNotify({ title: 'Warning', text: 'Please Select atleast One Token.', icon: 'fa fa-ban', type: 'error' });
+    $('.btn-save-token').prop('disabled', false)
+    notice.get().click(function(){ notice.remove() });
+  }
+})
+
+// Skip Without Token
+$(".btn-skip-token").on('click', function(){
+  $('.btn-skip-token').prop('disabled', true)
+  $.ajax({
+    type: "GET",
+    url: "/token_settings/skip_token",
+    data: {
+      appointment_id: '<%= @appointment.id.to_s %>',
+      to_station: '<%= params[:to_station] %>',
+      assigned_as: '<%= params[:assigned_as] %>'
+    },
+    success: function(){
+      $("#appointment-modal").modal('hide')
+    }
+  })
+})
+
+$(".btn-remove-token").on('click', function(){
+  $.ajax({
+    type: "GET",
+    url: "/token_settings/remove_token",
+    data: {
+      appointment_id: '<%= @appointment.id.to_s %>'
+    },
+    success: function(){
+      $("#appointment-modal").modal('hide')
+    }
+  })
+})
+
+// Tooltip for Used Tokens
+$(".btn-disabled-token").tooltip();

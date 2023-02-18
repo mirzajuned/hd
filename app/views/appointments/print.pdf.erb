@@ -1,0 +1,117 @@
+<div class="row appointment-list" style="font-size:12px;">
+  <div class="col-md-4">
+    <b>Date:</b> <%= @datepicker_date.strftime("%d %b'%Y") %>
+  </div>
+  <div class="col-md-4 text-center">
+    <b>Appointment List</b><br>
+    <small><%= (params[:list_type].capitalize) %></small>
+  </div>
+  <div class="col-md-4 text-right">
+    <b><%= current_facility.name.upcase %></b>
+  </div>
+</div>
+<div class="row">
+  <table class="table table-bordered">
+    <tr class="invoice_head">
+      <th>#</th>
+      <th>Visit</th>
+      <th>P.Name</th>
+      <th>Mobile No.</th>
+      <th>Appt. Time</th>
+      <th>Reference</th>
+      <th>Diagnosis</th>
+      <th>Procedure</th>
+      <th>FollowUp</th>
+      <th>Surgery</th>
+      <th>Reason</th>
+    </tr>
+    <% @appointment.each.with_index do |appointment, i| %>
+      <% @opdrecord = OpdRecord.where(appointmentid: appointment.id.to_s).not.where(templatetype: "optometrist") %>
+      <% if @opdrecord.count > 0 %>
+        <% @opdrecord_last = @opdrecord.order(created_at: :desc)[0] %>
+      <% else %>
+        <% @opdrecord_last = "" %>
+      <% end %>
+      <tr class="invoice_head">
+        <td><%= i+1 %></td>
+        <td><%= appointment.appointment_type.label %></td>
+        <td>
+          <b>
+            <%= appointment.patient.fullname %><br>
+            <% if appointment.patient.gender || appointment.patient.exact_age.present? %>
+              (<% if appointment.patient.gender %><% if appointment.patient.gender == "Male" %>M<% else appointment.patient.gender == "Female" %>F<% end %> /<% end %>
+              <%if appointment.patient.exact_age.present? %><%=appointment.patient.exact_age.to_s.split("-").join(" ")%><%end%>)
+            <% end %>
+          </b>
+        </td>
+        <td><%= appointment.patient.mobilenumber %></td>
+        <td><%= appointment.start_time.try(:strftime, '%I:%M %p') %></td>
+        <td>
+          <% referral = appointment.try(:patient_referral_type) %>
+          <% if referral.present? && !referral.try(:is_deleted) %>
+            <%= referral.try(:referral_type).try(:name).to_s %> - <%= referral.try(:sub_referral_type).try(:name).to_s %>
+          <% end %>
+        </td>
+        <td>
+        <% unless @opdrecord_last == "" %>
+          <% if @opdrecord_last.templatetype != "freeform" %>
+            <%= render partial: "/opd_appointments/print_diagnosis_list.html.erb", locals: { diagnosis: @opdrecord_last } %>
+          <% else %>
+            <% unless @opdrecord_last.diagnosis.to_s.html_safe.to_s.strip == "" %>
+              <li><b><%= @opdrecord_last.diagnosis.to_s.html_safe.to_s %></b></li>
+            <% end %>
+          <% end %>
+        <% end %>
+        </td>
+        <td>
+          <% unless @opdrecord_last == "" %>
+            <% if @opdrecord_last.templatetype != "freeform" %>
+              <% if @opdrecord_last.procedure.count > 0 %>
+                <% @opdrecord_last.procedure.each do |procedure| %>
+                  <li><b><%= procedure.procedurename.split("/").join(" /") %>,<%= @opdrecord_last.get_label_for_procedure_side(procedure.procedureside) %></b></li>
+                <% end %>
+              <% end %>
+            <% else %>
+              <% unless @opdrecord_last.free_procedure.to_s.html_safe.to_s.strip == "<br>" %>
+                <li><b><%= @opdrecord_last.free_procedure.to_s.html_safe.to_s %></b></li>
+              <% end %>
+            <% end %>
+          <% end %>
+        </td>
+        <td>
+          <% unless @opdrecord_last == "" %>
+            <% if @opdrecord_last.advice.read_attribute(:opdfollowupdate).present? %>
+              <%#= Date.parse(@opdrecord_last.advice.opdfollowupdate.to_s, '%d/%m/%Y').strftime("%d %b'%y") %>
+              <%= @opdrecord_last.advice.read_attribute(:opdfollowupdate) %>
+            <% end %>
+          <% end %>
+        </td>
+        <td>
+          <% @ots = OtSchedule.where(patient_id: appointment.patient_id, :otdate.gte => Date.current, is_deleted: false, operation_done: false) %>
+          <% if appointment.surgery_advised %>Advised<% else %>-<% end %><br>
+          <% @ots.each do |ot| %>
+            <b><%= ot.ottime.strftime("%I:%M %p") %> <%= ot.otdate.strftime("%d-%b") %></b><br>
+          <% end %>
+        </td>
+        <td>
+          <% unless @opdrecord_last == "" %>
+
+            <% if @opdrecord_last.advicemanagementplan %><%= @opdrecord_last.advicemanagementplan %><% else %>-<% end %>
+          <% end %>
+        </td>
+      </tr>
+    <% end %>
+  </table>
+</div>
+
+<style type="text/css">
+  .appointment-list {
+    font-size: 8px;
+  }
+
+  .invoice_head * {
+    font-size: 8px;
+    color: #000;
+
+  }
+</style>

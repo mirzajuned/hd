@@ -1,0 +1,74 @@
+// SubStation Unique User Validation
+function uniqueUserForm(){
+  $("#link-users-form").validate({
+    rules: {},
+    messages: {},
+    errorPlacement: function (error, element) {
+      if($(element).hasClass("select2-hidden-accessible")) {
+        element = $("#select2-" + $(element).attr("id") + "-container").parent();
+        error.insertAfter(element);
+      } else {
+        error.insertAfter(element);
+      }
+    }
+  });
+}
+uniqueUserForm()
+
+$.validator.addMethod("NotEqualUser", function(value, element) {
+  var $element = $(element);
+  var $users = $('.sub-station-user_id:visible').not($element);
+  var usersArray = $.map($users, function(user) {
+    if($(user).val() != ''){
+      return $(user).val();
+    }
+  });
+  if ($.inArray($element.val(), usersArray) >= 0) {
+    return false;
+  } else {
+    return true;
+  }
+}, "Please select Unique User");
+
+$.validator.addClassRules("sub-station-user_id", { NotEqualUser: true });
+
+// Select2
+$(".area_facility_id").select2();
+
+// Load Sub Station List
+$(".area_facility_id").on('change', function(){
+  let facilityId = $(this).val();
+
+  $("#link-user-form").html(`
+    <div class="col-md-12">
+      <div class="row station-message">
+        <hr>
+        <div class="col-md-12">
+          <b>Hold on tight as we load stations...</b>
+        </div>
+      </div>
+    </div>
+  `)
+
+  $.ajax({
+    type: "get",
+    dataType: "script",
+    url: '/queue_management/sub_stations/set_sub_stations',
+    data: {
+      facility_id: facilityId
+    },
+    success: function(response){
+    }
+  })
+}).trigger('change')
+
+
+$("#link-user-form").on('change', '.sub-station-user_id', function(){
+  $(this).siblings('.sub-station-is_updated').val(true)
+})
+
+$("#link-users-form").css('height', $(window).height() - 100 + "px").css('overflow', 'scroll')
+
+$(window).resize(function() {
+  $("#link-users-form").css('height', $(window).height() - 100 + "px").css('overflow', 'scroll')
+})

@@ -1,0 +1,44 @@
+<div class="row">
+  <div class="col-md-12 text-center">
+    <% if params[:back] %><button class="btn btn-primary btn-xs pull-left btn-datewise-view"><i class="fa fa-arrow-left"></i> Back</button><% else %><button class="btn btn-primary btn-xs pull-left statistics_parent_link all" data-filter="All"><i class="fa fa-arrow-left"></i> Back to Dashboard</button><% end %>
+    <h3 style="color:#000;">CREDIT DETAILS <small>(<% if @start_date == @end_date %><%= Date.parse(@start_date).strftime('%d/%m/%Y') %><% else %><%= Date.parse(@start_date).strftime('%d/%m/%Y') %> - <%= Date.parse(@end_date).strftime('%d/%m/%Y') %><% end %>)</small></h3>
+  </div>
+</div>
+
+<table class="table">
+  <thead style="border-top:1px solid #000;border-bottom:1px solid #000;">
+    <tr>
+      <th style="width:5%;">S No.</th>
+      <th>Creditor Name</th>
+      <th>Creditor Type</th>
+      <th class="text-right">Amount (<%= @currency.symbol %>)</th>
+    </tr>
+  </thead>
+  <tbody style="border-top:1px solid #000;border-bottom:1px solid #000;">
+    <tr>
+      <td class="main-display-row" colspan="3">Total Credits :</td>
+      <td class="main-display-row text-right"><%= @payment_pending.pluck(:amount).sum.to_f %></td>
+    </tr>
+    <% if @received_from.count > 0 %>
+      <% @received_from.each.with_index do |rf, i| %>
+        <% @patient = Patient.find_by(id: rf.to_s) %>
+        <tr>
+          <td><%= i + 1 %></td>
+          <% if @patient.present? %>
+            <td><%= link_to statistics_creditors_pending_payment_path(received_from: rf, creditor: 'patient'), data: {remote: true, 'toggle': 'modal', 'target': '#invoice-modal'} do %><%= @patient.fullname %><% end %></td>
+            <td>Patient</td>
+          <% else %>
+            <% @contact = PayerMaster.find_by(id: rf.to_s) %>
+            <td><%= link_to statistics_creditors_pending_payment_path(received_from: rf, creditor: 'contact'), data: {remote: true, 'toggle': 'modal', 'target': '#invoice-modal'} do %><%= @contact.try(:display_name) %><% end %></td>
+            <td><%= ContactGroup.find_by(id: @contact.try(:contact_group_id)).name %></td>
+          <% end %>
+          <td class="text-right"><%= @payment_pending.inject(0){|sum, x| (x[:received_from].to_s == rf.to_s) ? sum += x[:amount].to_f : sum}  %></td>
+        </tr>
+      <% end %>
+    <% else %>
+      <tr>
+        <td colspan="11" class="text-center">No Credits</td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>

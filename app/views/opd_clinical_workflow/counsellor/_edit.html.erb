@@ -1,0 +1,178 @@
+<div class="modal-dialog modal-hg-view-record-template" style="width: 80%;">
+  <div class="modal-content">
+    <div class="modal-header">
+      <div class="pull-right">
+        <!-- Action Buttons starts -->
+        <a aria-hidden="true" class="" style="cursor: pointer" data-dismiss="modal"><i class="fa fa-close"></i></a>
+      </div> <!-- Action Buttons ends -->
+      <h4 class="nomargin " style="text-align: center">
+        Edit Counsellor Record
+      </h4>
+
+    </div>
+    <%= form_tag opd_clinical_workflow_update_counsellor_summary_path, {:method => :get, remote: true, :multipart => true, :class => "counsellorsummaryform", :id=> "counsellorsummaryform"} do %>
+        <div class="modal-body"> <!-- modal-body starts -->
+          <%= hidden_field_tag "counsellor_record[patient_id]",@patient.id%>
+          <%= hidden_field_tag "record_id",@record.id%>
+          <%= hidden_field_tag "counsellor_record[appointment_id]",@appointment.id%>
+          <%= hidden_field_tag "counsellor_record[organisation_id]",@appointment.user.organisation.id%>
+          <%= hidden_field_tag "counsellor_record[facility_id]",current_facility.id%>
+          <%= hidden_field_tag "counsellor_record[user_id]",current_user.id%>
+          <%= render partial: 'opd_clinical_workflow/counsellor/patient_info',locals: {patient: @patient,record: @record,appointment: @appointment}%>
+          <div class="row mb10">
+            <div class="col-md-2 text-right"><label class="">Doctor's Advice</label></div>
+            <div class="col-md-1">:</div>
+            <div class="col-md-9"> <%= text_area_tag "counsellor_record[advice]",@record.try(:advice),  {:class => 'form-control advice',value: @record.try(:advice),style: 'height: 80px'} %></div>
+          </div>
+          <hr>
+          <div class="row mb10">
+            <div class="col-md-2 text-right"><label style="text-decoration: underline">Patient History</label></div>
+          </div>
+          <div class="row mb10" style="font-size: 11px;">
+            <div class="col-md-2 text-right"><label >Cardiac Problem</label></div>
+            <div class="col-md-1">:</div>
+            <div class="col-md-3"> <%= radio_button_tag 'counsellor_record[cardiac_problem]', 'yes', true%>Yes&nbsp;&nbsp;
+              <%= radio_button_tag 'counsellor_record[cardiac_problem]', 'no', true%>No
+            </div>
+            <div class="col-md-2 text-right"><label class="">Kidney Problem</label></div>
+            <div class="col-md-1">:</div>
+            <div class="col-md-3">  <%= radio_button_tag 'counsellor_record[kidney_problem]', 'yes', true%>Yes &nbsp;&nbsp;
+              <%= radio_button_tag 'counsellor_record[kidney_problem]', 'no', true%>No
+            </div>
+          </div>
+          <div class="row mb10" style="font-size: 11px;">
+            <div class="col-md-2 text-right"><label class="">Other Problems</label></div>
+            <div class="col-md-1">:</div>
+            <div class="col-md-3"> <%= text_area_tag "counsellor_record[other_problems]",@record.try(:other_problems),  {:class => 'form-control',value: @record.try(:other_problems)} %></div>
+          </div>
+          <hr>
+          <div class="row mb10">
+            <div class="col-md-2 text-right"><label class="">IOL/Investigation detail</label></div>
+            <div class="col-md-1">:</div>
+            <div class="col-md-3">  <%= text_area_tag "counsellor_record[iol]",@record.try(:iol),  {:class => 'form-control',value: @record.try(:implant)} %></div>
+            <div class="col-md-2 text-right"><label class="">Implant Info</label></div>
+            <div class="col-md-1">:</div>
+            <div class="col-md-3">  <%= text_area_tag "counsellor_record[implant]",@record.try(:implant),  {:class => 'form-control',value: @record.try(:implant)} %></div>
+          </div>
+          <div class="row mb10">
+            <div class="col-md-2 text-right"><label class="">Diagnosis</label></div>
+            <div class="col-md-1">:</div>
+            <div class="col-md-3"><%= text_area_tag "counsellor_record[diagnosis]",@record.try(:diagnosis),  {:class => 'form-control',value: @record.try(:diagnosis)} %></div>
+            <div class="col-md-2 text-right"><label class=""> Investigations</label></div>
+            <div class="col-md-1">:</div>
+            <div class="col-md-3">
+              <% if @record.try(:investigation)%>
+              <%selected_investigations = @record.investigation.values.map{|i| i["id"]}%>
+              <% if @last_opdrecord %>
+                  <% if @last_opdrecord.ophthalinvestigationlist.try(:count)>0%>
+                      <% @last_opdrecord.ophthalinvestigationlist.where(investigationstage: "A").each_with_index do |inv,i|%>
+                          <% if selected_investigations.include?inv.id.to_s%>
+                              <div class="ckbox ckbox-primary mb5" style="width: 400px">
+                                <input type="checkbox" name="counsellor_record[investigation][<%= i%>][id]" id="investigation_<%= i%>" value="<%= inv.id%>" checked="checked">
+
+                                <label for="investigation_<%= i%>">&emsp;<%= inv.investigationname %>(<%=@last_opdrecord.get_label_for_ophthalinvestigations_side(inv.investigationside)%>)</label>
+                              </div>
+                          <%else%>
+                              <div class="ckbox ckbox-primary mb5" style="width: 400px">
+                                <input type="checkbox" name="counsellor_record[investigation][<%= i%>][id]" id="investigation_<%= i%>" value="<%= inv.id%>">
+                                <label for="investigation_<%= i%>">&emsp;<%= inv.investigationname + ',' + @last_opdrecord.get_label_for_ophthalinvestigations_side(inv.investigationside) %></label>
+                              </div>
+                          <%end%>
+                      <%end%>
+                      <% if @last_opdrecord.ophthalinvestigationlist.where(investigationstage: "P").count > 0%>
+                          PERFORMED<div class="summary-line-border"></div>
+                          <% @last_opdrecord.ophthalinvestigationlist.where(investigationstage: "P").each_with_index do |elem,i|%>
+                              <li>
+                                <%= elem.investigationname %>
+                                <% if elem.investigationside? %>
+                                    (<%= @last_opdrecord.get_label_for_ophthalinvestigations_side(elem.investigationside) %>),<%= Date.parse(elem.investigationadviseddate).strftime("%d %b,%y") %>
+                                <% end %>
+                              </li>
+                          <% end %>
+                      <% end %>
+                  <%else%>
+                      None
+                  <%end%>
+              <%else%>
+                  None
+              <%end%>
+              <%end%>
+            </div>
+          </div>
+          <div class="row mb10">
+            <div class="col-md-2 text-right"><label class=""> Procedure</label></div>
+            <div class="col-md-1">:</div>
+            <div class="col-md-3">
+              <%selected_procedures = @record.procedure.values.map{|i| i["id"]}%>
+              <% if @last_opdrecord %>
+                  <% if @last_opdrecord.procedure.try(:count)>0%>
+                      <% @last_opdrecord.procedure.where(procedurestage: "A").each_with_index do |proc,i|%>
+                          <!--<div class="col-md-6">-->
+                          <% if selected_procedures.include?proc.id.to_s%>
+                              <div class="ckbox ckbox-primary mb5" style="width: 400px">
+                                <input type="checkbox" name="counsellor_record[procedure][<%= i%>][id]" id="procedure_<%= i%>" value="<%= proc.id%>" checked="checked">
+                                <label for="procedure_<%= i%>">&emsp;<%= proc.procedurename + ',' + @last_opdrecord.get_label_for_procedure_side(proc.procedureside) %></label>
+                              </div>
+                          <%else%>
+                              <div class="ckbox ckbox-primary mb5" style="width: 400px">
+                                <input type="checkbox" name="counsellor_record[procedure][<%= i%>][id]" id="procedure_<%= i%>" value="<%= proc.id%>">
+                                <label for="procedure_<%= i%>">&emsp;<%= proc.procedurename + ',' + @last_opdrecord.get_label_for_procedure_side(proc.procedureside) %></label>
+                              </div>
+                          <%end%>
+                          <!--</div>-->
+                      <%end%>
+                  <% if  @last_opdrecord.procedure.where(procedurestage: "P").count >0 %>
+                      PERFORMED<div class="summary-line-border"></div>
+                      <% @last_opdrecord.procedure.where(procedurestage: "P").each_with_index do |elem,i|%>
+                          <li><%= elem.procedurename+"("+@last_opdrecord.get_label_for_procedure_side(elem.procedureside)+")"%>,Advised on &nbsp; <%= elem.procedureadviseddate%></li>
+                      <% end %>
+                  <% end %>
+                  <%else%>
+                      None
+                  <%end%>
+              <%else%>
+                  None
+              <%end%>
+            </div>
+          </div>
+          <hr>
+          <div class="row mb10">
+            <div class="col-md-2 text-right"><label class="">Discussions With Patient</label></div>
+            <div class="col-md-1">:</div>
+            <div class="col-md-3">  <%= text_area_tag "counsellor_record[patient_discussion]",@record.try(:patient_discussion),  {:class => 'form-control',value: @record.try(:patient_discussion)} %></div>
+            <div class="col-md-2 text-right"><label class="">Patient's Remark</label></div>
+            <div class="col-md-1">:</div>
+            <div class="col-md-3">  <%= text_area_tag "counsellor_record[patient_remark]",@record.try(:patient_remark),  {:class => 'form-control',value: @record.try(:patient_remark)} %></div>
+          </div>
+          <div class="row mb10">
+            <div class="col-md-2 text-right"><label class="">Comments</label></div>
+            <div class="col-md-1">:</div>
+            <div class="col-md-3"> <%= text_area_tag "counsellor_record[comment]",@record.try(:comment),  {:class => 'form-control',value: @record.try(:comment)} %></div>
+            <div class="col-md-2 text-right"><label class="">Counsellor's Name</label></div>
+            <div class="col-md-1">:</div>
+            <div class="col-md-3">
+              <%counselled_by = User.find_by(id:  @record.try(:user_id))%>
+              <% if counselled_by %>
+                  <%= counselled_by.salutation+" "+counselled_by.fullname.capitalize%>
+              <% else %>
+                  <%= current_user.salutation+" "+current_user.fullname.capitalize%>
+              <% end %>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <div class="pull-right">
+            <!-- Action Buttons starts -->
+            <%= submit_tag "Update",:class => "btn btn-success"%>
+
+            <!--<a class="btn btn-xs btn-primary " target="_blank" data-method="get" href="#"> <i class="fa fa-print mr5"></i> Print </a>-->
+          </div>
+        </div>
+    <%end%>
+  </div>
+</div>
+<script>
+    $(".record_date").datepicker({
+        dateFormat: "dd/mm/yy"
+    })
+</script>

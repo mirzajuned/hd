@@ -1,0 +1,379 @@
+$(".pricing_master_contact_group_id").select2();
+$(".pricing_master_payer_master_id").select2();
+
+if($(".pricing-masters-form").length <= 1){ $(".pricing_master_heading").hide() }
+
+$(".btn-add-pricing").on('click', function(e){
+  e.preventDefault()
+
+  let i = $(".pricing-masters-form").length
+
+  let pricing_form = `
+    <div class="pricing-master-block">
+      <div class="row pricing-masters-form mt5">
+        <input type="hidden" name="pricing_master[${i}][organisation_id]" value="<%= @service_master.organisation_id.to_s %>">
+        <input type="hidden" name="pricing_master[${i}][facility_id]" value="<%= @standard_pricing_master.facility_id.to_s %>">
+        <input type="hidden" name="pricing_master[${i}][user_id]" value="<%= current_user.id.to_s %>">
+        <input type="hidden" name="pricing_master[${i}][service_master_id]" value="<%= @service_master.id.to_s %>">
+        <input type="hidden" name="pricing_master[${i}][service_group_id]" value="<%= @service_master.service_group_id.to_s %>">
+        <input type="hidden" name="pricing_master[${i}][service_sub_group_id]" value="<%= @service_master.service_sub_group_id.to_s %>">
+        <input type="hidden" name="pricing_master[${i}][service_type_code]" value="<%= @service_master.service_type_code.to_s %>">
+        <input type="hidden" name="pricing_master[${i}][service_type_code_name]" value="<%= @service_master.service_type_code_name.to_s %>">
+        <input type="hidden" name="pricing_master[${i}][service_name]" value="${$(".standard_pricing_service_name").val()}" class="pricing_master_service_name">
+        <input type="hidden" name="pricing_master[${i}][specialty_id]" value="${$(".hidden_specialty_id").val()}" class="pricing_master_specialty_id">
+        <input type="hidden" name="pricing_master[${i}][department_id]" value="<%= params[:department_id] %>" class="pricing_master_department_id">
+        <input type="hidden" name="pricing_master[${i}][department_name]" value="<%= params[:department_name] %>" class="pricing_master_department_name">
+        <input type="hidden" name="pricing_master[${i}][has_exceptions]" id="pricing_master_${i}_has_exceptions" value="false" class="pricing_master_has_exceptions">
+        <input type="hidden" name="pricing_master[${i}][is_active]" value="" class="pricing_master_is_active">
+        <div class="col-md-2">
+          <select name="pricing_master[${i}][contact_group_id]" class="form-control pricing_master_contact_group_id p5_10" id="contact_group_id_${i}" style="height:30px;">
+            <option value=""></option>
+            <% @contact_group_fields.each do |contact_group| %>
+              <option value="<%= contact_group[:id].to_s %>"><%= contact_group[:name] %></option>
+            <% end %>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <select name="pricing_master[${i}][payer_master_id]" class="form-control pricing_master_payer_master_id p5_10" id="payer_master_id_${i}" style="height:30px;">
+            <option value="">Select Group</option>
+          </select>
+        </div>
+        <div class="col-md-1">
+          <input type="text" name="pricing_master[${i}][service_code]" class="form-control pricing_master_service_code p5_10" value="${$(".standard_pricing_service_code").val()}">
+        </div>
+        <div class="col-md-1">
+          <input type="number" name="pricing_master[${i}][amount]" class="form-control pricing_master_amount p5_10" value="${$(".service_master_amount").val()}" maxlength="10" min="0">
+        </div>
+        <div class="col-md-2">
+          <input type="text" name="pricing_master[${i}][internal_comment]" class="form-control pricing_master_internal_comment p5_10" value="" placeholder="For Internal use only">
+        </div>
+        <div class="col-md-2">
+          <input type="text" name="pricing_master[${i}][external_comment]" class="form-control pricing_master_external_comment p5_10" value="" placeholder="For Print in Invoice">
+        </div>
+        <div class="col-md-2">
+          <button class="btn btn-primary btn-xs btn-pricing-exceptions" data-counter="${i}">Add Exception</button>
+          <button class="btn btn-danger btn-xs disable-pricing-row-btn">Disable</button>
+        </div>
+      </div>
+      <div class="pricing-exception-block">
+      </div>
+    </div>`
+
+  $(".add-pricing-masters").append(pricing_form)
+
+  $(".pricing_master_contact_group_id").select2();
+  $(".pricing_master_payer_master_id").select2();
+
+  $(".pricing_master_heading").show()
+
+  show_hide_add_pricing(this)
+})
+
+$(".add-pricing-masters").on('change', '.pricing_master_contact_group_id', function(){
+  let _this = this
+  $.ajax({
+    type: "GET",
+    dataType: "json",
+    url: "/payer_masters/set_payers_list",
+    data: {
+      contact_group_id: $(_this).val(),
+      facility_id: "<%= @standard_pricing_master.facility_id.to_s %>"
+    },
+    success: function(response){
+      $(_this).closest(".pricing-masters-form").find('.pricing_master_payer_master_id').children().remove();
+      $(_this).closest(".pricing-masters-form").find('.pricing_master_payer_master_id').append($("<option></option>").attr("value", "").text("Select Payee"))
+      $.each(response.payer_fields, function(key, value) {
+        $(_this).closest(".pricing-masters-form").find('.pricing_master_payer_master_id').append($("<option></option>").attr("value", value[0]).text(value[1]));
+      });
+
+      $(_this).closest(".pricing-masters-form").find('.pricing_master_payer_master_id').trigger('change.select2');
+    }
+  });
+})
+
+$(".service_name").on('keyup', function(){
+  $(".service_name").not($(this)).val($(this).val())
+})
+
+$(".add-pricing-masters").on('click', '.remove-pricing-row-btn', function(e){
+  e.preventDefault()
+  $(this).parents(".pricing-master-block").remove()
+})
+
+$(".add-pricing-masters").on('click', '.disable-pricing-row-btn', function(e){
+  e.preventDefault()
+  add_remove_pricing(this)
+
+  if($(".pricing-masters-form").length <= 1){ $(".pricing_master_heading").hide() }
+})
+
+$(".add-pricing-masters").on('click', '.activate-pricing-row-btn', function(e){
+  e.preventDefault()
+  add_remove_pricing(this)
+})
+
+$(".standard_pricing_service_name").on('keyup', function(){
+  $(".pricing_master_service_name").val($(this).val())
+})
+
+$(".standard_pricing_service_code").on('keyup', function(){
+  $(".std_pricing_master_service_code").val($(this).val())
+})
+
+$(".standard_pricing_internal_comment").on('keyup', function(){
+  $(".std_pricing_master_internal_comment").val($(this).val())
+})
+
+$(".standard_pricing_external_comment").on('keyup', function(){
+  $(".std_pricing_master_external_comment").val($(this).val())
+})
+
+$(".service_master_amount").on('keyup', function(){
+  $(".pricing_master_amount").val($(this).val())
+  $(".contact_group_master_amount").val($(this).val())
+  $(".pricing_master_discount_amount").val(0)
+  $(".pricing_master_discount_percent").val(0)
+})
+
+$(".contact_group_master_amount").on('keyup', function(){
+  $(".pricing_master_amount:visible").val($(this).val())
+  $(".pricing_master_discount_amount:visible").val(0)
+  $(".pricing_master_discount_percent:visible").val(0)
+})
+
+$(".pricing_form_details").on('click', '.btn-pricing-exceptions', function(e){
+  e.preventDefault();
+  let i = $(this).attr('data-counter')
+  let counter = $(this).closest('.pricing-master-block').find('.pricing-exception-block').find('.pricing-exception').length
+  let exceptionAmount = 0.00
+  if(i == 0){
+    exceptionAmount = $(this).closest('.pricing-master-block').find('.service_master_amount').val()
+  } else {
+    exceptionAmount = $(this).closest('.pricing-master-block').find('.pricing_master_amount').val()
+  }
+  let pricingException = `
+    <div class='row pricing-exception'>
+      <div class="col-md-8 col-md-offset-1" style="border: 1px solid #aaa;padding: 5px 15px;margin-top: 5px;">
+        <div class="row exception-head">
+          <div class="col-md-12">
+            <b class="exception-title" style="color: #000;">Exception ${counter + 1}</b>
+          </div>
+          <div class="col-md-4">
+            <b style="color: #000;">Type</b>
+          </div>
+          <div class="col-md-4">
+            <b style="color: #000;">Name</b>
+          </div>
+          <div class="col-md-4">
+            <b style="color: #000;">Amount</b>
+          </div>
+        </div>
+        <div class="pricing-exception-fields">
+          <div class="row pricing-sub-exception-fields mb10">
+            <div class="col-md-4">
+              <select name="pricing_master[${i}][exceptions][${counter}][sub_exception][0][type]" class="form-control pricing_master_exception_type pricing_master_exception_type_${i}_${counter} p5_10" validate_class="pricing_master_exception_type_${i}_${counter}" style="height:30px;">
+                <option value="">Select</option>
+                <option value="room">By Room</option>
+                <option value="user">By User</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <select name="pricing_master[${i}][exceptions][${counter}][sub_exception][0][exception_id]" class="form-control pricing_master_exception_id p5_10" style="height:30px;">
+                <option value="">Select</option>
+              </select>
+              <input type="hidden" name="pricing_master[${i}][exceptions][${counter}][sub_exception][0][exception_name]" class="pricing_master_exception_name">
+            </div>
+            <div class="col-md-4">
+              <input type="number" name="pricing_master[${i}][exceptions][${counter}][amount]" class="form-control pricing_master_exception_amount p5_10" value="${exceptionAmount}" min="0">
+            </div>
+            <div class="col-md-4">
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-md-12">
+            <button class="btn btn-primary btn-xs btn-multiple-exceptions" data-counter='${counter}'>Add More</button>
+            <button class="btn btn-danger btn-xs btn-remove-exceptions">Remove Exception</button>
+          </div>
+        </div>
+      </div>
+    </div>`
+
+  $(this).closest('.pricing-master-block').find('.pricing-exception-block').append(pricingException)
+  // $(this).closest('.pricing-master-block').find('.pricing_master_has_exceptions').val(true)
+  $(`#pricing_master_${$(this).attr('data-counter')}_has_exceptions`).val(true)
+
+  $.validator.addClassRules(`pricing_master_exception_type_${i}_${counter}`, { required: true, NotEqualSubException: true });
+})
+
+$(".pricing_form_details").on('click', ".btn-remove-exceptions", function(e){
+  e.preventDefault();
+  let exceptionBlock = $(this).closest(".pricing-exception-block")
+  let iCounter = $(this).closest('.pricing-master-block').find('.btn-pricing-exceptions').attr('data-counter')
+
+  if($(this).hasClass('id_active')){
+    $(this).siblings('.btn-activate-exceptions').show()
+    $(this).hide()
+    $(this).closest('.pricing-exception').find('.pricing_master_exception_is_active').val(false)
+  } else {
+    $(this).closest('.pricing-exception').remove()
+  }
+
+  add_remove_exception(exceptionBlock, iCounter)
+})
+
+$('.btn-activate-exceptions').on('click', function(e){
+  e.preventDefault();
+  $(this).siblings('.btn-remove-exceptions').show()
+  $(this).hide()
+  $(this).closest('.pricing-exception').find('.pricing_master_exception_is_active').val(true)
+})
+
+$(".pricing_form_details").on('click', ".btn-multiple-exceptions", function(e){
+  e.preventDefault();
+  i = $(this).closest('.pricing-master-block').find('.btn-pricing-exceptions').attr('data-counter')
+  counter = $(this).attr('data-counter')
+  subCounter = $(this).closest('.pricing-exception').find('.pricing-exception-fields').find('.pricing-sub-exception-fields').length
+  if(subCounter < 2){
+    $(this).closest('.pricing-exception').find('.pricing-exception-fields').append(`
+      <div class="row pricing-sub-exception-fields mb10">
+        <div class="col-md-4">
+          <select name="pricing_master[${i}][exceptions][${counter}][sub_exception][${subCounter}][type]" class="form-control pricing_master_exception_type pricing_master_exception_type_${i}_${counter} p5_10" validate_class="pricing_master_exception_type_${i}_${counter}" style="height:30px;">
+            <option value="">Select</option>
+            <option value="room">By Room</option>
+            <option value="user">By User</option>
+          </select>
+        </div>
+        <div class="col-md-4">
+          <select name="pricing_master[${i}][exceptions][${counter}][sub_exception][${subCounter}][exception_id]" class="form-control pricing_master_exception_id p5_10" style="height:30px;">
+            <option value="">Select</option>
+          </select>
+          <input type="hidden" name="pricing_master[${i}][exceptions][${counter}][sub_exception][${subCounter}][exception_name]" class="pricing_master_exception_name">
+        </div>
+        <div class="col-md-4">
+          <button class="btn btn-danger btn-xs btn-remove-sub-exceptions">Remove</button>
+        </div>
+      </div>
+    `)
+
+    $.validator.addClassRules(`pricing_master_exception_type_${i}_${counter}`, { required: true, NotEqualSubException: true });
+  } else {
+    $(this).hide()
+  }
+
+  // Hide Add Sub Exception Button as max. 2 exception Possible (User & Room).
+  if(subCounter == 1){ $(this).hide() }
+})
+
+$(".pricing_form_details").on('click', ".btn-remove-sub-exceptions", function(e){
+  e.preventDefault();
+  let exceptionBlock = $(this).closest(".pricing-exception-block")
+  let iCounter = $(this).closest('.pricing-master-block').find('.btn-pricing-exceptions').attr('data-counter')
+  let pricingException = $(this).closest('.pricing-exception')
+  let removeException = $(pricingException).find('.pricing-sub-exception-fields').length == 1
+  let addMultipleBtn = $(pricingException).find('.btn-multiple-exceptions')
+
+  $(this).closest('.pricing-sub-exception-fields').remove()
+
+  add_remove_exception(exceptionBlock, iCounter)
+
+  if(removeException){ $(pricingException).remove(); }
+
+  $(addMultipleBtn).show()
+})
+
+$(".pricing_form_details").on('change', ".pricing_master_exception_type", function(){
+  if($(this).val() == 'room'){
+    room_master_dropdown(this)
+  } else if($(this).val() == 'user'){
+    user_master_dropdown(this)
+  } else {
+    $(this).closest('.pricing-sub-exception-fields').find(".pricing_master_exception_id").html(`
+      <option value="">Select</option>
+    `)
+  }
+})
+
+$(".pricing_form_details").on('change', ".pricing_master_exception_id", function(){
+  let exception_name = ''
+  if($(this).val() != ''){
+    exception_name = $(this).find('option:selected').html()
+  }
+  $(this).siblings(".pricing_master_exception_name").val(exception_name)
+})
+
+$(".payer-master-link").on('click', function(e){
+  e.preventDefault()
+  $("#service-master-modal").modal('hide')
+  $("#manage_payer_master_id").click()
+})
+
+const show_hide_add_pricing = (_this) => {
+  if("<%= @payer_fields.count + 1 %>" <= $(".pricing-masters-form:visible").length){
+    $(_this).hide()
+  } else {
+    $(_this).show()
+  }
+}
+show_hide_add_pricing(".btn-add-pricing")
+
+const add_remove_pricing = (_this) => {
+  let pricing_master_form = $(_this).closest('.pricing-masters-form')
+  let pricing_exception_block = $(_this).closest('.pricing-master-block').find('.pricing-exception-block')
+  let is_active = $(pricing_master_form).find(".pricing_master_is_active")
+
+  if($(is_active).val() == ''){
+    $(pricing_master_form).remove()
+    $(pricing_exception_block).remove()
+  } else if($(is_active).val() == 'true') {
+    $(is_active).val("false")
+    $(pricing_master_form).find('.activate-pricing-row-btn').show()
+    $(_this).hide()
+  } else if($(is_active).val() == 'false') {
+    $(is_active).val("true")
+    $(pricing_master_form).find('.disable-pricing-row-btn').show()
+    $(_this).hide()
+  }
+
+  show_hide_add_pricing(".btn-add-pricing")
+}
+
+const add_remove_exception = (exceptionBlock, iCounter) => {
+  let pricingException = $(exceptionBlock).find('.pricing-exception')
+
+  if(pricingException.length > 0) {
+    for (let i = pricingException.length - 1; i >= 0; i--) {
+      let pricingSubException = $(pricingException[i]).find('.pricing-sub-exception-fields')
+
+      $(pricingException[i]).find(".exception-title").html(`Exception ${i + 1}`)
+      $(pricingException[i]).find(".btn-multiple-exceptions").attr('data-counter', i)
+
+      for (let j = pricingSubException.length - 1; j >= 0; j--) {
+        $(pricingSubException[j]).find(".pricing_master_exception_type").attr('name', `pricing_master[${iCounter}][exceptions][${i}][sub_exception][${j}][type]`)
+        $(pricingSubException[j]).find(".pricing_master_exception_id").attr('name', `pricing_master[${iCounter}][exceptions][${i}][sub_exception][${j}][exception_id]`)
+        $(pricingSubException[j]).find(".pricing_master_exception_name").attr('name', `pricing_master[${iCounter}][exceptions][${i}][sub_exception][${j}][exception_name]`)
+      }
+    }
+  } else {
+    let counter = $(exceptionBlock).closest(".pricing-master-block").find(".btn-pricing-exceptions").attr('data-counter')
+    $(`#pricing_master_${counter}_has_exceptions`).val(false)
+  }
+}
+
+const room_master_dropdown = (_this) => {
+  $(_this).closest('.pricing-sub-exception-fields').find(".pricing_master_exception_id").html(`
+    <option value="">Select</option>
+    <% @room_types.each do |room_type| %>
+      <option value="<%= room_type[:abbreviation] %>"><%= room_type[:name] %></option>
+    <% end %>
+  `)
+}
+
+const user_master_dropdown = (_this) => {
+  $(_this).closest('.pricing-sub-exception-fields').find(".pricing_master_exception_id").html(`
+    <option value="">Select</option>
+    <% @users.each do |user| %>
+      <option value="<%= user.id %>"><%= user.fullname %></option>
+    <% end %>
+  `)
+}

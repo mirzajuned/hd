@@ -1,0 +1,196 @@
+<div class="modal-dialog patient-search-dialog">
+  <div class="modal-content">
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal">&times;</button>
+      <h4 class="modal-title">Search Patient to View Summary</h4>
+    </div>
+    <div class="modal-body">
+      <!-- Hidden Fields For New Patient -->
+      <div class="row mb30">
+
+        <div class="col-sm-3">
+          <%= select_tag :patient_search,options_for_select([["MR No","mr_no"],["Mobile No.", "mobile_no"], ["Name","name"], ["Patient ID","id"]], current_facility.try(:search_type)),{:class => 'form-control search-box-patient'} %>
+        </div>
+        <div class="col-sm-7">
+          <input type="text" name="search_patient" id="search-patient" class="form-control" placeholder="Type Atleast 6 Characters" maxlength="50">
+          <div class="patient-search-error-msg"></div>
+        </div>
+        <div class="col-sm-2 text-right">
+          <button class="btn btn-success search-patient-button" style="padding: 8px 15px;" disabled="disabled">Search</button>
+        </div>
+      </div>
+      <div class="row patient-summary-search-results">
+        <div class='col-md-12 mb10'>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+    </div>
+  </div>
+</div>
+
+<style>
+  .patient-search-error-msg{
+    color: red;
+  }
+  .search-box-patient{
+    height: 40px;
+  }
+</style>
+
+<script type="text/javascript">
+  $("#search-patient").trigger("focus")
+
+
+
+  $("#search-patient").on('keyup',function(){
+    validate_search_box()
+  })
+
+  $(".search-box-patient").on('change',function(){
+    validate_search_box()
+    $(".search-result").remove()
+    $("#search-patient").val("")
+    $(".search-patient-button").attr("disabled", "disabled")
+  })
+
+
+  function validate_search_box() {
+    var search_filter = $(".search-box-patient").val()
+
+    var search_query = $("#search-patient").val()
+
+    if (search_filter == "mobile_no") {
+      if (isNaN(search_query)) {
+        $(".search-patient-button").attr("disabled", "disabled")
+
+        $(".patient-search-error-msg").text("Please enter digits in mobile no.")
+
+      } else {
+        if (search_query.trim().length > 5 && search_query.trim().length < 11)  {
+          $(".search-patient-button").removeAttr("disabled", "disabled")
+          $(".patient-search-error-msg").text("")
+        } else {
+          $(".search-patient-button").attr("disabled", "disabled")
+          $(".patient-search-error-msg").text("Enter between 6-10 digits.")
+        }
+      }
+    } else {
+      if(search_query.trim().length > 5) {
+        $(".search-patient-button").removeAttr("disabled","disabled")
+        $(".patient-search-error-msg").text("")
+      } else{
+        $(".search-patient-button").attr("disabled","disabled")
+        $(".patient-search-error-msg").text("Enter atleast 6 characters.")
+      }
+    }
+  }
+
+
+  $(".search-patient-button").on('click', function(){
+
+    var btn = $(this);
+    btn.prop('disabled', true);
+
+    btn.text("Searching")
+
+    var search_filter = $(".search-box-patient").val()
+
+    // Need to think about foriegn branches too
+    //    var paramlength
+    //
+    //    if (search_filter == "Mobile No."){
+    //      if ($("#search-patient").val().trim().length != 10){
+    //        notice = new PNotify({ title: 'Error', text: 'Enter 10 digit No.', type: 'error' });
+    //        notice.get().click(function(){ notice.remove() })
+    //        return
+    //      }
+    //      paramlength = 9
+    //    } else{
+    //      paramlength = 5
+    //    }
+
+    if($("#search-patient").val().trim().length > 5){
+      var search_url
+      var search_type
+      if (search_filter == "mr_no") {
+        search_url = "/patients/search_patient_mr_no"
+        search_type = "mr_no"
+      }
+      else if (search_filter == "mobile_no") {
+        search_url = "/patients/search_patient_mobile_no"
+        search_type = "mobile_no"
+      }
+      else if (search_filter == "name") {
+        search_url = "/patients/search_patient_name"
+        search_type = "name"
+      }
+      else if (search_filter == "id") {
+        search_url = "/patients/search_patient_identifier"
+        search_type = "id"
+      }
+
+      $.ajax({
+        type: "GET",
+        dataType: "json",
+        url: search_url,
+        data: {search: $("#search-patient").val().replace(/[^\w\s]/gi, '').toLowerCase(), user_id: "<%= current_user.try(:id) %>", search_type: search_type
+      },
+        success: function(response){
+          setTimeout(function(){
+            btn.prop('disabled', false);
+            btn.text("Search")
+          }, 300);
+          $(".search-result").remove()
+
+          if(response.length > 0){
+            $('.patient-summary-search-results').prepend("<div class='col-md-12 mb10 search-result'>Select Patient</div>")
+
+            $.each(response, function(key, value) {
+              if(value[4]){
+                $('.patient-summary-search-results').append("<div class='col-md-12 mb10 search-result'><button class='btn btn-default form-control patient-list-btn' data-patient-id='" + value[0] + "'><div class='col-sm-6 text-left'><b>" + value[1] + " | " + value[2] + "</b></div><div class='col-sm-6 text-right'><b>" + value[4] + " | " + value[3] + "</b></div></button></div>")
+              } else {
+                $('.patient-summary-search-results').append("<div class='col-md-12 mb10 search-result'><button class='btn btn-default form-control patient-list-btn' data-patient-id='" + value[0] + "'><div class='col-sm-6 text-left'><b>" + value[1] + " | " + value[2] + "</b></div><div class='col-sm-6 text-right'><b>" + value[3] + "</b></div></button></div>")
+              }
+              // Hook for On Click
+              // $('.patient-summary-search-results').find(".patient-list-btn:first").on('click', function(){
+              //   var patient_id = $(this).attr('data-patient-id')
+              //   $.ajax({
+              //     type: "GET",
+              //     dataType: "script",
+              //     url: '/patient_summary/' + patient_id
+              //   })
+              //   history.pushState('', '', '/patient_summary/' + patient_id); // history.pushState([data], [title], [url]);
+              // })
+            });
+
+            $('.patient-list-btn').on('click', function(){
+              var patient_id = $(this).attr('data-patient-id')
+              $.ajax({
+                type: "GET",
+                dataType: "script",
+                url: '/patient_summary/' + patient_id
+              })
+              history.pushState('', '', '/patient_summary/' + patient_id); // history.pushState([data], [title], [url]);
+            })
+
+          } else {
+            $('.patient-summary-search-results').prepend("<div class='col-md-12 mb10 search-result'>No Results Found</div>")
+          }
+        }
+      })
+    } else {
+      $(".search-result").remove()
+    }
+  })
+
+  $("#search-patient").keypress(function(e){
+    if($(".search-patient-button").attr("disabled") == undefined){
+      if(e.which == 13){
+        $(".search-patient-button").click()
+      }
+    }
+  })
+
+</script>

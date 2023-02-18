@@ -1,0 +1,126 @@
+$(".verified_item_remove").on("click",function(){
+  $(this).parents("tr").remove()
+})
+
+$(".verified_item_remove_all").on("click",function(){
+  $("#cart-item-list").remove()
+})
+
+totalitem()
+
+$(".item_numbers").on("change keyup", function(){
+  var numbers,item_current_stock;
+  numbers = parseInt($(this).val());
+  item_current_stock = $(this).parents("td").siblings(".item_current_stock").text().trim()
+  if (numbers >= item_current_stock  ) {
+    $(this).val(item_current_stock)
+//    $(this).effect("shake", { distance: 5, times: 2})
+    $(this).parents("td").siblings(".item_current_stock").addClass('hvr-push');
+  }
+  if (numbers <= 1) {
+    $(this).val(1)
+//    $(this).effect("shake", { distance: 5, times: 2})
+  }
+  if (numbers == "") {
+    $(this).val(1)
+//    $(this).effect("shake", { distance: 5, times: 2})
+  }
+  if ( numbers < item_current_stock && numbers >= 1  ){
+    $(this).parents("td").siblings(".item_current_stock").removeClass('hvr-push');
+  }
+  totalitem()
+})
+
+
+$(".btnIncrementNumbers").on("click",function(){
+  IncrementNumbers(this)
+  totalitem()
+})
+
+$(".btnDecrementNumbers").on("click",function(){
+  DecrementNumbers(this)
+  totalitem()
+})
+
+function IncrementNumbers(e){
+  var numbers;
+  numbers = parseInt($(e).siblings(".item_numbers").val());
+  var item_current_stock = $(e).parents("td").siblings(".item_current_stock").text().trim()
+  if (numbers >= item_current_stock  ) {
+    $(e).siblings(".item_numbers").val(item_current_stock)
+    $(e).siblings(".item_numbers").effect("shake", { distance: 5, times: 2})
+
+    $(e).parents("td").siblings(".item_current_stock").addClass('hvr-push');
+  }
+  else {
+    $(e).siblings(".item_numbers").val(numbers + 1)
+  }
+}
+
+function DecrementNumbers(e){
+  var numbers;
+  numbers = parseInt($(e).siblings(".item_numbers").val());
+  if (numbers <= 1) {
+    $(e).siblings(".item_numbers").val(1)
+    $(e).siblings(".item_numbers").effect("shake", { distance: 5, times: 2})
+  }
+  else{
+    $(e).siblings(".item_numbers").val(numbers - 1)
+    $(e).parents("td").siblings(".item_current_stock").removeClass('hvr-push');
+  }
+}
+
+function totalitem(){
+  var itemsum = 0, mrpsum = 0; sellsum = 0;
+  $('.item_numbers').each(function(){
+    itemsum += parseInt($(this).val());
+    mrpsum += parseInt($(this).val()) * parseFloat($(this).attr("data-mrp"))
+    sellsum += parseInt($(this).val()) * parseFloat($(this).attr("data-sell"))
+  });
+  $(".selling_price_cart").text(sellsum.toFixed(2))
+  $("#cart-total-price").text(mrpsum.toFixed(2))
+  $("#cart-total-items").text(itemsum)
+}
+
+
+$("#btnProceedCheckingOut").on("click",function(){
+var totalitems
+  totalitems = $(".item_numbers").length
+
+  if (totalitems < 1){
+    notice = new PNotify({ title: 'Error', text: 'Cannot Checkout with Empty Cart', type: 'failure' }); notice.get().click(function(){ notice.remove() });
+    $("#btnProceedCheckingOut").attr("disabled","true")
+    return
+  }
+
+  else {
+
+    var itemhash = {}
+    $('.item_numbers').each(function(){
+      itemhash[$(this).attr("data-model")] =  $(this).val();
+    });
+    $.ajax({
+      type: "GET",
+      data: {
+        items: itemhash,
+      },
+      url: "inventory/items/show_checkout_cart",
+      success: function(data) {
+        $("#items_checkout_collection").find(".badge").text(data.cart_count)
+      }
+    })
+  }
+
+
+})
+
+
+//var itemhash = {}
+//var itemarray =[]
+//
+//
+//
+//$('.item_numbers').each(function(){
+//  itemhash[$(this).val()] =  $(this).attr("data-model");
+//});
+//itemarray.push(itemhash);

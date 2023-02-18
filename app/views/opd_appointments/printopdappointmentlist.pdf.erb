@@ -1,0 +1,171 @@
+<div class="row appointment-list">
+  <div class="col-md-4">
+    <b>Date:</b> <%= @datepicker_date.strftime("%d %b'%Y") %>
+  </div>
+  <div class="col-md-4 text-center">
+    <b>Appointment List</b>
+  </div>
+  <div class="col-md-4 text-right">
+    <b><%= current_facility.name.upcase %></b>
+  </div>
+</div>
+<div class="row" style="height: <%= @print_settings[0]['header_height'].to_f*2 %>px;">
+  <table class="table" style="padding: 5%;">
+    <tr class="invoice_head">
+      <th>#</th>
+      <th>Appt. Details</th>
+      <th>Patient</th>
+      <th>Referral</th>
+      <th>Diagnosis</th>
+      <th>Procedure</th>
+      <th>FollowUp</th>
+      <th>Surgery</th>
+      <th>Mgmt. Plan</th>
+    </tr>
+    <% @appointment_list.each.with_index do |appointment, i| %>
+      <% @opdrecord = OpdRecord.where(appointmentid: appointment.id.to_s).not.where(templatetype: "optometrist") %>
+      <% if @opdrecord.count > 0 %>
+        <% @opdrecord_last = @opdrecord.order(created_at: :desc)[0] %>
+      <% else %>
+        <% @opdrecord_last = "" %>
+      <% end %>
+      <% @clinical_workflow = OpdClinicalWorkflow.find_by(appointment_id: appointment.id.to_s) %>
+      <% @consulting_doctor = User.find_by(id: @clinical_workflow.consultant_ids.last) %>
+      <% @appointment_doctor = User.find_by(id: appointment.consultant_id.to_s) %>
+      <tr class="invoice_data">
+        <td><%= i+1 %></td>
+        <td>
+          Type: <%= appointment.appointment_type.try(:label) %>
+          <% if current_facility.specialty_ids.count > 1 %>
+            <% specialty = @available_specialties.find{ |s| s[:id].to_s == appointment.specialty_id.to_s } %>
+             - <%= specialty.present? ? specialty[:name] : "" %>
+          <% end %>
+          <br/>
+          Time: <%= appointment.start_time.try(:strftime, '%I:%M %p') %>
+          <br/>
+          <% if appointment.consultant_id.to_s != @consulting_doctor.try(:id).to_s %>
+            Appt. Dr. : <%= @appointment_doctor.try(:fullname) %>
+            <br/>
+            Consulting Dr. : <%= @consulting_doctor.try(:fullname) %>
+          <% elsif !@current_user.role_ids.include?(158965000)  %>
+            Appt. Dr. : <%= @appointment_doctor.try(:fullname) %>
+          <% end %>
+        </td>
+        <td>
+          <b>
+            <%= appointment.patient.fullname %><br>
+            <% if appointment.patient.gender || appointment.patient.exact_age.present? %>
+              <% if appointment.patient.gender %><% if appointment.patient.gender == "Male" %>M<% else appointment.patient.gender == "Female" %>F<% end %> /<% end %>
+              <% if appointment.patient.exact_age.present? %><%=appointment.patient.exact_age.to_s.split("-").join(" ")%><%end%><br>
+            <% end %>
+          </b>
+          <%= appointment.patient.mobilenumber %>
+        </td>
+        <td>
+          <% referral = appointment.try(:patient_referral_type) %>
+          <% if referral.present? && !referral.try(:is_deleted) %>
+            <%= referral.try(:referral_type).try(:name).to_s %> - <%= referral.try(:sub_referral_type).try(:name).to_s %>
+          <% else %>
+            -
+          <% end %>
+        </td>
+        <td>
+          <% unless @opdrecord_last == "" %>
+            <%= render partial: "/opd_appointments/print_diagnosis_list.html.erb", locals: { diagnosis: @opdrecord_last } %>
+            <% if @opdrecord_last.templatetype == "freeform" %>
+              <% unless  @opdrecord_last.diagnosiscomments == nil || @opdrecord_last.diagnosiscomments.to_s.html_safe.to_s.strip == "<br>" %>
+                <li><b><%= @opdrecord_last.diagnosiscomments.to_s.html_safe.to_s %></b></li>
+              <% end %>
+            <% end %>
+          <% else %>
+            -
+          <% end %>
+        </td>
+        <td>
+          <% unless @opdrecord_last == "" %>
+            <% if @opdrecord_last.procedure.count > 0 %>
+              <% @opdrecord_last.procedure.each do |procedure| %>
+                <li><b><%= procedure.procedurename.to_s.split("/").join(" /") %>,<%= @opdrecord_last.get_label_for_procedure_side(procedure.procedureside) %></b></li>
+              <% end %>
+            <% end %>
+            <% if @opdrecord_last.templatetype == "freeform" %>
+              <% unless @opdrecord_last.free_procedure == nil || @opdrecord_last.free_procedure.to_s.html_safe.to_s.strip == "<br>" %>
+                <li><b><%= @opdrecord_last.free_procedure.to_s.html_safe.to_s %></b></li>
+              <% end %>
+            <% end %>
+          <% else %>
+            -
+          <% end %>
+        </td>
+        <td style="white-space: nowrap; text-overflow:ellipsis;">
+          <% unless @opdrecord_last == "" %>
+            <% if @opdrecord_last.advice.present? && @opdrecord_last.advice.read_attribute(:opdfollowupdate).present? %>
+              <%= @opdrecord_last.advice.read_attribute(:opdfollowupdate) %>
+            <% end %>
+          <% else %>
+            -
+          <% end %>
+        </td>
+        <td style="white-space: nowrap; text-overflow:ellipsis;">
+          <% @ots = @ots.where(patient_id: appointment.patient_id) %>
+          <% if appointment.surgery_advised %>Advised<% else %>-<% end %><br>
+          <% if @ots.count > 0 %>
+            OT:
+            <% @ots.each do |ot| %>
+              <b><%= ot.ottime.strftime("%I:%M %p") %> <%= ot.otdate.strftime("%d-%b-%Y") %></b><br>
+            <% end %>
+          <% end %>
+        </td>
+        <td>
+          <% unless @opdrecord_last == "" %>
+            <% if @opdrecord_last.advicemanagementplan %><%= @opdrecord_last.advicemanagementplan %><% end %>
+          <% else %>
+            -
+          <% end %>
+        </td>
+      </tr>
+    <% end %>
+  </table>
+  <div colspan="11" class="text-right">
+    <span style='font-size:8px;'>Printed on: <%= Time.current.strftime("%d %b'%Y, %I:%M %p") %></span>
+  </div>
+</div>
+
+<style type="text/css">
+  .appointment-list {
+    font-size: 12px;
+  }
+
+  .invoice_data * {
+    font-size: 9px;
+    text-align: left;
+  }
+
+  .invoice_head * {
+    font-size: 10px;
+    color: #000;
+  }
+
+  .row table tr td {
+    text-align: left;
+    vertical-align: middle;
+    padding: 1px 2px 0 2px !important;
+    border: 1px solid lightgray !important;
+    font-size: 10px;
+  }
+  .row table tr th {
+    text-align: center;
+    vertical-align: middle;
+    padding: 0px !important;
+    border: 1px solid lightgray !important;
+    background: #87CEEB;
+    font-size: 10px;
+  }
+  hr{
+    border-top: 1px solid lightgray;
+    margin-bottom: 2px;
+    margin-top: 3px;
+    width: 90%;
+  }
+  tr { page-break-inside: avoid; clear:both; page-break-after:always; }
+</style>

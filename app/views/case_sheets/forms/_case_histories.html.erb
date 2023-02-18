@@ -1,0 +1,113 @@
+<% if @patient.try(:speciality_history_records).present? || @patient.try(:personal_history_records).present? %>
+  <div class="row">
+    <div class="col-md-12" style="text-decoration: underline;"><b>PATIENT HISTORY</b></div>
+    <div class="col-md-12">
+      <%= render partial: 'templates/common/allergies_view.html.erb', locals: { opdrecord: @patient } %>
+    </div>
+  </div>
+<% end %>
+<% if @case_sheet.present? %>
+  <% if @case_sheet.chief_complaints.count > 0 %>
+    <div class="row">
+      <div class="col-md-12" style="text-decoration: underline;"><b>CHIEF COMPLAINTS</b></div>
+      <div class="col-md-12">
+        <%= render partial: 'case_sheets/views/case_sheet_chief_complaints.html.erb' %>
+      </div>
+    </div>
+  <% else %>
+    <!-- <div class="row">
+      <div class="col-md-12" style="text-decoration: underline;"><b>CHIEF COMPLAINTS</b></div>
+      <div class="col-md-12"><span>No Chief Complaints</span></div>
+    </div> -->
+  <% end %>
+<% else %>
+  <div class="row">
+    <div class="col-md-12" style="text-decoration: underline;"><b>PATIENT HISTORY</b></div>
+    <div class="col-md-12">
+      <span>No History</span>
+    </div>
+  </div>
+<% end %>
+
+<% if @patient&.speciality_history_records.to_a.count == 0 && @patient&.personal_history_records.to_a.count == 0 && @case_sheet&.chief_complaints.to_a.count == 0 %>
+  <% free_history_text_admission = @case_sheet.free_form_histories[@admission.try(:id).to_s] %>
+  <% if @case_sheet.free_form_histories.count > 0 %>
+    <div class="row view_history_text" <%= 'style=display:none;' if free_history_text_admission.present? %>>
+      <div class="col-md-12" style="text-decoration: underline;">
+        <b>HISTORY</b>
+        <button class="btn btn-link btn-xs toggle_history_text"><i class="fa fa-edit"></i></button>
+      </div>
+      <% uniq_array = [] %>
+      <% history_free_text = '' %>
+      <% history_counter = 0 %>
+      <% @case_sheet.free_form_histories.to_a.reverse.to_h.each do |key, history| %>
+        <% if ["ot_schedule", "admission"].include?(history[:record_type]) && history_free_text != "" %>
+          <% internal_flag = false %>
+          <% next %>
+        <% else %>
+          <% internal_flag = true %>
+        <% end %>
+        <% unless uniq_array.include?(history[:content].to_s.html_safe()) %>
+          <div class="col-md-12">
+            <span><b style="color: #333;"><%= history[:content].to_s.html_safe %></b></span>
+          </div>
+          <% if history_counter == 0 %>
+            <% history_free_text += history[:content].to_s %>
+          <% else %>
+            <% history_free_text = history_free_text + '<br>' + history[:content].to_s %>
+          <% end %>
+          <% uniq_array << history[:content].to_s.html_safe %>
+          <% history_counter += 1 %>
+        <% end %>
+        <% if ["ot_schedule", "admission"].include?(history[:record_type]) && internal_flag %>
+          <% break %>
+        <% end %>
+      <% end %>
+    </div>
+  <% end %>
+
+  <div class="row edit_history_text" <%= 'style=display:none;' if @case_sheet.free_form_histories.count > 0 && !free_history_text_admission.present? %>>
+    <div class="col-md-12" style="text-decoration: underline;">
+      <b>HISTORY TEXTBOX</b>
+      <!-- <button class="btn btn-link btn-xs reset_history_value">Reset</button> -->
+    </div>
+    <div class="col-md-12">
+      <% free_history_text_content = (free_history_text_admission[:content].to_s.html_safe if params[:controller].include?('clinical_note') && free_history_text_admission.present?) || history_free_text.to_s.html_safe %>
+      <%= text_area_tag 'case_sheet[free_history_text]', free_history_text_content, class: 'form-control p7_10', id: 'case_sheet_free_history_text', placeholder: 'Diagnosis Notes' %>
+    </div>
+  </div>
+<% end %>
+
+<script type="text/javascript">
+  $(".history-added").on('click', ".btn-remove-history", function(e){
+    e.preventDefault();
+    $(this).closest(".historylist").remove();
+    if($(".historylist").length == 0){
+      $(".no-history").show();
+    }
+  })
+
+  var summernote_options = {
+    toolbar: [],
+    height: 100
+  };
+
+  $('#case_sheet_free_history_text').summernote(summernote_options);
+
+  $(".toggle_history_text").on('click', function(e){
+    e.preventDefault();
+    $(".view_history_text").hide()
+    $(".edit_history_text").show()
+  })
+
+  // $(".reset_history_value").on('click', function(e){
+  //   e.preventDefault();
+  //   $('#case_sheet_free_history_text').code("<%#= history_free_text.to_s %>")
+  // })
+</script>
+
+<style type="text/css">
+  .note-editable {
+    overflow-y: scroll !important;
+  }
+</style>

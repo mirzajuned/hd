@@ -1,0 +1,84 @@
+<div class="modal-dialog modal-clinical-note">
+  <!-- Modal content-->
+  <div class="modal-content">
+    <%= simple_form_for @ipdrecord, url: @url, format: :js, remote: true, method: @method, action: 'Update', multipart: true, html: { class: "clinical-note-form", id: "clinical-note-form" } do |f| %>
+      <div class="modal-header">
+        <div class="row">
+          <div class="pull-left col-md-3">
+            <b style="color:#c9302c;">Note Date: </b>
+            <input type="text" name="inpatient_ipd_record[clinical_note_attributes][note_date]" style="border:none;border-bottom:1px solid;background:#fff;color:#c9302c;cursor:pointer;" class="note-created-date" readonly="readonly" value="<%= @clinical_note.note_created_at.strftime('%d/%m/%Y') %>">
+            <input type="hidden" name="inpatient_ipd_record[clinical_note_attributes][note_time]" class="note-created-time" value='<%= Time.current.strftime("%I:%M %p") %>'>
+          </div>
+          <div class="pull-right">
+            <% if params[:action] == "new" %>
+              <%= f.submit "Save", class: "btn btn-success btn-clinical-save btn-sm", 'data-disable-with' => "Please wait..", style:"" %>
+            <% else %>
+              <%= f.submit "Update", class: "btn btn-success btn-clinical-save btn-sm", 'data-disable-with' => "Please wait..", style:"" %>
+            <% end %>
+            <button type="button" class="btn btn-default btn-sm" data-dismiss="modal"  style="">Close</button>
+          </div>
+          <div class="col-md-3">
+            <h4 class="modal-title " style="margin-top:2px;color:#000;margin-left: 10%;"><%= params[:action].capitalize %> Admission Form</h4>
+          </div>
+        </div>
+      </div>
+      <div class="modal-body clinical_form" style="">
+        <!-- Common Fields -->
+          <input type="hidden" name="" id="admitting_doctor_id" value="<%= @admission.try(:doctor) %>">
+          <input type="hidden" name="" id="admitting_doctor_name" value="<%= User.find_by(id: @admission.try(:doctor)).try(:fullname) %>">
+          <%= f.hidden_field :note_created_at, value: Time.current.strftime('%d/%m/%Y %I:%M %p'),name: 'inpatient_ipd_record[clinical_note_attributes][note_created_at]' %>
+          <%= f.hidden_field :organisation_id, value: @admission.try(:facility).try(:organisation_id), name: 'inpatient_ipd_record[clinical_note_attributes][organisation_id]' %>
+          <%= f.hidden_field :admission_id, value: @admission.try(:id),name: 'inpatient_ipd_record[clinical_note_attributes][admission_id]' %>
+          <%= f.hidden_field :patient_id, value: @patient.id,name: 'inpatient_ipd_record[clinical_note_attributes][patient_id]' %>
+          <%= f.hidden_field :user_id, value: current_user.id,name: 'inpatient_ipd_record[clinical_note_attributes][user_id]' %>
+          <%= f.hidden_field :department, value: 'Inpatient Department', name: 'inpatient_ipd_record[clinical_note_attributes][department]' %>
+          <%= f.hidden_field :department_id, value: '486546481', name: 'inpatient_ipd_record[clinical_note_attributes][department_id]' %>
+          <%= f.hidden_field :specalityname, value: @specialty, name: 'inpatient_ipd_record[clinical_note_attributes][specalityname]' %>
+          <%= f.hidden_field :specalityid, value: @specialty_id,name: 'inpatient_ipd_record[clinical_note_attributes][specalityid]' %>
+          <%= f.hidden_field :ward_id, value: @admission.try(:ward_id),name: 'inpatient_ipd_record[clinical_note_attributes][ward_id]' %>
+          <%= f.hidden_field :room_id, value: @admission.try(:room_id),name: 'inpatient_ipd_record[clinical_note_attributes][room_id]' %>
+          <%= f.hidden_field :bed_id, value: @admission.try(:bed_id),name: 'inpatient_ipd_record[clinical_note_attributes][bed_id]' %>
+          <%= f.hidden_field :daycare, value: @admission.try(:daycare),name: 'inpatient_ipd_record[clinical_note_attributes][daycare]' %>
+          <%= f.hidden_field :patient_name, value: @patient.fullname,name: 'inpatient_ipd_record[clinical_note_attributes][patient_name]' %>
+          <%= f.hidden_field :patient_age, value: @patient.age,name: 'inpatient_ipd_record[clinical_note_attributes][patient_age]' %>
+          <%= f.hidden_field :patient_gender, value: @patient.gender,name: 'inpatient_ipd_record[clinical_note_attributes][patient_gender]' %>
+          <%= f.hidden_field :mr_no, value: @patient_mrn,name: 'inpatient_ipd_record[clinical_note_attributes][mr_no]' %>
+          <%= f.hidden_field :patient_identifier_id, value: @patient_identifier_id,name: 'inpatient_ipd_record[clinical_note_attributes][patient_identifier_id]' %>
+        <!-- Common Fields -->
+        <!-- Patient Info -->
+        <div class="row text-center">
+          <div class="col-md-3">
+            <b style="color:#000;">Name:</b> <%= @patient.fullname %>
+          </div>
+          <div class="col-md-3">
+            <b style="color:#000;">Age/Sex:</b> <% if @patient.calculate_age.present? || @patient.gender.present?%><%= @patient.calculate_age %>/<%= @patient.gender %><% else %> --<% end %>
+          </div>
+          <div class="col-md-4">
+            <b style="color:#000;">Patient ID <% if @patient_mrn.to_s != "" %>/ MR No. <% end %> :</b> <%= @patient_identifier_id %><% if @patient_mrn.to_s != "" %> / <%= @patient_mrn %><% end %>
+          </div>
+          <% if @admission.try(:admissiondate).present? %>
+          <div class="col-md-2">
+            <b style="color:#000;">Adm Date:</b> <%= @admission.admissiondate.strftime("%d %b %Y")%>
+          </div>
+          <% end %>
+        </div>
+        <!-- Patient Info -->
+        <div class="row">
+          <div class="col-md-12" style="">
+            <%= render partial: 'inpatient/ipd_record/clinical_note/' + @speciality_folder_name + '_notes/form_body', locals: { f: f, patient: @patient, admission: @admission } %>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
+  </div>
+
+</div>
+
+<script type="text/javascript">
+  $(".btn-clinical-save").on('click', function(){
+    if(parseInt($("#inpatient_ipd_record_expected_stay").val()) < 0){
+      $("#inpatient_ipd_record_expected_stay").val(0)
+    }
+  })
+</script>

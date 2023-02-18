@@ -1,0 +1,268 @@
+<% if @ots.count > 0 %>
+  <% @min_date = @ots[0].otdate.strftime("%d/%m/%Y") %>
+<% else %>
+  <% @min_date = @admission.admissiondate.strftime("%d/%m/%Y") %>
+<% end %>
+<% @admissiondate = @admission.admissiondate.strftime("%d/%m/%Y") %>
+<% if @admission.dischargedate %>
+  <% @dischargedate = @admission.try(:dischargedate).try(:strftime, "%d/%m/%Y") %>
+<% else %>
+  <% @dischargedate = Date.current.strftime("%d/%m/%Y") %>
+<% end %>
+
+<%= hidden_field_tag "inpatient_ipd_record[admission_attributes][dischargedate]", '', class: "hidden_dischargedate_datepicker" %>
+<%= hidden_field_tag "inpatient_ipd_record[admission_attributes][dischargetime]", '', class: "hidden_dischargetime_timepicker" %>
+<%= hidden_field_tag "inpatient_ipd_record[discharge_note_attributes][discharge_date]", '', class: "hidden_dischargedate_datepicker" %>
+<%= hidden_field_tag "inpatient_ipd_record[discharge_note_attributes][discharge_time]", '', class: "hidden_dischargetime_timepicker" %>
+
+<div class="row mb30" style="margin-top: 20px;">
+  <div class="col-md-7 col-md-offset-5">
+    <span class="label label-warning"><b>Note:</b> The Discharge Date & Time Selected Here will be considered while discharging patient.</span>
+  </div>
+  <div class="col-md-2 text-right">
+    <b>Admission Date :</b>
+  </div>
+  <div class="col-md-2">
+    <%= f.text_field :admission_date, class: "datepicker form-control admission_value", value: @admission.admissiondate.strftime("%d/%m/%Y"),name: "[inpatient_ipd_record][admission_attributes][admissiondate]", readonly: 'readonly' %>
+  </div>
+  <div class="col-md-2 text-right">
+    <b>Discharge Date :</b>
+  </div>
+  <div class="col-md-2">
+    <%= text_field_tag :discharge_date, @admission.try(:dischargedate).try(:strftime, "%d/%m/%Y"), class: "datepicker_dischargedate form-control discharge_value", readonly: 'readonly' %>
+  </div>
+  <div class="col-md-2 text-right">
+    <b>Discharge Time :</b>
+  </div>
+  <div class="col-md-2 bootstrap-timepicker timepicker">
+    <% if @admission.dischargetime.present? %>
+      <% discharge_date = @admission.try(:dischargetime).try(:strftime, "%I:%M %P") %>
+    <%else%>
+      <% discharge_date = Time.current.strftime("%I:%M %p") %>
+    <%end%>
+    <%= text_field_tag :discharge_time, discharge_date, class: "timepicker-dischargetime form-control discharge_value" %>
+  </div>
+</div>
+
+<div class="row mb20">
+  <div class="col-md-2 text-right">
+    <b>Diagnosis :</b>
+  </div>
+  <div class="col-md-6">
+    <% if @diagnosislist.where(is_disabled: false).try(:length) > 0 %>
+      <% @diagnosislist.where(is_disabled: false).group_by(&:icddiagnosiscode).each do |icddiagnosiscode, diagnoses| %>
+        <% if diagnoses[0][:created_from] == "migration"%>
+          <li style="margin-left: 10px"> <%= diagnoses[0][:diagnosisname].capitalize %></li>
+        <% else %>
+          <li style="margin-left: 10px"> <%= diagnoses[0][:diagnosisoriginalname].capitalize %>- <b><%= diagnoses[0][:icddiagnosiscode].upcase.insert(3, '.') %></b></li>
+        <% end %>
+      <% end %>
+    <% end %>
+    <% if @case_sheet.free_form_diagnoses.try(:count) > 0 %>
+      <% if @case_sheet.free_form_diagnoses[@ipdrecord.id.to_s].present? %>
+        <% if @case_sheet.free_form_diagnoses[@ipdrecord.id.to_s][:content].present? && @case_sheet.free_form_diagnoses[@ipdrecord.id.to_s][:content] != "<br>" %>
+          <li style="margin-left: 10px"><%= @case_sheet.free_form_diagnoses[@ipdrecord.id.to_s][:content].to_s.html_safe() %></li>
+        <% end %>
+      <% else %>
+        <% uniq_array = [] %>
+        <% @case_sheet.free_form_diagnoses.each do |key, diagnosis| %>
+          <% unless uniq_array.include?(diagnosis[:content].to_s.html_safe()) %>
+            <% if diagnosis[:content] != "<br>" %>
+              <li style="margin-left: 10px"><%= diagnosis[:content].to_s.html_safe() %></li>
+            <% end %>
+            <% uniq_array << diagnosis[:content].to_s.html_safe() %>
+          <% end %>
+        <% end %>
+      <% end %>
+    <% end %>
+  </div>
+
+  <div class="col-md-2 text-right">
+    <b>Procedure Code :</b>
+  </div>
+  <div class="col-md-2 text-right">
+    <%= f.text_field :procedure_code, {class: "form-control", value: @discharge_note.read_attribute(:procedure_code)} %>
+  </div>
+</div>
+
+<div class="row mb20">
+  <div class="col-md-2 text-right">
+    <b>Treatment Type :</b>
+  </div>
+  <div class="col-md-2">
+    <%= f.input :treatment_type, wrapper_html: {:class=>"routine-emergency", style: "width:155%;"}, collection: ['Medical', 'Surgical'], :as => :hg_radio_button,:label => false, :required => false, :class => 'btn btn-xs btn-white', style: "margin-top:-2px;", :input_html => { }, :checked => @discharge_note.read_attribute(:treatment_type) || @ipdrecord.read_attribute(:expected_management) %>
+  </div>
+</div>
+
+<div class="row mb20">
+  <div class="col-md-2 text-right">
+    <b>Treatment Notes :</b>
+  </div>
+  <div class="col-md-3 text-right">
+    <%= f.text_area :treatment_notes, {style: "", class: "form-control", value: @discharge_note.read_attribute(:treatment_notes)} %>
+  </div>
+  <div class="col-md-2 text-right">
+    <b>Condition On Discharge :</b>
+  </div>
+  <div class="col-md-3 text-right">
+    <%= f.text_area :patient_condition, {style: "", class: "form-control diagnosis",value: @discharge_note.read_attribute(:patient_condition)} %>
+  </div>
+</div>
+
+<% if @ipdrecord.procedure.where(is_performed: true).count > 0 || @case_sheet.free_form_procedures.count > 0 %>
+    <div class="row mb20">
+      <div class="col-md-2 text-right">
+       <b>Surgery Details:</b>
+      </div>
+      <div class="col-md-8">
+        <% if @ipdrecord.procedure.where(is_performed: true).count > 0 %>
+          <table class="table table-bordered">
+            <thead>
+              <tr>
+                <th>Name Of Surgery</th>
+                <th>Date of Surgery</th>
+                <th>Procedure Comments</th>
+                <th>User Comments</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @ipdrecord.procedure.where(is_performed: true).each_with_index do |procedure|%>
+                <tr>
+                  <td><%=procedure.procedurename %></td>
+                  <td><%= procedure.try(:performed_datetime).try(:strftime, "%d/%m/%Y") %></td>
+                  <td><%= (procedure.procedure_comment if procedure.procedure_comment.present?) || '-' %> </td>
+                  <td><%= (procedure.users_comment if procedure.users_comment.present?) || '-' %> </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        <% end %>
+        <% if @case_sheet.free_form_procedures.try(:count) > 0 %>
+          <% if @case_sheet.free_form_procedures[@ipdrecord.id.to_s].present? %>
+            <% if @case_sheet.free_form_procedures[@ipdrecord.id.to_s][:content].present? && @case_sheet.free_form_procedures[@ipdrecord.id.to_s][:content] != "<br>" %>
+              <li style="margin-left: 10px"><%= @case_sheet.free_form_procedures[@ipdrecord.id.to_s][:content].to_s.html_safe() %></li>
+            <% end %>
+          <% else %>
+            <% uniq_array = [] %>
+            <% @case_sheet.free_form_procedures.each do |key, procedure| %>
+              <% if procedure[:content].present? && procedure[:content] != "<br>" %>
+                <% unless uniq_array.include?(procedure[:content].to_s.html_safe()) %>
+                  <li style="margin-left: 10px"><%= procedure[:content].to_s.html_safe() %></li>
+                  <% uniq_array << procedure[:content].to_s.html_safe() %>
+                <% end %>
+              <% end %>
+            <% end %>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+<% end %>
+
+<!-- <div class="row" style="padding-bottom: 20px;">
+  <div class="col-md-2 text-right">
+    <b>Investigation Notes :</b>
+  </div>
+  <div class="col-md-6">
+    <%#if @discharge_note.read_attribute(:investigation_notes).present?%>
+      <%#value = @discharge_note.read_attribute(:investigation_notes)%>
+    <%#else%>
+      <%#value = @ipdrecord.investigations %>
+    <%#end%>
+    <%#= f.text_area :investigation_notes, {style: "width:70%;",rows: 2, class: " form-control",value: value } %>
+  </div>
+</div> -->
+
+<!-- <div class="row mb10">
+  <div class="col-md-12">
+    <%#= render partial: 'inpatient/ipd_record/clinical_note/case_sheets/case_investigations.html.erb' %>
+  </div>
+</div> -->
+
+<%= render partial: "inpatient/ipd_record/discharge_note/case_sheets/case_investigations.html.erb" %>
+
+
+<style type="text/css">
+  .discharge_value {
+    background-color: #fff !important;
+    cursor: pointer !important;
+  }
+
+  .admission_value {
+    background-color: #fff !important;
+    cursor: pointer !important;
+  }
+  #inpatient_ipd_record_discharge_note_attributes_treatment_notes{
+    min-width: 213px !important;
+    margin: 0px -33.1406px 0px 0px;
+    height: 43px;
+    max-width: 242px !important;
+    min-height: 43px !important;
+    max-height: 43px !important;
+  }
+  #inpatient_ipd_record_discharge_note_attributes_patient_condition{
+    min-width: 213px !important;
+    margin: 0px -33.1406px 0px 0px;
+    height: 43px;
+    max-width: 242px !important;
+    min-height: 43px !important;
+    max-height: 43px !important;
+  }
+  #inpatient_ipd_record_discharge_note_attributes_investigation_notes{
+    max-width: 102%;
+    min-width: 102%;
+    max-height: 38px;
+    min-height: 38px;
+  }
+</style>
+<script type="text/javascript">
+
+  datepicker_options = {
+    maxDate: -0,
+    dateFormat: "dd/mm/yy",
+  }
+
+  datepicker_options_disc = {
+    minDate: <%= (Date.parse(@min_date) - Date.current) %>,
+    // maxDate: -0,
+    dateFormat: "dd/mm/yy"
+  }
+
+  $(".datepicker").datepicker(datepicker_options);
+
+  $(".datepicker_dischargedate").datepicker(datepicker_options_disc);
+  // $(".datepicker_dischargedate").datepicker("setDate", new Date());
+
+  $(".timepicker-dischargetime").timepicker({minuteStep: 5})
+  if("<%= @admission.try(:dischargetime).to_s %>" === ""){
+    $(".timepicker-dischargetime").val("")
+  }
+
+  var summernote_options = {
+      toolbar: [
+          ['style', ['bold', 'italic', 'underline', 'clear']],
+          ['font', ['strikethrough', 'superscript', 'subscript']],
+          ['fontsize', ['fontsize']],
+          ['color', ['color']],
+          ['para', ['ul', 'ol', 'paragraph']],
+          ['height', ['height']]    ,
+      ],height: 200,
+      fontNames: ['Arial', 'Arial Black', 'Comic Sans MS', 'Courier New','Georgia','Times New Roman','Palatino Linotype','Lucida Console','Verdana','Trebuchet MS','Helvetica','English111 Adagio BT Regular','Impact']
+  };
+  $('.investigation').summernote(summernote_options);
+  $('.note-editable.panel-body').css('border','1px solid #ddd')
+  $('.note-toolbar.panel-heading').css('background-color','#1CAF9A')
+
+
+// This Code to Set Date for Time as Date Selected
+
+$(".datepicker_dischargedate").on('change', function(){
+  var timestamp = $(this).val() + " " + $(".timepicker-dischargetime").val()
+  $(".hidden_dischargedate_datepicker").attr("value", timestamp)
+}).trigger('change')
+
+$(".timepicker-dischargetime").on('change', function(){
+  var timestamp = $(".datepicker_dischargedate").val() + " " + $(this).val()
+  $(".hidden_dischargetime_timepicker").attr("value", timestamp)
+}).trigger('change')
+
+</script>

@@ -1,0 +1,67 @@
+function filter_index(query) {
+  if (query.length > 0){
+    $(".items-variants-search").find(".fa").show()
+  }
+  else {
+    $(".items-variants-search").find(".fa").hide()
+  }
+  $('#show_more_variants').show();
+  var vendor_id = $("#inventory_transaction_direct_stock_vendor_id").val()
+  var vendor_location_id = $('#inventory_transaction_direct_stock_vendor_location_id').val()
+  $.ajax({
+    type : 'get',
+    url: '/inventory/transaction/direct_stocks/filter_variants',
+    data: {q: query, store_id: "<%=@store_id %>",item_type: "<%=@category %>", vendor_id: vendor_id, vendor_location_id: vendor_location_id, remote: "true" },
+  })
+}
+
+$(".items-variants-search").find(".fa").on('click',function(){
+  $("#variants_search").val("")
+  filter_index("")
+})
+
+$("#variants_search").on("keyup", function () {
+  query = $(this).val()
+  filter_index(query)
+})
+
+
+
+function isScrolledIntoLastRow(last_row_elem, scrollable_container) {
+  if (last_row_elem.length == 1) {
+    var top_of_element = $(last_row_elem).offset().top - $(scrollable_container).offset().top ;
+    var table_height = $(scrollable_container).innerHeight()
+    return top_of_element <= table_height
+  }
+}
+
+scrollinventory()
+function scrollinventory(){
+  $(".items-variants-body").scroll(function() {
+    last_row_elem = $('.items-variants-body').find('tr:nth-last-child(1)')
+    scrollable_container = $(".items-variants-body")
+    if (isScrolledIntoLastRow(last_row_elem, scrollable_container)) {
+      $("#show_more_variants").trigger("click")
+      $(".items-variants-body").off('scroll');
+      setTimeout(function() {   //calls click event after a certain time
+        scrollinventory()
+      }, 500);
+    }
+  })
+}
+$("#show_more_variants:visible").on('click', function(e){
+  e.preventDefault();
+  var total_count_row =  $('.items-variants-body tr').length;
+  var query =  $("#variants_search").val()
+  $.ajax({
+    type: "GET",
+    dataType: "script",
+    data: {
+      total_count_row: total_count_row,
+      item_type: "<%=  @category %>",
+      store_id: "<%= @store_id %>",
+      q:query
+    },
+    url: "/inventory/transaction/direct_stocks/append_variants",
+  })
+})

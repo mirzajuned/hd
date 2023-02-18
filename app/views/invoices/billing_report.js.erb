@@ -1,0 +1,176 @@
+jQuery(".pageheader").html("<%= escape_javascript(render 'billing_report_header') %>")
+jQuery(".contentpanel").html("<%= escape_javascript(render 'billing_report_content') %>")
+daterangepicker_init("reportrange",360)
+
+$('#reportrange').on('apply.daterangepicker', function(ev, picker) {
+	$.ajax({
+	  url: "/invoices/day_wise_earnings.json?start_date="+picker.startDate.format('YYYY-MM-DD')+"&end_date="+picker.endDate.format('YYYY-MM-DD'),
+	  dataType: "json"
+	}).done(function(data) {
+		var data_indexed = Array();
+		var bar_chart_data = Array();
+		var donut_data = Array();
+		$.each(data,function(index,values){
+			data_indexed[values['date']] = values['total_earnings'];
+		});
+		var currDate = moment(picker.startDate).subtract(1,'days') ;
+		var lastDate = moment(picker.endDate);
+		var days_count = 0;
+		var earned_days_count = 0;
+		while(currDate.add(1,'days').diff(lastDate) < 0) {
+			total_for_day = 0;
+			if(typeof data_indexed[currDate.format("YYYY-MM-DD")]!='undefined'){
+				total_for_day += data_indexed[currDate.format("YYYY-MM-DD")];
+				donut_data[earned_days_count] = Array();
+			    donut_data[earned_days_count]["label"] = currDate.format("MMM DD,YYYY");
+			    donut_data[earned_days_count]["value"] = total_for_day;
+			    earned_days_count++;
+			}
+			bar_chart_data[days_count] = Array();
+		    bar_chart_data[days_count]["label"] = currDate.format("MMM DD,YYYY")
+		    bar_chart_data[days_count]["value"] = total_for_day
+		    days_count++;
+		}
+		init_bargraph(bar_chart_data);
+		init_donut(donut_data);
+	});
+	//building each service chart
+	$.ajax({
+	  url: "/invoices/service_wise_earnings.json?start_date="+picker.startDate.format('YYYY-MM-DD')+"&end_date="+picker.endDate.format('YYYY-MM-DD'),
+	  dataType: "json"
+	}).done(function(data) {
+		//the date array for x-axis labels
+		$("#rickshaw_y_axis").html("");
+		$("#service_earnings_barchart").html("");
+		$("#rickshaw_legend").html("");
+		$("#rickshaw_preview").html("");
+		$("#rickshaw_x_axis").html("");
+		var currDate = moment(picker.startDate).subtract(1,'days') ;
+		var lastDate = moment(picker.endDate);
+		var days_count = 0;
+		var date_labels = [];
+		var date_values = [];
+		while(currDate.add(1,'days').diff(lastDate) < 0) {
+			date_labels[days_count] = currDate.format("MMM DD,YYYY");
+			date_values[days_count] = currDate.format("YYYY-MM-DD");
+		    days_count++;
+		}
+
+		var services_data = [];
+		var palette = new Rickshaw.Color.Palette();
+		
+		$.each(data,function(index,each_service){
+			services_data[index] = [];
+			services_data[index]["name"] = each_service["service"][0];
+			var plot_array = [];
+						
+			$.each(date_values,function(date_index,date){
+				plot_array[date_index] = [];
+				plot_array[date_index]["x"] = date_index;
+
+				if(typeof each_service["service"][1][date] != 'undefined') {
+					plot_array[date_index]["y"] = parseFloat(each_service["service"][1][date]);
+				} else {
+					plot_array[date_index]["y"] = 0;
+				}
+			});
+			services_data[index]["data"] = plot_array;
+			services_data[index]["color"] = palette.color();
+
+		});
+
+		
+		var graph = new Rickshaw.Graph( {
+		        element: document.querySelector("#service_earnings_barchart"),
+		        renderer: 'bar',
+		        width: 735,
+		        height: 350,
+		        series: services_data
+		} );
+
+		var x_axis = new Rickshaw.Graph.Axis.X( { 
+			graph: graph,
+			tickFormat: function(x){return date_labels[x]},
+			orientation: 'bottom',
+			element: document.getElementById('rickshaw_x_axis')
+		} );
+
+		var y_axis = new Rickshaw.Graph.Axis.Y( {
+		        graph: graph,
+		        orientation: 'left',
+		        tickFormat: function(y){return d3.round(y,2)},
+		        element: document.getElementById('rickshaw_y_axis')
+		} );
+
+		var legend = new Rickshaw.Graph.Legend( {
+		        element: document.querySelector('#rickshaw_legend'),
+		        graph: graph
+		} );
+		var highlighter = new Rickshaw.Graph.Behavior.Series.Highlight({
+    		graph: graph,
+    		legend: legend
+		});
+		var shelving = new Rickshaw.Graph.Behavior.Series.Toggle({
+    		graph: graph,
+    		legend: legend
+		});
+
+		var hoverDetail = new Rickshaw.Graph.HoverDetail( {
+							graph: graph,
+							formatter: function(series, x, y) {
+											var date = '<span class="date">' + date_labels[x] + '</span>';
+											var content = series.name + ": " + parseFloat(y) + '<br>' + date;
+											return content;	
+										}
+							} );
+
+		var slider = new Rickshaw.Graph.RangeSlider( {
+							graph: graph,
+							element: document.getElementById('rickshaw_slider')
+						} );
+		var preview = new Rickshaw.Graph.RangeSlider.Preview( {
+									graph: graph,
+									element: document.getElementById('rickshaw_preview'),
+									width: 100
+								} );
+
+		graph.render();
+
+	});
+})
+
+
+function init_bargraph(bardata) {
+	$("#daily_earnings_barchart").html('');
+	 new Morris.Bar({
+	  // ID of the element in which to draw the chart.
+	  element: 'daily_earnings_barchart',
+	  // Chart data records -- each entry in this array corresponds to a point on
+	  // the chart.
+	  data: bardata,
+	  // The name of the data record attribute that contains x-values.
+	  xkey: 'label',
+	  // A list of names of data record attributes that contain y-values.
+	  ykeys: ['value'],
+	  // Labels for the ykeys -- will be displayed when you hover over the
+	  // chart.
+	  labels: ['Earnings'],
+	   xLabelAngle: 35,
+	  lineWidth: '1px',
+         fillOpacity: 0.8,
+        smooth: false,
+        hideHover: true,
+        parseTime:false,
+         preUnits: "Rs. "
+	});
+}
+function init_donut(data) {
+	$("#donut-chart").html("");
+	new Morris.Donut({
+        element: 'donut-chart',
+        data: data,
+        colors: ['#D9534F','#1CAF9A','#428BCA','#5BC0DE','#428BCA']
+    });
+}
+
+$(".applyBtn").click();

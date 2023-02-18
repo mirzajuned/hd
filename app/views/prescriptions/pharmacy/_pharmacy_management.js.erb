@@ -1,0 +1,190 @@
+// Window Size
+var window_height = $(window).height() - 50
+$(".sidebar_area").css('height',window_height)
+$(".pharmacy_main_content").css('height',window_height)
+
+$(window).resize(function() {
+  var window_height = $(window).height() - 50
+  $(".sidebar_area").css('height',window_height)
+  $(".pharmacy_main_content").css('height',window_height)
+})
+
+// To Refresh Admission Management Page
+function refresh_pharmacy_management(active_tab, prescription_id, current_date){
+  $.ajax({
+    type: "GET",
+    dataType: "script",
+    data: {
+      current_date: current_date,
+      active_tab: active_tab,
+      prescription_id: prescription_id,
+      store_id: "<%= @inventory_store.id %>"
+    },
+    url: "/prescriptions/pharmacy_management"
+  })
+}
+
+$(document).ready(function(){
+
+  $(".datepicker-for-btn").datepicker(); 
+  $('#pharmacy-datepicker-inline').datepicker({
+    dateFormat: "dd/mm/yy", 
+    showOn: "button",
+    buttonText: '<i class="fa fa-calendar"></i>',
+    onSelect: function (dateText,obj) {
+      jQuery.ajax({
+        type: "GET",
+        dataType: "script",
+        data: {
+          store_id: "<%= @inventory_store.id %>"
+        },
+        url: '/prescriptions/pharmacy_management?current_date='+moment(dateText, "DD/MM/YYYY").format('DD-MMMM-YYYY')+'&active_tab=' + $(".tab_active").find(".active").attr('data-tab-id'),
+      })
+      $.datepicker.setDefaults({"defaultDate": dateText});
+    }
+  })
+  $(".ui-datepicker-trigger").addClass("btn btn-danger calender-btn navbar-btn navbar-btn-calender navbar-btn-hover")
+
+  $("#btn-pharmacy-backdate").on('click',function(){
+    var doctor_id = $("#sidebar_doctors_pharmacy .active").find('a').attr('data-doctor-id')
+    var active_tab = $(".tab_active").find(".active").attr('data-tab-id')
+    $.ajax({
+      type: "GET",
+      dataType: "script",
+      data: {
+        current_date: "<%= @current_date.yesterday %>",
+        store_id: "<%= @inventory_store.id %>",
+        active_tab: active_tab
+      },
+      url: "/prescriptions/pharmacy_management"
+    })
+  })
+
+  $("#btn-pharmacy-frontdate").on('click',function(){
+    var doctor_id = $("#sidebar_doctors_pharmacy .active").find('a').attr('data-doctor-id')
+    var active_tab = $(".tab_active").find(".active").attr('data-tab-id')
+    $.ajax({
+      type: "GET",
+      dataType: "script",
+      data: {
+        current_date: "<%= @current_date.tomorrow %>",
+        store_id: "<%= @inventory_store.id %>",
+        active_tab: active_tab
+      },
+      url: "/prescriptions/pharmacy_management"
+    })
+  })
+
+  $("#btn-pharmacy-today").on('click',function(){
+    var doctor_id = $("#sidebar_doctors_pharmacy .active").find('a').attr('data-doctor-id')
+    var active_tab = $(".tab_active").find(".active").attr('data-tab-id')
+    $.ajax({
+      type: "GET",
+      dataType: "script",
+      data: {
+        current_date: "<%= Date.current %>",
+        store_id: "<%= @inventory_store.id %>",
+        active_tab: active_tab
+      },
+      url: "/prescriptions/pharmacy_management"
+    })
+  })
+
+  $("#btn-pharmacy-management-refresh").on('click', function(){
+    var active_tab = $(".tab_active").find(".active").attr('data-tab-id')
+    var prescription_id = $(".pharmacy_today").find('.active').find('.active-pharmacy').attr('data-prescription-id')
+    refresh_pharmacy_management(active_tab, prescription_id, "<%= @current_date %>")
+  })
+
+  // $("#search_pharmacy").autocomplete({
+  //   minLength: 2,
+  //   source: function(request, response) {
+  //     $.ajax({
+  //       dataType: "json",
+  //       type : 'get',
+  //       url: '/prescriptions/search_pharmacy_prescription_lists',
+  //       //data: {searchpatient: params, remote: "true" },
+  //       data: {
+  //           current_date: "<%= @current_date %>",
+  //           q: $("#search_pharmacy").val()
+  //       },
+  //       success: function(data) {
+  //         response(data)
+  //       },
+  //       error: function(data) {
+  //       }
+  //     })
+  //   },
+  //   select: function( event, ui ) {
+  //     $(".pharmacy_today").find('.active').find("[data-pharmacy-id='" + ui.item['id'] + "']").addClass('active-pharmacy').click()
+  //   },
+  // })
+
+  $("#search_pharmacy").autocomplete({
+    minLength: 3,
+    source: function(request, response) {
+      $.ajax({
+        dataType: "json",
+        type : 'get',
+        url: '/prescriptions/search_patient',
+        //data: {searchpatient: params, remote: "true" },
+        data: {
+          current_date: "<%= @current_date %>",
+          q: request.term,
+          // q: $( "#search_pharmacy").val().replace(/[^\w\s]/gi, '').toLowerCase(),
+          filter: $(".search-filter.dropdown-toggle").attr('data-active-filter'),
+          type: 'pharmacy'
+        },
+        success: function(data) {
+          if(data.length == 0){
+            $('.empty-result').text('** No Matching Prescription found').css('color','red')
+          } else {
+            $('.empty-result').text('')
+          }
+          items = [];
+          x = [];
+          for (i = 0, len = data.length; i < len; i++) {
+              items.push(data[i].fullname);
+              x[data[i].fullname] = data[i].id;
+          }
+          response(data)
+        },
+        error: function(data) {
+        }
+      })
+    },
+    create: function () {
+      $(this).data('ui-autocomplete')._renderItem = function (ul, patient) {
+      $(ul).css("border","1px solid #000").css("border-top","none").css('max-height','50%').css('overflow','auto')
+      return $('<li>')
+        .append('<hr style="margin:0 0 5px;padding:0;border-color:#354670;"><a style="color:#428bca"><b><span>' + patient.label + '</span><span class="badge badge-primary pull-right">' + patient.patient_display_id + '</span><br/><span class="">' + patient.mobile_number + '</span><span class="badge badge-warning pull-right">'+ patient.prescription_created_on + '</span><span class="badge badge-danger pull-right">' + patient.patient_mrn + '</span></b></a>')
+        .appendTo(ul);
+      }
+    },
+    select: function( event, ui ) {
+      console.log(ui.item.filter)
+      if(ui.item.filter == "Returning"){
+        $(".pharmacy_today").find('.active').find('.active-pharmacy').removeClass('active-pharmacy')
+        $.ajax({
+          type: "GET",
+          data: {
+            prescription_id:  ui.item.prescription_id,
+            store_id: "<%= @inventory_store.id %>",
+            current_date:  "<%= @current_date %>"
+          },
+          url: "/prescriptions/pharmacy_details",
+        })
+      } else {
+        $(".pharmacy_today").find('.active').find("[data-prescription-id='" + ui.item['prescription_id'] + "']").addClass('active-pharmacy').click()
+      }
+    },
+  })
+
+  $(".dropdown-options").on('click',function(e){
+    e.preventDefault();
+    var button_html = $(this).text()[0] + " <span class='caret'></span>"
+    $(".search-filter.dropdown-toggle").html(button_html);
+    $(".search-filter.dropdown-toggle").attr('data-active-filter', $(this).attr('data-filter-id'));
+    $("#search_pharmacy").val("")
+  });
+})

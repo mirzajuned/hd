@@ -1,0 +1,131 @@
+<% partial_name = @partial_name.present? %>
+<% data = {
+    service_name: "PatientOutcome",
+    action_name: "patient_count_by_diagnosis_gender",
+    partial_name: "patients_count_by_diagnosis_gender_cornea"
+}%>
+<div class="row">
+  <div class="<%= partial_name ? 'col-md-6': 'col-md-12' %>">
+    <div class="panel panel-default panel_b borderd_panel">
+      <div class="panel-heading to_add_expand_button">
+        <h5 class="subtitle mb5"><i class="fa fa-bar-chart" aria-hidden="true"></i>  <strong> Cornea Patient count by gender</strong></h5>
+        <%=render partial: "/analytics/shared/expand_button", locals:{partial_name: partial_name, data: data }%>
+      </div>
+      <div class="panel-body reduced_padding">
+        <canvas id="patients_count_by_diagnosis_gender_cornea_<%= partial_name %>" width="800" height="400"></canvas>
+      </div>
+    </div>
+  </div>
+  <% if partial_name %>
+    <div class="col-md-6">
+      <div class="table_wrapper">
+        <table class="table table_data table-bordered table-hover">
+          <thead>
+          <tr>
+            <th>Cornea</th>
+            <th>Male</th>
+            <th>Female</th>
+            <th>Transgender</th>
+            <th>Other</th>
+          </tr>
+          </thead>
+          <tbody>
+          <% @labels_cornea_gender.each_with_index do |f_name, indx|%>
+            <tr>
+              <td><%= f_name %></td>
+              <td><%= @cornea_male[indx].to_i %></td>
+              <td><%= @cornea_female[indx].to_i %></td>
+              <td><%= @cornea_trans[indx].to_i %></td>
+              <td><%= @cornea_other[indx].to_i %></td>
+            </tr>
+          <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+
+<script type="text/javascript">
+  var patients_count_by_diagnosis_gender_cornea = document.getElementById("patients_count_by_diagnosis_gender_cornea_<%= partial_name %>");
+  var patients_count_by_diagnosis_gender_cornea_chart = new Chart(patients_count_by_diagnosis_gender_cornea, {
+    type: 'horizontalBar',
+    data: {
+      labels: <%= raw @labels_cornea_gender %>,
+      datasets:[{
+        label:"Male",
+        data: <%=raw @cornea_male %>,
+        backgroundColor: "#4dc9f6"
+      },{
+        label: "Female",
+        data: <%= raw @cornea_female %>,
+        backgroundColor: "#f67019"
+      },{
+        label: "Transgender",
+        data: <%= raw @cornea_trans %>,
+        backgroundColor: "#8549ba"
+      },{
+        label: "Other",
+        data: <%= raw @cornea_other %>,
+        backgroundColor: "#8ea9ca"
+      }]
+    },
+    options:{
+      legend: { display: <%= partial_name %> },
+      responsive: true,
+      title: {
+        display: false,
+      },
+      scales: {
+        yAxes: [{
+          stacked: true,
+          barPercentage: 0.4,
+          categoryPercentage: 0.8,
+          gridLines:{
+            display : false
+          },
+          ticks: {
+            beginAtZero: true,
+            mirror: true,
+            fontSize: 8
+          },
+          display: false
+        }],
+        xAxes: [{
+          stacked: true,
+          barPercentage: 0.4,
+          categoryPercentage: 0.4,
+          gridLines:{
+            display : false
+          }
+        }]
+      },
+      animation: {
+        duration: 500,
+        onComplete () {
+          const chartInstance = this.chart;
+          const ctx = chartInstance.ctx;
+          const dataset = this.data.datasets[0];
+          const meta = chartInstance.controller.getDatasetMeta(0);
+
+          Chart.helpers.each(meta.data.forEach((bar, index) => {
+            const label = this.data.labels[index];
+            if(typeof label !== 'undefined') {
+              const labelPositionX = 20;
+              const labelWidth = ctx.measureText(label).width + labelPositionX;
+
+              ctx.textBaseline = 'middle';
+              ctx.textAlign = 'left';
+              ctx.fillStyle = '#333';
+              ctx.font = '8px Arial';
+              ctx.fillText(label, labelPositionX, bar._model.y);
+            }
+          }));
+        }
+      }
+    }
+
+  })
+
+</script>

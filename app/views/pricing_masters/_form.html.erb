@@ -1,0 +1,315 @@
+<div class="col-md-12">
+  <div class="row mb10">
+    <div class="col-md-6">
+      <b style="text-decoration: underline;">Service Details</b>
+      <b style="color:#000;display:block;font-size:15px;"><%= @service_master.service_master_description %></b>
+    </div>
+    <div class="col-md-2">
+      <b style="text-decoration: underline;">Specialty</b>
+      <b style="color:#000;display:block;font-size:15px;"><%= @specialty.name %></b>
+      <%= hidden_field_tag 'hidden_specialty_id', @service_master.specialty_id, class: 'hidden_specialty_id' %>
+    </div>
+    <div class="col-md-2">
+      <b style="text-decoration: underline;">Sub Specialty</b>
+      <b style="color:#000;display:block;font-size:15px;"><%= @sub_specialty&.name || '-' %></b>
+      <%= hidden_field_tag 'hidden_specialty_id', @service_master.sub_specialty_id, class: 'hidden_sub_specialty_id' %>
+    </div>
+    <div class="col-md-2">
+      <b style="text-decoration: underline;">Department</b>
+      <b style="color:#000;display:block;font-size:15px;"><%= params[:department_name].to_s.upcase %></b>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-md-12">
+      <b style="text-decoration: underline;">Pricing Details</b>
+    </div>
+  </div>
+  <div class="pricing-master-block validation-block">
+    <div class="row standard-pricing-master">
+      <div class="col-md-2">
+        <b style="color: #000;">Service Name</b>
+        <%= text_field_tag 'service_name', @standard_pricing_master&.service_name, class: 'form-control standard_pricing_service_name p5_10' %>
+      </div>
+      <div class="col-md-2">
+        <b style="color: #000;">Service Code</b>
+        <%= text_field_tag 'service_code', @service_master&.organisation_service_code, class: 'form-control standard_pricing_service_code p5_10' %>
+      </div>
+      <div class="col-md-2">
+        <b style="color: #000;">Standard Rate</b>
+        <%= number_field_tag 'amount', @standard_pricing_master&.amount, class: 'form-control service_master_amount p5_10', min: 0 %>
+      </div>
+      <div class="col-md-2">
+        <b style="color: #000;">Internal Comment</b>
+        <%= text_field_tag 'internal_comment', @standard_pricing_master&.internal_comment, class: 'form-control standard_pricing_internal_comment p5_10', placeholder: 'For Internal use only' %>
+      </div>
+      <div class="col-md-2">
+        <b style="color: #000;">External Comment</b>
+        <%= text_field_tag 'external_comment', @standard_pricing_master&.external_comment, class: 'form-control standard_pricing_external_comment p5_10', placeholder: 'For Print in Invoice' %>
+      </div>
+      <div class="col-md-2">
+        <b style="color: #000;">Action</b><br>
+        <button class="btn btn-primary btn-xs btn-pricing-exceptions" data-counter="0">Add Exception</button>
+      </div>
+    </div>
+    <div class="pricing-exception-block">
+      <% if @standard_pricing_master.has_exceptions %>
+        <% @standard_pricing_master.pricing_exceptions.each_with_index do |exception, i| %>
+          <div class="row pricing-exception">
+            <%= hidden_field_tag "pricing_master[0][exceptions][#{i}][_id]", exception.id.to_s, class: 'pricing_master_exception_id' %>
+            <%= hidden_field_tag "pricing_master[0][exceptions][#{i}][is_active]", exception.is_active, class: 'pricing_master_exception_is_active' %>
+            <div class="col-md-8 col-md-offset-1" style="border: 1px solid #aaa;padding: 5px 15px;margin-top: 5px;">
+              <div class="row exception-head">
+                <div class="col-md-12">
+                  <b class="exception-title" style="color: #000;">Exception <%= i + 1 %></b>
+                </div>
+                <div class="col-md-4">
+                  <b style="color: #000;">Type</b>
+                </div>
+                <div class="col-md-4">
+                  <b style="color: #000;">Name</b>
+                </div>
+                <div class="col-md-4">
+                  <b style="color: #000;">Amount</b>
+                </div>
+              </div>
+              <div class="pricing-exception-fields">
+                <% exception[:sequence].each_with_index do |sequence, counter| %>
+                  <div class="row pricing-sub-exception-fields mb10">
+                    <div class="col-md-4">
+                      <%= select_tag "pricing_master[0][exceptions][#{i}][sub_exception][#{counter}][type]", options_for_select([['By Room', 'room'], ['By User', 'user']], sequence), include_blank: 'Select', class: "form-control pricing_master_exception_type pricing_master_exception_type_0_#{i} p5_10", validate_class: "pricing_master_exception_type_0_#{i}", style: 'height: 30px;' %>
+                    </div>
+                    <div class="col-md-4">
+                      <% if sequence == 'room' %>
+                        <% options = @room_types.pluck(:name, :abbreviation) %>
+                        <% selected_option = exception[:room_exception_id] %>
+                        <% option_name = exception[:room_exception_name] %>
+                      <% elsif sequence == 'user' %>
+                        <% options = @users.pluck(:fullname, :id) %>
+                        <% selected_option = exception[:user_exception_id] %>
+                        <% option_name = exception[:user_exception_name] %>
+                      <% end %>
+                      <%= select_tag "pricing_master[0][exceptions][#{i}][sub_exception][#{counter}][exception_id]", options_for_select(options, selected_option), include_blank: 'Select', class: 'form-control pricing_master_exception_id p5_10', style: 'height: 30px;' %>
+                      <%= hidden_field_tag "pricing_master[0][exceptions][#{i}][sub_exception][#{counter}][exception_name]", option_name, class: 'pricing_master_exception_name' %>
+                    </div>
+                    <div class="col-md-4">
+                      <% if counter == 0 %>
+                        <%= number_field_tag "pricing_master[0][exceptions][#{i}][amount]", exception[:amount], class: 'form-control pricing_master_exception_amount p5_10', min: 0 %>
+                      <% else %>
+                        <button class="btn btn-danger btn-xs btn-remove-sub-exceptions">Remove</button>
+                      <% end %>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+              <div class="row">
+                <div class="col-md-12">
+                  <% if exception[:sequence].count < 2 %>
+                    <button class="btn btn-primary btn-xs btn-multiple-exceptions" data-counter='<%= i %>'>Add More</button>
+                  <% else %>
+                    <button class="btn btn-primary btn-xs btn-multiple-exceptions" data-counter='<%= i %>' style="display: none;">Add More</button>
+                  <% end %>
+                  <button class="btn btn-danger btn-xs btn-remove-exceptions id_active" <%= 'style=display:none;' unless exception[:is_active] %>>Remove Exception</button>
+                  <button class="btn btn-info btn-xs btn-activate-exceptions" <%= 'style=display:none;' if exception[:is_active] %>>Activate Exception</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+  <hr>
+  <div class="row">
+    <div class="col-md-3">
+      Select Contact Group
+    </div>
+    <div class="col-md-3">
+      <%= select_tag('contact_group', options_for_select(@contact_groups.map { |cg| [cg.name, cg.id] }, @contact_group_id), include_blank: 'All', class: 'form-control p5_10', style: 'height:30px;padding:5px;') %>
+    </div>
+    <div class="col-md-3">
+      <b style="color: #000;">Update All Amount</b>
+    </div>
+    <div class="col-md-3">
+      <%= number_field_tag 'contact_group_amount', @standard_pricing_master&.amount, class: 'form-control contact_group_master_amount p5_10', min: 0 %>
+    </div>
+  </div>
+  <hr>
+
+  <div class="add-pricing-masters">
+    <div class="row pricing_master_heading mt5">
+      <div class="col-md-2">
+        <b style="color: #000;">Group</b>
+      </div>
+      <div class="col-md-2">
+        <b style="color: #000;">Payee List</b>
+      </div>
+      <div class="col-md-1">
+        <b style="color: #000;">Rate Code</b>
+      </div>
+      <div class="col-md-1">
+        <b style="color: #000;">Amount</b>
+      </div>
+      <div class="col-md-2">
+        <b style="color: #000;">Internal Comment</b>
+      </div>
+      <div class="col-md-2">
+        <b style="color: #000;">External Comment</b>
+      </div>
+      <div class="col-md-2">
+        <b style="color: #000;">Action</b>
+      </div>
+    </div>
+    <% @pricing_masters.each_with_index do |pricing_master, i| %>
+      <% new_class = pricing_master.payer_master_id == 'general' ? 'pricing-master-block' : 'pricing-master-block validation-block' %>
+      <div class="<%= new_class %>">
+        <div class="row pricing-masters-form mt5">
+          <%= hidden_field_tag "pricing_master[#{i}][id]", pricing_master.id.to_s %>
+          <%= hidden_field_tag "pricing_master[#{i}][is_active]", pricing_master.is_active, class: 'pricing_master_is_active' %>
+          <%= hidden_field_tag "pricing_master[#{i}][organisation_id]", pricing_master.organisation_id.to_s %>
+          <%= hidden_field_tag "pricing_master[#{i}][facility_id]", pricing_master.facility_id.to_s %>
+          <%= hidden_field_tag "pricing_master[#{i}][user_id]", pricing_master.user_id.to_s %>
+          <%= hidden_field_tag "pricing_master[#{i}][service_master_id]", pricing_master.service_master_id.to_s %>
+          <%= hidden_field_tag "pricing_master[#{i}][service_group_id]", pricing_master.service_group_id.to_s %>
+          <%= hidden_field_tag "pricing_master[#{i}][service_sub_group_id]", pricing_master.service_sub_group_id.to_s %>
+          <%= hidden_field_tag "pricing_master[#{i}][service_type_code]", pricing_master.service_type_code.to_s %>
+          <%= hidden_field_tag "pricing_master[#{i}][service_type_code_name]", pricing_master.service_type_code_name.to_s %>
+          <%= hidden_field_tag "pricing_master[#{i}][service_name]", pricing_master.service_name.to_s, class: 'pricing_master_service_name' %>
+          <%= hidden_field_tag "pricing_master[#{i}][specialty_id]", pricing_master.specialty_id, class: 'pricing_master_specialty_id' %>
+          <%= hidden_field_tag "pricing_master[#{i}][department_id]", params[:department_id], class: 'pricing_master_department_id' %>
+          <%= hidden_field_tag "pricing_master[#{i}][department_name]", params[:department_name], class: 'pricing_master_department_name' %>
+          <%= hidden_field_tag "pricing_master[#{i}][has_exceptions]", pricing_master.has_exceptions, class: 'pricing_master_has_exceptions' %>
+
+          <% if pricing_master.payer_master_id == "general" %>
+            <%= hidden_field_tag "pricing_master[#{i}][payer_master_id]", pricing_master.payer_master_id, class: 'pricing_master_payer_master_id_hidden' %>
+            <%= hidden_field_tag "pricing_master[#{i}][amount]", pricing_master.amount, class: 'pricing_master_amount' %>
+            <%= hidden_field_tag "pricing_master[#{i}][service_code]", pricing_master.service_code, class: 'std_pricing_master_service_code' %>
+            <%= hidden_field_tag "pricing_master[#{i}][internal_comment]", pricing_master.internal_comment, class: 'std_pricing_master_internal_comment' %>
+            <%= hidden_field_tag "pricing_master[#{i}][external_comment]", pricing_master.external_comment, class: 'std_pricing_master_external_comment' %>
+          <% else %>
+            <div class="col-md-2">
+              <%= select_tag "pricing_master[#{i}][contact_group_id]", options_for_select(@contact_group_fields.pluck(:name, :id), pricing_master.contact_group_id), include_blank: true, class: 'form-control pricing_master_contact_group_id p5_10', style: 'height: 30px;' %>
+            </div>
+            <div class="col-md-2">
+              <% payer_fields = @payer_fields.select { |c| c[:contact_group_id] == pricing_master.contact_group_id.to_s } %>
+              <%= select_tag "pricing_master[#{i}][payer_master_id]", options_for_select(payer_fields.pluck(:display_name, :id), pricing_master.payer_master_id.to_s), include_blank: true, class: 'form-control pricing_master_payer_master_id p5_10', style: 'height: 30px;' %>
+            </div>
+            <div class="col-md-1">
+              <%= text_field_tag "pricing_master[#{i}][service_code]", pricing_master.service_code, class: 'form-control pricing_master_service_code p5_10' %>
+            </div>
+            <div class="col-md-1">
+              <%= number_field_tag "pricing_master[#{i}][amount]", pricing_master.amount, class: 'form-control pricing_master_amount p5_10', min: 0 %>
+            </div>
+            <div class="col-md-2">
+              <%= text_field_tag "pricing_master[#{i}][internal_comment]", pricing_master.internal_comment, class: 'form-control pricing_master_internal_comment p5_10', placeholder: 'For Internal use only' %>
+            </div>
+            <div class="col-md-2">
+              <%= text_field_tag "pricing_master[#{i}][external_comment]", pricing_master.external_comment, class: 'form-control pricing_master_external_comment p5_10', placeholder: 'For Print in Invoice' %>
+            </div>
+            <div class="col-md-2">
+              <% if @service_master.is_active %>
+                <% remove_style = ('display:none;' unless pricing_master.is_active) || 'display:inline-block;' %>
+                <% activate_style = ('display:none;' if pricing_master.is_active) || 'display:inline-block;' %>
+                <button class="btn btn-primary btn-xs btn-pricing-exceptions" data-counter="<%= i %>">Add Exception</button>
+                <button class="btn btn-danger btn-xs disable-pricing-row-btn" style="<%= remove_style %>">Disable</button>
+                <button class="btn btn-info btn-xs activate-pricing-row-btn" style="<%= activate_style %>">A</button>
+                <button class="btn btn-warning btn-xs remove-pricing-row-btn" style="<%= remove_style %>">Remove</button>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+        <% if pricing_master.payer_master_id != "general" %>
+          <div class="pricing-exception-block">
+            <% if pricing_master&.has_exceptions %>
+              <% pricing_master.pricing_exceptions.each_with_index do |exception, j| %>
+                <div class="row pricing-exception">
+                  <%= hidden_field_tag "pricing_master[#{i}][exceptions][#{j}][_id]", exception.id.to_s, class: 'pricing_master_exception_id' %>
+                  <%= hidden_field_tag "pricing_master[#{i}][exceptions][#{j}][is_active]", exception.is_active, class: 'pricing_master_exception_is_active' %>
+                  <div class="col-md-8 col-md-offset-1" style="border: 1px solid #aaa;padding: 5px 15px;margin-top: 5px;">
+                    <div class="row exception-head">
+                      <div class="col-md-12">
+                        <b class="exception-title" style="color: #000;">Exception <%= j + 1 %></b>
+                      </div>
+                      <div class="col-md-4">
+                        <b style="color: #000;">Type</b>
+                      </div>
+                      <div class="col-md-4">
+                        <b style="color: #000;">Name</b>
+                      </div>
+                      <div class="col-md-4">
+                        <b style="color: #000;">Amount</b>
+                      </div>
+                    </div>
+                    <div class="pricing-exception-fields">
+                      <% exception[:sequence].each_with_index do |sequence, counter| %>
+                        <div class="row pricing-sub-exception-fields mb10">
+                          <div class="col-md-4">
+                            <%= select_tag "pricing_master[#{i}][exceptions][#{j}][sub_exception][#{counter}][type]", options_for_select([['By Room', 'room'], ['By User', 'user']], sequence), include_blank: 'Select', class: "form-control pricing_master_exception_type pricing_master_exception_type_#{i}_#{j} p5_10", validate_class: "pricing_master_exception_type_#{i}_#{j}", style: 'height: 30px;' %>
+                          </div>
+                          <div class="col-md-4">
+                            <% if sequence == 'room' %>
+                              <% options = @room_types.pluck(:name, :abbreviation) %>
+                              <% selected_option = exception[:room_exception_id] %>
+                              <% option_name = exception[:room_exception_name] %>
+                            <% elsif sequence == 'user' %>
+                              <% options = @users.pluck(:fullname, :id) %>
+                              <% selected_option = exception[:user_exception_id] %>
+                              <% option_name = exception[:user_exception_name] %>
+                            <% end %>
+                            <%= select_tag "pricing_master[#{i}][exceptions][#{j}][sub_exception][#{counter}][exception_id]", options_for_select(options, selected_option), include_blank: 'Select', class: 'form-control pricing_master_exception_id p5_10', style: 'height: 30px;' %>
+                            <%= hidden_field_tag "pricing_master[#{i}][exceptions][#{j}][sub_exception][#{counter}][exception_name]", option_name, class: 'pricing_master_exception_name' %>
+                          </div>
+                          <div class="col-md-4">
+                            <% if counter == 0 %>
+                              <%= number_field_tag "pricing_master[#{i}][exceptions][#{j}][amount]", exception[:amount], class: 'form-control pricing_master_exception_amount p5_10', min: 0 %>
+                            <% else %>
+                              <button class="btn btn-danger btn-xs btn-remove-sub-exceptions">Remove</button>
+                            <% end %>
+                          </div>
+                        </div>
+                      <% end %>
+                    </div>
+                    <div class="row">
+                      <div class="col-md-12">
+                        <% if exception[:sequence].count < 2 %>
+                          <button class="btn btn-primary btn-xs btn-multiple-exceptions" data-counter='<%= j %>'>Add More</button>
+                        <% else %>
+                          <button class="btn btn-primary btn-xs btn-multiple-exceptions" data-counter='<%= j %>' style="display: none;">Add More</button>
+                        <% end %>
+                        <button class="btn btn-danger btn-xs btn-remove-exceptions id_active" <%= 'style=display:none;' unless exception[:is_active] %>>Remove Exception</button>
+                        <button class="btn btn-info btn-xs btn-activate-exceptions" <%= 'style=display:none;' if exception[:is_active] %>>Activate Exception</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              <% end %>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+  <div class="row mt10">
+    <% if @payer_fields.count > 0 %>
+      <% if @service_master.is_active %>
+        <div class="col-md-2">
+          <button class="btn btn-primary btn-xs btn-add-pricing"><i class="fa fa-add"></i> Add Contact's Pricing</button>
+        </div>
+        <div class="col-md-10">
+          <b><i class="fa fa-arrow-left" style="color:#3071a9;">&emsp;Add Pricing for different Contacts(Insurance Companies, TPA, etc.).</i></b>
+        </div>
+      <% else %>
+        <div class="col-md-12">
+          <b style="color:#f00;">Note: This Service has been deactivated from "Service Master".</b>
+        </div>
+      <% end %>
+    <% else %>
+      <div class="col-md-12">
+        <b style="color:#f00;">Seems like the Payer Master List is empty. Please create Payers from '<a href="" class="payer-master-link">Payer Master</a>' to create Payer based Pricing.</b>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<script type="text/javascript">
+  <%= render partial: 'form.js.erb' %>
+</script>

@@ -1,0 +1,251 @@
+var checkItem = [];
+$('.items-lots-list .inventory-list-row').unbind()
+$('.items-lots-list .inventory-list-row').on('click', function(e){
+  e.preventDefault();
+  var id =  $(this).attr('id');
+  if (!checkItem.includes(id)) {
+    checkItem.push(id)
+    $.ajax({
+      type: 'GET',
+      data: {
+        lot_id: id,
+        remote: true
+      },
+      url: '/inventory/transaction/vendor_returns/add_lot',
+      success: function(){
+        $('#'+id).css('background-color', '#cfe8d2')
+        $('#'+id).addClass('disabled_row')
+      }
+    })
+  }
+})
+
+
+$(window).resize(function() {
+  adjust_height()
+})
+
+adjust_height()
+function adjust_height(){
+  modalContentHeigth = $(window).height() - 340
+  $(".items-lots").height(700)
+  itemsLots = modalContentHeigth - $('.invoice-header').height()
+  $('.items-lots-body').height(itemsLots)
+  $('.items-lots-list').height(-300)
+  prescriptionHeight = $('.prescription-information').height()
+  invoiceInfoHeight = $('.invoice-information').height()
+  invoiceListHeight = modalContentHeigth - $('.invoice-title').height() - $('.invoice-common-fields').height() - prescriptionHeight - invoiceInfoHeight  - 70
+  $('.vendor-table-height').height(invoiceListHeight - $('.invoice-table-head').height())
+}
+
+function filter_index(query) {
+  if (query.length > 0){
+    $(".items-lots-search").find(".fa").show()
+  }
+  else {
+    $(".items-lots-search").find(".fa").hide()
+  }
+  $('#show_more_lots').show();
+  $.ajax({
+    type : 'get',
+    url: '/inventory/transaction/vendor_returns/filter_transactions',
+    data: { q: query, store_id: "<%= @inventory_store.id %>", vendor_location_id: "<%= params[:vendor_location_id]%>", remote: "true" },
+  })
+}
+
+$(".items-lots-search").find(".fa").on('click',function(){
+  $("#lots_search").val("")
+  filter_index("")
+})
+
+$("#lots_search").on("keyup", function () {
+  query = $(this).val()
+  filter_index(query)
+})
+
+
+
+function isScrolledIntoLastRow(last_row_elem, scrollable_container) {
+  if (last_row_elem.length == 1) {
+    var top_of_element = $(last_row_elem).offset().top - $(scrollable_container).offset().top ;
+    var table_height = $(scrollable_container).innerHeight()
+    return top_of_element <= table_height
+  }
+}
+
+scrollinventory()
+function scrollinventory(){
+  $(".items-lots-body").scroll(function() {
+    last_row_elem = $('.items-lots-body').find('tr:nth-last-child(1)')
+    scrollable_container = $(".items-lots-body")
+    if (isScrolledIntoLastRow(last_row_elem, scrollable_container)) {
+      $("#show_more_lots").trigger("click")
+      $(".items-lots-body").off('scroll');
+      setTimeout(function() {   //calls click event after a certain time
+        scrollinventory()
+      }, 500);
+    }
+  })
+}
+$("#show_more_lots:visible").on('click', function(e){
+  e.preventDefault();
+  var total_count_row =  $('.items-lots-body tr').length;
+  var query =  $("#lots_search").val()
+  $.ajax({
+    type: "GET",
+    dataType: "script",
+    data: {
+      total_count_row: total_count_row,
+      item_type: "<%= @category %>",
+      store_id: "123",
+      q:query
+    },
+    url: "/invoice/inventory_invoices/append_lots",
+  })
+})
+
+
+$('.full_settlement').on('click', function(){
+  payment_type()
+})
+
+function payment_type() {
+  if ($('.full_settlement:checked').attr("id") == 'full_settlement_now') {
+    $('.payment_pending_details').hide();
+    $('.pending_amount_details').hide();
+  } else {
+    $('.payment_pending_details').show();
+    $('.pending_amount_details').show();
+  }
+}
+
+payment_type()
+
+function validate_inventory_return_transactions_form() {
+  $("#inventory_return_purchase_form").validate({
+    rules: {
+      "inventory_transaction_vendor_return[return_amount]": {
+        required: true,
+        number: true,
+      },
+      "inventory_transaction_vendor_return[return_discount]": {
+        number: true,
+        min: 0,
+      },
+      "inventory_transaction_vendor_return[paid_amount]": {
+        number: true,
+        min: 1,
+      },
+      "inventory_transaction_vendor_return[debit_amount]": {
+        number: true,
+        min: 0,
+      },
+    },
+    messages: {
+      "inventory_transaction_vendor_return[debit_amount]": {
+        number: "Enter advance amount",
+        min: "Advance cannot be more than net amount"
+      },
+      "inventory_transaction_vendor_return[paid_amount]": {
+        number: "Required",
+        min: "Enter value more than 0 or select Full Payment"
+      },
+    },
+    errorPlacement: function (error, element) {
+      var id = $(element).attr("id");
+      var parent = $("#"+id).parents(".input-group").length
+      if(parent == 0){
+        error.insertAfter(element);
+      } else {
+        error.insertAfter($("#"+id).parents(".input-group"));
+      }
+    }
+  });
+}
+validate_inventory_return_transactions_form()
+
+$.validator.addMethod("TotalCost", function(value, element) {
+  if (parseFloat(value) > 0) {
+    return true
+  }
+}, "Required");
+
+$.validator.addMethod("ModeOfPayment", function(value, element) {
+  var mop = $(element).val()
+  var amount = $(element).closest(".payment_received_row").find(".payment_received_breakups_amount").val()
+
+  if(mop != ""){
+    return true
+  } else if((parseFloat(amount) > 0) && (mop == "")) {
+    return false
+  } else if (mop == "") {
+    return false
+  } else {
+    return true
+  }
+}, "MOP Required");
+
+$.validator.addMethod("PaymentBreakup", function(value, element) {
+  var amount = $(element).val()
+  if (parseFloat(amount) < 0) {
+    return false
+  } else if (amount == "") {
+    return false
+  } else {
+    return true
+  }
+}, "");
+
+$.validator.addMethod("PaymentReceived", function(value, element) {
+  if ($('#full_settlement_pending').prop('checked')) {
+    return parseFloat($("#inventory_transaction_vendor_return_paid_amount").val()) == parseFloat($("#total_payment").val());
+  } else {
+    return parseFloat($("#inventory_transaction_vendor_return_return_amount").val()) == parseFloat($("#total_payment").val());
+  }
+}, "Review Payment Details");
+
+$.validator.addMethod("DebitAmount", function(value, element) {
+  if (parseFloat(value)  == parseFloat($("#inventory_transaction_vendor_return_debit_amount").val())) {
+    return true
+  }
+}, "Return Amount and DebitAmount Should be Same");
+
+$.validator.addMethod("Number", $.validator.methods.digits, "Quantity Should be Number");
+$.validator.addMethod("checkQuantity", function(value, element, options) {
+  var id = $(element).attr("id")
+  var item_quantity = $('#'+id).val()
+  var item_max_quantity = $('#'+id).siblings(".item_max_quantity").val()
+  if (!item_max_quantity) {
+    return true
+  }
+  else{
+    return this.optional(element) || parseFloat(item_quantity) <= parseFloat(item_max_quantity);
+  }
+}, "Cannot Checkout more than stock");
+
+$.validator.addClassRules("return-total-cost", { TotalCost: true });
+$.validator.addClassRules("payment_received_breakups_mode_of_payment", { ModeOfPayment: true });
+$.validator.addClassRules("payment_received_breakups_amount", { PaymentBreakup: true });
+$.validator.addClassRules("total_payment", { PaymentReceived: true });
+$.validator.addClassRules("payment-received-credit-amount", { DebitAmount: true });
+$.validator.addClassRules("item_quantity", { number: true, checkQuantity: true, required: true, min: 0.1});
+
+jQuery.extend(jQuery.validator.messages, {
+  required: "Required",
+  remote: "Please fix this field.",
+  email: "Please enter a valid email address.",
+  url: "Please enter a valid URL.",
+  date: "Please enter a valid date.",
+  dateISO: "Invalid date.",
+  number: "Invalid No.",
+  digits: "Please enter only digits.",
+  creditcard: "Please enter a valid credit card number.",
+  equalTo: "Please enter the same value again.",
+  accept: "Please enter a value with a valid extension.",
+  maxlength: jQuery.validator.format("Please enter no more than {0} characters."),
+  minlength: jQuery.validator.format("Please enter at least {0} characters."),
+  rangelength: jQuery.validator.format("Please enter a value between {0} and {1} characters long."),
+  range: jQuery.validator.format("Please enter a value between {0} and {1}."),
+  max: jQuery.validator.format("Please enter a value less than or equal to {0}."),
+  min: jQuery.validator.format("Please enter a value greater than or equal to {0}.")
+});

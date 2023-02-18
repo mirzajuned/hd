@@ -1,0 +1,66 @@
+<% @patient = patient if @patient.nil? %>
+<% @advance_payment = advance_payment if @advance_payment.nil? %>
+<% @user = user if @user.nil? %>
+
+<div class="row advance_payment">
+  <div class="col-md-12">
+    <div class="row patient-info mb20">
+      <div class="col-md-12">
+        <div class="row">
+          <div class="col-md-3"><b>Patient Name</b></div>
+          <div class="col-md-3"><span><%= @patient.fullname.titleize %></span></div>
+          <div class="col-md-3"><b>Receipt No.</b></div>
+          <div class="col-md-3"><span><%= @advance_payment.advance_display_id %></span></div>
+        </div>
+        <div class="row">
+          <div class="col-md-3"><b>Patient ID</b></div>
+          <div class="col-md-3"><span><%= @patient.patient_identifier_id %></span></div>
+          <div class="col-md-3"><b>Collected By</b></div>
+          <div class="col-md-3"><span><%= @user.try(:fullname) %></span></div>
+        </div>
+        <div class="row">
+          <div class="col-md-3"><b>Mobile</b></div>
+          <div class="col-md-3"><span><%= @patient.mobilenumber %></span></div>
+          <div class="col-md-3"><b>Advance Date</b></div>
+          <div class="col-md-3"><span><%= @advance_payment.payment_date.try(:strftime, "%d/%m/%Y") %></span></div>
+        </div>
+      </div>
+    </div>
+    <hr/>
+    <div class="row advance-info mb20">
+      <div class="col-md-12">
+        <% amount_with_precision = number_with_precision(@advance_payment.amount, precision: 2) %>
+        <% amount_display = Common::Finance::NumberFormatService.call(@number_format, amount_with_precision) %>
+        <p>Advance received with thanks a sum of <b><%= @advance_payment.currency_symbol %> <%= amount_display %></b> from <b><%= @patient.fullname.to_s.upcase %></b> towards <b><%= @advance_payment.reason %></b> by <b><%= @advance_payment.mode_of_payment.titleize %></b> dated <b><%= @advance_payment.payment_date.strftime("%d/%m/%Y") %></b>.</p>
+
+        <% if @advance_payment.is_canceled? %>
+          <hr style="margin:5px;">
+          <div class="row">
+            <p><b>Advance Payment Cancelled</b></p>
+          </div>
+        <% end %>
+        <% if @advance_payment.is_refunded? %>
+          <hr style="margin:5px;">
+          <div class="row">
+            <% refund_amount_with_precision = number_with_precision(@advance_payment.try(:refund_amount), precision: 2) %>
+            <% refund_amount_display = Common::Finance::NumberFormatService.call(@number_format, refund_amount_with_precision) %>
+            <p>Refunded a sum of <b><%= @advance_payment.try(:currency_symbol) %> <%= refund_amount_display %></b> to <b><%= @patient.fullname.to_s.upcase %></b> by <b><%= @advance_payment.mode_of_payment.titleize %></b> dated <b><%= @advance_payment.try(:refund_date).try(:strftime, "%d/%m/%Y") %></b>.</p>
+            <p>Refund Remark:  <b><%= @advance_payment.try(:refund_reason) || "-" %></b></p>
+          </div>
+        <% end %>
+
+      </div>
+    </div>
+    <div class="row footer-info">
+      <!--Signature-->
+      <%= render partial: 'common/user_signature.html.erb',locals: {user_id: @user.try(:id)} %>
+      <!--Signature Ends-->
+    </div>
+  </div>
+</div>
+
+<style type="text/css">
+  .advance_payment {
+     font-size: 10px;
+  }
+</style>

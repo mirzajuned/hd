@@ -1,0 +1,101 @@
+<%= javascript_include_tag "application-loggedin", "data-turbolinks-track" => true %>
+<% total_appointment_types_count = 0 %>
+
+<%= form_tag("/organisation_appointment_types/save_sub_appointment_type", method: "post",remote: true, id: "sub_appointment_types", class: "form form-bordered") do  %>
+
+  <div class="row text-center">
+    <div class="col-md-12 alert alert-info" id="appointment-type-alert-messages" style="font-style: italic;padding-top:5px;padding-bottom:5px;padding-left:3px;padding-right:3px;">
+      Please click <strong>"Save List"</strong> button after Adding / Editing.  &nbsp;&nbsp; <span class="glyphicon glyphicon-arrow-right"></span>
+    </div>
+  </div>
+  
+  <div class="row">
+    <div class="col-md-2"></div>
+    <div class="col-md-7 text-center" style="font-size: 17px;text-decoration: underline;">
+      <strong><%= current_organisation["name"].upcase %> SUB APPOINTMENT TYPES </strong>
+    </div>
+    <div class="col-md-3">
+      <span class="btn btn-primary" id="add_new_appointment_type" style="padding-right: 10px;"><i class="fa fa-plus"></i> New</span>
+      <%= submit_tag("Save List",{:class=>"btn btn-success"}) %>
+    </div>
+  </div>
+  <hr>
+
+  <input type="hidden" name="appointment_types_for_delete" id="appointment_types_for_deactivate" value="">
+  <input type="hidden" name="appointment_types_for_delete" id="appointment_types_for_activate" value="">
+  
+  <div id="sub_full-appointment-types">
+    <div class="row form-group append-row-below text-center">
+      <div class="col-md-2"><b>Label</b></div>
+      <div class="col-md-1"><b>Background Color</b></div>
+      <div class="col-md-3"><b>Specialties</b></div>
+      <div class="col-md-4"><b>Appointment Type</b></div>
+      <div class="col-md-2"style=""><b>Actions</b></div>
+    </div>
+    <% unless @sub_appointment_types.size > 0 %>
+      <%#= render 'empty_sub_appointment_rows' %>
+    
+      <div class="row none_appointment_type_row">
+        <div class="col-md-12 text-center" style="border-top: 1px solid #d3d7db;border-bottom: 1px solid #d3d7db;padding: 20px 0px;font-style: italic;">
+          <b>No Appointment Types Found</b>
+        </div>
+      </div>
+    <% else %>
+      
+      <% @sub_appointment_types.each_with_index do |each_appointment_type, index| %>
+        <%= fields_for "sub_appointment_types[#{index}]", each_appointment_type do |app_type| %>
+          <div class="row form-group appointment_type_row text-center">
+            <%= app_type.hidden_field :id %>
+            <%= app_type.hidden_field :organisation_id %>
+            <%= app_type.hidden_field :created_at %>
+            <input type="hidden" name="sub_appointment_types[<%= index %>][is_updated]" value="false" class="updated_check">
+            <div class="col-md-2">
+             <%= app_type.text_field :label, { :class => "form-control appointment-label-validation", readonly: each_appointment_type.try(:default_set) }  %>
+            </div>
+            <div class="col-md-1">
+              <%= app_type.text_field :background, {:class=>"form-control uniq_color background_selector"} %>
+            </div>
+            <div class="col-md-3" style="">
+              <%= app_type.select :specialty_ids, options_for_select(@available_specialties, each_appointment_type.try(:specialty_ids)), {}, {class: 'form-control specialty_ids_dropdown', multiple: 'multiple', style:'max-height:34px;'} %>
+            </div>
+            <div class="col-md-4" style="">
+              <%= app_type.select :organisation_appointment_type_ids, options_for_select(@available_organisation_appointment_types, each_appointment_type.try(:organisation_appointment_type_ids)), {}, {class: 'form-control organisation_appointment_type_ids_dropdown', multiple: 'multiple', style:'max-height:34px;'} %>
+            </div>
+            <div class="col-md-2 active_deactive_wrap">
+              <% if each_appointment_type.try(:default_set) %>
+                <button class="btn btn-xs btn-success" disabled="true">Predefined</button>
+              <% else %>
+                <span id="remove_sub_appointment_type_row_count" class="btn btn-sm btn-primary btn-danger fa fa-trash-alt remove_sub_appointment_type_row_count" data-deactivate="<%= each_appointment_type.try(:id) %>"></span>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+        <% total_appointment_types_count += 1 %>
+      <% end %>
+
+      <input type="hidden" id="sub_total_appointment_types_count" value="<%= total_appointment_types_count %>">
+    <% end %>
+  </div>
+<% end %>
+
+
+<style type="text/css">
+  input.error, select.error {
+    border-color: #b94a48;
+    background-image: none;
+  }
+  input.valid, select.valid {
+    border-color: #468847;
+    background-image: none;
+  }
+</style>
+
+<script>
+
+</script>
+<script type="text/javascript">
+  <%= render partial: 'sub_appointment_js'%>
+  sub_init_color_picker()
+  $('.specialty_ids_dropdown').select2();
+  $('.organisation_appointment_type_ids_dropdown').select2();
+</script>

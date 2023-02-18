@@ -1,0 +1,92 @@
+jQuery("#free-invoice-inventory-modal").html("<%= escape_javascript(render '/invoice/inventory_orders/print_preview.html.erb') %>")
+jQuery("#free-invoice-inventory-modal").modal("show")
+
+<% if @prescription_id.present? %>
+
+  <% if @department_id == "284748001" %>
+    var active_tab = $(".tab_active").find(".active").attr('data-tab-id')
+
+    if ("<%= @prescription.converted %>" == 'true') {
+      if(active_tab == "all"){
+        refresh_pharmacy_management("all", "<%= @prescription.id.to_s %>", "<%= Date.current.strftime('%d/%m/%Y') %>")
+      } else {
+        refresh_pharmacy_management("converted", "<%= @prescription.id.to_s %>", "<%= Date.current.strftime('%d/%m/%Y') %>")
+      }
+      if ($('.ui-pnotify').length > 0) { $('.ui-pnotify').remove() } notice = new PNotify({ title: 'Converted', text: "Added to today's CONVERTED queue", type: 'success' }); notice.get().click(function(){ notice.remove() });
+    } else if("<%= @prescription.converted %>" == 'false'){
+      if(active_tab == "all"){
+        refresh_pharmacy_management("all", "<%= @prescription.id.to_s %>", "<%= Date.current.strftime('%d/%m/%Y') %>")
+      } else {
+        refresh_pharmacy_management("not_converted", "<%= @prescription.id.to_s %>", "<%= Date.current.strftime('%d/%m/%Y') %>")
+      }
+      if ($('.ui-pnotify').length > 0) { $('.ui-pnotify').remove() } notice = new PNotify({ title: 'Not Converted', text:"Added to today's Not CONVERTED queue", type: 'error' }); notice.get().click(function(){ notice.remove() });
+    }
+
+  <% elsif @department_id == "50121007" %>
+    var active_tab = $(".tab_active").find(".active").attr('data-tab-id')
+
+    if ("<%= @prescription.converted %>" == 'true') {
+      if(active_tab == "all"){
+        refresh_optical_management("all", "<%= @prescription.id.to_s %>", "<%= Date.current.strftime('%d/%m/%Y') %>")
+      } else {
+        refresh_optical_management("converted", "<%= @prescription.id.to_s %>", "<%= Date.current.strftime('%d/%m/%Y') %>")
+      }
+      if ($('.ui-pnotify').length > 0) { $('.ui-pnotify').remove() } notice = new PNotify({ title: 'Converted', text: "Added to today's CONVERTED queue", type: 'success' }); notice.get().click(function(){ notice.remove() });
+    } else if("<%= @prescription.converted %>" == 'false'){
+      if(active_tab == "all"){
+        refresh_optical_management("all", "<%= @prescription.id.to_s %>", "<%= Date.current.strftime('%d/%m/%Y') %>")
+      } else {
+        refresh_optical_management("not_converted", "<%= @prescription.id.to_s %>", "<%= Date.current.strftime('%d/%m/%Y') %>")
+      }
+      if ($('.ui-pnotify').length > 0) { $('.ui-pnotify').remove() } notice = new PNotify({ title: 'Not Converted', text:"Added to today's Not CONVERTED queue", type: 'error' }); notice.get().click(function(){ notice.remove() });
+    }
+  <% end %>
+
+<% elsif params[:invoice_inventory_order][:from] == "pharmacy_patient_queue" %>
+  $('#btn-pharmacy-management-refresh').trigger('click');
+<% elsif params[:invoice_inventory_order][:from] == "optical_patient_queue" %>
+  $('#btn-optical-management-refresh').trigger('click');
+
+<% else %>
+  function filter_index(query) {
+    if (query.length > 0){
+      $(".inventory_search_panel").find(".fa").show()
+    }
+    else {
+      $(".inventory_search_panel").find(".fa").hide()
+    }
+    $('#show_more_inventory').show();
+    $.ajax({
+      type : 'get',
+      url: '/invoice/inventory_orders/filter_index',
+      data: {q: query, store_id: "<%=@store_id %>",filter_type: "recipient", start_date: "<%= @start_date%>", end_date: "<%= @end_date%>", remote: "true" },
+    })
+  }
+
+  $(".inventory-table-body").html("<%= escape_javascript(render partial: '/invoice/inventory_orders/index_body.html.erb') %>")
+
+
+  $('.inventory-items .inventory-list-row').unbind()
+  $('.inventory-items .inventory-list-row').on('click', function(e){
+    e.preventDefault();
+    var _id =  $(this).attr('id');
+    $('.inventory-list-row').css('background-color', '')
+    $(this).css('background-color', '#cfe8d2')
+    $.ajax({
+      type: 'GET',
+      data: {
+        start_date: '<%= @start_date %>',
+        end_date: '<%= @end_date %>',
+        remote: true
+      },
+      url: '/invoice/inventory_orders/'+_id,
+      success: function(){
+      }
+    })
+  })
+<% end %>
+if ($('.left-part').height() > $('.right-part').height()){
+  $('.left-part').css('border-right', '1px solid #ddd')
+}else{
+  $('.right-part').css('border-left', '1px solid #ddd')
+}

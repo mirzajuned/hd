@@ -1,0 +1,77 @@
+<%= javascript_include_tag "application-loggedin", "data-turbolinks-track" => true %>
+<div class="modal-dialog investigation-dialog modal-sm">
+  <div class="modal-content">
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal">&times;</button>
+      <h4 class="modal-title">Perfomed Details</h4>
+    </div>
+    <%= form_for @investigation, url: investigation_investigation_details_investigation_performed_path(investigation_id: @investigation.id), remote: true, html: { id: 'edit-investigation-form', class: "investigation-form" } do |investigation| %>
+      <% if params[:flag] != 'inside' %>
+        <%= investigation.hidden_field :performed_by, name: 'investigation[performed_by]', value: current_user.id.to_s %>
+      <% end %>
+      <%= investigation.hidden_field :performed_by_username, name: 'investigation[performed_by_username]', id: 'investigation_performed_by_username', value: current_user.fullname.to_s %>
+      <input type="hidden" name="investigation[performed_at_facility_id]" value='<%= current_facility.id.to_s %>'>
+      <input type="hidden" name="investigation[performed_at_facility_name]" value='<%= current_facility.name.to_s %>'>
+      <div class="modal-body">
+        <div class="row mb5">
+          <div class="col-sm-6">
+            Performed By:
+          </div>
+          <div class="col-sm-6">
+            <% if params[:flag] == 'inside' %>
+              <input type="hidden" name="flag" value="<%= params[:flag] %>">
+              <select class="investigation_performed_by form-control" name='investigation[performed_by]'>
+                <%= @users.each do |user| %>
+                  <option value='<%= user.id.to_s %>' <%= 'selected' if current_user.id == user.id %>><%= user.fullname.titleize %></option>
+                <% end %>
+              </select>
+            <% else %>
+              <%= investigation.text_field :performed_outside_by, name: 'investigation[performed_outside_by]', class: 'form-control p5_10', placeholder: 'ABC Lab', value: 'Outside Lab' %>
+            <% end %>
+          </div>
+        </div>
+        <div class="row mb5">
+          <div class="col-sm-6">
+            Performed On:
+          </div>
+          <div class="col-sm-6">
+            <%= investigation.hidden_field :performed_at, name: 'investigation[performed_at]', id: 'investigation_performed_at', value: '' %>
+            <%= investigation.hidden_field :performed_at_time, name: 'time', class: "current_time", value: Time.current.strftime("%I:%M %p") %>
+            <input type="text" name="performed_at", class="form-control performed-datepicker p5_10", value="<%= Date.current.strftime('%d/%m/%Y') %>", readonly="readonly">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <%= investigation.submit "Save", { class: 'btn btn-success btn-xs', data: { 'disable-with': 'Please Wait...' }, :onclick => 'investigation_page()' } %>
+        <button type="button" class="btn btn-default btn-xs" data-dismiss="modal">Close</button>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<style type="text/css">
+  .performed-datepicker {
+    background: #fff !important;
+    cursor: pointer !important;
+  }
+</style>
+
+<script type="text/javascript">
+  var datepicker_options = {
+    maxDate: -0,
+    dateFormat: 'dd/mm/yy'
+  }
+
+  $(".performed-datepicker").datepicker(datepicker_options)
+
+  $(".performed-datepicker").on('change', function(){
+    var date = $(this).val()
+    var time = $(".current_time").val()
+    $("#investigation_performed_at").val(date + " " + time)
+  }).trigger('change')
+
+  $('.investigation_performed_by').on('change', function(){
+    var name = $(this).find("option:selected").html()
+    $("#investigation_performed_by_username").val(name)
+  }).trigger('change')
+</script>

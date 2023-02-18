@@ -1,0 +1,702 @@
+/* Not in use
+$(document).ready(function() {
+  const renderAction = "<%= params[:action] %>"
+  const invoiceUType = "<%= _type %>"
+  const invoiceUTypeId = "<%= _type == 'opd' ? '485396012' : '486546481' %>"
+  const specialty_id = $("#invoice_" + invoiceUType + "_specialty_id").val();
+  const delete_service_array = []
+  const datepicker_options = {dateFormat: "dd/mm/yy"}
+  const invoice_is_draft = $('#invoice_' + invoiceUType + '_is_draft').val();
+  const currency_symbol = $('#invoice_' + invoiceUType + '_currency_symbol').val();
+  let offerUrl = '/invoice/invoices/show_service_offers?invoice_department_type=' + invoiceUType + '&invoice_action=' + renderAction + '&';
+  added_new_service_package = false
+
+
+
+  // Contact Changes
+  $("#services_items_invoice_" + invoiceUType).on("change", ".i_payer_master_id", function(){
+    let activeServiceRow = $(this).closest(".invoice_service_item_row")
+
+    let payer_master_id = $(this).val();
+    let patient_id = '<%= @invoice.try(:patient_id).to_s %>'
+    let appointment_id = '<%= @invoice.try(:appointment_id).to_s %>'
+    let service_type = '<%= @service_type.to_s %>'
+    let i_entry_type = $(activeServiceRow).find(".i_entry_type").val()
+    if(payer_master_id != "" && payer_master_id != null){
+      fetch(`/invoice/invoices/set_invoice_pricing_masters?payer_master_id=${payer_master_id}&case_sheet_id=<%= case_sheet_id %>&entry_type=${i_entry_type}&specialty_id=${specialty_id}&department_id=${invoiceUTypeId}&patient_id=${patient_id}&service_type=${service_type}&appointment_id=${appointment_id}`)
+          .then(data => data.text())
+    .then(pricingMasterList => $(activeServiceRow).find(".i_description").html(pricingMasterList).trigger("change"))
+    }
+  })
+
+  // Quantity Changes
+  $("#services_items_invoice_" + invoiceUType).on("keyup", ".i_quantity", function(){
+    calculate_price_by_i_quantity(this);
+  });
+  $("#services_items_invoice_" + invoiceUType).on("focusout", ".i_quantity", function(){
+    if($(this).attr('readonly') == undefined) {
+      calculate_price_by_i_quantity(this);
+    }
+  });
+
+  function calculate_price_by_i_quantity(_this) {
+    let quantity = $(_this).val()
+    $(_this).closest(".invoice_service_item_row").find(".service_discount").trigger("focusout")
+    $(".discount_amount").trigger("focusout")
+    let unit_price = $(_this).closest(".invoice_service_item_row").find(".i_unit_price").val()
+    let service_discount = $(_this).closest(".invoice_service_item_row").find(".service_discount_amount").val()
+
+    let service_offer = $(_this).closest(".invoice_service_item_row").find(".service_offer_amount").val() || 0
+    let net_item_price = $(_this).closest(".invoice_service_item_row").find(".net_item_price").val()
+
+    calculate_price(_this, quantity, unit_price, service_discount, service_offer)
+  }
+
+  // Unit Price Changes
+  $("#services_items_invoice_" + invoiceUType).on("keyup", ".i_unit_price", function(){
+    calculate_price_by_i_unit_price(this)
+  });
+
+  $("#services_items_invoice_" + invoiceUType).on("focusout", ".i_unit_price", function(){
+    if($(this).attr('readonly') == undefined) {
+      calculate_price_by_i_unit_price(this);
+    }
+  });
+
+  function calculate_price_by_i_unit_price(_this) {
+    let unit_price = $(_this).val()
+    $(_this).closest(".invoice_service_item_row").find(".service_discount").trigger("focusout")
+    $(".discount_amount").trigger("focusout")
+    let quantity = $(_this).closest(".invoice_service_item_row").find(".i_quantity").val()
+    let service_discount = $(_this).closest(".invoice_service_item_row").find(".service_discount_amount").val()
+    let service_offer = $(_this).closest(".invoice_service_item_row").find(".service_offer_amount").val() || 0
+    calculate_price(_this, quantity, unit_price, service_discount, service_offer)
+  }
+
+  // Service wise Discount Changes
+  $("#services_items_invoice_" + invoiceUType).on("keyup", ".service_discount", function(){
+    calculate_price_by_service_discount(this)
+  });
+
+  let original_service_discount = 0
+
+  $("#services_items_invoice_" + invoiceUType).on("focusin", ".service_discount", function(){
+    original_service_discount = parseFloat($(this).val())
+  });
+
+  $("#services_items_invoice_" + invoiceUType).on("focusout", ".service_discount", function(){
+    let new_service_discount = parseFloat($(this).val()) || 0
+    if((added_new_service_package == true && (original_service_discount == 0 || original_service_discount != new_service_discount)) && $(this).attr('readonly') == undefined) {
+      calculate_price_by_service_discount(this);
+    }
+  });
+
+  function calculate_price_by_service_discount(_this) {
+    let discount = $(_this).val()
+    let item_price = parseFloat($(_this).closest(".invoice_service_item_row").find(".i_price").val())
+    let discount_type = $(_this).closest(".invoice_service_item_row").find(".service_discount_type").val()
+    if (discount_type == '%' && discount >= 0 && discount <= 100) {
+      discount_amount = ((item_price * discount) / 100).toFixed(2)
+    } else {
+      discount_amount = parseFloat(discount)
+    }
+    if (isNaN(discount_amount) || discount_amount == '' || discount_amount < 0 || (discount_amount > item_price)) {
+      $(_this).val(0);
+      discount = 0;
+      discount_amount = 0;
+    }
+    // calculate offer
+    let item_price_offer = item_price
+    let offer_percentage = parseFloat($(_this).closest(".invoice_service_item_row").find(".service_offer_percentage").val())
+    let item_offer = parseFloat($(_this).closest(".invoice_service_item_row").find(".service_offer_amount").val())
+    if(isNaN(offer_percentage)) {
+      offer_percentage = 0
+    }
+    if(isNaN(item_offer)) {
+      item_offer = 0
+    }
+    if(offer_percentage > 0) {
+      item_offer = (item_price * offer_percentage) / 100
+      item_price_offer = (item_price - item_offer)
+      $(_this).closest(".invoice_service_item_row").find(".service_offer_amount").val(item_offer)
+      $(_this).closest(".invoice_service_item_row").find(".net_item_price").val(item_price_offer)
+    }
+    // EOF calculate offer
+    calculate_service_discount(_this, discount, discount_type, item_price_offer, item_offer)
+  }
+
+  $("#services_items_invoice_" + invoiceUType).on("change", ".service_discount_type", function(){
+    let discount_type = $(this).val()
+    let item_price = $(this).closest(".invoice_service_item_row").find(".i_price").val()
+    let discount = $(this).closest(".invoice_service_item_row").find(".service_discount").val()
+    calculate_service_discount(this, discount, discount_type, item_price)
+  });
+
+  $("#services_items_invoice_" + invoiceUType).on("keypress", ".service_discount", function(){
+    // return event.charCode >= 48 && event.charCode <= 57
+    discount = $(this).val();
+    return !((event.charCode != 45 || discount.indexOf('-') != -1) && (event.charCode != 46 || discount.indexOf('.') != -1) && (event.charCode < 48 || event.charCode > 57))
+  });
+
+  // Price Changes
+  $("#services_items_invoice_" + invoiceUType).on("change", ".net_item_price", function(){
+    let activeServiceRow = $(this).closest(".service_item_row_count")
+    calculation_invoice_total(activeServiceRow);
+    re_calculate_offer_on_bill();
+    change_invoice_total_payment()
+  });
+
+  // Remove Service
+  $("#services_items_invoice_" + invoiceUType).on("click", ".remove_service", function(e){
+    e.preventDefault();
+    let service_row = $(this).closest(".service_item_row_count");
+    let activeServiceRow = $(this).closest(".invoice_service_item_row")
+    let service_id = $(activeServiceRow).find(".i_id").val()
+    if(service_id !== NaN){
+      delete_service_array.push(service_id)
+      $("#deleted-services").val(delete_service_array)
+    }
+    $(activeServiceRow).remove();
+    // Re-Calculate Invoice Total
+    calculation_invoice_total(service_row);
+    re_calculate_offer_on_bill();
+    // Reset Counter Logic
+    remove_reset_logic();
+    // add_buttonset_at_last();
+    change_invoice_total_payment()
+  });
+
+  // change value on check
+  $(".show_breakup_in_print").on("click", function(e){
+    let is_chked = $(this).is(':checked');
+    $(this).closest(".invoice_service_item_row").find(".show_breakup_in_print_hdn").val(is_chked);
+  });
+
+  // Exception Change
+  $("#services_items_invoice_" + invoiceUType).on("click", ".change-exception", function(e){
+    e.preventDefault();
+    let pricing_master_id = $(this).attr('data-master-id')
+    let html_reference_id = $(this).attr('data-html-id')
+    let exception_id = $(this).attr('data-exception-id')
+
+    $.ajax({
+      type: "get",
+      dataType: "script",
+      url: "/invoice/invoices/set_pricing_exceptions",
+      data: { pricing_master_id: pricing_master_id,
+        html_reference_id: html_reference_id,
+        exception_id: exception_id }
+    })
+  });
+
+  // Calculate Price of Service
+  function calculate_price(_this, quantity=0, unit_price=0, service_discount=0, service_offer=0) {
+    let price = (quantity * unit_price).toFixed(2);
+    let net_price = (parseFloat(price) - (parseFloat(service_discount) + parseFloat(service_offer))).toFixed(2);
+    $(_this).closest(".invoice_service_item_row").find(".i_price").val(price).trigger("change");
+    $(_this).closest(".invoice_service_item_row").find(".net_item_price").val(net_price).trigger("change");
+  }
+
+  function calculate_service_discount(_this, discount, discount_type, item_price1, item_offer = 0) {
+    let serviceRow = $(_this).closest(".invoice_service_item_row")
+    let item_price = parseFloat(serviceRow.find(".i_price").val());
+    let final_item_price = item_price;
+    // check if offer is present
+    let offer_percentage = parseFloat(serviceRow.find(".service_offer_percentage").val());
+    if(offer_percentage > 0) {
+      // calculate new item_price
+      item_offer = ((item_price * offer_percentage) / 100).toFixed(2)
+      serviceRow.find(".service_offer_amount").val(item_offer);
+      final_item_price = (item_price - item_offer)
+    }
+    let offer_on_bill = parseFloat($('.offer_on_bill').val())
+    if(isNaN(offer_on_bill)) {
+      offer_on_bill = 0
+    }
+    let final_offer = parseFloat(offer_on_bill + item_offer) || 0
+    // EOF check if offer is present
+
+    let discount_amount = 0
+    let discount_percentage = 0
+    if (discount_type == '%') {
+      if (discount >= 0 && discount <= 100) {
+        discount_amount = ((final_item_price * discount) / 100).toFixed(2)
+        discount_percentage = discount
+        serviceRow.find(".service_discount_percentage").val(discount);
+        serviceRow.find(".service_discount_amount").val(discount_amount);
+      } else {
+        serviceRow.find(".service_discount").val(discount_amount).trigger("change");
+      }
+    } else {
+      discount_amount = parseFloat(discount).toFixed(2)
+      serviceRow.find(".service_discount_amount").val(discount_amount);
+    }
+    if (discount_amount > 0) {
+      serviceRow.find(".discount_reason").removeClass('hidden');
+      serviceRow.find(".lbl_discount_amount").text(" - " + discount_amount);
+    } else {
+      serviceRow.find(".discount_reason").addClass('hidden');
+      serviceRow.find(".lbl_discount_amount").text('');
+    }
+    let quantity = serviceRow.find(".i_quantity").val()
+    let unit_price = serviceRow.find(".i_unit_price").val()
+    let gross_amount = $(".invoice_gross_total").val()
+    let additional_discount = $(".discount_amount").val()
+    final_discount = discount_amount + additional_discount
+
+    let net_total = (gross_amount - (final_discount + final_offer)).toFixed(2)
+    $(".invoice_net_total").val(net_total);
+    calculate_price(_this, quantity, unit_price, discount_amount, parseFloat(item_offer))
+    re_calculate_offer_on_bill();
+    change_invoice_total_payment();
+  }
+
+  $(".discount_amount").on("keyup focusout", function(){
+    let discount = $(this).val()
+    let discount_amount = (discount.length > 0) ? parseFloat(discount) : 0.00
+    let gross_amount = parseFloat($(".invoice_gross_total").val())
+    let service_discount = parseFloat($(".services_discount").val())
+    let total_discount = parseFloat(discount_amount + service_discount)
+    if (total_discount > gross_amount) {
+      $(this).val('0.00');
+      discount = 0
+      final_discount = service_discount.toFixed(2)
+    } else {
+      final_discount = total_discount.toFixed(2)
+    }
+    if (discount_amount > 0) {
+      $(".additional_discount_div").removeClass('hidden');
+    } else {
+      $(".additional_discount_div").addClass('hidden');
+    }
+    // calculate offer amount
+    let total_offer = parseFloat($('.total_offer').val()) || 0
+    let net_total = (parseFloat(gross_amount) - (parseFloat(final_discount) + parseFloat(total_offer))).toFixed(2)
+    $(".invoice_net_total").val(net_total).trigger("change")
+    $(".total_discount").val(final_discount).trigger("change")
+    calculate_offer_discount()
+    // re_calculate_offer_on_bill()
+    change_invoice_total_payment()
+  });
+
+  // Function For Calculating Invoice Based Total
+  function calculation_invoice_total(serviceRow) {
+    let total = 0
+    let total_gross = 0
+    let service_discount = 0
+    let total_discount = 0
+    let service_offer = 0
+    // let total_offer = 0
+    let prices = $(serviceRow).find(".i_price")
+    let service_discounts = $(serviceRow).find(".service_discount_amount")
+    let service_offers = $(serviceRow).find(".service_offer_amount")
+    // Calculate discount
+    let discount = parseFloat($(".discount_amount").val()) || 0
+    for (let i = service_discounts.length - 1; i >= 0; i--) {
+      service_discount += parseFloat($(service_discounts[i]).val())
+    };
+    total_discount = discount + service_discount
+    $("#services_discount").val(service_discount.toFixed(2))
+    $("#total_discount").val(total_discount.toFixed(2))
+
+    let offer = parseFloat($(".offer_on_bill").val()) || 0
+    for (let j = service_offers.length - 1; j >= 0; j--) {
+      // if(isNaN($(service_offers[j]).val())){
+      service_offer += parseFloat($(service_offers[j]).val()) || 0
+      // }
+    };
+    let total_offer = parseFloat(offer + service_offer).toFixed(2) || 0
+    $(".offer_on_services").val(service_offer.toFixed(2)).trigger('change')
+    $(".total_offer").val(total_offer).trigger('change')
+
+    // Service Total Calculation(Hidden Field)
+    for (let i = prices.length - 1; i >= 0; i--) {
+      total += parseFloat($(prices[i]).val())
+    };
+    $(serviceRow).closest(".service_row_count").find(".service_total").val(total)
+    // Gross Amount Calculation
+    let service_prices = $("#services_items_invoice_" + invoiceUType).find(".service_total")
+    for (let i = service_prices.length - 1; i >= 0; i--) {
+      total_gross += parseFloat($(service_prices[i]).val())
+    };
+    $("#invoice_gross_total").val(total_gross.toFixed(2))
+    // Discount calculation
+
+    // Net Amount Calculation
+    calculate_offer_discount()
+    let net_total = parseFloat(parseFloat(total_gross) - (parseFloat(total_discount) + parseFloat(total_offer))).toFixed(2)
+    let net_total_rounded = Math.round(net_total)
+    $("#invoice_net_total").val(net_total_rounded).trigger("change")
+    let rounded_amount = (net_total - net_total_rounded).toFixed(2)
+    $("#round_amount").val(rounded_amount)
+  }
+
+  remove_reset_logic();
+
+  // Logic For Remove Reset Index Keys
+  function remove_reset_logic() {
+    let allServiceRow = $(".invoice_service_item_row")
+    for (let i = 0; i < allServiceRow.length; i++) {
+      $(allServiceRow[i]).attr("id", "invoice_service_item_row_" + i)
+      $(allServiceRow[i]).find(".i_id").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][_id]")
+      $(allServiceRow[i]).find(".i_payer_master_id").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][payer_master_id]")
+      $(allServiceRow[i]).find(".i_description").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][description]")
+      $(allServiceRow[i]).find(".i_description").attr("id", "invoice_" + invoiceUType + "_services_"+ i +"_description")
+      $(allServiceRow[i]).find(".i_quantity").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][quantity]")
+      $(allServiceRow[i]).find(".i_unit_price").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][unit_price]")
+      $(allServiceRow[i]).find(".i_price").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][price]")
+      // adding discount related fields
+      $(allServiceRow[i]).find(".service_discount_amount").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][discount_amount]")
+      $(allServiceRow[i]).find(".service_discount_percentage").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][discount_percentage]")
+      $(allServiceRow[i]).find(".service_discount").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][discount]")
+      $(allServiceRow[i]).find(".service_discount").attr("id", "service_discount_" + i)
+      $(allServiceRow[i]).find(".service_discount_type").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][service_discount_type]")
+      $(allServiceRow[i]).find(".discount_reason").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][discount_reason]")
+      $(allServiceRow[i]).find(".net_item_price").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][net_item_price]")
+      $(allServiceRow[i]).find(".field_for_service_discount_amount").attr("id", "discount_amount_" + i)
+      $(allServiceRow[i]).find(".discount_reason").attr("id", "discount_reason_" + i)
+      // end adding discount related fields
+      // offer related fields
+      $(allServiceRow[i]).find(".service_offer_amount").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][offer_amount]")
+      $(allServiceRow[i]).find(".service_offer_manager_id").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][offer_manager_id]")
+      $(allServiceRow[i]).find(".service_offer_name").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][offer_name]")
+      $(allServiceRow[i]).find(".service_offer_code").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][offer_code]")
+      $(allServiceRow[i]).find(".service_offer_percentage").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][offer_percentage]")
+      $(allServiceRow[i]).find(".service_offer_applied_at").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][offer_applied_at]")
+      $(allServiceRow[i]).find(".service_offer_applied_at_name").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][offer_applied_at_name]")
+      $(allServiceRow[i]).find(".service_offer_applied_by").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][offer_applied_by]")
+      $(allServiceRow[i]).find(".service_offer_applied_by_name").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][offer_applied_by_name]")
+      $(allServiceRow[i]).find(".service_offer_applied_date").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][offer_applied_date]")
+      $(allServiceRow[i]).find(".service_offer_applied_datetime").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][offer_applied_datetime]")
+      $(allServiceRow[i]).find(".service_offer_applied_datetime").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][offer_applied_datetime]")
+      $(allServiceRow[i]).find(".field_for_service_offer").attr("id", "offer_" + i)
+      $(allServiceRow[i]).find(".field_for_service_offer_amount").attr("id", "offer_actions_" + i)
+      $(allServiceRow[i]).find(".add_item_offer").attr("href", offerUrl + 'service_id=' + $(allServiceRow[i]).find(".i_description").val() + '&row_count=' + i)
+      // end offer related fields
+      $(allServiceRow[i]).find(".i_price").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][price]")
+      $(allServiceRow[i]).find(".i_item_entry_date").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][item_entry_date]")
+      $(allServiceRow[i]).find(".i_entry_type").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][entry_type]")
+      $(allServiceRow[i]).find(".i_added_by_id").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][added_by_id]")
+      $(allServiceRow[i]).find(".i_advised_by_id").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][advised_by_id]")
+      $(allServiceRow[i]).find(".i_counselled_by_id").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][counselled_by_id]")
+      $(allServiceRow[i]).find(".i_sub_specialty_id").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][sub_specialty_id]")
+      $(allServiceRow[i]).find(".i_tax_preference").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][tax_preference]")
+      $(allServiceRow[i]).find(".i_taxable_amount").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][taxable_amount]")
+      $(allServiceRow[i]).find(".i_non_taxable_amount").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][non_taxable_amount]")
+      $(allServiceRow[i]).find(".i_exception_id").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][exception_id]")
+      $(allServiceRow[i]).find(".add-new-service-package").attr("id", invoiceUType + "-"+ i +"-add-services")
+      $(allServiceRow[i]).find(".dropdown-menu").attr("aria-labelledby", invoiceUType + "-"+ i +"-add-services-dropdown")
+
+      $(allServiceRow[i]).find(".show_breakup_in_print").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][show_breakup_in_print]")
+      $(allServiceRow[i]).find(".show_breakup_in_print_chk").attr("id", "invoice_" + invoiceUType + "_"+ i +"_show_breakup_in_print")
+      $(allServiceRow[i]).find(".show_breakup_in_print_lbl").attr("for", "invoice_" + invoiceUType + "_"+ i +"_show_breakup_in_print")
+
+      $(allServiceRow[i]).find(".i_service_name").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][name]")
+      $(allServiceRow[i]).find(".i_service_type").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][service_type]")
+    }
+    add_buttonset_at_last();
+  }
+
+  $('.show_breakup_in_print_lbl').live('click', function() {
+    var ele = $(this).closest(".invoice_service_item_row").find(".show_breakup_in_print_chk");
+    let is_checked = !(ele.is(':checked'));
+    $(this).closest(".invoice_service_item_row").find(".show_breakup_in_print").val(is_checked);
+  });
+
+  // Net Total Changes
+  $("#invoice_net_total").on("change", function(){
+    if((invoice_is_draft == 'false' || invoice_is_draft == false) && renderAction != "edit") {
+      let net_amount = parseFloat($(this).val()) || 0;
+      let paymentRecievedRows = $(".payment_received_breakups_amount")
+      if(paymentRecievedRows.length == 1){
+        paymentRecievedRows.first().val(net_amount).trigger("keyup")
+      }
+    }
+  })
+
+  // Get Service Details
+  function get_service_details(description){
+    $(description).on("change", function(){
+      let _this = this
+      let description_id = $(this).val();
+      let counter = $(this).attr("name").replace(/[^0-9]/g, '')[0];
+      let service_amount = $("option:selected", this).attr("data-amount");
+      let data_type = $(this).attr("data-type");
+      let activeServiceRow = $(this).closest(".invoice_service_item_row");
+      let service_name = $("option:selected", this).text();
+      let service_type = $("option:selected", this).attr("data-service_type");
+
+      $(activeServiceRow).find(".i_service_name").val(service_name)
+      $(activeServiceRow).find(".i_service_type").val(service_type)
+      $(activeServiceRow).find(".i_quantity").val(1)
+
+      if($("option:selected", this).attr("data-exception") == 'true'){
+        $.ajax({
+          type: "get",
+          dataType: "script",
+          url: "/invoice/invoices/set_pricing_exceptions",
+          data: { pricing_master_id: description_id, html_reference_id: $(_this).attr('id') }
+        })
+      } else {
+        $(activeServiceRow).find(".i_unit_price").val(service_amount)
+        $(activeServiceRow).find(".i_non_taxable_amount").val(service_amount)
+        $(activeServiceRow).find(".i_unit_price").trigger("focusout")
+      }
+
+      $(activeServiceRow).find(".service_discount").trigger("focusout")
+      $(activeServiceRow).find(".discount_amount").trigger("focusout")
+      $(activeServiceRow).find(".exception_details").hide();
+
+      // remove offers if switching to other service/package
+      $(activeServiceRow).find(".remove_offer").trigger("click");
+
+      if(data_type == "surgery_package"){
+        if(description_id != ""){
+          fetch(`/surgery_packages/${description_id}/set_package_services?counter=${counter}&tax_enabled=false`)
+              .then(data => data.text())
+        .then(packageBreakupHtml => $(activeServiceRow).find(".package-breakup").html(packageBreakupHtml))
+        .then($(activeServiceRow).find('.show_breakup_in_print').removeClass("hidden"))
+        } else {
+          $(activeServiceRow).find(".package-breakup").html("")
+          $(activeServiceRow).find('.show_breakup_in_print').addClass("hidden")
+        }
+      } else if(data_type == "bill_of_material"){
+        if(description_id != ""){
+          fetch(`/inpatient/bill_of_materials/${description_id}/set_bill_of_material?counter=${counter}&tax_enabled=false&from=bill_of_material`)
+              .then(data => data.text())
+        .then(packageBreakupHtml => $(activeServiceRow).find(".package-breakup").html(packageBreakupHtml))
+        .then($(activeServiceRow).find('.show_breakup_in_print').removeClass("hidden"))
+        } else {
+          $(activeServiceRow).find(".package-breakup").html("")
+          $(activeServiceRow).find('.show_breakup_in_print').addClass("hidden")
+        }
+      } else {
+        let advised_by_id = $("option:selected", this).attr("data-advised_by_id");
+        let counselled_by_id = $("option:selected", this).attr("data-counselled_by_id");
+
+        $(activeServiceRow).find(".i_advised_by_id").val(advised_by_id)
+        $(activeServiceRow).find(".i_counselled_by_id").val(counselled_by_id)
+      }
+      let sub_specialty_id = $("option:selected", this).attr("data-sub_specialty_id");
+      $(activeServiceRow).find(".i_sub_specialty_id").val(sub_specialty_id)
+      re_calculate_offer_on_bill()
+      change_invoice_total_payment()
+
+      let offerButton = $(activeServiceRow).find('.add_item_offer');
+      $(offerButton).attr('href', offerUrl + 'service_id=' + description_id + '&row_count=' + counter)
+
+      if(description_id == ''){
+        $(activeServiceRow).find('.add-discount-offer').addClass('hidden')
+      } else {
+        $(activeServiceRow).find('.add-discount-offer').removeClass('hidden')
+        re_calculate_offer_on_bill();
+        added_new_service_package = true
+      }
+    })
+  }
+
+  for (var i = $('.i_description').length - 1; i >= 0; i--) {
+    get_service_details($('.i_description')[i])
+  }
+
+  function add_buttonset_at_last() {
+    $('.service_row_count').find('.add-new-service-package').addClass("hidden")
+    $('.service_row_count').find('.add-new-service-package').last().removeClass("hidden")
+    let services_count = $(".service_item_row_count > div").length;
+    if (services_count == 1) {
+      $('.service_row_count').find('.remove_service').last().addClass("hidden")
+      $('.service_row_count').find('.add-new-service-package').last().removeClass("hidden")
+    } else {
+      $('.service_row_count').find('.remove_service').removeClass("hidden")
+    }
+  }
+  add_buttonset_at_last();
+
+
+
+
+
+
+
+
+  // Add Discount for the item
+  $("#services_items_invoice_" + invoiceUType).on("click", ".add_item_discount", function(e){
+    e.preventDefault();
+    let closestDiscountAmount = $(this).closest(".invoice_service_item_row").find(".field_for_unit_price").find('.field_for_service_discount_amount');
+    let closestDiscountReason = $(this).closest(".invoice_service_item_row").find(".field_for_price").find('.field_for_service_discount_reason');
+
+    $(closestDiscountAmount).show();
+    $(closestDiscountReason).show();
+    $(closestDiscountReason).find('.remove_discount').removeClass('hidden');
+    $(this).remove();
+  });
+
+  // Remove Discount for the item
+  $("#services_items_invoice_" + invoiceUType).on("click", ".remove_discount", function(e){
+    e.preventDefault();
+    var serviceRow = $(this).closest(".invoice_service_item_row")
+    var service_discount = serviceRow.find(".service_discount")
+    service_discount.val('')
+    let closestDiscountAmount = serviceRow.find(".field_for_unit_price").find('.field_for_service_discount_amount');
+    let closestDiscountReason = serviceRow.find(".field_for_price").find('.field_for_service_discount_reason');
+    let closestDiscountLi = serviceRow.find(".field_for_price").find('#li_discount');
+    $(closestDiscountAmount).hide();
+    $(closestDiscountReason).find('.remove_discount').addClass('hidden');
+    $(closestDiscountReason).hide();
+    $(closestDiscountLi).html('<a class="add_item_discount" href="javascript:;" name="add_item_discount">Discount</a>');
+    calculate_price_by_service_discount(service_discount)
+    let activeServiceRow = $(this).closest(".service_item_row_count")
+    calculation_invoice_total(activeServiceRow);
+    re_calculate_offer_on_bill();
+    change_invoice_total_payment()
+  });
+
+  // Add Offer details for the item
+  $("#services_items_invoice_" + invoiceUType).on("click", ".add_item_offer", function(e){
+    e.preventDefault();
+    let closestOffer = $(this).closest(".invoice_service_item_row").find(".field_for_unit_price").find('.field_for_service_offer');
+    let closestOfferAmount = $(this).closest(".invoice_service_item_row").find(".field_for_price").find('.field_for_service_offer_amount');
+  });
+
+  // Remove Offer for the item
+  $("#services_items_invoice_" + invoiceUType).on("click", ".remove_offer", function(e){
+    e.preventDefault();
+    let closestOffer = $(this).closest(".invoice_service_item_row").find(".field_for_unit_price").find('.field_for_service_offer');
+    let closestOfferAmount = $(this).closest(".invoice_service_item_row").find(".field_for_price").find('.field_for_service_offer_amount');
+    let closestOfferLi = $(this).closest(".invoice_service_item_row").find(".field_for_price").find('#li_offer');
+    let description_id = $(this).closest(".invoice_service_item_row").find(".i_description").val();
+    $(this).closest(".invoice_service_item_row").find(".service_offer_amount").val(0);
+    $(this).closest(".invoice_service_item_row").find(".service_offer_manager_id").val('');
+    $(this).closest(".invoice_service_item_row").find(".service_offer_name").val('');
+    $(this).closest(".invoice_service_item_row").find(".service_offer_code").val('');
+    $(this).closest(".invoice_service_item_row").find(".service_offer_percentage").val(0);
+    $(this).closest(".invoice_service_item_row").find(".service_offer_applied_at").val('');
+    $(this).closest(".invoice_service_item_row").find(".service_offer_applied_at_name").val('');
+    $(this).closest(".invoice_service_item_row").find(".service_offer_applied_by").val('');
+    $(this).closest(".invoice_service_item_row").find(".service_offer_applied_by_name").val('');
+    $(this).closest(".invoice_service_item_row").find(".service_offer_applied_date").val('');
+    $(this).closest(".invoice_service_item_row").find(".service_offer_applied_datetime").val('');
+    $(closestOffer).find('.offer_details').addClass('hidden');
+    $(closestOffer).find('.remove_offer').hide();
+    $(closestOfferAmount).hide();
+    var counter_id = closestOffer.attr('id')
+    var counter = counter_id.split("_").pop()
+    var add_offer_html_url = offerUrl + 'service_id=' + description_id + '&row_count=' + counter
+    $(closestOfferLi).html('<a class="add_item_offer" href="'+add_offer_html_url+'" name="add_item_offer" data-remote="true" data-toggle="modal" data-target="#invoice-offer-service-modal">Offer</a>')
+    var service_discount = $(this).closest(".invoice_service_item_row").find(".service_discount")
+    calculate_price_by_service_discount(service_discount)
+    let activeServiceRow = $(this).closest(".service_item_row_count")
+    calculation_invoice_total(activeServiceRow);
+  });
+
+  // Edit Offer for the item
+  $("#services_items_invoice_" + invoiceUType).on("click", ".edit_offer", function(e){
+    e.preventDefault();
+    let closestOffer = $(this).closest(".invoice_service_item_row").find(".field_for_unit_price").find('.field_for_service_offer');
+    let closestOfferLi = $(this).closest(".invoice_service_item_row").find(".field_for_price").find('#li_offer');
+    let description_id = $(this).closest(".invoice_service_item_row").find(".i_description").val();
+    var counter_id = closestOffer.attr('id')
+    var counter = counter_id.split("_").pop()
+    var selected_offer_id = $(this).closest(".invoice_service_item_row").find('.service_offer_manager_id').val()
+    var add_offer_html_url = offerUrl + 'service_id=' + description_id + '&row_count=' + counter + '&selected_offer_id=' + selected_offer_id;
+    $(closestOfferLi).html('<a class="add_item_offer" href="'+add_offer_html_url+'" name="add_item_offer" data-remote="true" data-toggle="modal" data-target="#invoice-offer-service-modal">Offer</a>')
+    $(closestOfferLi).find('.add_item_offer').trigger('click');
+  });
+
+  // remove offer from invoice
+  $('.remove_bill_offer').on('click', function(e) {
+    e.preventDefault();
+    $('#offer_on_bill').val(0);
+    $('.lbl_offer_detail').addClass('hidden');
+    $('.lbl_offer_detail').html('');
+    $('.offer_manager_id').val('');
+    $('.offer_name').val('');
+    $('.offer_code').val('');
+    $('.offer_percentage').val('');
+    $('.offer_applied_at').val('');
+    $('.offer_applied_at_name').val('');
+    $('.offer_applied_by').val('');
+    $('.offer_applied_by_name').val('');
+    $('.offer_applied_date').val('');
+    $('.offer_applied_datetime').val('');
+    $('.remove_bill_offer').addClass('hidden');
+    $('.add_bill_offer').removeClass('hidden');
+    let invoice_gross_total = parseFloat($('.invoice_gross_total').val());
+    let total_discount = parseFloat($('.total_discount').val()).toFixed(2) || 0;
+    let service_offers = parseFloat($('.offer_on_services').val()).toFixed(2) || 0;
+    let invoice_net_total = parseFloat(parseFloat(invoice_gross_total) - parseFloat(parseFloat(total_discount) + parseFloat(service_offers))).toFixed(2);
+    $('.total_offer').val(service_offers);
+    $('.invoice_net_total').val(invoice_net_total).trigger('change');
+    calculate_offer_discount();
+    change_invoice_total_payment();
+  });
+
+  function check_offer_on_bill() {
+    // if(parseFloat($('#offer_on_bill').val()) > 0) {
+    if(renderAction == "edit") {
+      $('.add_bill_offer').addClass('hidden');
+      $('.remove_bill_offer').addClass('hidden');
+    }
+    if(invoice_is_draft == 'true' || invoice_is_draft == true) {
+      var offer_on_bill = parseFloat($('.offer_on_bill').val())
+      if(offer_on_bill > 0) {
+        $('.remove_bill_offer').removeClass('hidden');
+        $('.lbl_offer_detail').removeClass('hidden');
+      } else {
+        $('.add_bill_offer').removeClass('hidden');
+      }
+    }
+  }
+  check_offer_on_bill();
+
+  $(".offer_on_bill").on("change", function(){
+    calculate_offer_discount();
+    change_invoice_total_payment();
+  });
+
+  calculate_offer_discount();
+
+  function remove_offers(){
+    if((invoice_is_draft == false || invoice_is_draft == 'false') && $(".remove_offer").length > 0) {
+      $(".remove_offer").each(function(){
+        $(this).trigger("click");
+      })
+    }
+  }
+
+  function re_calculate_offer_on_bill() {
+    let offer_discount_percentage = parseFloat($('.offer_percentage').val());
+    if(offer_discount_percentage > 0){
+      let invoice_gross_total = parseFloat($('.invoice_gross_total').val());
+      let total_discount = parseFloat($('.total_discount').val());
+      let service_offers = parseFloat($('.offer_on_services').val());
+      let discounted_amount = invoice_gross_total - (total_discount + service_offers)
+      let bill_offer_discount = parseFloat(parseFloat(discounted_amount)*parseFloat(offer_discount_percentage)/100).toFixed(2)
+      let final_offer_discount = parseFloat(parseFloat(service_offers) + parseFloat(bill_offer_discount)).toFixed(2);
+      let invoice_net_total = parseFloat(parseFloat(invoice_gross_total) - (parseFloat(total_discount) + parseFloat(final_offer_discount))).toFixed(2);
+      $('.total_offer').val(final_offer_discount);
+      $('.offer_on_bill').val(bill_offer_discount).trigger('change');
+      let net_total_rounded = Math.round(invoice_net_total)
+      $("#invoice_net_total").val(net_total_rounded).trigger("change")
+      let rounded_amount = (invoice_net_total - net_total_rounded).toFixed(2)
+      $("#round_amount").val(rounded_amount)
+    }
+  }
+
+  $('.total_discount').on('change', function(e) {
+    re_calculate_offer_on_bill()
+  });
+
+  $('.offer_on_services').on('change', function(e) {
+    re_calculate_offer_on_bill()
+  });
+
+
+}).click(function(e){
+  var target = e.target.getAttribute('tooltip_target')
+  var id = e.target.id
+  if($('#'+id).hasClass('tooltip-icon') == false) {
+    $('.tooltip-data').css({visibility: 'hidden'})
+  }
+})
+*/

@@ -1,0 +1,698 @@
+<div class="container-fluid" style="" id="pharmacyInvoiceEdit">
+  <div class="row" style="width: 75%">
+    <div class="col-sm-12">
+      <h4 style="margin-top: 3px; margin-bottom: 3px">Patient Details</h4>
+    </div>
+  </div>
+  <div class="row mt10 mb5">
+    <div id="item_id" style="display: none"><%= @patient_prescription.id %></div>
+    <div id="patient_id" style="display: none"><%= @patient.id %></div>
+    <div class="col-lg-2 font_size text-right">
+      Patient Name:
+    </div>
+    <div class="col-lg-2 font_size">
+      <%= f.text_field :recipient, :class => "fi_input_style readonly", :placeholder => '', :style=>"width:92%", :readonly => true, :value => @patient.try(:fullname) %>
+    </div>
+    <div class="col-lg-2 font_size text-right">
+      Patient ID:
+    </div>
+    <div class="col-lg-2 font_size">
+      <%= f.text_field :patient_identifier, :class => "fi_input_style readonly", :placeholder => '', :style=>"width:92%", :readonly => true, :value => @patient_idn.try(:patient_org_id) %>
+    </div>
+    <div class="col-lg-2 font_size text-right">
+      Patient Mobile
+    </div>
+    <div class="col-lg-2 font_size">
+      <%= f.text_field :recipient_mobile, :class => "fi_input_style readonly",:placeholder => '', :style=>"width:92%", :readonly => true, :value => @patient.try(:mobilenumber) %>
+    </div>
+  </div>
+  <div class="row mb5">
+    <div class="col-lg-2 font_size text-right">
+      Doctor:
+    </div>
+    <div class="col-lg-2 font_size">
+      <%= f.text_field :doctor_name, :class => "fi_input_style readonly", :placeholder => '', :style=>"width:92%", :readonly => true, :value => @patient_prescription.try(:doctor_name) %>
+    </div>
+    <div class="col-lg-2" style="text-align: right">
+      MR No:
+    </div>
+    <div class="col-lg-2" style="text-align: left" id="fi_mr_no">
+      <%= @patient_o_idn.try(:mr_no) || 'NA'%>
+    </div>
+    <div class="col-lg-2 font_size text-right">
+      Date &amp; Time
+    </div>
+    <div class="col-lg-2 font_size">
+      <strong><%= @patient_prescription.encounterdate.strftime('%d/%m/%Y') %></strong>
+    </div>
+  </div>
+  <!-- row -->
+  <div class="row mb5">
+    <div class="col-lg-2 font_size text-right">
+      Additional Note:
+    </div>
+    <div class="col-lg-9">
+      <%= f.text_field :note, :class => "fi_input_style", :style=> "width: 100%"%>
+    </div>
+  </div>
+  <div class="row mt10" style="border-top:1px solid #eee;">
+    <%prescription = @patient_prescription%>
+    <div class="row no_margin" style="padding: 1% 2%; font-size: 9px">
+      <div class="row">
+        <span style="font-size: 12px"><b>MEDICATION(Rx)</b>&nbsp;(Last updated on <%= prescription.updated_at.strftime("%d %b,%Y")%> &nbsp;at <%= prescription.updated_at.strftime("%I:%M %p")%>)(Patient's Prescription)</span></span>
+        <% if prescription.encountertype == "OPD" %>
+          <span class="pull-right">
+            <% if @print_settings.count > 1 %>
+              <div class="btn-group">
+                <button type="button" class="btn btn-xs btn-link full_print dropdown-toggle" data-toggle="dropdown"><i class="fa fa-print mr5"></i> Print Receipt <i class="fa fa-caret-down"></i></button>
+                <ul class="dropdown-menu dropdown-left-manual" role="menu" aria-labelledby="summary-print-dropdown" style="">
+                  <% @print_settings.each do |print_setting| %>
+                    <li style="text-align:left" class="multi-print">
+                      <%= link_to opd_records_print_medication_path(:opdrecordid => prescription.record_id.to_s, :patientid => prescription.patient_id.to_s, :appointmentid => prescription.appointment_id, :templatetype => "eye", :specality => "ophthalmology", print_setting_id: print_setting.id, :format => :pdf), :class => "",:target => "_blank", :data => {method: :get} do %> <i class="fa fa-print mr5"></i> <%= print_setting.name %> <% end %>
+                    </li>
+                  <% end %>
+                </ul>
+              </div>
+            <% else %>
+              <%= link_to opd_records_print_medication_path(:opdrecordid => @patient_prescription.record_id.to_s, :patientid => @patient_prescription.patient_id.to_s, :appointmentid => @patient_prescription.appointment_id, :templatetype => "eye", :specality => "ophthalmology", print_setting_id: @print_settings[0].id, :format => :pdf),:target => "_blank", :data => {method: :get}, class: "btn btn-xs btn-link pull-right" do %> <i class="fa fa-print mr5"></i> Print <% end %>
+            <% end %>
+          </span>
+          <!-- <a class="btn btn-xs btn-link pull-right" target="_blank" data-method="get" href="/opd_records/print_medication.pdf?appointmentid=<%#= prescription.appointment_id%>&amp;opdrecordid=<%#= prescription.record_id.to_s%>&amp;patientid=<%#= prescription.patient_id.to_s%>&amp;specality=ophthalmology&amp;templatetype=eye"> <i class="fa fa-print"></i> Print</a> -->
+        <% else %>
+          <span class="pull-right">
+            <% if @print_settings.count > 1 %>
+              <div class="btn-group">
+                <button type="button" class="btn btn-xs btn-link full_print dropdown-toggle" data-toggle="dropdown"><i class="fa fa-print mr5"></i> Print Receipt <i class="fa fa-caret-down"></i></button>
+                <ul class="dropdown-menu dropdown-left-manual" role="menu" aria-labelledby="summary-print-dropdown" style="">
+                  <% @print_settings.each do |print_setting| %>
+                    <% @print_medication = "inpatient_ipd_record_discharge_note_ophthalmology_note_print_path(id: prescription.record_id, ophthalmology_note_id: prescription.record_id, admission_id: prescription.admission_id.to_s, print_setting_id: print_setting.id.to_s, view: 'Medication', format: 'pdf')" %>
+                    <li style="text-align:left" class="multi-print">
+                      <%= link_to eval(@print_medication), :class => "",:target => "_blank", :data => {method: :get} do %> <i class="fa fa-print mr5"></i> <%= print_setting.name %> <% end %>
+                    </li>
+                  <% end %>
+                </ul>
+              </div>
+            <% else %>
+              <% @print_medication = "inpatient_ipd_record_discharge_note_ophthalmology_note_print_path(id: prescription.record_id, ophthalmology_note_id: prescription.record_id, admission_id: prescription.admission_id.to_s, print_setting_id: @print_settings[0].id.to_s, view: 'Medication', format: 'pdf')" %>
+              <%= link_to eval(@print_medication), :target => "_blank", :data => {method: :get}, class: "btn btn-xs btn-link pull-right" do %> <i class="fa fa-print mr5"></i> Print <% end %>
+            <% end %>
+          </span>
+          <%#= link_to eval(@print_medication), :class => "btn btn-xs btn-link pull-right", :target => "_blank", :data => {method: :get} do %> <!-- <i class="fa fa-print"></i> --> <%# end %>
+        <% end %>
+        <div class="summary-line-border"></div>
+      </div>
+      <div class="row mb10 check_font">
+        <table class="table table-bordered">
+          <thead>
+            <tr>
+              <th>S.No.</th>
+              <th>Name</th>
+              <th>Quantity</th>
+              <th class="text-center">Frequency</th>
+              <th>Duration</th>
+              <th>Eye</th>
+              <th>Instruction</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% prescription.medications.each.with_index do |medication,i| %>
+            <tr>
+              <td><%= i + 1 %></td>
+              <td><%= medication['medicinename'] %><% if medication['medicinetype'].present? %> - <%= medication['medicinetype'] %><% end %></td>
+              <% if medication['taper_id'] == "0" || medication['taper_id'] == nil || medication['taper_id'] == "" %>
+              <td class="text-right"><%= medication['medicinequantity'] %></td>
+              <td class="text-center">
+                <% if Array["1-1-1", "1-1-0", "1-0-1", "0-1-1", "1-0-0", "0-1-0", "0-0-1", "1-1-1-1", "2-2-2", "2-0-2"].include?(medication['medicinefrequency']) %>
+                <% frequency = medication['medicinefrequency'].split('-') %>
+                <% unless frequency[3] == nil %>
+                <div class="row">
+                  <div class="col-md-2 text-center"><b><%= frequency[0] %></b><br>Mrng</div>
+                  <div class="col-md-1">-</div>
+                  <div class="col-md-2 text-center"><b><%= frequency[1] %></b><br>Noon</div>
+                  <div class="col-md-1">-</div>
+                  <div class="col-md-2 text-center"><b><%= frequency[2] %></b><br>Evng</div>
+                  <div class="col-md-1">-</div>
+                  <div class="col-md-2 text-center"><b><%= frequency[3] %></b><br>Night</div>
+                </div>
+                <% else %>
+                <div class="row">
+                  <div class="col-md-3 text-center"><b><%= frequency[0] %></b><br>Morning</div>
+                  <div class="col-md-1">-</div>
+                  <div class="col-md-3 text-center"><b><%= frequency[1] %></b><br>Afternoon</div>
+                  <div class="col-md-1">-</div>
+                  <div class="col-md-3 text-center"><b><%= frequency[2] %></b><br>Evening</div>
+                </div>
+                <% end %>
+                <% else %>
+                <%= medication['medicinefrequency'] %>
+                <% end %>
+              </td>
+              <td>
+                <% unless medication['medicinedurationoption'] == "F" %>
+                <% if medication['medicinedurationoption'] == "W" %>
+                <%= pluralize(medication['medicineduration'], 'Week') %>
+                <% elsif medication['medicinedurationoption'] == "M" %>
+                <%= pluralize(medication['medicineduration'], 'Month') %>
+                <% else medication['medicinedurationoption'] == "D" %>
+                <%= pluralize(medication['medicineduration'], 'Day') %>
+                <% end %>
+                <% else %>
+                Next Followup
+                <% end %>
+              </td>
+              <% else %>
+              <td colspan="3" class="text-center">
+                As advised below
+              </td>
+              <% end %>
+              <td>
+                <%if medication['eyeside'].present?%>
+                <%= medication['eyeside'] %>
+                <%else%>
+                -
+                <%end%>
+              </td>
+              <td><%= medication['medicineinstructions'] %></td>
+            </tr>
+            <% unless medication['taper_id'] == "0" || medication['taper_id'] == nil || medication['taper_id'] == "" %>
+              <tr style="background-color:#bbb">
+                <td colspan="7" style="padding:5px 10px 2px;">
+                  <% @taper = TaperingKit.find_by(id: medication['taper_id']) %>
+                  <% @tapering_set = @taper.tapering_set %>
+                  <% if @taper.taper_by == "Dosage" %>
+                    <table class="table table-bordered" style="margin: 0 0 5px;">
+                      <thead>
+                        <tr>
+                          <th>Sr No.</th>
+                          <th>No of Days</th>
+                          <th>Start Date</th>
+                          <th>End Date</th>
+                          <th>Start Time</th>
+                          <th>End Time</th>
+                          <th width="16%">Dosage</th>
+                          <th width="16%">Interval</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <% @tapering_set.each.with_index do |taper, i| %>
+                          <tr class="taper_row">
+                            <td>
+                              <%= i.to_i + 1 %>
+                            </td>
+                            <td>
+                              <%= taper.number_of_days %>
+                            </td>
+                            <td>
+                              <%= taper.try(:start_date).try(:strftime, '%d/%m/%Y') %>
+                            </td>
+                            <td>
+                              <%= taper.try(:end_date).try(:strftime, '%d/%m/%Y') %>
+                            </td>
+                            <td>
+                              <%= taper.try(:start_time).try(:strftime, '%I:%M %p') %>
+                            </td>
+                            <td>
+                              <%= taper.try(:end_time).try(:strftime, '%I:%M %p') %>
+                            </td>
+                            <td>
+                              <%= taper.dosage %>
+                            </td>
+                            <td>
+                              <%= taper["interval"].to_i > 0 ? 'Every '+ pluralize(taper["interval"], 'hour') : '-'  %>
+                            </td>
+                          </tr>
+                        <% end %>
+                      </tbody>
+                    </table>
+                  <% else %>
+                    <table class="table table-bordered" style="margin: 0 0 5px;">
+                      <thead>
+                        <tr>
+                          <th>Sr No.</th>
+                          <th>Day</th>
+                          <th>Start Date</th>
+                          <th>End Date</th>
+                          <th>Start Time</th>
+                          <th>End Time</th>
+                          <th width="16%">Frequency</th>
+                          <th width="16%">Interval</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <% @tapering_set.each.with_index do |taper, i| %>
+                          <% unless (taper.frequency).to_i == 0 %>
+                            <tr class="taper_row">
+                              <td>
+                                <%= i.to_i + 1 %>
+                              </td>
+                              <td>
+                                <%= taper.number_of_days %>
+                              </td>
+                              <td>
+                                <%= taper.try(:start_date).try(:strftime, '%d/%m/%Y') %>
+                              </td>
+                              <td>
+                                <%= taper.try(:end_date).try(:strftime, '%d/%m/%Y') %>
+                              </td>
+                              <td>
+                                <%= taper.try(:start_time).try(:strftime, '%I:%M %p') %>
+                              </td>
+                              <td>
+                                <%= taper.try(:end_time).try(:strftime, '%I:%M %p') %>
+                              </td>
+                              <td>
+                                <%= pluralize(taper["frequency"], 'time') %> a day
+                              </td>
+                              <td>
+                                <%= taper["interval"].to_i > 0 ? 'Every '+ pluralize(taper["interval"], 'hour') : '-'  %>
+                              </td>
+                            </tr>
+                          <% end %>
+                        <% end %>
+                      </tbody>
+                    </table>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+      <%if prescription.medication_comment.present? %>
+      <li><%= prescription.medication_comment %></li>
+      <% end %>
+    </div>
+  </div>
+  <div class="row mb5" style="border-bottom:1px solid #eee;border-top:1px solid #eee;">
+    <div class="col-sm-6">
+      <h4>Items</h4>
+      <h4 class="error-message" style="display:none"> Item is not in stock</h4>
+    </div>
+    <div class="col-sm-6 text-right">
+      <div class="exp" style="margin-top: 3px; padding: 10px;">
+        <button type="button" class="btn btn-xs btn-primary" id="btnAddItemtoInvoice" style="padding: 0px 5px;"><i class="fa fa-plus-circle"></i> Add Item</button>
+      </div>
+    </div>
+    <script type="text/javascript">
+      $('#btnAddItemtoInvoice').on('click', function(){
+        // Was edit_item_fields @discuss_with_anoop
+        $('.add-pharmacy-item').append("<%= escape_javascript(render partial: 'item_fields',locals: {f: f, item: @invoice_inventory_department_pharmacy.items.build}) %>")
+        new_id = new Date().getTime();
+        $('.sr_no').last().text(new_id)
+        $("input[name*='new_items']").each(function(){
+          new_attr = $(this).attr('name').replace('new_items',new_id)
+          new_selector_id = $(this).attr('id').replace('new_items',new_id)
+          $(this).removeAttr('name').attr('name',new_attr)
+          $(this).removeAttr('id').attr('id',new_selector_id)
+        })
+        $("select[name*='new_items']").each(function(){
+          new_attr = $(this).attr('name').replace('new_items',new_id)
+          // new_selector_id = $(this).attr('id').replace('new_items',new_id)
+          $(this).removeAttr('name').attr('name',new_attr)
+          // $(this).removeAttr('id').attr('id',new_selector_id)
+        })
+        $("label[for*='new_items']").each(function(){
+          new_attr = $(this).attr('for').replace('new_items',new_id)
+          // new_selector_id = $(this).attr('id').replace('new_items',new_id)
+          $(this).removeAttr('for').attr('for',new_attr)
+          // $(this).removeAttr('id').attr('id',new_selector_id)
+        })
+        datepicker_options = {
+          changeMonth: true,
+          changeYear: true,
+          dateFormat: "dd/mm/yy",
+          minDate: -0
+          //showButtonPanel: true,
+        };
+
+        $('.exp_datepicker').datepicker(datepicker_options);
+      })
+    </script>
+    <div class="col-sm-4">
+      <div class="col-sm-4 font_size">
+        <b>Code</b>
+      </div>
+      <div class="col-sm-5 font_size">
+        <b>Description</b>
+      </div>
+      <div class="col-sm-3 font_size">
+        <b>Manufacturer</b>
+      </div>
+    </div>
+    <div class="col-sm-8">
+      <div class="col-sm-2 col-sm-3-shared font_size">
+        <b>Batch</b>
+      </div>
+      <div class="col-sm-1 font_size">
+        <b>QTY</b>
+      </div>
+      <div class="col-sm-2 col-sm-3-shared font_size">
+        <b>Exp.Date</b>
+      </div>
+      <div class="col-sm-2 col-sm-3-shared font_size">
+        <b>U.Price</b>
+      </div>
+      <div class="col-sm-2 col-sm-3-shared font_size">
+        <b>Tax Group</b>
+      </div>
+      <div class="col-sm-1 font_size">
+        <b>Tax Incl.</b>
+      </div>
+      <div class="col-md-2 col-sm-3-shared font_size">
+        <b>Tax</b>
+      </div>
+      <div class="col-sm-2 col-sm-3-shared font_size">
+        <b>Total(&#8377;)</b>
+      </div>
+      <div class="col-sm-1 font_size">
+        <b>Action</b>
+      </div>
+    </div>
+  </div>
+  <!--row-->
+  <%= f.hidden_field :prescription_id, :value => @patient_prescription.id%>
+  <%= f.hidden_field :patient_id, :value => @patient.id%>
+  <div id="pharmacy_request_items">
+    <div class="add-pharmacy-item">
+      <% total = 0 %>
+      <% @patient_prescription.medications.each_with_index do |item, index| %>
+        <% if item['pharmacy_item_id'].present? %>
+          <% pharmacy_item = Inventory::Department::Item.find(item['pharmacy_item_id']) %>
+          <%if pharmacy_item.present?%>
+            <% total += (pharmacy_item.lots.where('stock' => {'$gte' => 1},is_deleted: false).first.try(:list_price).to_f * pharmacy_item_count(item)).to_f.round(2) %>
+            <%= f.fields_for :items, :child_index => index do |builder| %>
+              <div class="row mt10 mb5 request_log_item">
+                <%  a =  pharmacy_item.lots.where('stock' => {'$gte' => 1},is_deleted: false).order(expiry: :asc, created_at: :asc).first %>
+                <% if a.present?  %>
+                  <%= hidden_field_tag "invoice_inventories_department_pharmacy_invoice[items_attributes][#{index}][lot_id]", a.id, class: "lot_id"%>
+                <% else %>
+                  <%= hidden_field_tag "invoice_inventories_department_pharmacy_invoice[items_attributes][#{index}][lot_id]","", class:"lot_id" %>
+                <% end %>
+                <div class="col-sm-4">
+                  <div class="col-sm-4 font_size">
+                    <%= builder.text_field :item_code, :class => "search_optical_item_code modalRequest_input_style", :placeholder=>"Item Code", :style=>"width:100%;text-align:left", :value =>pharmacy_item.try(:item_code)%>
+                    <%= builder.hidden_field :inventory_item_id, :class => "inventory_item_id", :value => pharmacy_item.try(:id)%>
+                  </div>
+                  <div class="col-sm-5 font_size">
+                    <%= builder.text_field :description, :class => "search_optical_description modalRequest_input_style", :placeholder=>"Description", :style=>"width:100%;text-align:left", :value =>item['medicinename'] %>
+                  </div>
+                  <div class='col-sm-3 font-size'>
+                    <%= builder.text_field :manufacturer, :class => "item_manufacturer modalRequest_input_style", :placeholder=>"Manufacturer", :style=>"width:100%;text-align:left", :value =>pharmacy_item.try(:manufacturer)%>
+                  </div>
+                </div>
+                <div class="col-sm-8 tax_price_details">
+                  <div class="tax_fields"></div>
+                  <div class="col-sm-2 col-sm-3-shared font_size">
+                    <%= builder.text_field :batch_no, :class => "item_batch modalRequest_input_style", :placeholder=>"Batch", :style=>"width:100%;text-align:left", :value => pharmacy_item ? pharmacy_item.lots.where('stock' => {'$gte' => 1},is_deleted: false).first.try(:batch_no) : ''%>
+                  </div>
+                  <div class="col-sm-1 font_size">
+                    <%= builder.text_field :quantity, :class => "item_quantity modalRequest_input_style", :placeholder=>"Qty", :style=>"width:100%;text-align:left", :value => pharmacy_item_count(item) %>
+                    <%= builder.hidden_field :max_quantity, :class => "item_max_quantity", :value => pharmacy_item.try(:stock)%>
+                  </div>
+                  <div class="col-sm-2 col-sm-3-shared font_size">
+                    <%= builder.text_field :expiry, :class => "item_expiry exp_datepicker modalRequest_input_style", :placeholder=>"Expiry", :style=>"width:100%;text-align:left", :value => pharmacy_item ? pharmacy_item.lots.where('stock' => {'$gte' => 1},is_deleted: false).first.try(:expiry).try(:strftime, '%d/%m/%Y')  : ''%>
+                  </div>
+                  <div class="col-sm-2 col-sm-3-shared font_size">
+                    <%= builder.text_field :list_price, :class => "price_including_tax modalRequest_input_style", :placeholder=>"Unit Price", :style=>"width:100%;text-align:left", :value => pharmacy_item ? pharmacy_item.lots.where('stock' => {'$gte' => 1},is_deleted: false).first.try(:list_price) : ''%>
+                  </div>
+                  <div class="col-sm-2 col-sm-3-shared font_size">
+                    <select name="invoice_inventories_department_pharmacy_invoice[items_attributes][0][tax_group_id]" class='form-control tax_group_id'>
+                      <option value="" data-tax-rate='0'> </option>
+                      <% @tax_groups.each do |tax_group| %>
+                        <option value="<%= tax_group.id.to_s %>" data-tax-rate='<%= tax_group.rate %>'><%= tax_group.name %> - <%= tax_group.rate %>%</option>
+                      <% end %>
+                    </select>
+                  </div>
+                  <div class="col-md-1 field_for_tax_inclusive">
+                    <input type="hidden" name="invoice_inventories_department_pharmacy_invoice[items_attributes][0][tax_inclusive]" id='invoice_inventories_department_pharmacy_invoice_item_attributes_0_tax_inclusive_hidden' value="false">
+                    <div class="ckbox ckbox-primary">
+                      <input type="checkbox" name="invoice_inventories_department_pharmacy_invoice[items_attributes][0][tax_inclusive]" id='invoice_inventories_department_pharmacy_invoice_item_attributes_0_tax_inclusive' class="item_tax_inclusive" value='true' checked="checked">
+                      <label for='invoice_inventories_department_pharmacy_invoice_item_attributes_0_tax_inclusive'></label>
+                    </div>
+                  </div>
+                  <div class="col-md-2 col-sm-3-shared field_for_taxable_amount">
+                    <%= builder.hidden_field :non_taxable_amount, :class => "item_non_taxable_amount modalRequest_input_style", :placeholder=>"NonTaxable Amount", style: "width:90%;text-align:left", :value => (pharmacy_item.lots.where('stock' => {'$gte' => 1},is_deleted: false).first.try(:list_price).to_f * pharmacy_item_count(item)).to_f.round(2) %>
+                    <%= builder.text_field :taxable_amount, :class => "item_taxable_amount modalRequest_input_style", :placeholder=>"Taxable Amount", style: "width:90%;text-align:left", :value => '0.0', readonly:'readonly' %>
+                  </div>
+                  <div class="col-sm-2 col-sm-3-shared font_size">
+                    <% if pharmacy_item %>
+                    <input type="text" disabled="disabled" class="item_total_price modalRequest_input_style" placeholder="Total" style="width:90%;text-align:left" value="<%= (pharmacy_item.lots.where('stock' => {'$gte' => 1},is_deleted: false).first.try(:list_price).to_f * pharmacy_item_count(item)).to_f.round(2) %>" />
+                    <% else %>
+                    <input type="text" disabled="disabled" class="item_total_price modalRequest_input_style" placeholder="Total" style="width:90%;text-align:left" />
+                    <% end %>
+                  </div>
+                  <div class="col-sm-1 font_size text-center">
+                    <button type="button" class="btn btn-link hg-tooltip delete_empty_item" tabindex="-1" style="padding:0px;" title="Remove From List"><i class="fa fa-trash-alt" style="color:#000;"></i></button>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+          <% end %>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+  <div class="row mb5" style="border-bottom:1px solid #eee;">
+  </div>
+  <div class="row mb5">
+    <div id='tax-cage' class="col-sm-5 col-sm-offset-7">
+    </div>
+  </div>
+
+  <div class="row font-size" style="padding: 1px;">
+    <div class="col-md-2">
+      <b>Mode of Payment :</b>
+    </div>
+    <div class="col-md-2">
+      <%= select_tag "invoice_inventories_department_pharmacy_invoice[mode_of_payment]", options_for_select([['Cash','Cash'],['Card','Card'],['Cash & Card','Cash & Card'],['Cheque','Cheque'],['Online Transfer','Online Transfer'],['Others','Others']]), include_blank: "", :class => 'mop_field form-control' %>
+      <span class="mop_select_payment" style="display:none;">Please select</span>
+    </div>
+    <div class="col-md-4"></div>
+  </div>
+
+  <div class="row">
+    <div class="col-md-2">
+      <b>Comments :</b>
+    </div>
+    <div class="col-md-3">
+      <%= f.text_area :comments, {class: "form-control", placeholder: "Comments"} %>
+    </div>
+  </div>
+
+  <div class="row mb5">
+    <div class="col-sm-7 font-size">
+      <p><strong style="font-size: 12.3px; color: #F44336">Note :-</strong>Search by item description or item code</p>
+      <div class="row">
+        <div class="col-sm-6">
+          <h5 style="border-top: 1px solid #eee;width: 207%">
+            <strong class="unavailable_list" style="margin-top: 1%; font-size: 12.3px; color: #4CAF50">Not available in Inventory</strong>
+          </h5>
+          <ol id="unavailable_items">
+            <% @patient_prescription.medications.each do |item|%>
+              <% pharmacy_item =  Inventory::Department::Item.find(item['pharmacy_item_id']) %>
+              <% lot = pharmacy_item ? pharmacy_item.lots.where('stock' => {'$gte' => 1},is_deleted: false).first : ''%>
+              <% if item['pharmacy_item_id'].blank? || pharmacy_item.blank?  || lot.blank? || lot == nil %>
+                <li><%= item['medicinename'] %>(<%=pharmacy_item_count(item)%>)</li>
+              <% end %>
+            <% end %>
+          </ol>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-5 text-right">
+      <div class="col-sm-6 font_size">
+        <b>Total Amt Including Tax</b>
+      </div>
+      <div class="col-sm-3 text-center font_size">
+        :
+      </div>
+      <div class="col-sm-2 font_size" id="total_wt">
+      </div>
+      <div class="col-sm-6 font_size">
+        <b>Tax</b>
+      </div>
+      <div class="col-sm-3 text-center font_size">
+        :
+      </div>
+      <div class="col-sm-2 font_size" id="sub_total_tax">
+        0
+      </div>
+      <div class="col-sm-6 font_size">
+        <b>Discount</b>
+      </div>
+      <div class="col-sm-3 text-center font_size">
+        :
+      </div>
+      <div class="col-sm-2 font_size" id="discount">
+        <%= f.text_field :discount, :class => "fi_input_style", :id=>"invoice_discount", :placeholder => 'Amount',:style=>"width:92%;"%>
+      </div>
+      <div class="col-sm-6 font_size">
+        <b>Net Amount</b>
+      </div>
+      <div class="col-sm-3 text-center font_size">
+        :
+      </div>
+      <div class="col-sm-2 font_size">
+        <%= f.text_field :total, :class => "fi_input_style", :id=>"grand_total_inc_discount", :placeholder => 'Amount', :style=>"width:92%", :readonly => true, :value => total %>
+      </div>
+    </div>
+  </div>
+  <!--row-->
+</div>
+
+
+<script type="text/javascript">
+  $(".tax_group_id").on('change', function(){
+    calculate_tax(this)
+  })
+
+  $(".item_tax_inclusive").on('change', function(){
+    calculate_tax(this)
+  })
+
+  $(".price_including_tax").on('keyup', function(){
+    calculate_tax(this)
+  })
+
+  $(".item_quantity").on('keyup', function(){
+    calculate_tax(this)
+  })
+
+  $(".search_optical_description").on('change', function(){
+    calculate_tax(this)
+  })
+
+  function calculate_tax(_this){
+    var this_parent = $(_this).closest('.tax_price_details')
+    var quantity = parseFloat($(this_parent).find('.item_quantity').val())
+    var amount = parseFloat($(this_parent).find('.price_including_tax').val()) * quantity
+    var tax_rate = parseFloat($(this_parent).find(".tax_group_id").find(":selected").attr('data-tax-rate'))
+    var inclusive = $(this_parent).find('.item_tax_inclusive').is(':checked')
+    var tax_group_id = $(this_parent).find(".tax_group_id").val()
+
+    if(inclusive){
+      var taxable_amount = (amount * tax_rate)/(100 + tax_rate)
+      var non_taxable_amount = amount - taxable_amount
+      var total_amount = amount
+    } else {
+      var taxable_amount = (amount * tax_rate)/100
+      var non_taxable_amount = amount
+      var total_amount = amount + taxable_amount
+    }
+    $(this_parent).find('.item_taxable_amount').val(taxable_amount.toFixed(2))
+    $(this_parent).find('.item_non_taxable_amount').val(non_taxable_amount.toFixed(2))
+    $(this_parent).find('.item_total_price').val(total_amount.toFixed(2))
+    $(this_parent).find('.tax_group_id').attr('data-amount', amount)
+    $(this_parent).find('.item_total_price').trigger('change')
+    var get_service_count = $(this_parent).find('.item_taxable_amount').attr('name').replace(/[^0-9\.]/g, '')
+
+    $.ajax({
+      type: 'GET',
+      dataType: 'JSON',
+      data: { tax_group_id: tax_group_id, taxable_amount: taxable_amount},
+      url: '/invoice/invoices/tax_breakup',
+      success: function(response){
+        $(this_parent).find('.tax_fields').html("")
+        // console.log(response.tax)
+        $.each(response.tax, function(key, value) {
+          $(this_parent).find('.tax_fields').append('<div class="tax_box"><input type="hidden" name="invoice_inventories_department_pharmacy_invoice[items_attributes][' + get_service_count + '][tax_group][][amount]" value="' + parseFloat(value[2]).toFixed(2) + '" class="tax_group_id_amount"><input type="hidden" name="invoice_inventories_department_pharmacy_invoice[items_attributes][' + get_service_count + '][tax_group][][name]" value="' + value[1] + '" class="tax_group_id_name"><input type="hidden" name="invoice_inventories_department_pharmacy_invoice[items_attributes][' + get_service_count + '][tax_group][][_id]" value="' + value[0] + '" class="tax_group_id_id"></div>')
+        });
+
+        calTotalPrice()
+
+        $("#grand_total_inc_discount").trigger('change')
+      }
+    })
+  }
+
+  $("#grand_total_inc_discount").on('change', function(){
+    $("#tax-cage").html("")
+    var tax_field = $('.tax_fields')
+    var counter = 0
+    for (var j = tax_field.length - 1; j >= 0; j--) {
+
+      var tax_box = $(tax_field[j]).find('.tax_box')
+      for (var i = tax_box.length - 1; i >= 0; i--) {
+        var tax_group_id2 = $(tax_box[i]).find('.tax_group_id_id').val()
+        var tax_group_id = $("#tax-cage").find('.tax_group_' + tax_group_id2)
+        var tax_group_name = $(tax_box[i]).find('.tax_group_id_name').val()
+        var tax_group_amount = $(tax_box[i]).find('.tax_group_id_amount').val()
+        if(tax_group_id.length <= 0){
+          $("#tax-cage").prepend('<div class="row mb5 tax_group_' + tax_group_id2 + '"><div class="col-md-6 text-right"><b>' + tax_group_name + '</b></div><div class="col-md-3 text-center">:</div><div class="col-md-2 text-right"><input style="width:92%;" class="tax_group_id_' + tax_group_id2 + '" value="' + tax_group_id2 + '" type="hidden" name="invoice_inventories_department_pharmacy_invoice[tax_breakup][][_id]" readonly="readonly"><input style="width:92%;" class="tax_group_id_' + tax_group_id2 + '" value="' + tax_group_name + '" type="hidden" name="invoice_inventories_department_pharmacy_invoice[tax_breakup][][name]" readonly="readonly"><input style="width:92%;" class="fi_input_style text-right tax_group_amount_' + tax_group_id2 + '" value="' + parseFloat(tax_group_amount).toFixed(2) + '" type="text" name="invoice_inventories_department_pharmacy_invoice[tax_breakup][][amount]" readonly="readonly"></div></div>')
+        } else {
+          var old_value = $(tax_group_id).find('.tax_group_amount_' + tax_group_id2).val()
+          var new_value = (parseFloat(tax_group_amount) + parseFloat(old_value)).toFixed(2)
+          $(tax_group_id).find('.tax_group_amount_' + tax_group_id2).val(new_value)
+        }
+        if(counter == 0){
+          $("#tax-cage").attr('style', 'background: #eee;padding: 5px;')
+        }
+        counter = counter + 1
+      }
+    }
+
+    non_taxable_amount()
+  })
+
+  function non_taxable_amount(){
+    var non_taxable_amount = 0.0
+    var x = $(".item_non_taxable_amount")
+    for (var i = x.length - 1; i >= 0; i--) {
+      non_taxable_amount = (parseFloat(non_taxable_amount) + parseFloat($(x[i]).val())).toFixed(2)
+    }
+
+    if(parseFloat(non_taxable_amount).toFixed(2) == "NaN"){
+      var non_taxable_amount = 0.0
+    }
+    if(non_taxable_amount != 0.0){
+      $("#tax-cage").find('.non_taxable_amount').remove()
+      $("#tax-cage").prepend('<div class="row mb5 non_taxable_amount"><div class="col-md-6 text-right"><b>Non-Taxable Amount</b></div><div class="col-md-3 text-center">:</div><div class="col-md-2 text-right"><input style="width:92%;" class="fi_input_style text-right non_taxable_amount" value="' + parseFloat(non_taxable_amount).toFixed(2) + '" type="text" name="invoice_inventories_department_pharmacy_invoice[non_taxable_amount]" readonly="readonly"></div></div>')
+      $("#tax-cage").attr('style', 'background: #eee;padding: 5px;')
+    }
+  }
+
+  non_taxable_amount()
+
+  datepicker_options = {
+    changeMonth: true,
+    changeYear: true,
+    dateFormat: "dd/mm/yy",
+    minDate: -0
+    //showButtonPanel: true,
+  };
+
+  $('.exp_datepicker').datepicker(datepicker_options);
+</script>
+<script>
+  //alert("hello")
+  //alert($('.lot_id').length)
+
+  $('.lot_id').each(function(i, obj) {
+    var a = obj.value;
+    if(a == ""){
+    $(obj).closest(".request_log_item").remove();
+    $(".error-message").css("display","block")
+    $(".error-message").css("color","red")
+    }
+});
+
+
+</script>
+
+<script>
+    $(".pharmacy_invoice").on('click', function(e){
+      if ($("#invoice_inventories_department_pharmacy_invoice_mode_of_payment").find("option:selected").text() == ""){
+        $(".mop_select_payment").css("display","block");
+        $(".mop_select_payment").css("color", "red")
+        $("#invoice_inventories_department_pharmacy_invoice_mode_of_payment").css("border", "1px solid red")
+        e.preventDefault();
+      }
+    })
+
+    $("#invoice_inventories_department_pharmacy_invoice_mode_of_payment").on('change', function(){
+      $(".mop_select_payment").css("display","none");
+      $("#invoice_inventories_department_pharmacy_invoice_mode_of_payment").css("border-color", "#a79e9ed1")
+    })
+
+</script>

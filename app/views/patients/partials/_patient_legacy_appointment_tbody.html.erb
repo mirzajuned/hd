@@ -1,0 +1,289 @@
+<% @patient_legacy_appointment.order("appointmentdate DESC").each do |legacydata| %>
+  <%if legacydata.appointmentdate.present? %>
+      <div class="row">
+        <div class="col-md-2"><strong>Consultation Date</strong></div>
+        <div class="col-md-3">
+          <b><%= legacydata.appointmentdate.strftime("%d-%b-%y") %> </b>
+        </div>
+        <div class="col-md-2">
+          <label class="label label-primary"><%= legacydata.visit_type %></label>
+        </div>
+        <% if legacydata.try(:doctor_name).present? %>
+          <div class="col-md-2"><strong>Doctor</strong></div>
+          <div class="col-md-3">
+            <b><%= legacydata.try(:doctor_name) %> </b>
+          </div>
+        <% end %>
+      </div>
+  <%end%>
+
+  <br>
+
+  <% if legacydata[:revision] == 0 %>
+    <div style="color: black; background: white">
+
+      <% ashu_legacy_data_headings = [:complaints, :cornea_detail,:diagnosis_detail,:prescription,:ophthal_investigation, :iop_detail,:iris_detail,:lens_detail,:lids_detail,:operation_detail,:pre_advice_detail,:pupil_detail,:history_detail,:sacs_detail,:lab_investigation,:procedure_detail,:vision] %>
+
+      <%# saarthak_legacy_data_headings = [:complaints, :optical_details_history,:diagnosis_history,:optical_details,:visionsubtable, :eyeparts_examination_details,:labstudies,:prescription,:final_diagnosis,:advice,:covertestvalues] %>
+
+      <% saarthak_legacy_data_headings1 = [:complaints,:ophthalmic_history,:medical_history] %>
+
+      <% ss_legacy_data_headings = [:findings, :medicine_prescription,:medical_info,:patient_status] %>
+
+      <%legacy_data_headings = ashu_legacy_data_headings + saarthak_legacy_data_headings1 + ss_legacy_data_headings%>
+
+      <%legacy_data_headings.uniq.each do |legacy_data_heading|%>
+
+        <% data_attribute = (legacydata.read_attribute(legacy_data_heading)).try(:uniq) %>
+        <% if data_attribute.present? %>
+          <br>
+          <div class="row">
+            <div class="col-md-2"><label class="legacy-heading"><%= legacy_data_heading.to_s.singularize.titleize %></label></div>
+            <div class="col-md-10">
+              <% data_attribute.each_with_index  do |data, index|%>
+                <div>
+                  <% if data_attribute.try(:size).to_i > 1%>
+                    <strong><%= index+1%>.</strong>
+                  <%end%>
+                  <%keys =  data.keys%>
+                  <%count = 0%>
+                  <% keys.each do |k| %>
+                    <b><%=k.try(:capitalize)%></b>: <%if (k.include?'vision') || (k.include?'va_o') %><%= MigrationRake.new.correction_refraction_data(data[k].to_s) %><%else%><%= data[k]%><%end%>  <%if count+1 < keys.count%>,<%end%>
+                    <%count = count + 1%>
+                  <%end%>
+                </div>
+              <%end%>
+            </div>
+          </div>
+        <%end%>
+      <%end%>
+
+
+      <%# saarthak_legacy_data_headings = [:complaints, :optical_details_history,:diagnosis_history,:optical_details,:visionsubtable, :eyeparts_examination_details,:labstudies,:prescription,:final_diagnosis,:advice,:covertestvalues] %>
+
+      <% saarthak_legacy_ref_data_headings = [:vision_ucva, :current_glasses_rx, :autoreading_values, :refraction_values] %>
+      <% riti_legacy_ref_data_headings = [:pog1_refraction_values, :pog2_refraction_values, :refraction_values] %>
+
+
+      <% legacy_ref_data_headings = saarthak_legacy_ref_data_headings + riti_legacy_ref_data_headings  %>
+
+      <!--for saarthak  -->
+      <% legacy_ref_data_headings.uniq.each do |legacy_data_heading| %>
+        <% data_attribute = legacydata.read_attribute(legacy_data_heading).try(:uniq) %>
+
+        <%if data_attribute.present?%>
+
+          <br>
+          <div class="row">
+            <div class="col-md-2"><label class="legacy-heading"><%= legacy_data_heading.to_s.singularize.titleize%></label></div>
+
+            <div class="col-md-10 refraction-lists">
+
+              <% data_attribute.each_with_index do |legacy_data_hash,index| %>
+                <% if data_attribute.try(:size).to_i > 1%>
+                  <strong><%= index+1%>.</strong>
+                  <br>
+                <%end%>
+
+                <%t_heading = legacy_data_hash.keys.map{|k| k.to_s.split("_")}.flatten.uniq%>
+
+
+                <table class="table-bordered" width="100%">
+
+                  <tr style="background: #dddddd;">
+                    <th style="padding:1px;font-size:11px;text-align:center;">Eye</th>
+                    <% (t_heading-["r","l","b"]).each do |i|%>
+                      <th style="padding:1px;font-size:11px;text-align:center;"><%=i.try(:upcase)%></th>
+                    <%end%>
+                  </tr>
+
+                  <% ["Right","Left","Both"].each do |e|%>
+                    <% if t_heading.include?(e[0].try(:downcase))%>
+                      <tr>
+                        <td style="padding:1px;font-size:11px;text-align:center;"><%=e%></td>
+
+                        <%(t_heading-["r","l","b"]).each do |i|%>
+                          <td style="padding:1px;font-size:11px;text-align:center;">
+                            <b><%= legacy_data_hash[i+"_"+e[0].try(:downcase)] %></b>
+                          </td>
+                        <%end%>
+                      </tr>
+                    <%end%>
+                  <%end%>
+                </table>
+              <% end %>
+            </div>
+          </div>
+        <%end%>
+      <%end %>
+
+
+      <!--#for ss data-->
+      <%if legacydata.refraction_detail.present?%>
+        <br>
+        <div class="col-md-2"><label class="legacy-heading">Refraction Tabular Details</label></div>
+
+        <div class="col-md-10 refraction-lists">
+          <% legacydata.refraction_detail.uniq.each_with_index  do |data, index|%>
+            <div class="refraction-list-data">
+              <% ref_array = data.keys.map { |val| val.split("_")[0] }.uniq - ["createdby", "modifiedby"] %>
+              <b><%=index+1%>.</b>
+              <br>
+
+              <% ref_array.each do |ref|%>
+                <% ref_data = data.select {|k, v| k.include? ref} %>
+                <%= ref.upcase %> DATA </b>
+
+
+                <table class="table-bordered">
+                  <tr>
+                    <% ref_data.each_key do |k| %>
+                      <th style="padding:5px"><%= k.remove(ref+"_").to_s.titleize.upcase%></th>
+                    <% end %>
+                  </tr>
+
+                  <tr>
+                    <% ref_data.each_value do |v| %>
+                      <td style="padding:1px;font-size:11px;text-align:center;"><%= MigrationRake.new.correction_refraction_data(v.to_s) %></td>
+                    <% end %>
+                  </tr>
+                </table>
+                <hr>
+              <% end %>
+            </div>
+            <hr>
+          <% end %>
+        </div>
+
+      <%end%>
+
+
+      <% saarthak_legacy_data_headings2 = [:refraction_type,:covertestvalues,:eyeparts_examination_details, :diagnosis,:medical_prescription,:lab_details,:lab_procedure_details,:advice] %>
+
+      <%saarthak_legacy_data_headings2.uniq.each do |legacy_data_heading|%>
+
+        <% data_attribute = (legacydata.read_attribute(legacy_data_heading)).try(:uniq) %>
+        <% if data_attribute.present? %>
+          <br>
+          <div class="row">
+            <div class="col-md-2"><label class="legacy-heading"><%= legacy_data_heading.to_s.singularize.titleize %></label></div>
+            <div class="col-md-10">
+              <% data_attribute.each_with_index  do |data, index|%>
+                <div>
+                  <% if data_attribute.try(:size).to_i > 1%>
+                    <strong><%= index+1%>.</strong>
+                  <%end%>
+                  <%keys =  data.keys%>
+                  <%count = 0%>
+                  <% keys.each do |k| %>
+                    <b><%=k.try(:capitalize)%></b>: <%= data[k]%><%if count+1 < keys.count%>,<%end%>
+                    <%count = count + 1%>
+                  <%end%>
+                </div>
+              <%end%>
+            </div>
+          </div>
+        <%end%>
+      <%end%>
+
+    </div>
+    <br>
+    <hr>
+  <% end %>
+  <% if legacydata[:revision] == 1 %>
+      <% record_sections = ["history", "refraction", "examination", "diagnosis", "investigation", "surgery", "advice"] %>
+
+      <div class="row">
+        <% record_sections.each_with_index do |section, sec_index| %>
+          <% section_data = legacydata.send("#{section}") %>
+          <% if section_data&.size > 0 %>
+            <div class="col-md-2">
+                <label class="legacy-heading"><%= section.titleize %></label>
+            </div>
+          <% end %>
+          <% if section_data&.size > 0 %>
+            <div class="col-md-10">
+              <% section_data.each_with_index do |content, con_index| %>
+                <% content_data = content[:data] %>
+                <%# binding.pry %>
+                <%# if content_data&.size.to_i > 0 %>
+                  <div class="row">
+                    <div class="col-md-2">
+                      <h6><%= content[:heading_name] %> :</h6>
+                    </div>
+                    <% if content_data&.size.to_i > 0 %>
+                      <% content_data.each_with_index do |f_data, f_index| %>
+                        <% field_type = f_data[:field_type] %>
+                        <% has_data = f_data[:has_data] %>
+                        <% if field_type == "text" && has_data == true %>
+                          <% field_data = f_data[:field_data] %>
+                          <div class="col-md-10">
+                            <% field_data.each do |h| %>
+                              <li><%= h.values[0] %></li>
+                            <% end %>
+                          </div>
+                        <% elsif field_type == "table" && has_data == true %>
+                          <% field_data = f_data[:field_data] %>
+                            <div class="col-md-5">
+                              <div class="row">
+                                <%# binding.pry %>
+                                <% field_data.each_with_index do |tab, tab_index| %>
+                                  <div class="col-md-12">
+                                    <table class="table-bordered text-center" style="width:100%">
+                                        <caption><strong><%= tab[:table_heading] %></strong></caption>
+                                          <% table_data = tab[:table_data] %>
+                                          <% table_data_size = tab[:table_data].size %>
+                                          <% table_data_th = tab[:table_data] %>
+                                          <% table_data_td = tab[:table_data] %>
+                                          <% table_data = tab[:table_data] %>
+                                          <% table_data.each_with_index do |t, i| %>
+                                            <% if i == 0 %>
+                                              <tr>
+                                                <% t.each do |th| %>
+                                                  <th class="text-center"><%= th %></th>
+                                                <% end %>
+                                              </tr>
+                                            <% end %>
+                                            <% if i > 0 %>
+                                              <tr>
+                                                <% t.each do |td| %>
+                                                  <% if td.length > 0 %>
+                                                    <td class="text-center"><%= td %></td>
+                                                  <% else %>
+                                                    <td class="text-center"> - </td>
+                                                  <% end %>
+                                                <% end %>
+                                              </tr>
+                                            <% end %>
+                                          <% end %>
+                                    </table>
+                                  </div>
+                                <% end %>
+                              </div>
+                            </div>
+                          <% end %>
+                        <% end %>
+                    <% else %>
+                      <h6>---</h6>
+                    <% end %>
+                  </div>
+                <%# end %>
+              <% end %>
+            </div>
+          <% end %>
+        <% end %>
+      </div>
+  <% end %>
+
+  <br>
+  <hr>
+<% end %>
+
+<style>
+.legacy-heading {
+  border-radius: 3px;
+  padding: inherit;
+  background-color: #1A4E7B;
+  color: #FFF
+}
+</style>

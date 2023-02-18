@@ -1,0 +1,928 @@
+if ('<%= params[:action] %>' == 'new_transaction') {
+} else if ('<%= params[:action] %>' != 'edit') {
+  var tax_breakup = {}
+}
+
+$('.items-variants-list .inventory-list-row').unbind()
+$('.items-variants-list .inventory-list-row').on('click', function(e){
+  e.preventDefault();
+  var variant_name =  $(this).find('.description').text();
+  var _id =  $(this).attr('id');
+  var vendor_id = $("#inventory_transaction_purchase_vendor_id").val()
+  $.ajax({
+    type: 'GET',
+    data: {
+      variant_name: variant_name,
+      variant_id: _id,
+      vendor_id: vendor_id,
+      remote: true
+    },
+    url: '/inventory/transaction/purchases/new_lot',
+    success: function(){
+    }
+  })
+})
+
+function calTotalPrice() {
+  var each_item_totals = 0;
+  $('.price_including_tax').each(function(){
+    each_item_totals += parseFloat($(this).val());
+  });
+  var other_charge_cost = parseFloat($('#total_other_charges_amount').val()) || 0
+  each_item_totals = each_item_totals + other_charge_cost
+  $("#inventory_transaction_purchase_total_cost").val(each_item_totals.toFixed(2))
+  var total_cost = parseFloat($('#inventory_transaction_purchase_total_cost').val()) || 0
+  var discount_amount = parseFloat($('#inventory_transaction_purchase_discount').val()) || 0
+  var net_amount = total_cost - discount_amount
+  $("#inventory_transaction_purchase_net_amount").val(net_amount.toFixed(2))
+  $('.purchase-amount-remaining').val(net_amount.toFixed(2))
+}
+
+function calNetAmount() {
+  var each_item_totals = 0;
+  var each_item_net_amount_totals = 0;
+  var each_item_tax_totals = 0;
+  var each_item_discount_totals = 0;
+  var each_item_taxable_amount_totals = 0;
+  tax_d = {}
+  $("#tax_details").html("")
+
+  $(".amount_after_tax").each(function(){
+    calculated_data = calculate_overall_total(this)
+    each_item_net_amount_totals += parseFloat($(this).val());
+    each_item_totals += calculated_data["total_cost"];
+    each_item_tax_totals += calculated_data["taxable_amount"];
+    each_item_discount_totals += calculated_data["discount_amount"];
+    each_item_taxable_amount_totals += calculated_data["amt_before_tax"];
+    var tax_name = $("#" + $(this)[0].id.replace("amount_after_tax","tax_name")).val();
+    var purchase_tax_amount  = parseFloat($("#" + $(this)[0].id.replace("amount_after_tax","purchase_tax_amount")).val()).toFixed(2)
+    if (tax_d[tax_name] == undefined){
+      tax_d[tax_name] = parseFloat(purchase_tax_amount)
+    }else{
+      tax_d[tax_name] = parseFloat(tax_d[tax_name]) + parseFloat(purchase_tax_amount)
+    }
+    // $("#tax_details").prepend(`<div class="col-sm-12">
+    //       <div class="col-sm-6">
+    //         <b>${tax_name}</b>
+    //       </div>
+    //       <div class="col-sm-2 text-center">
+    //         :
+    //       </div>
+    //       <div class="col-sm-4">
+    //         <input class="fi_input_style" style="width:92%; background-image: none;" readonly="readonly" type="text" value="${purchase_tax_amount}">
+    //       </div>
+    //     </div>`)
+    });
+    for (var key in tax_d) {
+      if (tax_d.hasOwnProperty(key)) {
+          $("#tax_details").prepend(`<div class="col-sm-12">
+              <div class="col-sm-6 font_size">
+                <b>${key}</b>
+              </div>
+              <div class="col-sm-2 text-center font_size">
+                :
+              </div>
+              <div class="col-sm-4">
+                <input class="fi_input_style" style="width:92%; background-image: none;" readonly="readonly" type="text" value="${tax_d[key].toFixed(2)}">
+              </div>
+            </div>`)
+      }
+    }
+    var other_charge_cost = parseFloat($("#total_other_charges_amount").val()) || 0
+    var total_net_amount  = each_item_net_amount_totals + other_charge_cost
+    $("#inventory_transaction_purchase_net_amount").val(total_net_amount.toFixed(2))
+    $("#inventory_transaction_purchase_amount_remaining").val(total_net_amount.toFixed(2))
+    $("#inventory_transaction_purchase_total_cost").val(each_item_totals.toFixed(2))
+    $("#inventory_transaction_purchase_discount").val(each_item_discount_totals)
+    $("#inventory_transaction_purchase_tax_amount").val(each_item_tax_totals.toFixed(2))
+    $("#inventory_transaction_purchase_purchase_taxable_amount").val(each_item_taxable_amount_totals.toFixed(2))
+  } 
+
+  function calculate_overall_total(_this){
+
+  let quantity = parseFloat($("#"+$(_this)[0].id.replace("amount_after_tax","paid_stock")).val());
+  let unit_cost_without_tax = parseFloat($("#"+$(_this)[0].id.replace("amount_after_tax","unit_cost_without_tax")).val());
+  let amt_before_discount = (quantity * unit_cost_without_tax) || 0
+  let discount = parseFloat($("#"+$(_this)[0].id.replace("amount_after_tax","item_discount")).val());
+  let discount_type = $("#"+$(_this)[0].id.replace("amount_after_tax","item_discount_type")).val();
+  let tax_rate = parseFloat($("#"+$(_this)[0].id.replace("amount_after_tax","tax_rate")).val());
+  let amt_before_tax
+  discount_amount = discount
+  amt_before_tax = (amt_before_discount - discount_amount) || 0
+  taxable_amount = ((tax_rate * amt_before_tax)/100)
+  return {"discount_amount": discount_amount,"taxable_amount": taxable_amount,"total_cost": amt_before_discount,"amt_before_tax": amt_before_tax}
+}
+
+$('#inventory_transaction_purchase_discount').on('keyup', function() {
+  var total_cost = parseFloat($('#inventory_transaction_purchase_total_cost').val()) || 0
+  var discount_amount = parseFloat($('#inventory_transaction_purchase_discount').val()) || 0
+  var net_amount = total_cost - discount_amount
+  $('#inventory_transaction_purchase_net_amount').val(net_amount.toFixed(2))
+  $('.purchase-amount-remaining').val(net_amount.toFixed(2))
+  calculate_purchase_tax()
+})
+
+function calculate_purchase_tax() {
+  var total_paid_stock = 0
+  var total_free_stock = 0
+  $('.price_including_tax').each(function(){
+    var this_parent = $(this).parents('.purchase-transaction-log-item')
+    var quantity = parseFloat($(this_parent).find('.item_quantity').val() || 0)
+    var tax_group_id = $(this_parent).find(".item_tax_group_id").val()
+    // var purchase_tax_amount = parseFloat($(this_parent).find(".purchase_tax_amount").val()) || 0
+    $(this_parent).find('.price_including_tax').trigger('change')
+    var gross_amount = 0
+    $('.price_including_tax').each(function() {
+      gross_amount += parseFloat($(this).val());
+    })
+
+    var discount = parseFloat($("#"+$(this)[0].id.replace("total_cost","item_discount")).val())
+    var tax_rate = parseFloat($("#"+$(this)[0].id.replace("total_cost","tax_rate")).val())
+    var paid_stock = parseFloat($("#"+$(this)[0].id.replace("total_cost","paid_stock")).val())
+    var stock_free_unit = parseFloat(this_parent.find('.stock-free-unit').val() || 0)
+    var unit_cost_without_tax = parseFloat($("#"+$(this)[0].id.replace("total_cost","unit_cost_without_tax")).val())
+    var total_cost = unit_cost_without_tax * paid_stock
+    amt_before_tax = total_cost - discount
+    tax_amount =  (((tax_rate * amt_before_tax)/100))
+    $(this_parent).find(".purchase_tax_amount").val(tax_amount)
+    purchase_tax_amount = parseFloat($(this_parent).find(".purchase_tax_amount").val()) || 0
+    // var discount = parseFloat($('#inventory_transaction_purchase_discount').val() || 0)
+    // discount_percent = (discount / gross_amount) * 100
+    // var purchase_tax_amount = purchase_tax_amount - (purchase_tax_amount * discount_percent) / 100
+    var get_service_count = $(this_parent).attr('data-child-index')
+    total_paid_stock += paid_stock
+    total_free_stock += stock_free_unit
+
+    var item_cost_without_tax = $(this_parent).find(".item_cost_without_tax").val()
+    $(this_parent).find('.item_taxable_amount_with_disc').val(amt_before_tax.toFixed(2))
+    generate_tax_group(this_parent, (purchase_tax_amount || 0), get_service_count)
+  });
+  $('#total_paid_quantity').val(total_paid_stock)
+  $('#total_free_quantity').val(total_free_stock)
+  $('#inventory_transaction_purchase_total_paid_stock').val(total_paid_stock)
+  calNetAmount()
+  $("#inventory_transaction_purchase_net_amount").trigger('change')
+}
+
+
+function generate_tax_group(parent, taxable_amount, count) {
+  var item_id = $(parent).find('.item-id').val()
+  var item_tax_group = tax_breakup[item_id]
+  var tax_rate_amount;
+  var group_rate = parseFloat(item_tax_group['group_rate'])
+  $(parent).find('.tax_fields').html("")
+  item_tax_group['tax_rates'].forEach(function(item) {
+    if (group_rate != 0.0) {
+      tax_rate_amount = parseFloat(taxable_amount) * parseFloat(item.rate) / group_rate
+    } else {
+      tax_rate_amount = 0.0
+    }
+    $(parent).find('.tax_fields').append(`
+      <div class="tax_box">
+      <input type="hidden" name="inventory_transaction_purchase[items_attributes][${count}][tax_group][][amount]" value="${tax_rate_amount.toFixed(2)}" class="tax_group_id_amount">
+      <input type="hidden" name="inventory_transaction_purchase[items_attributes][${count}][tax_group][][name]" value="${item.name}" class="tax_group_id_name">
+      <input type="hidden" name="inventory_transaction_purchase[items_attributes][${count}][tax_group][][_id]" value="${item._id}" class="tax_group_id_id">
+      <input type="hidden" name="inventory_transaction_purchase[items_attributes][${count}][tax_group][][tax_rate]" value="${item.rate}" class="tax_rate">
+      <input type="hidden" name="inventory_transaction_purchase[items_attributes][${count}][tax_group][][tax_type]" value="${item.type}" class="tax_type">
+      </div>
+      `)
+  });
+}
+
+$("#inventory_transaction_purchase_net_amount").on('change', function(){
+  $("#tax-cage").html("")
+  var tax_field = $('.tax_fields')
+  var counter = 0
+  for (var j = tax_field.length - 1; j >= 0; j--) {
+
+    var tax_box = $(tax_field[j]).find('.tax_box')
+    for (var i = tax_box.length - 1; i >= 0; i--) {
+      var tax_group_id2 = $(tax_box[i]).find('.tax_group_id_id').val()
+      var tax_group_id = $("#tax-cage").find('.tax_group_' + tax_group_id2)
+      var tax_group_name = $(tax_box[i]).find('.tax_group_id_name').val()
+      var tax_group_amount = $(tax_box[i]).find('.tax_group_id_amount').val()
+      var tax_rate = parseFloat($(tax_box[i]).find('.tax_rate').val()).toFixed(2)
+      var tax_type = $(tax_box[i]).find('.tax_type').val()
+      var taxable_amount = parseFloat($(tax_box[i]).closest('.purchase-transaction-log-item').find('.item_taxable_amount_with_disc').val()) || 0
+      
+      if(tax_group_id.length <= 0){
+        $("#tax-cage").prepend(`
+          <div class="row mb5 tax_group_${tax_group_id2}">
+          <div class="col-md-5 text-right"><b>${tax_group_name}</b></div>
+          <div class="col-md-3 text-center">:</div><div class="col-md-3 text-right">
+          <input style="width:92%; background-image: none" class="tax_group_id_${tax_group_id2}" value="${tax_group_id2}" type="hidden" name="inventory_transaction_purchase[tax_breakup][][_id]" readonly="readonly">
+          <input style="width:92%; background-image: none" class="tax_group_id_${tax_group_id2}" value="${tax_group_name}" type="hidden" name="inventory_transaction_purchase[tax_breakup][][name]" readonly="readonly">
+          <input style="width:92%; background-image: none" class="fi_input_style text-right tax_group_amount_${tax_group_id2}" value="${parseFloat(tax_group_amount).toFixed(2)}" type="text" name="inventory_transaction_purchase[tax_breakup][][amount]" readonly="readonly">
+          <input value="${tax_rate}" type="hidden" name="inventory_transaction_purchase[tax_breakup][][tax_rate]" readonly="readonly">
+          <input value="${tax_type}" type="hidden" name="inventory_transaction_purchase[tax_breakup][][tax_type]" readonly="readonly">
+          <input value="${taxable_amount}" type="hidden" name="inventory_transaction_purchase[tax_breakup][][taxable_amount]" class="taxable_amount_${tax_group_id2}">
+          </div></div>`)
+      } else {
+        var old_value = $(tax_group_id).find('.tax_group_amount_' + tax_group_id2).val()
+        var new_value = (parseFloat(tax_group_amount) + parseFloat(old_value)).toFixed(2)
+        $(tax_group_id).find('.tax_group_amount_' + tax_group_id2).val(new_value)
+        var old_taxable_amount = parseFloat($(tax_group_id).find('.taxable_amount_'+tax_group_id2).val()) || 0
+        $(tax_group_id).find('.taxable_amount_'+tax_group_id2).val(taxable_amount + old_taxable_amount)
+      }
+      if(counter == 0){
+        $("#tax-cage").attr('style', 'background: #eee;padding: 5px;font-size: smaller;')
+      }
+      counter = counter + 1
+    }
+  }
+  purchase_taxable_amount()
+})
+
+function purchase_taxable_amount(){
+  var purchase_taxable_amount = 0.0
+  var x = $(".item_cost_without_tax")
+  for (var i = x.length - 1; i >= 0; i--) {
+    purchase_taxable_amount = (parseFloat(purchase_taxable_amount) + parseFloat($(x[i]).val())).toFixed(2)
+  }
+
+  if(parseFloat(purchase_taxable_amount).toFixed(2) == "NaN"){
+    var purchase_taxable_amount = 0.0
+  }
+
+  var gross_amount = parseFloat($('#inventory_transaction_purchase_total_cost').val() || 0)
+  var discount = parseFloat($('#inventory_transaction_purchase_discount').val() || 0)
+  discount_percent = (discount / gross_amount) * 100
+  var purchase_taxable_amount = purchase_taxable_amount - (purchase_taxable_amount * discount_percent) / 100
+  if(purchase_taxable_amount != 0.0){
+    $("#tax-cage").find('.purchase_taxable_amount').remove()
+    $("#tax-cage").prepend('<div class="row mb5 purchase_taxable_amount"><div class="col-md-5 text-right"><b>Taxable Amount</b></div><div class="col-md-3 text-center">:</div><div class="col-md-3 text-right"><input style="width:92%;" class="fi_input_style text-right purchase_taxable_amount" value="' + parseFloat(purchase_taxable_amount).toFixed(2) + '" type="text" name="inventory_transaction_purchase[purchase_taxable_amount]" readonly="readonly"></div></div>')
+    $("#tax-cage").attr('style', 'background: #eee;padding: 5px;')
+  }
+  $("#tax-cage").hide();
+}
+
+// $('.delete_empty_item').on('click', function(){
+//   if ($('.purchase-transaction-log-item').length > 1){
+//     var id = $(this).closest('.purchase-transaction-log-item').find('.item-id').val()
+//     $(this).closest('.purchase-transaction-log-item').remove()
+//     delete tax_breakup[id];
+//   }
+//   calTotalPrice()
+//   calculate_purchase_tax()
+// })
+
+$(window).resize(function() {
+  adjust_height()
+})
+
+adjust_height()
+function adjust_height(){
+  modalContentHeigth = $(window).height() - 275
+  // $(".items-lots").height(modalContentHeigth)
+  itemsVariants = modalContentHeigth - $('.transaction-header').height() + 120
+  $('.items-variants-body').height(itemsVariants)
+  purchaseInvoiceInfoHeight = $('.purchase-invoice-information').height()
+  transactionListHeight = modalContentHeigth - $('.transaction-title').height() - $('.transaction-common-fields').height() - purchaseInvoiceInfoHeight
+  // $('.transaction-table-body').height(transactionListHeight - $('.transaction-table-head').height())
+  $('.transaction-lots-list').height(transactionListHeight - $('.transaction-table-head').height())
+}
+
+function filter_index(query) {
+  var vendor_id = $('#inventory_transaction_purchase_vendor_id').val()
+  var vendor_location_id = $('#inventory_transaction_purchase_vendor_location_id').val()
+  if (query.length > 0){
+    $(".items-variants-search").find(".fa").show()
+  }
+  else {
+    $(".items-variants-search").find(".fa").hide()
+  }
+  $('#show_more_variants').show();
+  $.ajax({
+    type : 'get',
+    url: '/inventory/transaction/purchases/filter_variants',
+    data: {
+      q: query,
+      store_id: "<%=@store_id %>",
+      item_type: "<%=@category %>",
+      vendor_id: vendor_id,
+      vendor_location_id: vendor_location_id,
+      remote: "true"
+    },
+  })
+}
+
+$(".items-variants-search").find(".fa").on('click',function(){
+  $("#variants_search").val("")
+  filter_index("")
+})
+
+$("#variants_search").on("keyup", function () {
+  query = $(this).val()
+  filter_index(query)
+})
+
+
+
+// function isScrolledIntoLastRow(last_row_elem, scrollable_container) {
+//   if (last_row_elem.length == 1) {
+//     var top_of_element = $(last_row_elem).offset().top - $(scrollable_container).offset().top ;
+//     var table_height = $(scrollable_container).innerHeight()
+//     return top_of_element <= table_height
+//   }
+// }
+
+// scrollinventory()
+// function scrollinventory(){
+//   $(".items-variants-body").scroll(function() {
+//     last_row_elem = $('.items-variants-body').find('tr:nth-last-child(1)')
+//     scrollable_container = $(".items-variants-body")
+//     if (isScrolledIntoLastRow(last_row_elem, scrollable_container)) {
+//       $("#show_more_variants").trigger("click")
+//       $(".items-variants-body").off('scroll');
+//       setTimeout(function() {   //calls click event after a certain time
+//         scrollinventory()
+//       }, 500);
+//     }
+//   })
+// }
+$("#show_more_variants:visible").on('click', function(e){
+  e.preventDefault();
+  var total_count_row =  $('.items-variants-body tr').length;
+  var query =  $("#variants_search").val()
+  var vendor_id = $('#inventory_transaction_purchase_vendor_id').val()
+  var vendor_location_id = $('#inventory_transaction_purchase_vendor_location_id').val()
+  $.ajax({
+    type: "GET",
+    dataType: "script",
+    data: {
+      total_count_row: total_count_row,
+      item_type: "<%=  @category %>",
+      store_id: "<%= @store_id %>",
+      vendor_id: vendor_id,
+      vendor_location_id: vendor_location_id,
+      q:query
+    },
+    url: "/inventory/transaction/purchases/append_variants",
+  })
+})
+
+$('#inventory_transaction_purchase_bill_type').on('change', function() {
+  var bill_type = $(this).val()
+  $('.bill-type-details').hide()
+  $('.bill-type-details input').not('.'+bill_type+'_col input').val("")
+  $('.'+bill_type+'_col').show()
+}).trigger('change')
+
+$('.challan-datepicker, .bill-datepicker').datepicker({
+  dateFormat: "dd/mm/yy",
+  <% if @purchase_order&.order_date.present? %>
+    minDate: new Date('<%=@purchase_order.order_date.strftime("%Y/%m/%d")%>'),
+    maxDate: new Date('<%= Date.current.strftime("%Y/%m/%d") %>')
+  <% else %>
+    maxDate: -0
+  <% end %>
+})
+
+function setPurchaseTime() {
+  let date = $('#inventory_transaction_purchase_transaction_date').val().split('/')
+  let new_date = date[2]+ "/" + date[1] + "/" + date[0]
+  date_time = new_date + " " + $("#inventory_transaction_purchase_transaction_time_picker").val()
+  date_time = moment(date_time).format('YYYY-MM-DD HH:mm:ssZ')
+  $('#inventory_transaction_purchase_transaction_time').val(date_time)
+}
+
+$('.transaction-datepicker').datepicker({
+    dateFormat: "dd/mm/yy",
+    maxDate: -0
+}).on('change', function(e) {
+  validateMaxTime()
+  setPurchaseTime()
+});
+
+function validateMaxTime()
+{
+  var picker_time = moment($('.transaction-timepicker').val(), 'HH:mm a')
+  if ( ($('.transaction-datepicker').val() == "<%= Date.current.strftime("%d/%m/%Y") %>") && (moment().isBefore(picker_time)) )
+  {
+    $('.transaction-timepicker').timepicker('setTime', moment().format('HH:mm a'))
+  }
+}
+
+$('.transaction-timepicker').timepicker({
+  defaultTime: 'current',
+  TimeFormat: 'HH:mm a',
+    minuteStep: 1
+  }).on('changeTime.timepicker', function(e) {  
+    validateMaxTime()
+    setPurchaseTime()
+  });
+
+function validate_create_button() {
+  let table_length = $(".purchase-transaction-log-item").length
+  if (table_length > 0) {
+    $('.validate-transaction').attr('disabled', false)
+  } else {
+    $('.validate-transaction').attr('disabled', true)
+  }
+}
+
+validate_create_button()
+
+function validate_inventory_purchase_transactions_form() {
+  $("#inventory_transaction_purchase_transaction_date").prop("disabled",false);
+  $("#inventory_transaction_purchase_transaction_time_picker").prop("disabled",false);
+  $("#inventory_purchase_transactions_form").validate({
+    rules: {
+      "inventory_transaction_purchase[vendor_id]": {
+        required: true,
+      },
+      "inventory_transaction_purchase[total_cost]": {
+        required: true,
+      },
+      "inventory_transaction_purchase[mode_of_payment]": {
+        required: true,
+      },
+      "inventory_transaction_purchase[bill_type]": {
+        required: true
+      },
+      "inventory_transaction_purchase[bill_number]": {
+        required: true,
+        remote: "/inventory/transaction/purchases/check_bill_number?existing_bill_number=<%= @purchase_transaction.try(:bill_number) %>&vendor_location_id=<%= params[:vendor_location_id] %>"
+      },
+      "inventory_transaction_purchase[bill_date]": {
+        required: true
+      } ,
+      "inventory_transaction_purchase[challan_number]": {
+        required: true,
+        remote: "/inventory/transaction/purchases/check_challan_number?existing_challan_number=<%= @purchase_transaction.try(:challan_number) %>&vendor_location_id=<%= params[:vendor_location_id] %>"
+      },
+      "inventory_transaction_purchase[challan_date]": {
+        required: true
+      },
+    },
+    messages: {
+      "inventory_transaction_purchase[total_cost]": {
+        required: "Required"
+      },
+      "inventory_transaction_purchase[net_amount]": {
+        required: "Required"
+      },
+      "inventory_transaction_purchase[bill_number]": {
+        remote: "Already in use."
+      },
+      "inventory_transaction_purchase[challan_number]": {
+        remote: "Already in use."
+      },
+    },
+    errorPlacement: function (error, element) {
+      var elem = $(element);
+      error.insertAfter(element);
+      if(elem.hasClass("select-hidden-accessible")) {
+        element = $("#select-" + elem.attr("id") + "-container").parent();
+        error.insertAfter(element);
+      } else {
+        error.insertAfter(element);
+      }
+    }
+  });
+}
+validate_inventory_purchase_transactions_form()
+
+$.validator.addMethod("checkOtherCharges", function(value, element, options) {
+  if (value != ""){
+    return true
+  }else{
+    return false
+  }
+}, "required");
+
+// $('.exp_datepicker').datepicker({
+//   dateFormat: "dd/mm/yy",
+//   minDate: -0,
+//   changeMonth: true,
+//   changeYear: true,
+// });
+$('.exp_datepicker').removeClass('hasDatepicker').
+        removeClass('hasDatepicker').unbind().
+        datepicker({
+          dateFormat: "dd/mm/yy",
+          minDate: -0,
+          changeMonth: true,
+          changeYear: true
+        });
+
+$.validator.addMethod("checkExpiryDate",function(value,element,options){
+  is_disable = $("#"+$(element).attr("id").replace("expiry","_destroy")).val()
+  expiry = $(element).val();
+  item_id = $(element).attr("data")
+  if (is_disable == "1"){
+    return true
+  }else if (is_disable == "0" && expiry == ''){
+    return false
+  }else{
+    return true
+  }
+},"Required")
+
+$.validator.addMethod("checkBatchReq",function(value,element,options){
+  is_disable = $("#"+$(element).attr("id").replace("batch_no","_destroy")).val()
+  batch_no = $(element).val();
+  item_id = $(element).attr("data")
+  if (is_disable == "1"){
+    return true
+  }else if (is_disable == "0" && batch_no == ''){
+    return false
+  }else{
+    return true
+  }
+},"required")
+
+$.validator.addMethod("checkBatchSpace",function(value,element,options){
+  is_disable = $("#"+$(element).attr("id").replace("batch_no","_destroy")).val()
+  if (is_disable == "0"){
+    return value.indexOf(" ") < 0 && value != ""; 
+  }else{
+    return true
+  }
+},"Please enter valid data")
+
+$.validator.addMethod("checkMRP",function(value,element,options){
+  is_disable = $("#"+$(element).attr("id").replace("list_price","_destroy")).val()
+  var list_price = $(element).val();
+  item_id = $(element).attr("data")
+  if (is_disable == "1"){
+    return true
+  }else if (is_disable == "0" && list_price == ''){
+    return false
+  }else{
+    return true
+  }
+},"Required")
+
+
+$.validator.addMethod("checkQuantity", function(value, element, options) {
+  var id = $(element).attr("id")
+  var item_quantity = $('#'+id).val()
+  var item_max_quantity = $('#'+id).siblings(".item_max_quantity").val()
+  if (!item_max_quantity) {
+    return true
+  }
+  else{
+    return this.optional(element) || parseFloat(item_quantity) <= parseFloat(item_max_quantity);
+  }
+}, "Cannot Checkout more than Ordered");
+
+$.validator.addMethod("checkFreeQuantity",function(value,element,options){
+  uniq_id = $(element).attr('data-uniq')
+  id = $(element).attr("id")
+  item_id = $(element).attr("data")
+  po_paid_qty = parseFloat($("#purchase-transaction-paid-stock_"+uniq_id).attr("value")) || 0
+  po_free_qty = parseFloat($("#purchase-transaction-stock-free-unit_"+uniq_id).attr("value")) || 0
+  po_stock_total = po_paid_qty + po_free_qty
+  var grn_paid = 0
+  var grn_free = 0
+  var grn_stock_total = 0
+  result = true
+  message = ""
+  if ($(".free_stock_"+uniq_id).length > 1){
+    $(".free_stock_"+uniq_id).each(function(){
+      is_disable = $("#"+$(this).attr("id").replace("stock_free_unit","_destroy")).val()
+      if (is_disable == "0"){
+        free_id = $(this).attr("id")
+        free = parseFloat($(this).val() || 0)
+        paid = parseFloat($("#"+free_id.replace("stock_free_unit","paid_stock")).val() || 0);
+        grn_free += free
+        grn_paid += paid
+        if ( paid == '0' && free == '0'){ 
+          result = false
+          message = "free and paid cannot be zero"
+        }
+      }
+    })
+    let grn_stock_total = grn_paid + grn_free
+  }else{
+    free_id = $(element).attr('id')
+    is_disable = $('#'+id.replace('stock_free_unit','_destroy')).val()
+    if (is_disable == '0'){
+      paid = parseFloat($('#'+free_id.replace('stock_free_unit','paid_stock')).val() || 0)
+      free = parseFloat($(element).val() || 0)
+      grn_stock_total = paid + free
+      if (po_free_qty != 0){
+        if (po_paid_qty == paid && po_free_qty != free){
+          result = false
+          message = "check qty details"
+        }
+      }
+    }
+  }
+  total_paid = po_paid_qty - grn_paid
+  total_free = po_free_qty - grn_free
+
+  if(po_paid_qty == grn_paid || po_paid_qty == paid){
+    if((po_free_qty != grn_free) && (grn_free > po_free_qty)){
+      message = "check qty details"
+      result = false
+    }else if(message == "free and paid cannot be zero"){
+      
+      result = false
+    }else if(total_paid == 0 && total_free > total_paid){
+      result = false
+      message = "check qty details"
+    }else if(po_free_qty == 0){
+      if (grn_free > 0 || free > 0){
+        message = "check qty details"
+        result = false
+      }
+    }
+  }else if (po_paid_qty != grn_paid || po_paid_qty != paid ){
+    if (po_free_qty != 0  && grn_free > po_free_qty ){   
+      result = false
+      message = "check qty details"
+    }else if (po_stock_total < grn_stock_total ){
+      result = false
+      message = "check qty details"
+    }else if (po_free_qty == 0 && (grn_free > 0 || free > 0)){
+      result = false
+      message = "check qty details"
+    }else if (grn_free > po_free_qty || free > po_free_qty){
+      result = false
+      message = "check qty details"
+    }
+  }
+  return show_error_messages('free', result,message,item_id,element,uniq_id)
+},"");
+
+$.validator.addMethod("checkPaidQuantity",function(value,element,options){
+  uniq_id = $(element).attr('data-uniq')
+  let item_id = $(element).attr('data');
+  let po_paid_qty = parseFloat($('#purchase-transaction-paid-stock_'+uniq_id).attr("value"))
+  let po_free_qty = parseFloat($('#purchase-transaction-stock-free-unit_'+uniq_id).attr("value"))
+  let po_stock_qty = po_paid_qty + po_free_qty
+  let message = ""
+  let result = true
+  let grn_paid = 0
+  let grn_free = 0
+  let paid = 0
+  let free = 0
+  let grn_stock_total = 0
+  if ($('.paid_stock_'+uniq_id).length > 1){
+    $('.paid_stock_'+uniq_id).each(function(){
+      var id = $(this).attr('id')
+      var is_disable = $('#'+id.replace('paid_stock','_destroy')).val()
+      if (is_disable == '0'){
+        paid = parseFloat($(this).val() || 0);
+        free = parseFloat($('#'+id.replace('paid_stock','stock_free_unit')).val() || 0);
+        grn_paid += paid
+        grn_free += free
+        if (paid == 0 && free == 0){
+          result = false
+          message = "paid and free cannot be zero"
+        }
+      }else{
+        result = result
+        message = ""
+      }
+    })
+    grn_stock_total = grn_paid + grn_free
+  }else{
+    let id = $(element).attr("id")
+    let is_disable = $("#"+id.replace("paid_stock","_destroy")).val()
+    if (is_disable == '0'){
+      let paid = parseFloat($(element).val()) || 0
+      let free = parseFloat($("#"+id.replace("paid_stock","stock_free_unit")).val()) || 0
+      grn_stock_total = paid + free
+      if (paid <= 0){
+        result = false
+        message = "Enter qty greater than 0"
+      }
+    }else{
+      result = true
+      message = ""
+    }
+  }
+
+  if (grn_paid > po_paid_qty || paid > po_paid_qty){
+    result = false
+    message = `paid cannot be greater that ${po_paid_qty}`
+  }else if(grn_stock_total > po_stock_qty){
+    result = false
+    message = "check qty details"}
+  // }else if(grn_free > po_free_qty || free > po_free_qty){
+  //   result = false
+  //   message = "check qty details"
+  // }
+  return show_error_messages('paid', result,message,item_id,element,uniq_id)
+},"");
+
+function show_error_messages(type, result,message, id, element, uniq_id){
+  if (result){
+    if ($('.'+type+'_stock_'+uniq_id).length > 1){
+      $('.'+type+'_stock_'+uniq_id).css("color","#636e7b");
+      $('.'+type+'_stock_'+uniq_id).css('border-color', '#ccc');
+      $(".purchase-data-"+uniq_id ).find('.'+type+'_error_msg').text(message)
+    }else{
+      $(element).css("color","#636e7b");
+      $(element).css('border-color', '#ccc');
+      $('.'+type+'_error_msg_'+uniq_id).text(message)
+    }
+    return true
+  }else{
+    if ($('.'+type+'_stock_'+uniq_id).length > 1){
+      $('.'+type+'_stock_'+uniq_id).css('border-color','red')
+      $(".purchase-data-"+uniq_id ).find('.'+type+'_error_msg').text(message)
+    }else{
+      $(element).css('border-color','red')
+      $('.'+type+'_error_msg_'+uniq_id).text(message)
+    }
+    return false
+  } 
+}
+
+$.validator.addMethod("checkBatch",function(value,element){
+  var batch_array = []
+  var data = $(element).val();
+  var res = true
+  var item_id = $(element).attr('data')
+  var uniq_id = $(element).attr('data-uniq')
+  $(".batch-"+uniq_id).each(function(){
+    if ($(this).val() != ''){
+      batch_array.push($(this).val())
+    }
+  });
+  res = checkIfArrayIsUnique(batch_array)
+  let count = 0;
+  batch_array.forEach(value => {
+    if (value === $(element).val()) {
+      count += 1;
+    }
+  });
+
+  if (count <= 1){
+    // $('.error').text('')
+    $(element).css('border-color','#ccc')
+    return true
+  }
+  else{
+   $(element).css('border-color','red')
+    return false
+  }
+},"Duplicate Batch No.");
+
+function checkIfArrayIsUnique(batch_array){
+  for (var i = 0; i < batch_array.length; i++) 
+    {
+      if (batch_array.indexOf(batch_array[i]) !== batch_array.lastIndexOf(batch_array[i])) { 
+          return false; // this means not unique
+      } 
+    } 
+  return true;  //this means unique
+}
+
+$.validator.addMethod("noSpace", function(value, element) { 
+    return value.indexOf(" ") < 0 && value != ""; 
+}, "Please Enter valid data");
+
+$.validator.addMethod("checkOtherCharges",function(value, element){
+  total_paid_qty = parseFloat($("#total_paid_quantity").val()) || 0
+  total_order_qty = total_paid_qty
+  total_ordered_po_qty = 0
+  $('.purchase-hidden-row').each(function(){
+    paid = parseFloat($(this).find('.paid-qty').attr('value')) || 0
+    total_ordered_po_qty = total_ordered_po_qty + paid 
+  })
+
+  po_other_charge = parseFloat($('.po_other_charges').attr('value')) || 0
+  po_remainig_other_charge = parseFloat($('.po_remaining_other_charge').attr('value')) || 0
+  po_paid_stock = parseFloat($('.po_paid_stock').attr('value')) || 0
+  remaining_po_paid_stock = parseFloat($('.remaining_po_paid_stock').attr('value')) || 0
+  other_charge = parseFloat($(element).val()) || 0
+  pending_other_charges = parseFloat($('.pending_other_charges').text()) || 0
+  grn_other = parseFloat($('.total_other_charges').attr('value')) || 0
+  if (po_other_charge < 0){ 
+    other_charge = parseFloat(-Math.abs(other_charge)) || 0
+    pending_other_charges = parseFloat(-Math.abs(pending_other_charges) )|| 0
+    grn_other = parseFloat(-Math.abs(grn_other)) || 0
+  }
+  
+  edit_other_charge = po_remainig_other_charge + (po_other_charge - po_remainig_other_charge)
+  grn_total_other = grn_other + po_remainig_other_charge
+  var action = "<%= params[:action] %>"
+  
+  if (po_other_charge > 0){
+    // for +ve other charges
+    if (total_order_qty == total_ordered_po_qty){
+      if (remaining_po_paid_stock == total_ordered_po_qty){
+        if(action == 'new_transaction' && other_charge == po_remainig_other_charge){
+          $(".other_charges_error").text("")
+          return true
+        }else if(action == 'edit'){
+          if(edit_other_charge == other_charge){
+            $(".other_charges_error").text("")
+            return true
+          }else if(grn_total_other == other_charge){
+            $(".other_charges_error").text("")
+            return true
+          }else{
+            $(".other_charges_error").text("adjust_other_charge")
+            return false
+          }
+        }else{
+          $(".other_charges_error").text("adjust_other_charge")
+          return false
+        }
+      }else{
+        if(remaining_po_paid_stock != 0){
+          $(".other_charges_error").text("")
+          return true
+        }else{
+          $(".other_charges_error").text("adjust_other_charge")
+          return false
+        }
+      }
+    }else{
+       $(".other_charges_error").text("")
+        return true
+    }
+  }else{
+    // for -ve other charges
+    if (total_order_qty == total_ordered_po_qty){
+      if (remaining_po_paid_stock == total_ordered_po_qty){
+        if(action == 'new_transaction' && other_charge == po_remainig_other_charge){
+          $(".other_charges_error").text("")
+          return true
+        }else if(action == 'edit'){
+          if(edit_other_charge == other_charge){
+            $(".other_charges_error").text("")
+            return true
+          }else if(grn_total_other == other_charge){
+            $(".other_charges_error").text("")
+            return true
+          }else{
+            $(".other_charges_error").text("adjust_other_charge")
+            return false
+          }
+        }else{
+          $(".other_charges_error").text("adjust_other_charge")
+          return false
+        }
+      }else{
+        if(remaining_po_paid_stock != 0){
+          $(".other_charges_error").text("")
+          return true
+        }else{
+          $(".other_charges_error").text("adjust_other_charge")
+          return false
+        }
+      }
+    }else{
+       $(".other_charges_error").text("")
+        return true
+    }
+  }
+},"")
+
+$.validator.addClassRules("exp_datepicker", {checkExpiryDate: true });
+$.validator.addClassRules("item_batch", {checkBatchReq: true });
+$.validator.addClassRules("batch_space", { checkBatchSpace: true});
+$.validator.addMethod("Number", $.validator.methods.digits, "Quantity Should be Number");
+
+$.validator.addClassRules("item_quantity", { number: true, checkQuantity: true, required: true, min: 1 });
+$.validator.addClassRules("unit_item_list_price", { checkMRP: true, number: true, min: 0 });
+$.validator.addClassRules("stock-free-unit", { number: true, checkFreeQuantity: true, min: 0,required: true});
+$.validator.addClassRules("paid-stock", { number: true, checkPaidQuantity: true,required: true, min: 0});
+$.validator.addClassRules("item_batch", {  checkBatch: true});
+$.validator.addClassRules('other_charges',{checkOtherCharges: true, required: true})
+// $.validator.addClassRules('minus_other_charges_amount',{checkNegativeOtherCharges: true, required: true})
+// $.validator.addMethod("item_batch", function(value, element) { 
+//   
+// }, "Please Enter valid data");
+
+$.validator.addMethod("noSpace", function(value, element) { 
+    return value.indexOf(" ") < 0 && value != ""; 
+}, "Please, Enter a valid number");
+
+$.validator.addClassRules("item_description", { required: true});
+$.validator.addClassRules("item_quantity", { required: true, number: true});
+$.validator.addClassRules("price_including_tax", { required: true, number: true});
+
+jQuery.extend(jQuery.validator.messages, {
+  required: "Required",
+  remote: "Please fix this field.",
+  email: "Please enter a valid email address.",
+  url: "Please enter a valid URL.",
+  date: "Please enter a valid date.",
+  dateISO: "Invalid date.",
+  number: "Invalid No.",
+  digits: "Please enter only digits.",
+  creditcard: "Please enter a valid credit card number.",
+  equalTo: "Please enter the same value again.",
+  accept: "Please enter a value with a valid extension.",
+  maxlength: jQuery.validator.format("Please enter no more than {0} characters."),
+  minlength: jQuery.validator.format("Please enter at least {0} characters."),
+  rangelength: jQuery.validator.format("Please enter a value between {0} and {1} characters long."),
+  range: jQuery.validator.format("Please enter a value between {0} and {1}."),
+  max: jQuery.validator.format("Please enter a value less than or equal to {0}."),
+  min: jQuery.validator.format("Please enter a value greater than or equal to {0}.")
+});
+$(function() {
+  $('#item_batch_info_text').on('keypress', function(e) {
+      if (e.which == 32){
+          return false;
+      }
+  });
+});

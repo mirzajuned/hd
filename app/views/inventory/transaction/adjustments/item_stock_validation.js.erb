@@ -1,0 +1,50 @@
+$('.items-lots-body').html("<%= escape_javascript(render 'inventory/item/lots/index_body.html') %>")
+items = checkItem
+
+<%@negative_items.each do |item|
+  stock = item.lot&.stock || 0 %>
+  lot = $(".lot-table-<%=item.lot_id%>")
+  <% if stock == 0 %>
+    lot.find('.delete_empty_item').trigger('click')
+    lot.remove()
+    index = items.indexOf("<%= item.lot_id%>")
+    if (index > -1) {
+     items.splice(index, 1);
+    }
+  <% else %>
+    lot.find('.item_max_quantity').val('<%= stock %>')
+    lot.find('.item_quantity').trigger('change')
+  <% end %>
+<% end %>
+
+
+items.forEach(function(id){
+  table = $(".lot-table-"+id)
+  if ($('#'+id).length > 0){
+    $('#'+id).css('background-color', '#cfe8d2')
+    $('#'+id).addClass('disabled_row')
+  } else {
+    table.remove()
+  }
+})
+
+calTotalPrice()
+if ($('.lot-table').length < 1) {
+  $('.return-total-cost').val("")
+  $('input[name="invoice_inventory_invoice[total]"]').val("")
+  $('#inventory_transaction_transfer_total_cost').val("")
+}
+
+<% if @errors.present? %>
+  if ($('.ui-pnotify').length > 0) { $('.ui-pnotify').remove() } 
+  notice = new PNotify({ 
+	title: '<%=@errors[0]%>',
+	text: '<%=@errors[1]%>',
+	type: 'error'
+  });
+  notice.get().click(function(){ notice.remove() });
+<% end %>
+
+<%= render partial: 'new.js.erb' %>
+<%= render partial: 'form.js.erb' %>
+checkItem = items

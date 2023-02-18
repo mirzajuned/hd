@@ -1,0 +1,539 @@
+select_tag = $('#opdrecord_view_pharmacy_store_id')
+if("<%= @organisations_setting.mandatory_opd_templates %>" == "true" && $('#opdrecord_templatetype').val()
+ != 'postop'){
+  $(document).ready(() => {
+    check_medications_status()
+  });
+
+  //toggle no medication advised checkbox
+  $('#opdrecord_no_medications_advised').on('click',() => {
+    if($('#opdrecord_no_medications_advised').is(':checked')){
+      $('.medication_tab_row').hide()
+      $('.medication_comment_row').css("margin-top", "120px");
+      $('.opdrecord_pharmacy_store_id').val("")
+      $('.opdrecord_pharmacy_store_name').val("")
+    } else{
+      $('.medication_tab_row').show()
+      $('.medication_comment_row').css("margin-top", "0px");
+      temp_id = $('#opdrecord_view_pharmacy_store_id').val()
+      if (temp_id != ''){
+        $('.opdrecord_pharmacy_store_id').val(temp_id)
+      }
+      temp_name = $('#opdrecord_view_pharmacy_store_id option:selected').text() || ''
+      if (temp_name == '') {
+        temp_name == $('.single-pharmacy-name').html()
+      }
+      if (temp_name != ''){ 
+        $('.opdrecord_pharmacy_store_name').val(temp_name)
+      }
+      $('.opdrecord_pharmacy_store_name').prop('disabled', false)
+      <% if @pharmacy_stores_array.length > 1 %>
+        $('.multiple-pharmacies').show()
+      <% elsif @pharmacy_stores_array.length == 1 %>
+        $('.single-pharmacy-name').show()
+      <% end %>
+    }
+    check_medications_status()
+  });
+}
+
+add_button_at_last()
+jQuery('#opdrecord_medicationsets').on('click', function() {
+    if (this.value != undefined && this.value != "" ) {
+        var params = {medicationkitid: this.value};
+        _jquery_ajax_get_params_no_data_return("/opd_records/fill_medication_data", params);
+
+    }
+});
+jQuery('#opdrecord_medicationsets_tab').on('change', function() {
+    if (this.value != undefined && this.value != "" ) {
+        var params = {medicationkitid: this.value};
+        _jquery_ajax_get_params_no_data_return("/opd_records/fill_medication_data", params);
+        jQuery('#opdrecord_medicationsets_tab').val("")
+    }
+});
+
+$('.medication-table-body-added').on('click', "a[name*='removemedicationbutton']", function() {
+    event.preventDefault();
+    var medications_removed_tr_html;
+    var fieldcounter;
+    fieldcounter = jQuery(this).attr('id').slice(-1);
+    if(jQuery('#tbody_medication tr').length == 1) {
+        //$('.removemedicationbutton').prop('disabled', true);
+    } else {
+        $('.removemedicationbutton').prop('disabled', false);
+        var medications_tr_array = jQuery(this).parents('.treatmentmedications').find(".id");
+        if (medications_tr_array.length > 0) {
+            $(this).parents('.treatmentmedications').find("input[name*='_destroy']").val("1");
+            medications_removed_tr_html = $(this).parents('.treatmentmedications').wrap('<p/>').parent().html();
+            $(this).parents('.treatmentmedications').unwrap();
+            $('.medication-table-body-removed').append(medications_removed_tr_html);
+            $(this).parents('.treatmentmedications').remove();
+            _renumber_id_after_remove("tbody.medication-table-body-added", "div.medication-table-body-removed");
+        } else {
+            $(this).parents('.treatmentmedications').remove();
+            _renumber_id_after_remove("tbody.medication-table-body-added", "div.medication-table-body-removed");
+        }
+        check_validation_status(
+            $('#tbody_medication'), 'medications_is_valid', 'advice_step_medication'
+        );
+
+        enable_pharmacy_store()
+    }
+    add_button_at_last()
+});
+
+function medicinename_length() {
+  text = ""
+  $('.medication-table-body-added .medicinename').each(function(key, element){
+    text += element.value
+  });
+  return text.length > 0
+}
+
+function enable_pharmacy_store(){
+  disable = medicinename_length()
+  <% if @no_pharmacy_store == true %>
+    if (disable == false) {
+      $('.single-pharmacy-name').show()
+      $('.single-pharmacy-name input').prop('disabled', false)
+      $('.multiple-pharmacies').show()
+      $('.multiple-pharmacies select').prop('disabled', false)
+      $('.opdrecord_pharmacy_store_name').prop('disabled', false)
+      $('.opdrecord_pharmacy_store_id').prop('disabled', false)
+    }
+  <% end %>
+  <% if @pharmacy_stores_array.length > 1 %>
+    <% if @disabled_pharmacy.present? %>
+      if (disable == false) {
+        select_tag.find("option[value='<%=@disabled_pharmacy.id.to_s%>']").remove()
+        enable_medoptions()
+        $('.single-pharmacy-name').remove()
+      }
+    <% end %>
+    select_tag.select2().trigger('change').prop('disabled', disable)
+  <% elsif @pharmacy_stores_array.length == 1 && @disabled_pharmacy.present? %>
+    if (disable == false) {
+      enable_medoptions()
+      $('.single-pharmacy-name').remove()
+      $('.opdrecord_pharmacy_store_name').val("")
+      $('.opdrecord_pharmacy_store_id').val("")
+    }
+  <% end %>
+}
+
+function enable_medoptions() {
+  $('.medication-table-body-added .add-new-btn').removeClass('disabled')
+  $('#div_med_history').removeClass('disabled')
+  $('.save-medication-kit-btn').removeClass('disabled')
+  $('.medication_sets_dropdown').prop('disabled', false)
+  $('#opdrecord_medicationsets').prop('disabled', false)
+  $('.medication-table-body-added input').prop('readonly', false)
+  $('.medication-table-body-added select').prop('disabled', false)
+  $('.medication-table-body-added .link_medication span').removeClass('disabled')
+}
+
+jQuery(".medicinename-contents").on("click", function(event) {
+    event.preventDefault();
+    jQuery(this).popover({
+        placement : 'right',
+        title : 'Contents',
+        html : true,
+        content :function(){
+            jQuery.ajax({
+                type: "GET",
+                url: "/icdtree/show_medicinecontents",
+                data: {medicine_id: jQuery(this).attr("data-medicinecontents")},
+                beforeSend: function(xhr){
+                    jQuery('.popover').popover('hide');
+                }
+            }).done(function( data ) {
+                jQuery('.popover.in .popover-content').empty();
+                jQuery(".popover.in .popover-content").html(data);
+            });
+        },
+        trigger : 'focus',
+        template : '<div class="popover" role="tooltip" style="min-width: 370px"><div class="arrow"></div><button type="button" class="popover-close close" ><span class="glyphicon glyphicon-remove"></span></button><h5 class="popover-title"></h5><div class="popover-content"></div></div>'
+    });
+    jQuery(this).popover('toggle');
+
+});
+
+jQuery('.fuelux').on('click','.popover-close',function() {
+    jQuery(".popover").popover('hide');
+});
+
+
+
+function get_medications_history(e){
+    e.preventDefault();
+    $.ajax({
+        type: "GET",
+        url: "/opd_records/user_medication_history",
+        data: {
+            remote: "true",
+            patientid: $("#opdrecord_patientid").val()
+        },
+        success: function(res){
+        }
+    })
+}
+
+$("#div_med_history").on('click', function(e){
+    get_medications_history(e);
+});
+
+
+
+function status_linethrough(){
+    let row = $(".medication-table-body-added > .treatmentmedications").find('.btn-warning')
+    if($(row)){
+        $(row).closest(".treatmentmedications").addClass('linethrough')
+    } else{
+        $(row).closest(".treatmentmedications").removeClass('linethrough')
+    }
+}
+status_linethrough()
+
+function button_disable_enable() {
+    if($('.medication_set_body tr').length === 1){
+        $('.removemedicationbutton').attr("disabled", true)
+    } else{
+        $('.removemedicationbutton').attr("disabled", false)
+    }
+}
+button_disable_enable()
+
+function add_button_at_last() {
+    $('.medication_set_body').find('.add-new-btn').addClass("hidden")
+    $('.medication_set_body').find('.add-new-btn').last().removeClass("hidden")
+}
+add_button_at_last()
+
+$('.removemedicationbutton').on('click', function(e) {
+    e.preventDefault();
+    if($('.medication_set_body tr').length == 1){
+      $('.removemedicationbutton').attr("disabled", true)
+      if ( $('.medication_set_body tr .medicinename').val().length > 0 ) {
+        $('.medication-table-body-added .add-new-btn').removeClass('disabled').trigger('click')
+        $('.medication_set_body tr a[name="removemedicationbutton"]').trigger('click')
+      }
+    } else{
+      $('.removemedicationbutton').attr("disabled", false)
+    }
+});
+
+$(".save-medication-kit-btn").on('click', function(event) {
+    event.preventDefault();
+    $(".save-medication-kit-btn").addClass("disabled");
+    //    jQuery(".clear-procedure-note-button").addClass("disabled");
+    if ($('.popover-save-medication-set').length) {
+        $('.popover-save-medication-set').popover('destroy');
+    }
+    //    var i = jQuery(this);
+    //    var params = { proceduretext: jQuery('#ipdrecord_procedurenote').code() };
+    var specialty_id = '<%= @specalityid %>'
+    $(this).popover({
+        placement : 'left',
+        title : 'New Medication Set',
+        html : true,
+        content : function(){
+            $.ajax({
+                type: "GET",
+                url: "/medication_kits/new_medication_kits_popup",
+                data: {specialty_id: specialty_id, remote: "true" }
+            }).done(function( data ) {
+                $('.popover.in .popover-content').empty();
+                $(".popover.in .popover-content").html(data);
+                $(".popover.in").css("top","-50px")
+            });
+        },
+        template : '<div class="popover popover-save-medication-set" role="tooltip" style="width: 700px"><div class="arrow"></div><h5 class="popover-title"></h5><div class="popover-content"></div></div>'
+    }).popover('show');
+});
+
+function taper_form(){
+    $(".tapering_btn").on('click', function(e){
+        e.preventDefault();
+        _this = this
+        var med_id = $(this).closest(".link_medication").find(".tapering_id").attr("id")
+        var medicinename = $(this).closest(".treatmentmedications").find(".medicinename").val()
+        var medicinefrequency = $(this).closest(".treatmentmedications").find(".medicinefrequency").val()
+        var medicineduration = $(this).closest(".treatmentmedications").find(".medicineduration").val()
+        var medicinedurationoption = $(this).closest(".treatmentmedications").find(".medicinedurationoption").val()
+        if(medicinename != "" && medicineduration != "" && medicinedurationoption != "" && medicinedurationoption != "F"){
+            e.preventDefault();
+            if($(this).closest(".link_medication").find(".tapering_id").val() == 0){
+                $.ajax({
+                    type: "GET",
+                    url: "/tapering_kits/new",
+                    data: {
+                        remote: "true",
+                        med_id: med_id,
+                        medicinename: medicinename,
+                        medicineduration: medicineduration,
+                        medicinedurationoption: medicinedurationoption,
+                        medicinefrequency: medicinefrequency,
+                        source: "Templates"
+                    },
+                    success: function(){
+                        $(_this).closest(".treatmentmedications").find(".medicinename").closest(".input-group").find(".fill_detail").remove()
+                        $(_this).closest(".treatmentmedications").find(".medicineduration").closest(".input-group").find(".fill_detail").remove()
+                    }
+                })
+            } else {
+                $.ajax({
+                    type: "GET",
+                    url: "/tapering_kits/" + $(this).closest(".link_medication").find(".tapering_id").val() + "/edit",
+                    data: {
+                        remote: "true",
+                        med_id: med_id,
+                        medicinename: medicinename,
+                        medicineduration: medicineduration,
+                        medicinedurationoption: medicinedurationoption,
+                        medicinefrequency: medicinefrequency,
+                        source: "Templates"
+                    },
+                    success: function(){
+                        $(_this).closest(".treatmentmedications").find(".medicinename").closest(".input-group").find(".fill_detail").remove()
+                        $(_this).closest(".treatmentmedications").find(".medicineduration").closest(".input-group").find(".fill_detail").remove()
+                    }
+                })
+            }
+        } else {
+            if(medicinename == ""){
+                $(this).closest(".treatmentmedications").find(".medicinename").closest(".input-group").find(".fill_detail").remove()
+                $(this).closest(".treatmentmedications").find(".medicinename").closest(".input-group").append("<span class='label label-danger fill_detail'>Fill Medicine</span>")
+            } else {
+                $(this).closest(".treatmentmedications").find(".medicinename").closest(".input-group").find(".fill_detail").remove()
+            }
+            if(medicineduration == ""|| medicinedurationoption == ""){
+                $(this).closest(".treatmentmedications").find(".medicineduration").closest(".input-group").find(".fill_detail").remove()
+                $(this).closest(".treatmentmedications").find(".medicineduration").closest(".input-group").append("<span class='label label-danger fill_detail'>Fill Duration</span>")
+            } else if(medicinedurationoption == "F"){
+                $(this).closest(".treatmentmedications").find(".medicineduration").closest(".input-group").find(".fill_detail").remove()
+                $(this).closest(".treatmentmedications").find(".medicineduration").closest(".input-group").append("<span class='label label-danger fill_detail'>Select Month, Week or Day</span>")
+            } else {
+                $(this).closest(".treatmentmedications").find(".medicineduration").closest(".input-group").find(".fill_detail").remove()
+            }
+        }
+    });
+}
+taper_form();
+
+function add_taper_id(id, value) {
+    $("#"+id).val(value)
+    $("#"+id).closest(".link_medication").find(".tapering_btn").html("")
+    $("#"+id).closest(".link_medication").find(".tapering_btn").html("<i class='fa fa-edit'></i>")
+    $("#"+id).closest(".link_medication").find(".btn_taper_remove").remove()
+    $("#"+id).closest(".link_medication").append("<span class='btn btn-link btn-xs btn_taper_remove' style='margin-left:-10px;'><i class='fa fa-trash-alt'></i></span>")
+
+    $(".btn_taper_remove").on('click', function(){
+        $(this).closest(".link_medication").find(".tapering_id").val(0)
+        $(this).closest(".link_medication").find(".tapering_btn").html("")
+        $(this).closest(".link_medication").find(".tapering_btn").html("<i class='fa fa-plus'></i> Add")
+        $(this).remove()
+    })
+}
+
+function remove_taper_id(){
+    $(".btn_taper_remove").on('click', function(){
+        $(this).closest(".link_medication").find(".tapering_id").val(0)
+        $(this).closest(".link_medication").find(".tapering_btn").html("")
+        $(this).closest(".link_medication").find(".tapering_btn").html("<i class='fa fa-plus'></i> Add")
+        $(this).remove()
+    })
+}
+
+jQuery('.add-new-btn').on('click', function() {
+    event.preventDefault();
+    if ($('.specialty_dropdown').val() == "") {
+        flag = false
+        alert('Select Specialty First')
+    }else{
+        flag = true
+    }
+    if (flag) {
+        var fieldcounter;
+        if (jQuery(".medication-table-body-added > .treatmentmedications").length == 0){
+            fieldcounter = 0;
+        } else {
+            fieldcounter = jQuery(".medication-table-body-added > .treatmentmedications").length;
+        }
+        var params = { counter: fieldcounter};
+        jQuery.ajax({
+            type: "GET",
+            dataType: "script",
+            url: "/opd_records/add_medication",
+            data: {ajax: params, remote: "true" },
+            async: false,
+            success: function(){
+                add_button_at_last()
+                _renumber_id_after_remove("tbody.medication-table-body-added", "div.medication-table-body-removed");
+            }
+        });
+    }
+})
+
+function _renumber_id_after_remove(added, removed) {
+    var counter = 0;
+    jQuery(added).find("tr").each(function() {
+        jQuery(this).find("input").each(function(index, element) {
+            var nameattr, idattr;
+            nameattr = element.name.replace(/\[[0-9]+\]/g, '['+counter+']');
+            idattr = element.id.replace(/\_[0-9]+\_/g, '_'+counter+'_');
+            jQuery(this).attr('name', nameattr);
+            jQuery(this).attr('id', idattr);
+        });
+        jQuery(this).find("select").each(function(index, element) {
+            var nameattr, idattr;
+            nameattr = element.name.replace(/\[[0-9]+\]/g, '['+counter+']');
+            idattr = element.id.replace(/\_[0-9]+\_/g, '_'+counter+'_');
+            jQuery(this).attr('name', nameattr);
+            jQuery(this).attr('id', idattr);
+        });
+        jQuery(this).find("a").each(function(index, element) {
+            var idattr;
+            idattr = element.id.replace(/[0-9]/g, counter);
+            jQuery(this).attr('id', idattr);
+        });
+        counter++;
+    });
+    jQuery(removed).find("tr").each(function() {
+        jQuery(this).find("input").each(function(index, element) {
+            var nameattr, idattr;
+            nameattr = element.name.replace(/\[[0-9]+\]/g, '['+counter+']');
+            idattr = element.id.replace(/\_[0-9]+\_/g, '_'+counter+'_');
+            jQuery(this).attr('name', nameattr);
+            jQuery(this).attr('id', idattr);
+        });
+        jQuery(this).find("select").each(function(index, element) {
+            var nameattr, idattr;
+            nameattr = element.name.replace(/\[[0-9]+\]/g, '['+counter+']');
+            idattr = element.id.replace(/\_[0-9]+\_/g, '_'+counter+'_');
+            jQuery(this).attr('name', nameattr);
+            jQuery(this).attr('id', idattr);
+        });
+        jQuery(this).find("a").each(function(index, element) {
+            var idattr;
+            idattr = element.id.replace(/[0-9]/g, counter);
+            jQuery(this).attr('id', idattr);
+        });
+        counter++;
+    });
+}
+
+// Logic to get add button on Load
+var med_row = $(".treatmentmedications")
+for (var i = med_row.length - 1; i >= 0; i--) {
+    if($(med_row[i]).find(".link_medication").find(".tapering_id").val() != 0){
+        $(med_row[i]).find(".link_medication").find(".tapering_btn").html("")
+        $(med_row[i]).find(".link_medication").find(".tapering_btn").html("<i class='fa fa-edit'></i>")
+        $(med_row[i]).find(".link_medication").find(".btn_taper_remove").remove()
+        $(med_row[i]).find(".link_medication").append("<span class='btn btn-link btn-xs btn_taper_remove' style='margin-left:-10px;'><i class='fa fa-trash-alt'></i></span>")
+    }
+    $(".btn_taper_remove").on('click', function(){
+        $(this).closest(".link_medication").find(".tapering_id").val(0)
+        $(this).closest(".link_medication").find(".tapering_btn").html("")
+        $(this).closest(".link_medication").find(".tapering_btn").html("<i class='fa fa-plus'></i> Add")
+        $(this).remove()
+    })
+}
+
+$(".instruction_dropdown_edit").on("change",function(){
+    var id = $(this).attr("id")
+    if ($("#"+id).val() == "Add a text Box"){
+        $("#"+id).parent(".input-group").parent(".edit_instruction").prev(".edit_instruction_box").removeClass('hide').removeAttr("disabled","disabled");
+        $("#"+id).parent(".input-group").parent(".edit_instruction").addClass("hide").attr("disabled","disabled")
+        $("#"+id).val("")
+    }
+})
+
+$(".undo_button_edit").on("click",function(e){
+    e.preventDefault();
+    $(this).parent(".input-group").parent('.edit_instruction_box').children(".input-group").children(".text_box_val").val("")
+    $(this).parent(".input-group").parent('.edit_instruction_box').next(".edit_instruction").removeClass("hide");
+    $(this).parent(".input-group").parent('.edit_instruction_box').addClass("hide")
+})
+
+$(".instruction_dropdown_magic").on("change",function(){
+    var id = $(this).attr("id")
+    if ($("#"+id).val() == "Add a text Box"){
+        $("#"+id).parent(".input-group").parent(".edit-instruction").next(".instruction_box").removeClass('hide').removeAttr("disabled","disabled");
+        $("#"+id).parent(".input-group").parent(".edit-instruction").hide().attr("disabled","disabled")
+        $("#"+id).val("")
+    }
+})
+
+$(".undo_button_magic").on("click",function(e){
+    e.preventDefault();
+    $(this).parent(".input-group").parent('.instruction_box').parent('.medication_instruction_box').children('.edit-instruction').show().removeAttr("disabled","disabled");
+    $(this).parent(".input-group").parent('.instruction_box').children(".input-group").children(".text_box_val").val("")
+    $(this).parent(".input-group").parent('.instruction_box').addClass("hide").attr("disabled","disabled");
+})
+
+$(".instruction_dropdown").on("change",function(){
+    var id = $(this).attr("id")
+    if ($("#"+id).val() == "Add a text Box"){
+        $("#"+id).parent(".input-group").parent(".instruction").next(".instruction_box").removeClass('hide').removeAttr("disabled","disabled");
+        $(this).parent(".input-group").parent(".instruction").hide().attr("disabled","disabled");
+        $("#"+id).val("")
+    }
+})
+
+$(".undo_button").on("click",function(e){
+  e.preventDefault();
+  $(this).parent(".input-group").parent('.instruction_box').parent('.medication_instruction_box').children('.instruction').show().removeAttr("disabled","disabled");
+  $(this).parent(".input-group").parent('.instruction_box').children(".input-group").children(".text_box_val").val("")
+  $(this).parent(".input-group").parent('.instruction_box').addClass("hide").attr("disabled","disabled");
+});
+
+$('.medicinename').on('blur', function(){
+    check_validation_status(
+        this,
+        'medications_is_valid', 'advice_step_medication'
+    );
+});
+
+
+$('.medicinename').keyup(function() {
+    var medicine = []
+    var inputs = $(".medicinename")
+    var rowCount = $('#medicationTable tr').length
+    for(var i = 0; i < rowCount - 1; i++) {
+        medicine.push($(inputs[i]).val());
+    }
+    if (medicine.filter(Boolean).length > 0) {
+      $('#opdrecord_view_pharmacy_store_id').prop('disabled', true)
+      select_tag.prop('disabled', true)
+    } else {
+      select_tag.prop('disabled', false)
+      <% if @disabled_pharmacy.present? %>
+        select_tag.find("option[value='<%=@disabled_pharmacy.id.to_s%>']").remove();
+        select_tag.select2().trigger('change')
+      <% end %>
+    }
+    $('#opdrecord_view_pharmacy_store_id').trigger('change')
+})
+
+// $('.removemedicationbutton').on('click', function(e) {
+//   e.preventDefault();
+//   var name = $(this).closest('.treatmentmedications').find('.medicinename').val();
+//   var medicine = []
+//   var inputs = $(".medicinename")
+//   var rowCount = $('.medication_set_body tr').length
+//   for(var i = 0; i < rowCount - 1; i++) {
+//     medicine.push($(inputs[i]).val());
+//     medicine = medicine.filter(e => e !== name)
+//   }
+//   if (medicine.filter(Boolean).length > 0) {
+//     $('#opdrecord_view_pharmacy_store_id').prop('disabled', true)
+//   } else {
+//     $('#opdrecord_view_pharmacy_store_id').prop('disabled', false)
+//   }
+// })
+
+$('#opdrecord_medicationsets').on('click', function(e) {
+    e.preventDefault();
+    $('#opdrecord_view_pharmacy_store_id').prop('disabled', true).trigger('change')
+})

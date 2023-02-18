@@ -1,0 +1,97 @@
+<% if @purchase_bill.vendor_location_id.to_s == params[:vendor_location_id] && (@purchase_bill.create_against == params[:create_against]) %>
+	<% @purchase_bill.purchase_transaction_ids.each do |purchase| %>
+		<% @purchase_transaction = Inventory::Transaction::Purchase.find_by(id: purchase) %>
+		<tr id="purchase-data-<%= @purchase_transaction.id %>" class="purchase-<%= @purchase_transaction.id %> purchase-transaction" data="<%= @purchase_transaction.id %>" style="padding: 0;">
+			<td class="pucrhase-bill" style="width: 30px"></td>
+			<td class="pucrhase-bill"style="width: 140px;"><%= @purchase_transaction.purchase_display_id %></td>
+			<td style="width: 20px">|</td>
+			<td class="pucrhase-bill" style="width: 150px;"><%= @purchase_transaction.transaction_date&.strftime("%d-%m-%Y") %>&nbsp;,&nbsp;<%= @purchase_transaction.transaction_time.strftime("%I:%H %p")%></td>
+			<td style="width: 20px">|</td>
+			<td class="pucrhase-bill" style="width: 140px;"><%= @purchase_transaction.approved_by_name %></td>
+			<td style="width: 20px">|</td>
+			<% if @purchase_transaction.bill_type == "bill" %>
+				<td class="pucrhase-bill" style="width: 190px;"><span class="bill_number" value="<%= @purchase_transaction.bill_number %>">Bill no:&nbsp;&nbsp;<%= @purchase_transaction.bill_number %></span></td>
+				<td style="width: 20px;">|</td>
+				<td class="pucrhase-bill" style="width: 150px;"><span class="bill_date" value="<%= @purchase_transaction.bill_date&.strftime("%d/%m/%Y") %>">Bill Date:&nbsp;&nbsp;<%= @purchase_transaction.bill_date&.strftime("%d-%m-%Y") %></span></td>
+			<% else %>
+				<td class="pucrhase-bill" style="width: 190px;"><span>Challan no:&nbsp;&nbsp;<%= @purchase_transaction.challan_number %></span></td>
+				<td style="width: 20px;">|</td>
+				<td class="pucrhase-bill" style="width: 150px;"><span>Challan Date:&nbsp;&nbsp;<%= @purchase_transaction.challan_date&.strftime("%d-%m-%Y") %></span></td>
+			<% end %>
+			<td style="width: 20px">|</td>
+			<td class="pucrhase-bill" style="width: 180px;"><span class="other_charges" value="<%= @purchase_transaction.total_other_charges_amount %>">Other Charges:&nbsp;&nbsp;<%= @purchase_transaction.total_other_charges_amount %>&nbsp;&nbsp; | &nbsp;&nbsp;</span></td>
+			<td class="pucrhase-bill" style="width: 80px;"><button type="button" class="btn btn-link hg-tooltip delete_empty_item" tabindex="-1" style="padding:0px;" title="Remove From List" value="<%= @purchase_transaction.id %>"><i class="fa fa-trash-alt" style="color:#dd1111 !important;"></i></button></td>
+		</tr>
+		<% @purchase_transaction.items.each_with_index do |item,index| %>
+		<tr id="purchase-item-<%= item.id %>" data="<%= item.id.to_s + "_" + index.to_s %>" data-id="<%= item.id %>" class="purchase-<%= @purchase_transaction.id %> purchase-bill-log-item">
+			<td style="width: 30px;"><%= index + 1%></td>
+			<td style="width: 200px;"><%= item.description %></td>
+			<td style="width: 80px;"><%= item.dispensing_unit %></td>
+			<td style="width: 80px;"><%= item.batch_no %></td>
+			<td style="width: 80px;"><%= item.expiry %></td>
+			<td class="paid_stock" style="width: 80px;"><%= item.paid_stock %></td>
+			<td style="width: 80px;"><%= item.stock_free_unit %></td>
+			<td class="discount" style="width: 80px;color: #636e7b;"><%= item.item_discount %></td>
+			<td class="unit_cost_without_tax" style="width: 80px;"><%= item.unit_cost_without_tax %></td>
+			<td style="width: 80px;"><%= item.list_price %></td>
+			<td class="tax_amount" value="<%= item.purchase_tax_amount %>" style="width: 80px;">
+				<%= item.tax_rate %>
+			<span class="tax_group_id" value="<%= item.tax_group_id %>"></span>
+			<span class="tax_name" value="<%= item.tax_name %>"></span>
+			<span class="tax_inclusive" value="<%= item.tax_inclusive %>"></span>
+			<span class="purchase_tax_amount" value="<%= item.purchase_tax_amount %>"></span>
+			</td>
+			<td class="net_amount" data="<%= item.id %>" style="width: 80px;"><%= item.total_cost %></td>
+			<td></td>
+		</tr>
+		<script type="text/javascript">
+			var vendor_gst = $("#inventory_transaction_purchase_bill_vendor_gst_number").val()
+			var store_gst = $("#inventory_transaction_purchase_bill_store_gst_number").val()
+			var vendor_gst_code = vendor_gst.slice(0,2)
+			var store_gst_code = store_gst.slice(0,2)
+			var tax_group = {}
+
+			<% tax_type = TaxGroup.find_by(id: item.tax_group_id) %>
+			<% if tax_type.type == 'GST' %>
+				if (vendor_gst_code == store_gst_code){
+			    var gst_type = "intrastate"
+			     tax_rate_details = generate_intrastate_tax_rate()
+			  }
+			  else if(vendor_gst_code != store_gst_code){
+			   	var gst_type = "interstate"
+			   	 tax_rate_details = generate_interstate_tax_rate()
+			  }
+				else if (vendor_gst_code != ''){
+				  var gst_type = "intrastate"
+				  tax_rate_details = generate_intrastate_tax_rate()
+				}
+				$("#inventory_transaction_purchase_bill_gst_type").val(gst_type)
+			<% else %>
+				tax_rate_details = generate_other_tax_rate()
+			<% end %>
+
+			function generate_intrastate_tax_rate(){
+				<% tax = TaxGroup.find_by(id: item.tax_group_id) %>
+				<% tax_rate_details = tax.intrastate_tax_rate_details.collect{|tax_rate| tax_rate.merge(type: TaxRate.find(tax_rate[:id]).type)} %>
+				return <%= raw tax_rate_details.to_json %>
+			}
+
+			function generate_interstate_tax_rate(){
+				<% tax = TaxGroup.find_by(id: item.tax_group_id) %>
+				<% tax_rate_details = tax.interstate_tax_rate_details.collect{|tax_rate| tax_rate.merge(type: TaxRate.find(tax_rate[:id]).type)} %>
+				return <%= raw tax_rate_details.to_json %>
+			}
+			function generate_other_tax_rate(){
+				<% tax = TaxGroup.find_by(id: item.tax_group_id) %>
+				<% tax_rate_details = tax.tax_rate_details.collect{|tax_rate| tax_rate.merge(type: TaxRate.find(tax_rate[:_id]).type)} %>
+				return <%= raw tax_rate_details.to_json %>
+			}
+
+		  tax_group['tax_rates'] =  tax_rate_details
+		  tax_group['id'] = '<%=item.tax_group_id%>'
+		  tax_group['group_rate'] = '<%=item.tax_rate%>'
+		  tax_breakup['<%=item.id.to_s + "_" + index.to_s%>'] = tax_group
+	 </script>
+		<% end %>
+	<% end %>
+<% end %>

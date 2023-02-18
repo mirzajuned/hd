@@ -1,0 +1,147 @@
+<div class="modal-dialog psr-device-dialog modal-md" style="width:60%;">
+  <div class="modal-content">
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal">&times;</button>
+      <h4 class="modal-title">Register New</h4>
+    </div>
+    <div class="modal-body">
+      <div class="device-name" style="text-align: center;">
+        <div class="row">
+          <% klass = "col-md-offset-6"%>
+          <%# if @facility_count > 1%>
+            <% klass= "col-md-6"%>
+            <div class="col-md-6">
+              <div class="col-md-12" style="padding: 2%">
+                <label>Select Facility</label>
+                <%#= select_tag "facility", options_from_collection_for_select(@facilities, "id", "name"), class: 'form-control select' %>
+                <select class="form-control select" name="facility_id" id="facility">
+                  <% @facilities.each do |facility| %>
+                    <% if current_facility.id == facility[1].to_s %>
+                      <option value=<%= facility[1].to_s %> selected="selected"><%= facility[0] %></option>
+                    <% else %>
+                      <option value=<%= facility[1].to_s %>><%= facility[0] %></option>
+                    <% end %>
+                  <% end %>
+                </select>
+              </div>
+            </div>
+          <div id="country_name" style="display: none;"> <%= Country.find(current_facility.country_id).name %> </div>
+          <%# end %>
+            <div class="<%= klass %>">
+              <div class="col-md-12 input-group" style="padding: 2%">
+                <label for="name">Device Name</label>
+                <input type="text" id="device-name", value= "<%= device_name.present? ? device_name : '' %>" class="form-control">
+              </div>
+            </div>
+        </div>
+        <div class="row">
+          <div class="col-md-12" style="padding: 2%">
+            <button class="btn btn-primary" onclick= "append_value_to_qr()" > Generate QR</button>
+          </div>
+        </div>
+      </div>
+      <div id="qr-content" style="margin-left: 30%;">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <span id="error-msg"></span>
+      <button type="button" id="device-submit" class="btn btn-default" onclick="add_device()">Add Device</button>
+    </div>
+  </div>
+</div>
+
+<style type="text/css">
+  .psr-device-dialog hr {
+    border-color: #000 !important;
+  }
+  .qrcode {
+    border-width: 0;
+    border-style: none;
+    border-color: #0000ff;
+    border-collapse: collapse;
+    margin-top: 12px;
+    text-align: center;
+    margin-bottom: 12px;
+  }
+  #qr-content {
+    margin-left: 32%;
+  }
+  .scan-heading{
+    margin-left: 13%;
+    padding-top: 3%;
+  }
+  .qrcode td {
+    border-width: 0;
+    border-style: none;
+    border-color: #0000ff;
+    border-collapse: collapse;
+    padding: 0;
+    margin: 0;
+    width: 3px;
+    height: 3px;
+  }
+
+  .black {
+    background-color: #000 !important
+  }
+
+  .white {
+    background-color: #fff !important
+  }
+  .select{
+    height: 35px;
+    border-radius: 0;
+  }
+</style>
+<script>
+  $('#device-submit').attr("disabled", true);
+  function append_value_to_qr(){
+    if (($('#device-name').val() == '') || ($('#facility').val() == '')) {
+      $('#error-msg').html('<p style="color: red; text-align: center;">Fill the details first</p>');
+      return
+    }
+    $('#error-msg').empty();
+    $('#device-submit').attr("disabled", false);
+    var device_name =  $('#device-name').val();
+    <%if  @facility_count > 1 %>
+      var facility_id = $('#facility').val()
+      var country_name = $('#country_name').text();
+    <% else %>
+      var facility_id = "<%= current_facility.id %>"
+      var country_name = "<%= Country.find(current_facility.country_id).name %>"
+    <% end %>
+    var qr_code_text = '{ "device_name": '+  `"${device_name}"` + ',' + ' "qr_code_token": "<%= make_qr_token%>"' + ',' +
+        ' "facility_id": '+  `"${facility_id}"` + ',' + ' "organisation_id": "<%= current_organisation['_id'] %>"' + ',' +
+        ' "organisation_name": "<%= current_organisation['name'] %>"' + ',' +
+        ' "organisation_logo": "<%= current_organisation['logo']['thumb']['url'] %>"' + ',' +
+        ' "country_name": '+  `"${country_name}"` + '}'
+
+    $('#qr-content').data( 'info', qr_code_text );
+
+    $.ajax({
+      type: "GET",
+      dataType: "script",
+      data: {remote: "true",qr_code_text: qr_code_text },
+      url: "/generate_qr_code"
+    })
+  }
+
+  $( "#facility" ).change(function() {
+    var fac_id = $('#facility').val();
+    $.ajax({url: '/link_psrs/get_country',data: {fac_id: fac_id },  success: function(result){
+      $("#country_name").html(result["country"]);
+    }});
+  });
+  function add_device(){
+    var qr_code_token = $('#qr-content').data("info");
+    var link_fac_id = "<%= link_fac_id%>"
+    $.ajax({
+      type: "GET",
+      dataType: "script",
+      data: {remote: "true", qr_code_token: qr_code_token, link_fac_id: link_fac_id},
+      url: "/received_psr_data"
+    })
+  }
+
+
+</script>

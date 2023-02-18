@@ -1,0 +1,78 @@
+<div class="modal-dialog">
+  <div class="modal-content">
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal">&times;</button>
+      <h4 class="modal-title">Select Exception</h4>
+    </div>
+    <div class="modal-body">
+      <div class="row">
+        <div class="col-md-12">
+          <div class="rdio rdio-primary">
+            <% no_exception = params[:exception_id].blank? %>
+            <%= radio_button_tag :exception, @pricing_master.id.to_s, no_exception, class: 'pricing_exception_check', id: "pricing_exception_check_#{@pricing_master.id}", data: { amount: @pricing_master.amount } %>
+            <label for="pricing_exception_check_<%= @pricing_master.id.to_s %>">
+              No Exception | <%= @pricing_master.amount %>
+            </label>
+          </div>
+          <% @pricing_master.pricing_exceptions.where(is_active: true).each do |exception| %>
+            <% selected_exception = params[:exception_id] == exception.id.to_s %>
+            <div class="rdio rdio-primary">
+              <%= radio_button_tag :exception, exception.id.to_s, selected_exception, class: 'pricing_exception_check', id: "pricing_exception_check_#{exception.id}", data: { amount: exception.amount } %>
+              <label for="pricing_exception_check_<%= exception.id.to_s %>">
+                <% exception.sequence.each_with_index do |sequence, i| %>
+                  <%= ' | ' if i > 0 %>
+                  <%= exception.send("#{sequence}_exception_name") %>
+                <% end %>
+                | <%= exception.amount %>
+              </label>
+            </div>
+          <% end %>
+        </div>
+        <div class="col-md-12 error-exception">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <%= submit_tag 'Confirm Selection', class: 'btn btn-success btn-exception' %>
+      <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+    </div>
+  </div>
+</div>
+
+<script type="text/javascript">
+  $(".pricing_exception_check").on('click', function(){
+    $(".error-exception").html(``)
+  })
+
+  $(".btn-exception").on('click', function(e){
+    e.preventDefault();
+    let checkedRadio = $('.pricing_exception_check:checked')
+    if(checkedRadio.length > 0){
+      let exceptionId = $(checkedRadio).val()
+      let amount = $(checkedRadio).attr('data-amount')
+
+      let htmlReferenceId = "<%= params[:html_reference_id] %>"
+      let pricingMasterId = "<%= @pricing_master.id.to_s %>"
+      let serviceRow = $(`#${htmlReferenceId}`).closest('.invoice_service_item_row')
+
+      let exceptionDetails = $(checkedRadio).siblings('label').html()
+
+      exceptionId = exceptionId == pricingMasterId ? '' : exceptionId
+
+      $(serviceRow).find(".i_exception_id").val(exceptionId)
+      $(serviceRow).find(".i_unit_price").val(amount)
+      $(serviceRow).find(".i_non_taxable_amount").val(amount)
+      $(serviceRow).find(".i_unit_price").trigger("focusout")
+
+      $(serviceRow).find(".exception_details").show()
+      $(serviceRow).find(".exception_details").find('.change-exception').html(exceptionDetails)
+      $(serviceRow).find(".exception_details").find('.change-exception').attr('data-master-id', pricingMasterId)
+      $(serviceRow).find(".exception_details").find('.change-exception').attr('data-html-id', htmlReferenceId)
+      $(serviceRow).find(".exception_details").find('.change-exception').attr('data-exception-id', exceptionId)
+
+      $('#service-master-modal').modal('hide')
+    } else {
+      $(".error-exception").html(`<b style="color: #b94a48;">Select atleast one option.</b>`)
+    }
+  })
+</script>

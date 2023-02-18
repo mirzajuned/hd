@@ -1,0 +1,164 @@
+// Window Size
+var window_height = $(window).height() - 50
+$(".sidebar_area").css('height',window_height)
+$(".appointment_main_content").css('height',window_height)
+
+$(window).resize(function() {
+  var window_height = $(window).height() - 50
+  $(".sidebar_area").css('height',window_height)
+  $(".appointment_main_content").css('height',window_height)
+})
+
+// To Refresh Admission Management Page
+function refresh_appointment_management(doctor_id, active_tab, appointment_id, current_date="<%= @current_date %>", specialty_id){
+  $.ajax({
+    type: "GET",
+    dataType: "script",
+    data: {
+      current_date: current_date,
+      active_user: doctor_id,
+      active_tab: active_tab,
+      appointment_id: appointment_id,
+      specialty_id: specialty_id,
+      doctors_list: $(".toggle-sidebar-doctors").attr('data-toggle-position'),
+      rhs_tab: $('#ApptWizard').find('.active').attr('data-tab-id')
+    },
+    url: "/outpatients/appointment_management"
+  })
+}
+
+$(document).ready(function(){
+
+  $(".datepicker-for-btn").datepicker(); 
+  $('#appointment-datepicker-inline').datepicker({
+    dateFormat: "dd/mm/yy", 
+    showOn: "button",
+    buttonText: '<i class="fa fa-calendar"></i>',
+    onSelect: function (dateText,obj) {
+      jQuery.ajax({
+        type: "GET",
+        dataType: "script",          
+        url: '/outpatients/appointment_management?current_date='+moment(dateText, "DD/MM/YYYY").format('DD-MMMM-YYYY')+'&active_user='+$("#sidebar_doctors_appointment .active").find('a').attr('data-doctor-id')+'&active_tab=' + $(".tab_active").find(".active").attr('data-tab-id') + '&doctors_list=' + $(".toggle-sidebar-doctors").attr('data-toggle-position') + '&specialty_id=' + $(".specialty_section").find('.dropdown-menu').find('.active').attr('data-id'),
+      })
+      $.datepicker.setDefaults({"defaultDate":dateText});
+    }
+  })
+
+  $(".ui-datepicker-trigger").addClass("btn btn-danger calender-btn navbar-btn navbar-btn-calender navbar-btn-hover")
+
+  $("#btn-appointment-backdate").on('click',function(){
+    var doctor_id = $("#sidebar_doctors_appointment .active").find('a').attr('data-doctor-id')
+    var active_tab = $(".tab_active").find(".active").attr('data-tab-id')
+
+    $.ajax({
+      type: "GET",
+      dataType: "script",
+      data: {
+        current_date: "<%= @current_date.yesterday %>",
+        active_user: doctor_id,
+        specialty_id: "<%= @selected_specialty %>",
+        active_tab: active_tab,
+        doctors_list: $(".toggle-sidebar-doctors").attr('data-toggle-position')
+      },
+      url: "/outpatients/appointment_management"
+    })
+  })
+
+  $("#btn-appointment-frontdate").on('click',function(){
+    var doctor_id = $("#sidebar_doctors_appointment .active").find('a').attr('data-doctor-id')
+    var active_tab = $(".tab_active").find(".active").attr('data-tab-id')
+
+    $.ajax({
+      type: "GET",
+      dataType: "script",
+      data: {
+        current_date: "<%= @current_date.tomorrow %>",
+        active_user: doctor_id,
+        specialty_id: "<%= @selected_specialty %>",
+        active_tab: active_tab,
+        doctors_list: $(".toggle-sidebar-doctors").attr('data-toggle-position')
+      },
+      url: "/outpatients/appointment_management"
+    })
+  })
+
+  $("#btn-appointment-today").on('click',function(){
+    var doctor_id = $("#sidebar_doctors_appointment .active").find('a').attr('data-doctor-id')
+    var active_tab = $(".tab_active").find(".active").attr('data-tab-id')
+
+    $.ajax({
+      type: "GET",
+      dataType: "script",
+      data: {
+        current_date: "<%= Date.current %>",
+        active_user: doctor_id,
+        specialty_id: "<%= @selected_specialty %>",
+        active_tab: active_tab,
+        doctors_list: $(".toggle-sidebar-doctors").attr('data-toggle-position')
+      },
+      url: "/outpatients/appointment_management"
+    })
+  })
+
+  $(".specialty_dropdown_options").on('click',function(){
+    var doctor_id = $("#sidebar_doctors_appointment .active").find('a').attr('data-doctor-id')
+    var active_tab = $(".tab_active").find(".active").attr('data-tab-id')
+    var selected_specialty = $(this).attr('data-id');
+    
+    $.ajax({
+      type: "GET",
+      dataType: "script",
+      data: {
+        specialty_id: selected_specialty,
+        current_date: "<%= @current_date %>",
+        active_user: doctor_id,
+        active_tab: active_tab,
+        doctors_list: $(".toggle-sidebar-doctors").attr('data-toggle-position')
+      },
+      url: "/outpatients/appointment_management"
+    })
+  })
+
+  $("#btn-appointment-management-refresh").on('click', function(){
+    var doctor_id = $("#sidebar_doctors_appointment .active").find('a').attr('data-doctor-id')
+    var active_tab = $(".tab_active").find(".active").attr('data-tab-id')
+    var appointment_id = $(".appointment_today").find('.active').find('.active-appointment').attr('data-appointment-id')
+    var specialty_id = $(".specialty_section").find('.dropdown-menu').find('.active').attr('data-id')
+    refresh_appointment_management(doctor_id,active_tab,appointment_id,"<%= @current_date %>", specialty_id)
+  })
+
+  jQuery("#search_appointment").autocomplete({
+      minLength: 4,
+      source: function(request, response) {
+          jQuery.ajax({
+              dataType: "json",
+              type : 'get',
+              url: '/outpatients/search_appointment_lists',
+              //data: {searchpatient: params, remote: "true" },
+              data: {
+                  current_date: '<%= @current_date %>',
+                  source: "list",
+                  specialty_id: "<%= @selected_specialty %>",
+                  q: $( "#search_appointment").val()
+              },
+              success: function(data) {
+                  //jQuery('#searchpatientkeyword').removeClass('ui-autocomplete-loading')
+                  console.log("data",data)
+                  response( data)
+              },
+              error: function(data) {
+                  //jQuery('#searchpatientkeyword').removeClass('ui-autocomplete-loading');
+              }
+          })
+      },
+      select: function( event, ui ) {
+          console.log("UI",ui.item["id"])
+          var classname = $(".tab_active").find(".active").attr('data-tab-id')
+          var idname = $("#appointment_"+classname+"_list")
+          $(idname).find("[data-appointment-id='" + ui.item["id"] + "']").trigger('click').addClass('active');
+      },
+      close: function() {
+
+      }
+  })
+})

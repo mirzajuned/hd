@@ -1,0 +1,440 @@
+
+// datepicker_options = {
+//   changeMonth: true,
+//   changeYear: true,
+//   dateFormat: "dd-mm-yy",
+//   minDate: -0
+//   //showButtonPanel: true,
+// };
+
+// $('.exp_datepicker').datepicker(datepicker_options);
+// $('.exp_datepicker').on('focus', function(){})
+optical_shop_name = $("#inventory_shop_name").val()
+$(".shop_name").val(optical_shop_name)
+optical_shop_address = $("#inventory_shop_address").val()
+$(".shop_address").val(optical_shop_address)
+optical_username = $("#inventory_username").val()
+$(".username").val(optical_username)
+$('.dl_number').val($('#inventory_dl_number').val())
+$('.gst').val($('#inventory_gst').val())
+$('.email').val($('#inventory_email').val())
+$('.contact').val($('#inventory_contact').val())
+logo = $('#inventory_logo').val()
+$('.thumb').attr("src", logo)
+
+function readURL(input) {
+
+  if (input.files && input.files[0]) {
+    var reader = new FileReader();
+
+    reader.onload = function (e) {
+      $(input).parent().find(".thumb").attr('src', e.target.result);
+    }
+
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+
+// $('.price_including_tax').on('keyup', function(){
+//   tax = $(this).val() * 0.945
+//   $(this).closest('.item_tax_price').val(tax)
+// })
+
+
+$(".search_optical_item_code").autocomplete({
+  minLength: 3,
+  source: function(request, response) {
+    id = this.element.attr('id');
+//      flag = "item_code"
+    $.ajax({
+      type : 'get',
+      url: '/invoice/inventories/department/pharmacy/search_pharmacy_item',
+      //data: {searchpatient: params, remote: "true" },
+      data: {
+        q: $('#'+id).val(),
+      },
+      success: function(data) {
+        items = [];
+        x = [];
+        for (i = 0, len = data.length; i < len; i++) {
+          items.push(data[i].item_code);
+          // var x;
+          x[data[i].item_code] = data[i];
+        }
+        response(items)
+
+      },
+      error: function(data) {
+      }
+    })
+  },
+  select: function( event, ui ) {
+    var dosage = x[ui.item.value]['dosage']
+    console.log(x[ui.item.value])
+    if (dosage == undefined){dosage = ""}
+    $(this).siblings('.inventory_item_id').val(x[ui.item.value]['id'])
+    $(this).parents(".request_log_item").find(".lot_id").val(x[ui.item.value]['_id'])
+    $(this).parents(".request_log_item").find('.search_optical_description').val(x[ui.item.value]['description']+" "+dosage)
+    $(this).parents(".request_log_item").find('.item_manufacturer').val(x[ui.item.value]['manufacturer'])
+    $(this).parents(".request_log_item").find('.item_batch').val(x[ui.item.value]['batch_no'])
+    if ($(this).parents(".request_log_item").find('.item_quantity').val() == "") {
+      $(this).parents(".request_log_item").find('.item_quantity').val(1)
+    }
+    $(this).parents(".request_log_item").find('.item_max_quantity').val(x[ui.item.value]['stock'])
+    $(this).parents(".request_log_item").find('.item_expiry').val(x[ui.item.value]['expiry'])
+    $(this).parents(".request_log_item").find('.price_including_tax').val(x[ui.item.value]['list_price'])
+    $(this).parents(".request_log_item").find('.item_tax_price').val((x[ui.item.value]['list_price']*0.055).toFixed(2))
+    $(this).parents(".request_log_item").find('.item_quantity').trigger('keyup')
+    //   $("#"+idname+'_'+x[ui.item.value]).children().click()
+
+    quantity = $(this).parents(".request_log_item").find('.item_quantity').val()
+    price = x[ui.item.value]['list_price']
+
+
+    if ((price!=undefined || price!= "") && (quantity!=undefined || quantity!= "")){
+      total = quantity * price
+      $(this).parents(".request_log_item").find('.item_total_price').val((total).toFixed(2))
+      $(this).parents(".request_log_item").find('.item_tax_price').val((total * 0.055).toFixed(2))
+      if (price == 0){
+        $(this).parents(".request_log_item").find('.item_tax_price').val(0.00)
+      }
+    }
+    calTotalPrice()
+
+
+  },
+})
+
+
+
+$(".search_optical_description").autocomplete({
+  minLength: 3,
+  source: function(request, response) {
+    id = this.element.attr('id');
+    $.ajax({
+      type : 'get',
+      url: '/invoice/inventories/department/pharmacy/search_pharmacy_item_description',
+      //data: {searchpatient: params, remote: "true" },
+      data: {
+        q: $('#'+id).val(),
+      },
+      success: function(data) {
+        items = [];
+        x = [];
+        for (i = 0, len = data.length; i < len; i++) {
+
+          var dosage = data[i].dosage
+          if (dosage == undefined){dosage = ""}
+
+          items.push(data[i].description+" "+dosage);
+          // var x;
+          x[data[i].description+" "+dosage] = data[i];
+        }
+        response(items)
+
+      },
+      error: function(data) {
+      }
+    })
+  },
+  select: function( event, ui ) {
+    $(this).parents(".request_log_item").find(".inventory_item_id").val(x[ui.item.value]['id'])
+    $(this).parents(".request_log_item").find('.search_optical_item_code').val(x[ui.item.value]['item_code'])
+    $(this).parents(".request_log_item").find('.item_manufacturer').val(x[ui.item.value]['manufacturer'])
+    $(this).parents(".request_log_item").find('.lot_id').val(x[ui.item.value]['_id'])
+    $(this).parents(".request_log_item").find('.item_batch').val(x[ui.item.value]['batch_no'])
+    if ($(this).parents(".request_log_item").find('.item_quantity').val() == "") {
+      $(this).parents(".request_log_item").find('.item_quantity').val(1)
+    }
+    $(this).parents(".request_log_item").find('.item_max_quantity').val(x[ui.item.value]['stock'])
+    $(this).parents(".request_log_item").find('.item_expiry').val(x[ui.item.value]['expiry'])
+    $(this).parents(".request_log_item").find('.price_including_tax').val(x[ui.item.value]['list_price'])
+    $(this).parents(".request_log_item").find('.item_tax_price').val((x[ui.item.value]['list_price']*0.055).toFixed(2))
+    quantity = $(this).parents(".request_log_item").find('.item_quantity').val()
+    price = x[ui.item.value]['list_price']
+
+    if ((price!=undefined || price!= "") && (quantity!=undefined || quantity!= "")){
+      total = quantity * price
+      $(this).parents(".request_log_item").find('.item_total_price').val((total).toFixed(2))
+      $(this).parents(".request_log_item").find('.item_tax_price').val((total * 0.055).toFixed(2))
+      if (price == 0){
+        $(this).parents(".request_log_item").find('.item_tax_price').val(0.00)
+      }
+    }
+    calTotalPrice()
+
+
+    //   $("#"+idname+'_'+x[ui.item.value]).children().click()
+
+  },
+})
+
+
+function calTotalPrice() {
+  var each_item_totals = 0, each_item_tax = 0, net_amount ;
+  $('.item_total_price').each(function(){
+    each_item_totals += parseFloat($(this).val());
+    each_item_tax += parseFloat($(this).val()* 0.055)
+  });
+  $("#total_wt").text(each_item_totals.toFixed(2))
+  $("#sub_total_tax").text(each_item_tax.toFixed(2))
+
+  net_amount = parseFloat(each_item_totals - $('#invoice_discount').val())
+
+  $('#grand_total_inc_discount').val(net_amount.toFixed(2))
+}
+
+
+
+$('.item_quantity,.price_including_tax').on('keyup',function(){
+  quantity = $(this).parent().parent().find('.item_quantity').val()
+  price = $(this).parent().parent().find('.price_including_tax').val()
+//    $(this).parent().parent().find('.item_tax_price').val(price*0.055)
+  if ((price!=undefined || price!= "") && (quantity!=undefined || quantity!= "")){
+    total = quantity * price
+    $(this).parent().parent().find('.item_total_price').val((total).toFixed(2))
+    $(this).parent().parent().find('.item_tax_price').val((total * 0.055).toFixed(2))
+    if (price == 0){
+      $(this).parent().parent().find('.item_tax_price').val(0.00)
+    }
+  }
+  calTotalPrice()
+})
+$('#invoice_discount').on('keyup', function(){
+  total_wt = $('#total_wt').text().trim()
+  discount = $(this).val()
+  grand_total_inc_discount =  total_wt - discount
+
+  $('#grand_total_inc_discount').val(grand_total_inc_discount.toFixed(2))
+})
+
+$('.delete_empty_item').on('click', function(){
+  if ($('.request_log_item').length > 1){
+    $(this).closest('.request_log_item').remove()
+  }
+  calTotalPrice()
+  if(<%= @invoice_setting.try(:tax_enabled_pharmacy) %>){
+    calculate_tax(this)
+  }
+})
+
+//$('.item_quantity').on('keyup change', function(){
+//
+//    var item_max_quantity = $(this).siblings(".item_max_quantity").val()
+//    var item_quantity = $(this).val()
+//
+//
+//    if (parseInt(item_quantity) > parseInt(item_max_quantity)){\
+//      $(this).val(item_max_quantity)
+//      notice = new PNotify({ title: 'Error', text: 'Cannot checkout quantity more than'+ item_max_quantity, type: 'error' }); notice.get().click(function(){ notice.remove() });
+//    }
+//
+//})
+
+////
+//function checkStock() {
+//  $('.item_quantity').each(function () {
+//
+//    var item_max_quantity = $(this).siblings(".item_max_quantity").val()
+//    var item_quantity = $(this).val()
+//
+//    if (item_quantity > item_max_quantity) {
+//      $(this).val(item_max_quantity)
+//
+//      notice = new PNotify({ title: 'Error', text: 'Cannot checkout quantity more than stock for items', type: 'error' }); notice.get().click(function(){ notice.remove() });
+//      return
+//    }
+//  });
+//}
+
+
+function checkStock() {
+  $("#new_invoice_inventories_department_pharmacy_invoice").validate({
+  });
+}
+checkStock()
+
+$.validator.addMethod("Number", $.validator.methods.digits, "Quantity Should be Number");
+$.validator.addMethod("RequestItemQuantityPresence", $.validator.methods.required, "Cannot be blank");
+$.validator.addMethod("RequestItemTotalPresence", $.validator.methods.required, "Total Can't be blank");
+//$.validator.addMethod("checkQuantity", function(value, element, options) {
+//
+//  var elems = $(options[0])
+//
+//
+//  elems.each(function () {
+//
+//    var item_max_quantity = $(this).siblings(".item_max_quantity").val()
+//    var item_quantity = $(this).val()
+//
+//
+//    if (parseInt(item_quantity) > parseInt(item_max_quantity)) {
+//
+//      $(this).val(item_max_quantity)
+//      $(this).addClass('error')
+////      $(this).find('.error').text('error')
+//
+//
+//      notice = new PNotify({title: 'Error', text: 'Cannot checkout quantity more than stock for items', type: 'error'});
+//      notice.get().click(function () {
+//        notice.remove()
+//      });
+//      return
+//    } else{
+//      $('#'+id).removeClass('error')
+//      return true;
+//    }
+//  });
+//
+////});
+//}, "");
+
+//$.validator.addClassRules("item_quantity", {checkQuantity: ['.item_quantity'], RequestItemQuantityPresence: true});
+
+$.validator.addMethod("checkQuantity", function(value, element, options) {
+  var id = $(element).attr("id")
+  var item_quantity = $('#'+id).val()
+  var item_max_quantity = $('#'+id).siblings(".item_max_quantity").val()
+  if (!item_max_quantity) {
+    return true
+  }
+  else{
+    return this.optional(element) || parseInt(item_quantity) <= parseInt(item_max_quantity);
+  }
+}, "Cannot Checkout more than stock");
+
+$.validator.addClassRules("item_quantity", {checkQuantity: true, RequestItemQuantityPresence: true, min: 1, Number: true});
+$.validator.addClassRules("price_including_tax", {RequestItemQuantityPresence: true, min: 0});
+$.validator.addClassRules("search_optical_description", {RequestItemQuantityPresence: true,});
+$.validator.addClassRules("grand_total", {RequestItemTotalPresence: true,});
+//jQuery.extend(jQuery.validator.messages, {
+//  required: "Required",
+//  remote: "Please fix this field.",
+//  email: "Please enter a valid email address.",
+//  url: "Please enter a valid URL.",
+//  date: "Please enter a valid date.",
+//  dateISO: "Invalid date.",
+//  number: "Invalid No.",
+//  digits: "Please enter only digits.",
+//  creditcard: "Please enter a valid credit card number.",
+//  equalTo: "Please enter the same value again.",
+//  accept: "Please enter a value with a valid extension.",
+//  maxlength: jQuery.validator.format("Please enter no more than {0} characters."),
+//  minlength: jQuery.validator.format("Please enter at least {0} characters."),
+//  rangelength: jQuery.validator.format("Please enter a value between {0} and {1} characters long."),
+//  range: jQuery.validator.format("Please enter a value between {0} and {1}."),
+//  max: jQuery.validator.format("Please enter a value less than or equal to {0}."),
+//  min: jQuery.validator.format("Please enter a value greater than or equal to {0}.")
+//});
+
+<% if @invoice_setting.tax_enabled_pharmacy %>
+  $(".tax_group_id").on('change', function(){
+    calculate_tax(this)
+  })
+
+  $(".item_tax_inclusive").on('change', function(){
+    calculate_tax(this)
+  })
+
+  $(".price_including_tax").on('change', function(){
+    calculate_tax(this)
+  })
+
+  $(".price_including_tax").on('keyup', function(){
+    calculate_tax(this)
+  })
+
+  $(".item_quantity").on('keyup', function(){
+    calculate_tax(this)
+  })
+
+  function calculate_tax(_this){
+    var this_parent = $(_this).closest('.tax_price_details')  
+    var quantity = parseFloat($(this_parent).find('.item_quantity').val())
+    var amount = parseFloat($(this_parent).find('.price_including_tax').val()) * quantity
+    var tax_rate = parseFloat($(this_parent).find(".tax_group_id").find(":selected").attr('data-tax-rate'))
+    var inclusive = $(this_parent).find('.item_tax_inclusive').is(':checked')
+    var tax_group_id = $(this_parent).find(".tax_group_id").val()
+
+    if(inclusive){
+      var taxable_amount = (amount * tax_rate)/(100 + tax_rate)
+      var non_taxable_amount = amount - taxable_amount
+      var total_amount = amount
+    } else {
+      var taxable_amount = (amount * tax_rate)/100
+      var non_taxable_amount = amount
+      var total_amount = amount + taxable_amount
+    }
+    $(this_parent).find('.item_taxable_amount').val(taxable_amount.toFixed(2))
+    $(this_parent).find('.item_non_taxable_amount').val(non_taxable_amount.toFixed(2))
+    $(this_parent).find('.item_total_price').val(total_amount.toFixed(2))
+    $(this_parent).find('.tax_group_id').attr('data-amount', amount)
+    $(this_parent).find('.item_total_price').trigger('change')
+    var get_service_count = $(this_parent).find('.item_taxable_amount').attr('name').replace(/[^0-9\.]/g, '')
+
+    $.ajax({
+      type: 'GET',
+      dataType: 'JSON',
+      data: { tax_group_id: tax_group_id, taxable_amount: taxable_amount},
+      url: '/invoice/invoices/tax_breakup',
+      success: function(response){
+        $(this_parent).find('.tax_fields').html("")
+        $.each(response.tax, function(key, value) {
+          $(this_parent).find('.tax_fields').append('<div class="tax_box"><input type="hidden" name="invoice_inventories_department_pharmacy_invoice[items_attributes][' + get_service_count + '][tax_group][][amount]" value="' + parseFloat(value[2]).toFixed(2) + '" class="tax_group_id_amount"><input type="hidden" name="invoice_inventories_department_pharmacy_invoice[items_attributes][' + get_service_count + '][tax_group][][name]" value="' + value[1] + '" class="tax_group_id_name"><input type="hidden" name="invoice_inventories_department_pharmacy_invoice[items_attributes][' + get_service_count + '][tax_group][][_id]" value="' + value[0] + '" class="tax_group_id_id"></div>')
+        });
+
+        calTotalPrice()
+
+        $("#grand_total_inc_discount").trigger('change')
+      }
+    })
+  }
+
+  $("#grand_total_inc_discount").on('change', function(){
+    $("#tax-cage").html("")
+    var tax_field = $('.tax_fields')
+    var counter = 0
+    for (var j = tax_field.length - 1; j >= 0; j--) {
+
+      var tax_box = $(tax_field[j]).find('.tax_box')
+      for (var i = tax_box.length - 1; i >= 0; i--) {
+        var tax_group_id2 = $(tax_box[i]).find('.tax_group_id_id').val()
+        var tax_group_id = $("#tax-cage").find('.tax_group_' + tax_group_id2)
+        var tax_group_name = $(tax_box[i]).find('.tax_group_id_name').val()
+        var tax_group_amount = $(tax_box[i]).find('.tax_group_id_amount').val()
+        if(tax_group_id.length <= 0){
+          $("#tax-cage").prepend('<div class="row mb5 tax_group_' + tax_group_id2 + '"><div class="col-md-6 text-right"><b>' + tax_group_name + '</b></div><div class="col-md-3 text-center">:</div><div class="col-md-2 text-right"><input style="width:92%;" class="tax_group_id_' + tax_group_id2 + '" value="' + tax_group_id2 + '" type="hidden" name="invoice_inventories_department_pharmacy_invoice[tax_breakup][][_id]" readonly="readonly"><input style="width:92%;" class="tax_group_id_' + tax_group_id2 + '" value="' + tax_group_name + '" type="hidden" name="invoice_inventories_department_pharmacy_invoice[tax_breakup][][name]" readonly="readonly"><input style="width:92%;" class="fi_input_style text-right tax_group_amount_' + tax_group_id2 + '" value="' + parseFloat(tax_group_amount).toFixed(2) + '" type="text" name="invoice_inventories_department_pharmacy_invoice[tax_breakup][][amount]" readonly="readonly"></div></div>')
+        } else {
+          var old_value = $(tax_group_id).find('.tax_group_amount_' + tax_group_id2).val()
+          var new_value = (parseFloat(tax_group_amount) + parseFloat(old_value)).toFixed(2)
+          $(tax_group_id).find('.tax_group_amount_' + tax_group_id2).val(new_value)
+        }
+        if(counter == 0){
+          $("#tax-cage").attr('style', 'background: #eee;padding: 5px;')
+        }
+        counter = counter + 1
+      }
+    }
+
+    non_taxable_amount()
+  })
+
+  function non_taxable_amount(){
+    var non_taxable_amount = 0.0
+    var x = $(".item_non_taxable_amount")
+    for (var i = x.length - 1; i >= 0; i--) {
+      non_taxable_amount = (parseFloat(non_taxable_amount) + parseFloat($(x[i]).val())).toFixed(2)
+    }
+
+    if(parseFloat(non_taxable_amount).toFixed(2) == "NaN"){
+      var non_taxable_amount = 0.0
+    } 
+    if(non_taxable_amount != 0.0){
+      $("#tax-cage").find('.non_taxable_amount').remove()
+      $("#tax-cage").prepend('<div class="row mb5 non_taxable_amount"><div class="col-md-6 text-right"><b>Non-Taxable Amount</b></div><div class="col-md-3 text-center">:</div><div class="col-md-2 text-right"><input style="width:92%;" class="fi_input_style text-right non_taxable_amount" value="' + parseFloat(non_taxable_amount).toFixed(2) + '" type="text" name="invoice_inventories_department_pharmacy_invoice[non_taxable_amount]" readonly="readonly"></div></div>')
+      $("#tax-cage").attr('style', 'background: #eee;padding: 5px;')
+    }
+  }
+
+  non_taxable_amount()
+<% end %>

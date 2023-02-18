@@ -1,0 +1,134 @@
+<div class="col-md-12">
+  <% if current_facility.show_language_support == true %>
+    <% @prescription.medications.each.with_index do |medication,i| %>
+      <% if medication['instruction'].present? %>
+        <div class="col-md-2" style="font-size: 15px;"><b>Language:</b></div>
+        <div class="col-md-3">
+          <%= select_tag('advice_sets_option', options_for_select([['English', 'en'], ['Hindi', 'hi'], ['Kannada', 'kn'], ['Tamil', 'ta'], ['Telugu', 'te'], ['Gujarati', 'gu']]), include_blank: 'Please Select', class: 'form-control') %>
+        </div>
+        <% break %>
+      <% else %>
+        <% if medication['medicineinstructions'].present? || medication['instruction'].present? %>
+          <b>**No translation for these instruction are available</b>
+        <% end %>
+        <% break %>
+      <% end %>
+    <% end %>
+  <% end %>
+</div>
+<div class="col-md-12" style="font-size: 12px;">
+  <div class="row">
+    <span><b>MEDICATION(Rx)</b>&nbsp;(Advised on <%= @prescription.created_at.strftime('%d %b,%Y') %> &nbsp;at <%= @prescription.updated_at.strftime('%I:%M %p') %>)</span>
+
+    <div class="btn-group pull-right" style="margin-top: -8px;">
+      <% if @prescription.encountertype == "OPD" %>
+        <%= link_to opd_records_print_prescription_tagline_form_path(department: 'pharmacy'), class: 'btn btn-xs btn-primary', data: { :remote => true, 'disable-with' => 'Please Wait...' } do %> <i class="fa fa-file-alt"></i> TagLine<% end %>
+        <% unless @prescription.converted.nil? %>
+          <% if Authorization::PolicyHelper.verification(current_user.id,"HGP-101-111-101") %>
+            <%= link_to new_mail_record_tracker_path(record_name: 'Medication Prescription', patient_id: @prescription.patient_id.to_s, record_id: @prescription._id.to_s, record_model: 'PatientPrescription', appointment_id: @prescription.appointment_id.to_s, speciality: @prescription.specalityname, speciality_id: @prescription.specalityid), class: 'btn btn-xs btn-primary', id: 'record-mail-html', data: { :remote => true, 'disable-with' => 'Please Wait...' } do %> <i class="fa fa-envelope"></i> Email<% end %>
+          <% end %>
+          <% if Authorization::PolicyHelper.verification(current_user.id, "HGP-101-111-100") %>
+            <% if @print_settings.count > 1 %>
+              <div class="btn-group">
+                <button type="button" class="btn btn-primary btn-xs dropdown-toggle" data-toggle="dropdown"><i class="fa fa-print mr5"></i> Print <i class="fa fa-caret-down"></i></button>
+                <ul class="dropdown-menu dropdown-menu-right dropdown-left-manual" role="menu" aria-labelledby="summary-print-dropdown" style="">
+                  <% @print_settings.each do |print_setting| %>
+                    <li style="text-align:left" class="multi-print">
+                      <%= link_to opd_records_print_medication_path(opdrecordid: @prescription.record_id.to_s, patientid: @prescription.patient_id.to_s, appointmentid: @prescription.appointment_id, templatetype: @prescription.templatetype, specality: @prescription.specalityname, print_setting_id: print_setting.id, format: :pdf), class: 'full_print', style: 'color: #d9534f;', target: '_blank', data: { method: :get } do %> <i class="fa fa-print mr5"></i> <%= print_setting.name %> <% end %>
+                    </li>
+                  <% end %>
+                </ul>
+              </div>
+            <% else %>
+              <%= link_to opd_records_print_medication_path(opdrecordid: @prescription.record_id.to_s, patientid: @prescription.patient_id.to_s, appointmentid: @prescription.appointment_id, templatetype: @prescription.templatetype, specality: @prescription.specalityname, print_setting_id: @print_settings[0].id, format: :pdf), class: 'btn btn-primary btn-xs full_print', target: '_blank', data: { method: :get } do %> <i class="fa fa-print mr5"></i> Print <% end %>
+            <% end %>
+          <% end %>
+        <% end %>
+      <% else %>
+        <%= link_to opd_records_print_prescription_tagline_form_path(department: 'pharmacy'), class: 'btn btn-xs btn-primary', data: { :remote => true, 'disable-with' => 'Please Wait...' } do %> <i class="fa fa-file-alt"></i> TagLine<% end %>
+        <% unless @prescription.converted.nil? %>
+          <%= link_to new_mail_record_tracker_path(record_name: 'Medication Prescription', patient_id: @prescription.patient_id.to_s, record_id: @prescription._id.to_s, record_model: 'PatientPrescription', admission_id: @prescription.admission_id.to_s, speciality: @prescription.specalityname, speciality_id: @prescription.specalityid), class: 'btn btn-xs btn-primary', id: 'record-mail-html', data: { :remote => true, 'disable-with' => 'Please Wait...' } do %> <i class="fa fa-envelope"></i> Email<% end %>
+          <% if @print_settings.count > 1 %>
+            <div class="btn-group">
+              <button type="button" class="btn btn-primary btn-xs dropdown-toggle" data-toggle="dropdown"><i class="fa fa-print mr5"></i> Print <i class="fa fa-caret-down"></i></button>
+              <ul class="dropdown-menu dropdown-menu-right dropdown-left-manual" role="menu" aria-labelledby="summary-print-dropdown" style="">
+                <% @print_settings.each do |print_setting| %>
+                  <li style="text-align:left" class="multi-print">
+                    <% @print_medication = "inpatient_ipd_record_discharge_note_ophthalmology_note_print_path(id: @prescription.record_id, ophthalmology_note_id: @prescription.record_id, admission_id: @prescription.admission_id.to_s, print_setting_id: print_setting.id, view: 'Medication', format: 'pdf')" %>
+                    <%= link_to eval(@print_medication), class: 'full_print', style: 'color: #d9534f;', target: '_blank', data: { method: :get } do %> <i class="fa fa-print mr5"></i> <%= print_setting.name %> <% end %>
+                  </li>
+                <% end %>
+              </ul>
+            </div>
+          <% else %>
+            <% @print_medication = "inpatient_ipd_record_discharge_note_ophthalmology_note_print_path(id: @prescription.record_id, ophthalmology_note_id: @prescription.record_id, admission_id: @prescription.admission_id.to_s, print_setting_id: @print_settings[0].id, view: 'Medication', format: 'pdf')" %>
+            <%= link_to eval(@print_medication), class: 'btn btn-primary btn-xs full_print', target: '_blank', data: { method: :get } do %> <i class="fa fa-print mr5"></i> Print <% end %>
+          <% end %>
+        <% end %>
+      <% end %>
+    </div>
+
+    <div class="summary-line-border"></div>
+  </div>
+  <% if @medication_groups %>
+    <% [nil, 'C', 'D'].each do |mg| %>
+      <% if @medication_groups.to_h[mg.to_s] %>
+        <div class="row"><div class="medication_heading"><strong><%= OpdRecordsHelper.translate_medication_status(mg, @translated_language) %></strong></div></div>
+
+        <div class="row mb10 check_font">
+          <table class="table table-bordered">
+            <thead>
+              <tr>
+                <th><%= LanguageHelper.translation('sr_no', @translated_language) %></th>
+                <th><%= LanguageHelper.translation('name', @translated_language) %></th>
+                <th><%= LanguageHelper.translation('quantity', @translated_language) %></th>
+                <th class="text-center"><%= LanguageHelper.translation('frequency', @translated_language) %></th>
+                <th><%= LanguageHelper.translation('duration', @translated_language) %></th>
+                <th><%= LanguageHelper.translation('eye', @translated_language) %></th>
+                <th><%= LanguageHelper.translation('instruction', @translated_language) %></th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @medication_groups.to_h[mg.to_s].each_with_index do |medication, i| %>
+                <%= render partial: 'prescriptions/pharmacy/pharmacy_details/medication_group_tr.html.erb', locals: { medication: medication, translated_language: @translated_language, current_facility: current_facility, i: i } %>
+                <% unless medication['taper_id'] == "0" || medication['taper_id'] == nil || medication['taper_id'] == "" %>
+                  <%= render partial: 'prescriptions/pharmacy/pharmacy_details/medication_group_tr_taper.html.erb', locals: { medication: medication, current_facility: current_facility, i: i } %>
+                <% end %>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% end %>
+    <% end %>
+  <% end %>
+  <% if @prescription.medication_comment.present? %>
+  <li><%= @prescription.medication_comment %></li>
+  <% end %>
+</div>
+<script type="text/javascript">
+  $('#advice_sets_option').on('change',function(){
+    var advice_language = $(this).val();
+    var current_date = "<%= @current_date %>";
+    var prescription_id = "<%= @prescription.id %>";
+    var store_id = '<%= @inventory_store.id %>';
+    var language_flag = true;
+    jQuery.ajax({
+        type: "GET",
+        dataType: "script",
+        data: { advice_language: advice_language, current_date: current_date,prescription_id: prescription_id, store_id: store_id },
+        url: '/prescriptions/pharmacy_details',
+        success: function(){
+          var current_path = $('.full_print').attr('href');
+          var modified_path = $('.full_print').attr('href')+"&language_flag=true&advice_language="+advice_language;
+          var remove_current_path = $('.full_print').removeAttr('href');
+          var add_modfied_path = $('.full_print').attr('href',modified_path);
+
+          var modified_path_note = $('#record-mail-html').attr('href')+"&language_flag=true&advice_language="+advice_language;
+          var add_modfied_path_note = $('#record-mail-html').attr('href',modified_path_note);
+        }
+      });
+  })
+</script>
+<script>
+  ($("#advice_sets_option").val("<%= @advice_set_language %>"));
+</script>

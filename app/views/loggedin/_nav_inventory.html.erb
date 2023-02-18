@@ -1,0 +1,269 @@
+<!-- NEW NAVBAR GOES FROM HERE -->
+<nav class="navbar navbar-default navbar-fixed-top" style="background-color:#fff; height:40px;">
+  <div class="container-fluid">
+
+    <!-- Brand and toggle get grouped for better mobile display -->
+    <div class="navbar-header" style="margin-top:12px;">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1" aria-expanded="false">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <%= link_to "/dashboard", :data => {:remote => true}, :class => "ps main-logo", :id => "ps main-logo" do %><%= image_tag "foss_navbar.png", :class => "logo", style: 'width:25px;' %>
+      <% end %>
+    </div>
+    <input type="hidden" value="<%= current_user.role_ids[0]%>" id="current_user_role">
+    <!-- Brand and toggle get grouped for better mobile display end -->
+    <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+      <!-- Clickables & Navbar Left  -->
+      <%= javascript_tag do %>
+          $(document).ready(function(){
+            $(".navbar-main").find("li").on('click', function(){
+              $(".navbar-main").find("li").removeClass("activate");
+              //$(".navbar-main").find("li").children().children().removeClass("fa-color");
+              $(this).addClass("activate");
+              //$(this).find("li").children().children()..addClass("fa-color");
+            });
+          });
+      <% end %>
+      <ul class="nav navbar-nav navbar-main" style="margin-top: -3px; margin-left: 12px; border-left: 1px solid #ccc;">
+        <li class="common-li-class <%= "activate" if params[:controller] == "opd_appointments"&&params[:action] == "showday" %>">
+          <%= link_to "/outpatients/appointment_management", :class => "ps hover-effect", :id => "opd_navigation ps", method: :get do %>
+              <span class="fa-color leftnav-main-title"> <i class="fa fa-stethoscope"></i> OPD</span>
+          <% end %>
+        </li>
+        <li class="common-li-class <%= "activate" if (params[:controller] == "inpatients" && params[:action] == "admission_management") || (params[:controller] == "inpatients" && params[:action] == "admission_scheduler") %>" id="admission-management">
+          <%= link_to '/inpatients/admission_management', :class => "ps hover-effect", :id => "ipd_navigation ps", method: :get do %>
+            <span class="leftnav-main-title fa-color"><i class="fa fa-ambulance"></i> IPD</span>
+          <% end %>
+        </li>
+        <li class="common-li-class <%= "activate" if (params[:controller] == "inpatients" && params[:action] == "ot_management") || (params[:controller] == "inpatients" && params[:action] == "ot_scheduler") %>" id="ot-management">
+          <%= link_to '/inpatients/ot_management', :class => "ps hover-effect", :id => "ot_navigation ps", method: :get do %>
+            <span class="leftnav-main-title fa-color"><i class="fa fa-heartbeat"></i> OT</span>
+          <% end %>
+        </li>
+        <% @inventories = Inventory::Department.where(facility_id: current_facility.id) %>
+        <% if @inventories.count > 1 %>
+          <li class="common-li-class <%= "activate" if params[:controller] == "patient_management"&&params[:action] == "home" %>">
+            <button type="button" class="btn btn-default dropdown-toggle focus-set" data-toggle="dropdown" style="padding:15px 18px 14px; background-color:#fff; border:none;">
+              <span class="fa-color"><i class="fa fa-shopping-cart fa-lg" style="font-size:15px;"></i> INVENTORIES</span>
+              <span class="caret fa-color"></span>
+            </button>
+            <ul class="dropdown-menu children">
+
+                <% @inventories.each do |inventory| %>
+                  <% if inventory.department_id == "central" %>
+                    <li>
+                    <%= link_to "/inventory" , :target => "_blank" do %>
+                        <span><%= inventory.name %> Store</span>
+                      <% end %>
+                    </li>
+                  <% else %>
+                    <li>
+                    <%= link_to "/inventory/department/#{inventory.department_id}" , :target => "_blank" do %>
+                        <span><%= inventory.name %></span>
+                      <% end %>
+                    </li>
+                  <% end %>
+                <% end %>
+            </ul>
+          </li>
+        <% end %>
+      </ul>
+      <div class="navbar-center navbar-brand" href="#">
+        <span style='font-size:20px;'>
+        <% if (@title == 'Central Inventory') %>
+          CENTRAL STORE
+        <% else %>
+          <%= @title ? @title.upcase : "SomethingElse" %>
+        <% end %>
+        </span>
+      </div>
+      <!-- Clickables & Navbar Left End -->
+      <!-- Navbar Right -->
+      <ul class="nav navbar-nav navbar-right navbar-main" style="margin-top: -3px; margin-left: 12px; border-left: 1px solid #ccc;">
+        <% @all_facility = current_user.facilities.all %>
+        <% if @all_facility.count > 1 %>
+          <li class="common-li-class">
+            <button type="button" class="btn btn-default dropdown-toggle focus-set" data-toggle="dropdown" style="padding:13px; background-color:#fff; border:none;">
+                  <span class="fa-color" id="current_facility">
+                    <i class="fa fa-home"  style="font-size: 20px;opacity: 1;"></i>
+                    <%= current_facility.abbreviation %>
+                  </span>
+              <span class="caret fa-color"></span>
+            </button>
+            <% if @all_facility.count > 15 %>
+              <ul class="dropdown-menu children" style="background-color:#fff;overflow-y: scroll;height: 520px">
+            <% else %>
+              <ul class="dropdown-menu children" style="background-color:#fff;">
+            <% end %>
+            <li class="facility-name"><%= current_facility.name %> - <%= current_facility.abbreviation %></li>
+            <li class="dropdown-divider"></li>
+              <% @all_facility.order(name: :asc).each do |facility| %>
+                <li>
+                  <% if  facility.id != current_facility.id %>
+                    <%= link_to "/inventory/set_facility/#{facility.id}<->#{@department_id}", class: "facility_select rightnav-link", value: facility.id, method: :post do %>
+                      <i class="fa fa-hospital-o"></i>
+                      <span id="facility_name">&nbsp<%= facility.name %> - <%= facility.abbreviation %> </span>
+                    <% end %>  
+                  <% end %>
+                <li>
+              <% end %>
+            </ul>
+          </li>
+        <% end %>
+        <li class="common-li-class">
+          <button type="button" class="btn btn-default dropdown-toggle focus-set" data-toggle="dropdown" style="padding:13px; background-color:#fff; border:none;">
+                <span class="fa-color">
+                  <i class="fa fa-archive" style="font-size: 20px;opacity: 1;"></i>
+                  Inventory
+                </span>
+            <span class="caret fa-color"></span>
+          </button>
+          <ul class="dropdown-menu children" style="background-color:#fff;">
+            <li>
+              <%= link_to '/inventory#dashboard',class: "inventory_dashboard rightnav-link", method: :get do %>
+                <i class="glyphicon glyphicon-cog"></i>
+                <span>Dashboard</span>
+              <% end %>
+            <li>
+            <li>
+              <%= link_to '#',class: "inventory_dashboard rightnav-link", method: :get do %>
+                <i class="glyphicon glyphicon-cog"></i>
+                <span>Settings</span>
+              <% end %>
+            <li>
+          </ul>
+        </li>
+        <li class="common-li-class <%= "activate" if params[:controller] == "users"&&params[:action] == "account_settings" %>">
+          <button type="button" class="btn btn-default dropdown-toggle focus-set" data-toggle="dropdown" style="padding:13px; background-color:#fff; border:none;">
+                <span class="fa-color user_logo">
+                 <i class="fa fa-user-md" style="font-size: 20px;opacity: 1;vertical-align: middle"></i>
+                  <%#= current_user.fullname %>
+                </span>
+            <!-- <span class="caret fa-color"></span> -->
+          </button>
+          <ul class="dropdown-menu children" style="background-color:#fff;">
+            <%= render 'navbar/logout_dropdown' %>
+          </ul>
+        </li>
+      </ul>
+      <!-- Navbar Right End -->
+    </div>
+  </div>
+</nav>
+<!-- NEW NAVBAR ENDS HERE -->
+
+<style type="text/css">
+  .mini-li-dd {
+    text-align: center;
+    font-size: 10px;
+    opacity: 0.6;
+    border-bottom: 1px solid #eee;
+    border-top: 1px solid #eee;
+    margin-top: 5px;
+    color: #fff;
+  }
+  .rightnav-link {
+    color: #14171a !important;
+    font-size: 14px;
+    line-height: 20px;
+    padding: 8px 16px;
+  }
+
+  .rightnav-link:hover {
+    color: #fff !important;
+    background-color: #1DA1F2 !important;
+  }
+
+  .activate {
+    border-bottom: 3px solid #3cc1ff;
+  }
+
+  .activate .fa-color {
+    color: #3cc1ff;
+  }
+
+  .activate a .fa-color {
+    color: #3cc1ff;
+  }
+
+  .common-li-class:hover {
+    border-bottom: 3px solid #3cc1ff;
+  }
+
+  .common-li-class .hover-effect:hover {
+    background-color: #fff;
+  }
+
+  .common-li-class .hover-effect {
+    color: #666;
+    font-weight: bold;
+  }
+
+  .focus-set:focus {
+    outline: none !important;
+  }
+
+.navbar-center {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  text-align: center;
+  margin: auto;
+  height:100%;
+}
+.username{
+  font-size: 18px;
+  line-height: 24px;
+  white-space: nowrap;
+  word-break: break-all;
+  color: #14171a;
+  font-weight: bold;
+  padding: 10px;
+  }
+.facility-name{
+  font-size: 18px;
+  line-height: 24px;
+  white-space: nowrap;
+  word-break: break-all;
+  color: #14171a;
+  font-weight: bold;
+  padding: 10px;
+}
+.dropdown-divider{
+  padding-top: 1px;
+  margin: 5px 1px 6px;
+  border-bottom: 1px solid #e6ecf0;
+}
+.user_logo{
+  padding: 7px;
+  border-radius: 100%;
+  border: 1px solid #a8dfdf;
+  text-align: center;
+}
+</style>
+
+
+
+<% if false %>
+  <li class="common-li-class <%= "activate" if params[:controller] == "patient_management"&&params[:action] == "home" %>">
+    <% if current_user.has_role?(:owner) || current_user.has_role?(:admin) %>
+      <button type="button" class="btn btn-default dropdown-toggle focus-set" data-toggle="dropdown" style="padding:15px 18px 14px; background-color:#fff; border:none;">
+        <span class="fa-color"><i class="fa fa-medkit fa-lg" style="font-size:15px;"></i> MORE</span>
+        <span class="caret fa-color"></span>
+      </button>
+      <ul class="dropdown-menu children">
+        <!--<li>-->
+          <!--<%#= link_to patient_management_home_path, :class => "ps", :id => "ps", method: :get do %>-->
+              <!--<i class="fa fa-male" style="margin-right:5px;"></i> <span>Patient Management</span>-->
+          <!--<%# end %>-->
+        <!--</li>-->
+          <li>
+            <%= link_to finance_reports_path do %><i class="fa fa-line-chart" style="margin-right:5px;"></i> <span>Reports</span><% end %>
+          </li>
+      </ul>
+    <% end %>
+  </li>
+<% end %>

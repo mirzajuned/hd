@@ -1,0 +1,114 @@
+
+<%= f.fields_for :orders_data, order_data, :child_index => (Time.current.to_f.round(3)*1000).to_i do |data| %>
+
+  <% if type == 'procedures' %>
+    <% order_advised = @order_procedures.find{|op| order_data.order_advised_id.to_s == op.id.to_s } %>
+  <% else %>
+    <% order_advised = @order_investigations.find{|op| order_data.order_advised_id.to_s == op.id.to_s } %>
+  <% end %>
+  <% if order_advised %>
+    <% if type == "procedures" %>
+      <% order_name = order_advised.procedurename %>
+      <% laterality = order_advised.get_label_for_side(order_advised.procedureside) %>
+    <% else %>
+      <% order_name = order_advised.investigationname %>
+      <% laterality = order_advised.get_label_for_side(order_advised.investigationside) + order_advised.get_label_for_radiology_option(order_advised.radiologyoptions).to_s %>
+    <% end %>
+    <% if order_advised.type == "procedures" %>
+      <span style="display: none;" class="order-procedures" data-laterality="<%= order_advised.procedureside %>" data-id="<%= order_advised.procedure_id %>"></span>
+    <% else %>
+      <span style="display: none;" class="order-investigations" data-laterality="<%= order_advised.investigationside %>" data-id="<%= order_advised.investigation_id %>"></span>
+    <% end %>
+    <% if order_data.recounselled %>
+      <% prev_trail = order_advised.order_trails.where(action: { :$in => ["Agreed", "Declined", "Scheduled", "Advised", "Payment Taken"] }).order(created_at: :desc).second %>
+      <div class="row orders-data" style="margin-top: 5px; font-size: 12px;">
+        <div class="col-sm-2">
+          <strong><%= order_name %> - <%= laterality %></strong><br/>
+          <%= order_advised.advised_by %>(<%= order_advised.advised_datetime.try(:in_time_zone).try(:strftime, "%d%b'%y at %I:%M %p") %>)
+        </div>
+        <div class="col-sm-2">
+        </div>
+        <div class="col-sm-2">
+          <strong><%= order_advised.status %> - </strong> <%= @counselling_record.counselled_by %><br/>
+          - <%= prev_trail&.date&.in_time_zone&.strftime("%d%b'%y at %I:%M %p") %>
+        </div>
+        <div class="col-sm-1 text-center">
+          <%= order_advised.quantity %>
+        </div>
+        <div class="col-sm-2">
+          <%= prev_trail&.patient_comment %>
+        </div>
+        <div class="col-sm-2">
+          <%= prev_trail&.counsellor_comment %>
+        </div>
+      </div>
+    <% end %>
+    <%= data.hidden_field :order_advised_id, value: order_data.order_advised_id.to_s %>
+    <%= data.hidden_field :type, value: type %>
+    <div class="row orders-data" style="margin-top: 5px; font-size: 12px;">
+      <div class="col-sm-2">
+        <% unless order_data.recounselled %>
+          <strong><%= order_name %> - <%= laterality %></strong><br/>
+          <%= order_advised.advised_by %>(<%= order_advised.try(:advised_datetime).try(:in_time_zone).try(:strftime, "%d%b'%y at %I:%M %p") %>)
+        <% end %>
+      </div>
+      <div class="col-sm-2">
+        <% unless order_advised.status == "Scheduled" %>
+
+          <% unless order_advised.is_counselled && order_advised.counselled_datetime.in_time_zone.to_date != Date.today %>
+            <%= data.select :status, options_for_select(["Agreed", "Declined", "Payment Taken"], order_advised.status), { include_blank: "No Action Taken" }, { class: "form-control counselling-status", style: "padding-bottom: 5px;padding-top: 5px;margin-top: 7px;" } %>
+          <% end %>
+        <% end %>
+      </div>
+      <div class="col-sm-2">
+        <% status = order_advised.status %>
+        <% if status == "Advised" || status.blank? %>
+          <strong>Advised - </strong><%= order_advised.advised_by %><br/>
+          - <%= order_advised.advised_datetime.try(:in_time_zone).try(:strftime, "%d%b'%y at %I:%M %p") %>
+        <% elsif status == "Scheduled" %>
+          <strong><%= order_advised.status %> - </strong> <%= order_advised.entered_by %><br/>
+          - <%= order_advised.entered_datetime.try(:in_time_zone).try(:strftime, "%d%b'%y at %I:%M %p") %>
+        <% else %>
+          <strong><%= order_advised.status %> - </strong> <%= order_advised.get_counselled_by_status %><br/>
+          - <%= order_advised.get_counselled_datetime_by_status&.in_time_zone&.strftime("%d%b'%y at %I:%M %p") %>
+        <% end %>
+      </div>
+      <div class="col-sm-1 text-center">
+        <%= order_advised.quantity %>
+      </div>
+      <div class="col-sm-2" style="text-align: center; padding: 10px;">
+        <% unless order_advised.status == "Scheduled" %>
+          <% if order_advised.is_counselled && order_advised.counselled_datetime.in_time_zone.to_date != Date.today %>
+            <% latest_trail = order_advised.order_trails.order(created_at: :desc).first %>
+            <%= latest_trail.try(:patient_comment) %>
+          <% else %>
+            <%= data.text_field :patient_comment, label: false, class: "form-control", style: "padding-bottom: 5px;padding-top: 5px;" %>
+          <% end %>
+        <% end %>
+      </div>
+      <div class="col-sm-2" style="text-align: center; padding: 10px;">
+        <% unless order_advised.status == "Scheduled" %>
+          <% if order_advised.is_counselled && order_advised.counselled_datetime.in_time_zone.to_date != Date.today %>
+            <% latest_trail = order_advised.order_trails.order(created_at: :desc).first %>
+            <%= latest_trail.try(:counsellor_comment) %>
+          <% else %>
+            <%= data.text_field :counsellor_comment, label: false, class: "form-control", style: "padding-bottom: 5px;padding-top: 5px;" %>
+          <% end %>
+        <% end %>
+      </div>
+      <div class="col-sm-1">
+        <% unless order_advised.status == "Scheduled" %>
+          <% if order_advised.is_counselled && order_advised.counselled_datetime.in_time_zone.to_date != Date.today %>
+            <%= link_to add_orders_data_orders_counselling_records_path(order_advised_id: order_advised.id.to_s, appointment_id: order_advised.appointment_id.to_s, case_sheet_id: order_advised.case_sheet_id.to_s, id: @counselling_record.id.to_s), method: :post, remote: true,style: "padding: 0 5px;margin-top: 10px;", class: "btn btn-sm btn-primary", id: "recounsel-#{order_advised.id.to_s}" do %>
+              Recounsel
+            <% end %>
+          <% elsif order_data.recounselled %>
+            <div class="col-sm-1 remove-recounsel" style="font-size: 30px;color: #ff0000;margin-top: 10px;cursor:pointer;">
+              &times;
+            </div>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+<% end %>

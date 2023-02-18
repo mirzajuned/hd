@@ -1,0 +1,103 @@
+<%= javascript_include_tag "application-loggedin", "data-turbolinks-track" => true %>
+<%= form_tag("/patient_types", method: "post", remote: true, id: "patient_types_form") do %>
+  <input type="hidden" name="removed_patient_type" id='removed_patient_type_ids'>
+  <div class="row mb10">
+    <div class="col-md-12 text-right">
+      <%= submit_tag "Save Patient Type", class: "btn btn-success", data: { 'disable-with': 'Please Wait...' } %>
+    </div>
+  </div>
+  <hr/>
+  <div class="row">
+    <div class="col-md-6">
+      <div class="row form-group">
+        <div class="col-md-5"><b>Label</b></div>
+        <div class="col-md-4 text-center"><b>Color</b></div>
+        <div class="col-md-3 text-center"><b>Actions</b></div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="row form-group">
+        <div class="col-md-5"><b>Label</b></div>
+        <div class="col-md-4 text-center"><b>Color</b></div>
+        <div class="col-md-3 text-center"><b>Actions</b></div>
+      </div>
+    </div>
+  </div>
+  <hr/>
+  <div class="row mb10 patient-type-row">
+    <% @patient_types.each_with_index do |patient_type, i| %>
+      <div class='col-md-6 patient_type_fields mb10'>
+        <input type="hidden" name="patient_types[<%= i %>][id]" value="<%= patient_type.id.to_s %>">
+        <div class="row">
+          <div class="col-md-5">
+            <input type="text" id='patient_types_<%= i %>_label' class="form-control label-validation" name="patient_types[<%= i %>][label]" value="<%= patient_type.label %>" />
+          </div>
+          <div class="col-md-4 text-center">
+            <input type='color' id="patient_types_<%= i %>_color" name="patient_types[<%= i %>][color]" type="text" value='<%= patient_type.color %>'>
+          </div>
+          <div class="col-md-3 text-center">
+            <button class="btn btn-danger btn-xs remove-patient-type" data-patienttype-id='<%= patient_type.id.to_s %>'><i class="fa fa-times"></i></button>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  </div>
+  <br/>
+  <div class="row">
+    <div class="col-md-12 text-center">
+      <button class="btn btn-info" id='add_patient_type'><i class="fa fa-plus"></i> Add More</button>
+    </div>
+  </div>
+<% end %>
+
+
+<script type="text/javascript">
+  var removed_patient_type_id = []
+  
+  $("#add_patient_type").on('click', function(e){
+    e.preventDefault();
+    
+    var patient_type_count = $(".patient-type-row").find('.patient_type_fields').length
+    var random_hex_color = '#'+((1<<24)*(Math.random()+1)|0).toString(16).substr(1)
+    
+    // Column Fields
+    var patient_type_label = '<div class="col-md-5"><input type="text" id="patient_types_' + patient_type_count + '_label" class="form-control label-validation" name="patient_types[' + patient_type_count + '][label]" /></div>'
+    var patient_type_color = '<div class="col-md-4 text-center"><input type="color" id="patient_types_' + patient_type_count + '_color" name="patient_types[' + patient_type_count + '][color]" type="text" value=' + random_hex_color + '></div>'
+    var patient_type_action = ''
+
+    $(".patient-type-row").append('<div class="col-md-6 patient_type_fields mb10"><div class="row">' + patient_type_label + patient_type_color + '<div class="col-md-3 text-center"><button class="btn btn-danger btn-xs remove-added-patient-type"><i class="fa fa-times"></i></button></div></div></div>')
+
+    $(".remove-added-patient-type").on('click', function(e){
+      e.preventDefault();
+      remove_patient_type(this)
+    })
+  })
+
+  $(".remove-patient-type").on('click', function(e){
+    e.preventDefault();
+    remove_patient_type(this)
+  })
+
+  function remove_patient_type(element){
+    var patient_type_id = $(element).attr('data-patienttype-id')
+    if(patient_type_id != undefined){
+      removed_patient_type_id.push(patient_type_id)
+      $("#removed_patient_type_ids").val(removed_patient_type_id)
+    }
+    $(element).closest('.patient_type_fields').remove()
+  }
+
+  function patient_type_validation() {
+    $("#patient_types_form").validate({
+      errorElement: 'div',
+      errorPlacement: function (error, element) {
+        error.insertAfter(element);
+      }
+    });
+
+  }
+  patient_type_validation()
+
+  $.validator.addMethod("LabelRequired", $.validator.methods.required, "Label cannot be blank");  
+  $.validator.addClassRules("label-validation", { LabelRequired: true});
+</script>

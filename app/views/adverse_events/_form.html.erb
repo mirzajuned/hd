@@ -1,0 +1,655 @@
+<div class="modal-dialog" style="width: 100%">
+  <div class="modal-content">
+    <%= simple_form_for(@adverse_event, html: { id: 'opd_patient_adverse_event', class: 'adverse_event' }, remote: true) do |f| %>
+      <%= f.hidden_field :user_id, value: current_user.id %>
+      <%= f.hidden_field :facility_id, value: current_facility.id %>
+      <%= f.hidden_field :organisation_id, value: current_user.organisation_id %>
+      <%= f.hidden_field :patient_id, value: @patient.id %>
+      <%= f.hidden_field :patient_exact_age, value: @patient.exact_age %>
+      <%= f.hidden_field :patient_age, value: @patient.age %>
+      <%= f.hidden_field :patient_dob_years, value: @patient.dob_year %>
+      <%= f.hidden_field :patient_gender, value: @patient.gender %>
+      <%= f.hidden_field :patient_mobilenumber, value: @patient.mobilenumber %>
+      <%= f.hidden_field :patient_name, value: @patient.fullname %>
+      <%= f.hidden_field :patient_mrn, value: @patient.patient_mrn %>
+      <%= f.hidden_field :event_description, value: @adverse_event.try(:event_description) %>
+      <%= hidden_field_tag "adverse_event[occured_date_time]", '' %>
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+        <h4 class="modal-title">Adverse Events</h4>
+      </div>
+      <div class="modal-body window-body">
+        <div class="adverse-event" style="box-shadow: 0 0 6px #ccc;max-width: 110%;padding: 0 0.400000in 0 0.550000in;padding-top: 0px;padding-right: 0.4in;padding-bottom: 0px;padding-left: 0.55in;"><br>
+          <%= render partial: 'adverse_events/patient_info' %>
+          <div class="row mb10">
+            <div class="col-md-4">
+              <b>Occurence Date:</b>
+              <%= text_field_tag 'adverse_event[occured_date]', @adverse_event.try(:occured_date).try(:strftime, '%d/%m/%Y') || Date.current.strftime('%d/%m/%Y'), class: 'form-control adverse-event-datepicker p5_10' %>
+            </div>
+            <div class="col-md-4">
+              <b>Occurence Time:</b>
+              <div class="bootstrap-timepicker timepicker">
+                <% occured_time = params[:action] == 'new' ? Time.current : @adverse_event&.occured_time.try(:strftime, '%I:%M %p') %>
+                <%= text_field_tag 'adverse_event[occured_time]', occured_time.try(:strftime, '%I:%M %p'), class: 'form-control adverse-event-timepicker p5_10' %>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <b>Concerned Person:</b>
+              <% @selected_user = @adverse_event.concerned_person ? @adverse_event.concerned_person : current_user.id %>
+              <%= select_tag 'adverse_event[concerned_person]', options_for_select(@all_user, @selected_user), include_blank: 'Select', class: 'form-control adverse-event-concerned-person' %>
+              <%= f.hidden_field :concerned_person_name, { id: 'concerned_person_name' } %>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-6">
+              <b>Method of Management:</b>
+              <%= text_field_tag 'adverse_event[method_management]', @adverse_event.method_management, class: 'form-control adverse-text mb10', id: 'method_management' %>
+            </div>
+            <div class="col-md-6">
+              <b>Final Outcome:</b>
+              <%= text_field_tag 'adverse_event[final_outcome]', @adverse_event.final_outcome, class: 'form-control adverse-text mb10', id: 'final_outcome' %>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-2 col-sm-2 col-xs-6">
+              <label for="adverse_event_sub_speciality" style="color: #000 !important;font-weight: bold">Select sub speciality</label>
+            </div>
+            <div class="col-md-4 col-sm-4 col-xs-6">
+              <div class="form-group">
+                <%= f.select :sub_speciality, options_for_select(@sub_specialities, @adverse_event.sub_speciality),{include_blank: 'Select',required: true, validate: true},{:class => 'form-control '} %>
+                <% if @adverse_event.errors.has_key?(:sub_speciality) %>
+                  <div class='adverse_event_sub_speciality_error' style="color: red">
+                   <%= @adverse_event.errors.messages[:sub_speciality].join() if @adverse_event.errors.has_key?(:sub_speciality) %>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          </div>
+          <br>
+          <div class="row">
+            <div class="col-md-4 col-sm-4 col-xs-12">
+              <div class="rdio rdio-primary">
+                <%= radio_button_tag 'adverse_event[type]', 'critical', @adverse_event.type == 'critical', class: 'adverse_event_type', id: 'adverse_event_type_critical' %>
+                <label for="adverse_event_type_critical">Critical</label>
+              </div>
+            </div>
+
+            <div class="col-md-4 col-sm-4 col-xs-12">
+              <div class="rdio rdio-primary">
+                <%= radio_button_tag 'adverse_event[type]', 'major', @adverse_event.type == 'major', class: 'adverse_event_type', id: 'adverse_event_type_major' %>
+                <label for="adverse_event_type_major">Major</label>
+              </div>
+            </div>
+
+            <div class="col-md-4 col-sm-4 col-xs-12">
+              <div class="rdio rdio-primary">
+                <%= radio_button_tag 'adverse_event[type]', 'minor', @adverse_event.type == 'minor', class: 'adverse_event_type', id: 'adverse_event_type_minor' %>
+                <label for="adverse_event_type_minor">Minor</label>
+              </div>
+            </div>
+                <% if @adverse_event.errors.has_key?(:type) %>
+                  <div class='adverse_event_type_error' style="color: red">
+                   <%= @adverse_event.errors.messages[:type].join() if @adverse_event.errors.has_key?(:type) %>
+                  </div>
+                <% end %>
+          </div>
+          
+          <div class="row mb10 adverse_events">
+            <% @sub_specialities.each do |sub_speciality| %>
+              <div class="critical-adverse-event <%= sub_speciality.downcase.gsub(' ','_')%>">
+                <% options = @critical_events[sub_speciality.downcase.gsub(' ','_')]%>
+                <div class="row" style="border:1px solid #A9A9A9; font-size:14px; padding: 10px">
+                  <% if options.present? %>
+                    <% options.each do |option| %>
+                      <div class="col-md-6 adverse-event-class">
+                        <div class="rdio rdio-success mb5" type="radio">
+                          <%= hidden_field_tag "adverse_event[#{option[:value]}]", @adverse_event.send(option[:value]), class: 'adverse_critical_hidden' %>
+                          <%= radio_button_tag 'adverse_event[critical-adverse-event]', true, @adverse_event.send(option[:value]), id: option[:value], class: 'adverse-check' %>
+                          <label for="<%= option[:value]%>" style='width: 95%;'><%= option[:name]%></label>
+                        </div>
+                        <%= text_field_tag "adverse_event[#{option[:value]}_comment]", @adverse_event.send("#{option[:value]}_comment".to_sym), class: 'form-control adverse-text mb10', id: "#{option[:value]}_comment"%>
+                      </div>
+                    <% end %>
+                  <% else %>
+                    <div class="row">
+                      <div class="col-md-6 adverse-event-class">
+                        No Options available
+                      </div>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+            <div class="major-adverse-events">
+              <div class="major-adverse-event general d-none">
+                <div class="row" style="border:1px solid #A9A9A9; font-size:14px; padding: 10px">
+                  <div class="col-md-6 adverse-event-class">
+                    <div class="rdio rdio-success mb5">
+                      <%= hidden_field_tag 'adverse_event[patient_distress]', @adverse_event.patient_distress, class: 'adverse_major_hidden' %>
+                      <%= radio_button_tag 'adverse_event[major-adverse-event]', true, @adverse_event.patient_distress, id: 'patient_distress', class: 'adverse-check' %>
+                      <label for="patient_distress" style='width: 95%;'>Patient Distress managed within Hospital premises</label>
+                    </div>
+                    <span class="patient_distress_msg" style="display: none;font-size: 11px;color: red;">Please Select</span>
+                    <div class="col-md-12 col-sm-12 col-xs-12 second_stage" id="patient_distress_list" style=<%="display:none;" unless @adverse_event.patient_distress_one.present? %>>
+                      <div class="list">
+                        <%= f.input :patient_distress_one, wrapper_html: {:class=>"col-md-12" },collection: [["GA or LA Related","ga_or_la_related"],["Vasovagal Attack","vasovagal_attack"],["Hypogylcemia","hypogylcemia"],["Wheezing or Urticaria after florescein","wheezing_or_urticaria_after_florescein"]], :as => :hg_radio_button, :label => false, required: 'true', :class => 'btn btn-xs btn-white patient_distress_one_button',style: "height:35px !important; font-size:13px !important;",  input_html: {name: "adverse_event[patient_distress_one]" }, :checked => @adverse_event.patient_distress_one %>
+                      </div>
+                    </div>
+                    <%= text_field_tag 'adverse_event[patient_distress_comment]', @adverse_event.patient_distress_comment, class: 'form-control adverse-text mb10', id: 'patient_distress_comment' %>
+                  </div>
+                  <div class="col-md-6 adverse-event-class">
+                    <div class="rdio rdio-success mb5">
+                      <%= hidden_field_tag 'adverse_event[customer_complaint_department]', @adverse_event.customer_complaint_department, class: 'adverse_major_hidden' %>
+                      <%= radio_button_tag 'adverse_event[major-adverse-event]', true, @adverse_event.customer_complaint_department, id: 'customer_complaint_department', class: 'adverse-check' %>
+                      <label for="customer_complaint_department" style='width: 95%;'>Lab report of wrong patient</label>
+                    </div>
+                    <%= text_field_tag 'adverse_event[customer_complaint_department_comment]', @adverse_event.customer_complaint_department_comment, class: 'form-control adverse-text mb10', id: 'customer_complaint_department_comment' %>
+                  </div>
+                  <div class="col-md-6 adverse-event-class">
+                    <div class="rdio rdio-success mb5">
+                      <%= hidden_field_tag 'adverse_event[wrong_drugs]', @adverse_event.wrong_drugs, class: 'adverse_major_hidden' %>
+                      <%= radio_button_tag 'adverse_event[major-adverse-event]', true, @adverse_event.wrong_drugs, id: 'wrong_drugs', class: 'adverse-check' %>
+                      <label for="wrong_drugs" style='width: 95%;'>Pharmacy dispensing wrong drugs</label>
+                    </div>
+                    <%= text_field_tag 'adverse_event[wrong_drugs_comment]', @adverse_event.wrong_drugs_comment, class: 'form-control adverse-text mb10', id: 'wrong_drugs_comment' %>
+                  </div>
+                  <div class="col-md-6 adverse-event-class">
+                    <div class="rdio rdio-success mb5">
+                      <%= hidden_field_tag 'adverse_event[major_others]', @adverse_event.major_others, class: 'adverse_major_hidden' %>
+                      <%= radio_button_tag 'adverse_event[major-adverse-event]', true, @adverse_event.major_others, id: 'major_others', class: 'adverse-check' %>
+                      <label for="major_others" style='width: 95%;'>Others - specify</label>
+                    </div>
+                    <%= text_field_tag 'adverse_event[major_others_comment]', @adverse_event.major_others_comment, class: 'form-control adverse-text mb10', id: 'major_others_comment' %>
+                  </div>
+                  <div class="col-md-6 adverse-event-class">
+                    <div class="rdio rdio-success mb5">
+                      <%= hidden_field_tag 'adverse_event[postop_inflammation]', @adverse_event.postop_inflammation, class: 'adverse_major_hidden' %>
+                      <%= radio_button_tag 'adverse_event[major-adverse-event]', true, @adverse_event.postop_inflammation, id: 'postop_inflammation', class: 'adverse-check' %>
+                      <label for="postop_inflammation" style='width: 95%;'>POSTOP INFLAMMATION not requiring IVAB/PPV</label>
+                    </div>
+                    <span class="postop_inflammation_msg" style="display: none;font-size: 11px;color: red;">Please Select</span>
+                    <div class="col-md-12 col-sm-12 col-xs-12 second_stage" id="postop_inflammation_list" style=<%="display:none;" unless @adverse_event.postop_inflammation_one.present? %>>
+                      <div class="list">
+                        <%= f.input :postop_inflammation_one, wrapper_html: {:class=>"col-md-12" },collection: [["Fibrin Membrane","fibrin_membrane"],["Sterile Hypopyon","sterile_hypopyon"]], :as => :hg_radio_button, :label => false, :required => false,:class => 'btn btn-xs btn-white postop_inflammation_one_button',style: "height:35px !important; font-size:13px !important;",  input_html: {name: "adverse_event[postop_inflammation_one]" }, :checked => @adverse_event.postop_inflammation_one %>
+                      </div>
+                    </div>
+                    <%= text_field_tag 'adverse_event[postop_inflammation_comment]', @adverse_event.postop_inflammation_comment, class: 'form-control adverse-text mb10', id: 'postop_inflammation_comment' %>
+                  </div>
+                  <div class="col-md-6 adverse-event-class">
+                    <div class="rdio rdio-success mb5">
+                      <%= hidden_field_tag 'adverse_event[surgical_complications_repeat_surgeries]', @adverse_event.surgical_complications_repeat_surgeries, class: 'adverse_major_hidden' %>
+                      <%= radio_button_tag 'adverse_event[major-adverse-event]', true, @adverse_event.surgical_complications_repeat_surgeries, id: 'surgical_complications_repeat_surgeries', class: 'adverse-check' %>
+                      <label for="surgical_complications_repeat_surgeries" style='width: 95%;'>Surgical complications/Repeat surgeries</label>
+                    </div>
+                    <span class="surgical_complications_msg" style="display: none;font-size: 11px;color: red;">Please Select</span>
+                    <div class="col-md-12 col-sm-12 col-xs-12" id="surgical_complications_repeat_surgeries_list">
+                      <div class="list second_stage" id="surgical_complications_repeat_surgeries_second_stage" style=<%="display:none;" unless @adverse_event.surgical_complications_repeat_surgeries_one.present? %>>
+                        <%= f.input :surgical_complications_repeat_surgeries_one, wrapper_html: {:class=>"col-md-12" },collection: [["Cornea","cornea"],["Cataract","cataract"],["Refractive","refractive"],["Retina","retina"],["Squint - revision surgeries","squint"],["Glaucoma","glaucoma"]], :as => :hg_radio_button, :label => false, :required => false,:class => 'btn btn-xs btn-white surgical_complications_repeat_surgeries_one_button',style: "height:35px !important; font-size:13px !important;",  input_html: {name: "adverse_event[surgical_complications_repeat_surgeries_one]" }, :checked => @adverse_event.surgical_complications_repeat_surgeries_one %>
+                      </div>
+                      <span class="surgical_complications_msg2" style="display: none;font-size: 11px;color: red;">Please Select</span>
+                      <div class="col-md-12 col-sm-12 col-xs-12 third_stage" id="major_cornea_list" style=<%="display:none;" unless @adverse_event.major_cornea.present? %>>
+                        <div class="col-md-2">
+                          <label class="control-label">Cornea :</label>
+                        </div>
+                        <div class="col-md-10" style="margin-left: -53px;">
+                          <%= f.input :major_cornea, wrapper_html: {:class=>"col-md-12" },collection: [["Graft Failure", "graft_failure"]], :as => :hg_checkbox,:label => false, :required => false,:class => 'btn btn-xs btn-white cornea_button',style: "height:35px !important; font-size:13px !important;",  :input_html => {:name => "adverse_event[major_cornea]" }, :checked => @adverse_event.major_cornea.to_s&.split(',') %>
+                        </div>
+                      </div>
+                      <div class="col-md-12 col-sm-12 col-xs-12 third_stage" id="major_cataract_list" style=<%="display:none;" unless @adverse_event.major_cataract.present? %>>
+                        <div class="col-md-2">
+                          <label class="control-label">Cataract :</label>
+                        </div>
+                        <div class="col-md-10" style="margin-left: -46px;">
+                          <%= f.input :major_cataract, wrapper_html: {:class=>"col-md-12" },collection: [["DM Detachment", "dm_detachment"], ["Decentred IOL", "decentred_IOL"], ["Iridodialysis", "iridodialysis"], ["Hypehma", "hypehma"], ["Others", "others"]], :as => :hg_checkbox,:label => false, :required => false,:class => 'btn btn-xs btn-white cataract_button',style: "height:35px !important; font-size:13px !important;",  :input_html => {:name => "adverse_event[major_cataract]" }, :checked => @adverse_event.major_cataract.to_s&.split(',') %>
+                        </div>
+                      </div>
+                      <div class="col-md-12 col-sm-12 col-xs-12 third_stage" id="major_refractive_list" style=<%="display:none;" unless @adverse_event.major_refractive.present? %>>
+                        <div class="col-md-2">
+                          <label class="control-label">Refractive :</label>
+                        </div>
+                        <div class="col-md-10" style="margin-left: -36px;">
+                          <%= f.input :major_refractive, wrapper_html: {:class=>"col-md-12" },collection: [["Flap Loss", "flap_loss"],["Irregular Flap","irregular_flap"]], :as => :hg_checkbox,:label => false, :required => false,:class => 'btn btn-xs btn-white refractive_button',style: "height:35px !important; font-size:13px !important;",  :input_html => {:name => "adverse_event[major_refractive]" }, :checked => @adverse_event.major_refractive.to_s&.split(',') %>
+                        </div>
+                      </div>
+                      <div class="col-md-12 col-sm-12 col-xs-12 third_stage" id="major_retina_list" style=<%="display:none;" unless @adverse_event.major_retina.present? %>>
+                        <div class="col-md-2">
+                          <label class="control-label">Retina :</label>
+                        </div>
+                        <div class="col-md-10" style="margin-left: -56px;">
+                          <%= f.input :major_retina, wrapper_html: {:class=>"col-md-12" },collection: [["Post OP VH needing Lavage", "post_op_vh_needing_lavage"], ["reRD Surgeries", "reRD_surgeries"], ["RD after Glued IOL", "Rd_after_glued_IOL"]], :as => :hg_checkbox,:label => false, :required => false,:class => 'btn btn-xs btn-white retina_button',style: "height:35px !important; font-size:13px !important;",  :input_html => {:name => "adverse_event[major_retina]" }, :checked => @adverse_event.major_retina.to_s&.split(',') %>
+                        </div>
+                      </div>
+                      <div class="col-md-12 col-sm-12 col-xs-12 third_stage" id="major_squint_list" style=<%="display:none;" unless @adverse_event.major_squint.present? %>>
+                        <div class="col-md-4">
+                          <label class="control-label">Squint -Revision Surgeries :</label>
+                        </div>
+                        <div class="col-md-8" style="margin-left: -38px;">
+                          <%= f.input :major_squint, wrapper_html: {:class=>"col-md-12" },collection: [["Revision", "revision"], ["Re Adjustment","re_adjustment"]], :as => :hg_checkbox,:label => false, :required => false,:class => 'btn btn-xs btn-white squint_button',style: "height:35px !important; font-size:13px !important;",  :input_html => {:name => "adverse_event[major_squint]" }, :checked => @adverse_event.major_squint.to_s&.split(',') %>
+                        </div>
+                      </div>
+                      <div class="col-md-12 col-sm-12 col-xs-12 third_stage" id="major_glaucoma_list" style=<%="display:none;" unless @adverse_event.major_glaucoma.present? %>>
+                        <div class="col-md-2">
+                          <label class="control-label">Glaucoma :</label>
+                        </div>
+                        <div class="col-md-10" style="margin-left: -36px;">
+                          <%= f.input :major_glaucoma, wrapper_html: {:class=>"col-md-12" },collection: [["Bleb Revision", "bleb_revision"], ["Persistent CD Needing Drainage", "persistent_cd_needing_drainage"], ["Hypotony", "hypotony"], ["Valve Related ", "valve_related"]], :as => :hg_checkbox,:label => false, :required => false,:class => 'btn btn-xs btn-white glaucoma_button',style: "height:35px !important; font-size:13px !important;",  :input_html => {:name => "adverse_event[major_glaucoma]" }, :checked => @adverse_event.major_glaucoma.to_s&.split(',') %>
+                        </div>
+                      </div>
+                    </div>
+                    <%= text_field_tag 'adverse_event[surgical_complications_repeat_surgeries_comment]', @adverse_event.surgical_complications_repeat_surgeries_comment, class: 'form-control adverse-text mb10', id: 'surgical_complications_repeat_surgeries_comment'%>
+                  </div>
+                  <div class="col-md-6 adverse-event-class">
+                    <div class="rdio rdio-success mb5">
+                      <%= hidden_field_tag 'adverse_event[culture_postivity_ot_electrical]', @adverse_event.culture_postivity_ot_electrical, class: 'adverse_major_hidden' %>
+                      <%= radio_button_tag 'adverse_event[major-adverse-event]', true, @adverse_event.culture_postivity_ot_electrical, id: 'culture_postivity_ot_electrical', class: 'adverse-check' %>
+                      <label for="culture_postivity_ot_electrical" style='width: 95%;'>OT CULTURE positive </label>
+                    </div>
+                    <%= text_field_tag 'adverse_event[culture_postivity_ot_electrical_comment]', @adverse_event.culture_postivity_ot_electrical_comment, class: 'form-control adverse-text mb10', id: 'culture_postivity_ot_electrical_comment' %>
+                  </div>
+                  <div class="col-md-6 adverse-event-class">
+                    <div class="rdio rdio-success mb5">
+                      <%= hidden_field_tag 'adverse_event[customer_complaint_staff]', @adverse_event.customer_complaint_staff, class: 'adverse_major_hidden' %>
+                      <%= radio_button_tag 'adverse_event[major-adverse-event]', true, @adverse_event.customer_complaint_staff, id: 'customer_complaint_staff', class: 'adverse-check' %>
+                      <label for="customer_complaint_staff" style='width: 95%;'>Complaint letter/Mail towards doctor or staff</label>
+                    </div>
+                    <%= text_field_tag 'adverse_event[customer_complaint_staff_comment]', @adverse_event.customer_complaint_staff_comment, class: 'form-control adverse-text mb10', id: 'customer_complaint_staff_comment' %>
+                  </div>
+                  <div class="col-md-6 adverse-event-class">
+                    <div class="rdio rdio-success mb5">
+                      <%= hidden_field_tag 'adverse_event[rescheduling_cancelling_surgery]', @adverse_event.rescheduling_cancelling_surgery, class: 'adverse_major_hidden' %>
+                      <%= radio_button_tag 'adverse_event[major-adverse-event]', true, @adverse_event.rescheduling_cancelling_surgery, id: 'rescheduling_cancelling_surgery', class: 'adverse-check' %>
+                      <label for="rescheduling_cancelling_surgery" style='width: 95%;'>Rescheduling / Cancelling surgery</label>
+                    </div>
+                    <span class="rescheduling_cancelling_surgery_msg" style="display: none;font-size: 11px;color: red;">Please Select</span>
+                    <div class="col-md-12 col-sm-12 col-xs-12 second_stage" id="rescheduling_cancelling_surgery_list" style=<%="display:none;" unless @adverse_event.rescheduling_cancelling_surgery_one.present? %>>
+                      <div class="list">
+                        <%= f.input :rescheduling_cancelling_surgery_one, wrapper_html: {:class=>"col-md-12" },collection: [["RBH","rbh"],["Patient Related","patient_related"], ["Doctor Related","doctor_related"], ["Others","others"]], :as => :hg_radio_button, :label => false, :required => false,:class => 'btn btn-xs btn-white rescheduling_cancelling_surgery_one_button',style: "display:none; height:35px !important; font-size:13px !important;",  input_html: {name: "adverse_event[rescheduling_cancelling_surgery_one]" }, :checked => @adverse_event.rescheduling_cancelling_surgery_one %>
+                      </div>
+                    </div>
+                    <%= text_field_tag 'adverse_event[rescheduling_cancelling_surgery_comment]', @adverse_event.rescheduling_cancelling_surgery_comment, class: 'form-control adverse-text mb10', id: 'rescheduling_cancelling_surgery_comment' %>
+                  </div>
+                  <div class="col-md-6 adverse-event-class">
+                    <div class="rdio rdio-success mb5">
+                      <%= hidden_field_tag 'adverse_event[stoppage_of_OT]', @adverse_event.stoppage_of_OT, class: 'adverse_major_hidden' %>
+                      <%= radio_button_tag 'adverse_event[major-adverse-event]', true, @adverse_event.stoppage_of_OT, id: 'stoppage_of_OT', class: 'adverse-check' %>
+                      <label for="stoppage_of_OT" style='width: 95%;'>Biomedical/electrical/ project related issue leading to stoppage of OT</label>
+                    </div>
+                    <%= text_field_tag 'adverse_event[stoppage_of_OT_comment]', @adverse_event.stoppage_of_OT_comment, class: 'form-control adverse-text mb10', id: 'stoppage_of_OT_comment' %>
+                  </div>
+                  <div class="col-md-6 adverse-event-class">
+                    <div class="rdio rdio-success mb5">
+                      <%= hidden_field_tag 'adverse_event[consent_not_taken]', @adverse_event.consent_not_taken, class: 'adverse_major_hidden' %>
+                      <%= radio_button_tag 'adverse_event[major-adverse-event]', true, @adverse_event.consent_not_taken, id: 'consent_not_taken', class: 'adverse-check' %>
+                      <label for="consent_not_taken" style='width: 95%;'>Consent form not taken</label>
+                    </div>
+                    <%= text_field_tag 'adverse_event[consent_not_taken_comment]', @adverse_event.consent_not_taken_comment, class: 'form-control adverse-text mb10', id: 'consent_not_taken_comment' %>
+                  </div>
+                </div>
+              </div>
+              <div class="major-adverse-event general_ophthalmology d-none">
+                <div class="row" style="border:1px solid #A9A9A9; font-size:14px; padding: 10px">
+                  <div class="col-md-6 adverse-event-class">
+                    <div class="rdio rdio-success mb5">
+                      <%= hidden_field_tag 'adverse_event[abandoning_surgery]', @adverse_event.abandoning_surgery, class: 'adverse_major_hidden' %>
+                      <%= radio_button_tag 'adverse_event[major-adverse-event]', true, @adverse_event.abandoning_surgery, id: 'abandoning_surgery', class: 'adverse-check' %>
+                      <label for="abandoning_surgery" style='width: 95%;'>Abandoning surgery ( e.g. due to retina -severe bleed, lasik lost flap, PKP - donor graft loss)</label>
+                    </div>
+                    <%= text_field_tag 'adverse_event[abandoning_surgery_comment]', @adverse_event.abandoning_surgery_comment, class: 'form-control adverse-text mb10', id: 'abandoning_surgery_comment', style: "display:none;" %>
+                  </div>
+                  <div class="col-md-6 adverse-event-class">
+                    <div class="rdio rdio-success mb5">
+                      <%= hidden_field_tag 'adverse_event[pbk_surgery]', @adverse_event.pbk_surgery, class: 'adverse_major_hidden' %>
+                      <%= radio_button_tag 'adverse_event[major-adverse-event]', true, @adverse_event.pbk_surgery, id: 'pbk_surgery', class: 'adverse-check' %>
+                      <label for="pbk_surgery" style='width: 95%;'>PBK following any surgery in our hospital within 1 year of initial surgery</label>
+                    </div>
+                    <%= text_field_tag 'adverse_event[pbk_surgery_comment]', @adverse_event.pbk_surgery_comment, class: 'form-control adverse-text mb10', id: 'pbk_surgery_comment', style: "display:none;" %>
+                  </div>
+                  <div class="col-md-6 adverse-event-class">
+                    <div class="rdio rdio-success mb5">
+                      <%= hidden_field_tag 'adverse_event[optical_related]', @adverse_event.optical_related, class: 'adverse_major_hidden' %>
+                      <%= radio_button_tag 'adverse_event[major-adverse-event]', true, @adverse_event.optical_related, id: 'optical_related', class: 'adverse-check' %>
+                      <label for="optical_related" style='width: 95%;'>Optical related complaint/problem</label>
+                    </div>
+                    <span class="optical_related_msg" style="display: none;font-size: 11px;color: red;">Please Select</span>
+                    <div class="col-md-12 col-sm-12 col-xs-12 second_stage" id="optical_related_list" style=<%="display:none;" unless @adverse_event.optical_related_one.present? %>>
+                      <div class="list">
+                        <%= f.input :optical_related_one, wrapper_html: {:class=>"col-md-12" },collection: [["Wrong Prescription","wrong_prescription"],["Vendor Related Misfit","vendor_related_misfit"], ["Others","others"]], :as => :hg_radio_button, :label => false, :required => false,:class => 'btn btn-xs btn-white optical_related_one_button',style: "height:35px !important; font-size:13px !important;",  input_html: {name: "adverse_event[optical_related_one]" }, :checked => @adverse_event.optical_related_one %>
+                      </div>
+                    </div>
+                    <%= text_field_tag 'adverse_event[optical_related_comment]', @adverse_event.optical_related_comment, class: 'form-control adverse-text mb10', id: 'optical_related_comment' %>
+                  </div>
+                  <div class="col-md-6 adverse-event-class">
+                    <div class="rdio rdio-success mb5">
+                      <%= hidden_field_tag 'adverse_event[retrobulbar_hemorrhage]', @adverse_event.retrobulbar_hemorrhage, class: 'adverse_major_hidden' %>
+                      <%= radio_button_tag 'adverse_event[major-adverse-event]', true, @adverse_event.retrobulbar_hemorrhage, id: 'retrobulbar_hemorrhage', class: 'adverse-check' %>
+                      <label for="retrobulbar_hemorrhage" style='width: 95%;'>Retrobulbar hemorrhage post anesthesia</label>
+                    </div>
+                    <%= text_field_tag 'adverse_event[retrobulbar_hemorrhage_comment]', @adverse_event.retrobulbar_hemorrhage_comment, class: 'form-control adverse-text mb10', id: 'retrobulbar_hemorrhage_comment' %>
+                  </div>
+                </div>
+              </div>
+              <div class="major-adverse-event retina d-none">
+                <div class="row" style="border:1px solid #A9A9A9; font-size:14px; padding: 10px">
+                  <div class="col-md-6 adverse-event-class">
+                    <div class="rdio rdio-success mb5">
+                      <%= hidden_field_tag 'adverse_event[previously_attached_retina]', @adverse_event.previously_attached_retina, class: 'adverse_major_hidden' %>
+                      <%= radio_button_tag 'adverse_event[major-adverse-event]', true, @adverse_event.previously_attached_retina, id: 'previously_attached_retina', class: 'adverse-check' %>
+                      <label for="previously_attached_retina" style='width: 95%;'>RD in previously attached retina /Re- RD within 2 months of SB/PPV/SOR</label>
+                    </div>
+                    <%= text_field_tag 'adverse_event[previously_attached_retina_comment]', @adverse_event.previously_attached_retina_comment, class: 'form-control adverse-text mb10', id: 'previously_attached_retina_comment' %>
+                  </div>
+                  <div class="col-md-6 adverse-event-class">
+                     <div class="rdio rdio-success mb5">
+                     <%= hidden_field_tag 'adverse_event[resurgery_sclerotomy_closure]', @adverse_event.resurgery_sclerotomy_closure, class: 'adverse_major_hidden' %>
+                     <%= radio_button_tag 'adverse_event[major-adverse-event]', true, @adverse_event.resurgery_sclerotomy_closure, id: 'resurgery_sclerotomy_closure', class: 'adverse-check' %>
+                     <label for="resurgery_sclerotomy_closure" style='width: 95%;'>Re-surgery – Sclerotomy closure/Vitreous lavage/Re vitrectomy/Revision Buckle within 2 months of the primary surgery</label>
+                   </div>
+                   <%= text_field_tag 'adverse_event[resurgery_sclerotomy_closure_comment]', @adverse_event.resurgery_sclerotomy_closure_comment, class: 'form-control adverse-text mb10', id: 'resurgery_sclerotomy_closure_comment' %>
+                  </div>
+                  <div class="col-md-6 adverse-event-class">
+                    <div class="rdio rdio-success mb5">
+                      <%= hidden_field_tag 'adverse_event[post_operative_bcva]', @adverse_event.post_operative_bcva, class: 'adverse_major_hidden' %>
+                      <%= radio_button_tag 'adverse_event[major-adverse-event]', true, @adverse_event.post_operative_bcva, id: 'post_operative_bcva', class: 'adverse-check' %>
+                      <label for="post_operative_bcva" style='width: 95%;'>Post-operative BCVA less than pre-operative BCVA at 4 months</label>
+                    </div>
+                    <%= text_field_tag 'adverse_event[post_operative_bcva_comment]', @adverse_event.post_operative_bcva_comment, class: 'form-control adverse-text mb10', id: 'post_operative_bcva_comment' %>
+                  </div>
+                  <div class="col-md-6 adverse-event-class">
+                    <div class="rdio rdio-success mb5">
+                      <%= hidden_field_tag 'adverse_event[secondary_glaucoma]', @adverse_event.secondary_glaucoma, class: 'adverse_major_hidden' %>
+                      <%= radio_button_tag 'adverse_event[major-adverse-event]', true, @adverse_event.secondary_glaucoma, id: 'secondary_glaucoma', class: 'adverse-check' %>
+                      <label for="secondary_glaucoma" style='width: 95%;'>Secondary glaucoma leading to vision reduction/ vision loss</label>
+                    </div>
+                    <%= text_field_tag 'adverse_event[secondary_glaucoma_comment]', @adverse_event.secondary_glaucoma_comment, class: 'form-control adverse-text mb10', id: 'secondary_glaucoma_comment' %>
+                  </div>
+                  <div class="col-md-6 adverse-event-class">
+                    <div class="rdio rdio-success mb5">
+                      <%= hidden_field_tag 'adverse_event[infection_after_procedure]', @adverse_event.infection_after_procedure, class: 'adverse_major_hidden' %>
+                      <%= radio_button_tag 'adverse_event[major-adverse-event]', true, @adverse_event.infection_after_procedure, id: 'infection_after_procedure', class: 'adverse-check' %>
+                      <label for="infection_after_procedure" style='width: 95%;'>Infection after any procedure</label>
+                    </div>
+                    <%= text_field_tag 'adverse_event[infection_after_procedure_comment]', @adverse_event.infection_after_procedure_comment, class: 'form-control adverse-text mb10', id: 'infection_after_procedure_comment' %>
+                  </div>
+                </div>
+              </div>
+              <div class="major-adverse-event glaucoma d-none">
+                <div class="row" style="border:1px solid #A9A9A9; font-size:14px; padding: 10px">
+                  <div class="col-md-6 adverse-event-class">
+                    <div class="rdio rdio-success mb5">
+                      <%= hidden_field_tag 'adverse_event[resurgery_bleb_version]', @adverse_event.resurgery_bleb_version, class: 'adverse_major_hidden' %>
+                      <%= radio_button_tag 'adverse_event[major-adverse-event]', true, @adverse_event.resurgery_bleb_version, id: 'resurgery_bleb_version', class: 'adverse-check' %>
+                      <label for="resurgery_bleb_version" style='width: 95%;'>Re-surgery/ Bleb revision</label>
+                    </div>
+                    <%= text_field_tag 'adverse_event[resurgery_bleb_version_comment]', @adverse_event.resurgery_bleb_version_comment, class: 'form-control adverse-text mb10', id: 'resurgery_bleb_version_comment' %>
+                  </div>
+                  <div class="col-md-6 adverse-event-class">
+                    <div class="rdio rdio-success mb5">
+                      <%= hidden_field_tag 'adverse_event[maglignant_glaucoma_post_surgery]', @adverse_event.maglignant_glaucoma_post_surgery, class: 'adverse_major_hidden' %>
+                      <%= radio_button_tag 'adverse_event[major-adverse-event]', true, @adverse_event.maglignant_glaucoma_post_surgery, id: 'maglignant_glaucoma_post_surgery', class: 'adverse-check' %>
+                      <label for="maglignant_glaucoma_post_surgery" style='width: 95%;'>Malignant glaucoma post-surgery</label>
+                    </div>
+                    <%= text_field_tag 'adverse_event[maglignant_glaucoma_post_surgery_comment]', @adverse_event.maglignant_glaucoma_post_surgery_comment, class: 'form-control adverse-text mb10', id: 'maglignant_glaucoma_post_surgery_comment' %>
+                  </div>
+                  <div class="col-md-6 adverse-event-class">
+                    <div class="rdio rdio-success mb5">
+                      <%= hidden_field_tag 'adverse_event[persistent_choroidal_effusion]', @adverse_event.persistent_choroidal_effusion, class: 'adverse_major_hidden' %>
+                      <%= radio_button_tag 'adverse_event[major-adverse-event]', true, @adverse_event.persistent_choroidal_effusion, id: 'persistent_choroidal_effusion', class: 'adverse-check' %>
+                      <label for="persistent_choroidal_effusion" style='width: 95%;'>Persistent choroidal effusion</label>
+                    </div>
+                    <%= text_field_tag 'adverse_event[persistent_choroidal_effusion_comment]', @adverse_event.persistent_choroidal_effusion_comment, class: 'form-control adverse-text mb10', id: 'persistent_choroidal_effusion_comment' %>
+                  </div>
+                  <div class="col-md-6 adverse-event-class">
+                    <div class="rdio rdio-success mb5">
+                      <%= hidden_field_tag 'adverse_event[failed_bleb]', @adverse_event.failed_bleb, class: 'adverse_major_hidden' %>
+                      <%= radio_button_tag 'adverse_event[major-adverse-event]', true, @adverse_event.failed_bleb, id: 'failed_bleb', class: 'adverse-check' %>
+                      <label for="failed_bleb" style='width: 95%;'>Failed Bleb requiring 2 or more anti-glaucoma medications post-surgery at 3 months</label>
+                    </div>
+                    <%= text_field_tag 'adverse_event[failed_bleb_comment]', @adverse_event.failed_bleb_comment, class: 'form-control adverse-text mb10', id: 'failed_bleb_comment' %>
+                  </div>
+                  <div class="col-md-6 adverse-event-class">
+                    <div class="rdio rdio-success mb5">
+                      <%= hidden_field_tag 'adverse_event[encapsulated_bleb]', @adverse_event.encapsulated_bleb, class: 'adverse_major_hidden' %>
+                      <%= radio_button_tag 'adverse_event[major-adverse-event]', true, @adverse_event.encapsulated_bleb, id: 'encapsulated_bleb', class: 'adverse-check' %>
+                      <label for="encapsulated_bleb" style='width: 95%;'>Encapsulated bleb at 3 months after the surgery</label>
+                    </div>
+                    <%= text_field_tag 'adverse_event[encapsulated_bleb_comment]', @adverse_event.encapsulated_bleb_comment, class: 'form-control adverse-text mb10', id: 'encapsulated_bleb_comment' %>
+                  </div>
+                  <div class="col-md-6 adverse-event-class">
+                    <div class="rdio rdio-success mb5">
+                      <%= hidden_field_tag 'adverse_event[corneal_endothelial]', @adverse_event.corneal_endothelial, class: 'adverse_major_hidden' %>
+                      <%= radio_button_tag 'adverse_event[major-adverse-event]', true, @adverse_event.corneal_endothelial, id: 'corneal_endothelial', class: 'adverse-check' %>
+                      <label for="corneal_endothelial" style='width: 95%;'>Corneal endothelial touch by valve/shunt tube, exposure of tube or plate</label>
+                    </div>
+                    <%= text_field_tag 'adverse_event[corneal_endothelial_comment]', @adverse_event.corneal_endothelial_comment, class: 'form-control adverse-text mb10', id: 'corneal_endothelial_comment' %>
+                  </div>
+                  <div class="col-md-6 adverse-event-class">
+                    <div class="rdio rdio-success mb5">
+                      <%= hidden_field_tag 'adverse_event[persistent_ptosis]', @adverse_event.persistent_ptosis, class: 'adverse_major_hidden' %>
+                      <%= radio_button_tag 'adverse_event[major-adverse-event]', true, @adverse_event.persistent_ptosis, id: 'persistent_ptosis', class: 'adverse-check' %>
+                      <label for="persistent_ptosis" style='width: 95%;'>Persistent ptosis post glaucoma surgery</label>
+                    </div>
+                    <%= text_field_tag 'adverse_event[persistent_ptosis_comment]', @adverse_event.persistent_ptosis_comment, class: 'form-control adverse-text mb10', id: 'persistent_ptosis_comment' %>
+                  </div>                  
+                  <div class="col-md-6 adverse-event-class">
+                    <div class="rdio rdio-success mb5">
+                      <%= hidden_field_tag 'adverse_event[diplopia_or_strabismus]', @adverse_event.diplopia_or_strabismus, class: 'adverse_major_hidden' %>
+                      <%= radio_button_tag 'adverse_event[major-adverse-event]', true, @adverse_event.diplopia_or_strabismus, id: 'diplopia_or_strabismus', class: 'adverse-check' %>
+                      <label for="diplopia_or_strabismus" style='width: 95%;'>Diplopia or Strabismus post valve surgery</label>
+                    </div>
+                    <%= text_field_tag 'adverse_event[diplopia_or_strabismus_comment]', @adverse_event.diplopia_or_strabismus_comment, class: 'form-control adverse-text mb10', id: 'diplopia_or_strabismus_comment' %>
+                  </div>
+                  <div class="col-md-6 adverse-event-class">
+                    <div class="rdio rdio-success mb5">
+                      <%= hidden_field_tag 'adverse_event[severe_hyphema]', @adverse_event.severe_hyphema, class: 'adverse_major_hidden' %>
+                      <%= radio_button_tag 'adverse_event[major-adverse-event]', true, @adverse_event.severe_hyphema, id: 'severe_hyphema', class: 'adverse-check' %>
+                      <label for="severe_hyphema" style='width: 95%;'>Moderate to severe hyphema post YAG PI, reducing vision</label>
+                    </div>
+                    <%= text_field_tag 'adverse_event[severe_hyphema_comment]', @adverse_event.severe_hyphema_comment, class: 'form-control adverse-text mb10', id: 'severe_hyphema_comment' %>
+                  </div>
+                </div>
+              </div>
+              <div class="major-adverse-event cornea_and_refractive d-none">
+                <div class="row" style="border:1px solid #A9A9A9; font-size:14px; padding: 10px">
+                  <div class="col-md-6 adverse-event-class">
+                    <div class="col-md-12 adverse-event-class">
+                      <div class="major-lightblue-bg">Intraoperative</div>
+                      <br>
+                      <div class="col-md-12 adverse-event-class">
+                        <div class="rdio rdio-success mb5">
+                          <%= hidden_field_tag 'adverse_event[lasik]', @adverse_event.lasik, class: 'adverse_major_hidden' %>
+                          <%= radio_button_tag 'adverse_event[major-adverse-event]', true, @adverse_event.lasik, id: 'lasik', class: 'adverse-check' %>
+                          <label for="lasik" style='width: 95%;'> Free flap, Buttonhole, sx postponed due to suction loss (LASIK)</label>
+                        </div>
+                        <%= text_field_tag 'adverse_event[lasik_comment]', @adverse_event.lasik_comment, class: 'form-control adverse-text mb10', id: 'lasik_comment' %>
+                      </div>
+                      <div class="col-md-12 adverse-event-class">
+                        <div class="rdio rdio-success mb5">
+                          <%= hidden_field_tag 'adverse_event[opaque_bubble_layer]', @adverse_event.opaque_bubble_layer, class: 'adverse_major_hidden' %>
+                          <%= radio_button_tag 'adverse_event[major-adverse-event]', true, @adverse_event.opaque_bubble_layer, id: 'opaque_bubble_layer', class: 'adverse-check' %>
+                          <label for="opaque_bubble_layer" style='width: 95%;'> Opaque Bubble layer, Vertical breakthroughs (Femto LASIK)</label>
+                        </div>
+                        <%= text_field_tag 'adverse_event[opaque_bubble_layer_comment]', @adverse_event.opaque_bubble_layer_comment, class: 'form-control adverse-text mb10', id: 'opaque_bubble_layer_comment' %>
+                      </div>
+                    </div>
+                    <div class="col-md-12 adverse-event-class">
+                      <div class="major-lightblue-bg">Postoperative</div>
+                      <br>
+                      <div class="col-md-12 adverse-event-class">
+                        <div class="rdio rdio-success mb5">
+                          <%= hidden_field_tag 'adverse_event[macrostriae_dlk]', @adverse_event.macrostriae_dlk, class: 'adverse_major_hidden' %>
+                          <%= radio_button_tag 'adverse_event[major-adverse-event]', true, @adverse_event.macrostriae_dlk, id: 'macrostriae_dlk', class: 'adverse-check' %>
+                          <label for="macrostriae_dlk" style='width: 95%;'> Macrostriae, Diffuse Lamellar keratitis (LASIK/ Femto LASIK)</label>
+                        </div>
+                        <%= text_field_tag 'adverse_event[macrostriae_dlk_comment]', @adverse_event.macrostriae_dlk_comment, class: 'form-control adverse-text mb10', id: 'macrostriae_dlk_comment' %>
+                      </div>
+                      <div class="col-md-12 adverse-event-class">
+                        <div class="rdio rdio-success mb5">
+                          <%= hidden_field_tag 'adverse_event[infection]', @adverse_event.infection, class: 'adverse_major_hidden' %>
+                          <%= radio_button_tag 'adverse_event[major-adverse-event]', true, @adverse_event.infection, id: 'infection', class: 'adverse-check' %>
+                          <label for="infection" style='width: 95%;'> Infection after CXL/OPK/DALK/refractive procedure</label>
+                        </div>
+                        <%= text_field_tag 'adverse_event[infection_comment]', @adverse_event.infection_comment, class: 'form-control adverse-text mb10', id: 'infection_comment' %>
+                      </div>
+                      <div class="col-md-12 adverse-event-class">
+                        <div class="rdio rdio-success mb5">
+                          <%= hidden_field_tag 'adverse_event[graft_failure]', @adverse_event.graft_failure, class: 'adverse_major_hidden' %>
+                          <%= radio_button_tag 'adverse_event[major-adverse-event]', true, @adverse_event.graft_failure, id: 'graft_failure', class: 'adverse-check' %>
+                          <label for="graft_failure" style='width: 95%;'> Graft failure/melt within 6 months (PKP/DALK/PDEK/DSEK)</label>
+                        </div>
+                        <%= text_field_tag 'adverse_event[graft_failure_comment]', @adverse_event.graft_failure_comment, class: 'form-control adverse-text mb10', id: 'graft_failure_comment' %>
+                      </div>
+                      <div class="col-md-12 adverse-event-class">
+                        <div class="rdio rdio-success mb5">
+                          <%= hidden_field_tag 'adverse_event[lenticule_detachment]', @adverse_event.lenticule_detachment, class: 'adverse_major_hidden' %>
+                          <%= radio_button_tag 'adverse_event[major-adverse-event]', true, @adverse_event.lenticule_detachment, id: 'lenticule_detachment', class: 'adverse-check' %>
+                          <label for="lenticule_detachment" style='width: 95%;'> Lenticule detachment (PDEK/DSEK)</label>
+                        </div>
+                        <%= text_field_tag 'adverse_event[lenticule_detachment_comment]', @adverse_event.lenticule_detachment_comment, class: 'form-control adverse-text mb10', id: 'lenticule_detachment_comment' %>
+                      </div>
+                      <div class="col-md-12 adverse-event-class">
+                        <div class="rdio rdio-success mb5">
+                          <%= hidden_field_tag 'adverse_event[corneal_haze]', @adverse_event.corneal_haze, class: 'adverse_major_hidden' %>
+                          <%= radio_button_tag 'adverse_event[major-adverse-event]', true, @adverse_event.corneal_haze, id: 'corneal_haze', class: 'adverse-check' %>
+                          <label for="corneal_haze" style='width: 95%;'> Corneal haze/scar after CXL/PRK after 3 months</label>
+                        </div>
+                        <%= text_field_tag 'adverse_event[corneal_haze_comment]', @adverse_event.corneal_haze_comment, class: 'form-control adverse-text mb10', id: 'corneal_haze_comment' %>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-md-6 adverse-event-class">
+                    <div class="major-lightblue-bg">Resurgeries</div>
+                    <br>
+                    <div class="col-md-12 adverse-event-class">
+                      <div class="rdio rdio-success mb5">
+                        <%= hidden_field_tag 'adverse_event[epithelial_ingrowth]', @adverse_event.epithelial_ingrowth, class: 'adverse_major_hidden' %>
+                        <%= radio_button_tag 'adverse_event[major-adverse-event]', true, @adverse_event.epithelial_ingrowth, id: 'epithelial_ingrowth', class: 'adverse-check' %>
+                        <label for="epithelial_ingrowth" style='width: 95%;'> Epithelial ingrowth grade 3 (LASIK)</label>
+                      </div>
+                      <%= text_field_tag 'adverse_event[epithelial_ingrowth_comment]', @adverse_event.epithelial_ingrowth_comment, class: 'form-control adverse-text mb10', id: 'epithelial_ingrowth_comment' %>
+                    </div>
+                    <div class="col-md-12 adverse-event-class">
+                      <div class="rdio rdio-success mb5">
+                        <%= hidden_field_tag 'adverse_event[cataract_icl]', @adverse_event.cataract_icl, class: 'adverse_major_hidden' %>
+                        <%= radio_button_tag 'adverse_event[major-adverse-event]', true, @adverse_event.cataract_icl, id: 'cataract_icl', class: 'adverse-check' %>
+                        <label for="cataract_icl" style='width: 95%;'> Cataract within 6 months of ICL</label>
+                      </div>
+                      <%= text_field_tag 'adverse_event[cataract_icl_comment]', @adverse_event.cataract_icl_comment, class: 'form-control adverse-text mb10', id: 'cataract_icl_comment' %>
+                    </div>
+                    <div class="col-md-12 adverse-event-class">
+                      <div class="rdio rdio-success mb5">
+                        <%= hidden_field_tag 'adverse_event[cornea_melt]', @adverse_event.cornea_melt, class: 'adverse_major_hidden' %>
+                        <%= radio_button_tag 'adverse_event[major-adverse-event]', true, @adverse_event.cornea_melt, id: 'cornea_melt', class: 'adverse-check' %>
+                        <label for="cornea_melt" style='width: 95%;'>Cornea melt/ Extrusion of CAIRS/INTACS within 6 weeks of surgery</label>
+                      </div>
+                      <%= text_field_tag 'adverse_event[cornea_melt_comment]', @adverse_event.cornea_melt_comment, class: 'form-control adverse-text mb10', id: 'cornea_melt_comment' %>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="major-adverse-event cataract d-none">
+                <div class="row" style="border:1px solid #A9A9A9; font-size:14px; padding: 10px">
+                  <div class="col-md-6 adverse-event-class">
+                    <div class="rdio rdio-success mb5">
+                      <%= hidden_field_tag 'adverse_event[aqueous_meets_vitreous]', @adverse_event.aqueous_meets_vitreous, class: 'adverse_major_hidden' %>
+                      <%= radio_button_tag 'adverse_event[major-adverse-event]', true, @adverse_event.aqueous_meets_vitreous, id: 'aqueous_meets_vitreous', class: 'adverse-check' %>
+                      <label for="aqueous_meets_vitreous" style='width: 95%;'>Aqueous meets vitreous</label>
+                    </div>
+                    <span class="aqueous_meets_vitreous_msg" style="display: none;font-size: 11px;color: red;">Please Select</span>
+                    <div class="col-md-12 col-sm-12 col-xs-12 second_stage" id="aqueous_meets_vitreous_list" style=<%="display:none;" unless @adverse_event.aqueous_meets_vitreous_one.present? %>>
+                      <div class="list">
+                        <%= f.input :aqueous_meets_vitreous_one, wrapper_html: {:class=>"col-md-12" },collection: [["PC Rent","pc_rent"],["Zonular Dialysis","zonular_dialysis"],["PCR with Nucleus Drop","pcr_with_nucleus_drop"],["PCR with IOL Drop","pcr_with_IOL_drop"],["Glued IOL","glued_iol"]], :as => :hg_radio_button, :label => false, :required => false,:class => 'btn btn-xs btn-white aqueous_meets_vitreous_one_button',style: "display:none; height:35px !important; font-size:13px !important;",  input_html: {name: "adverse_event[aqueous_meets_vitreous_one]" }, :checked => @adverse_event.aqueous_meets_vitreous_one %>
+                      </div>
+                    </div>
+                    <%= text_field_tag 'adverse_event[aqueous_meets_vitreous_comment]', @adverse_event.aqueous_meets_vitreous_comment, class: 'form-control adverse-text mb10', id: 'aqueous_meets_vitreous_comment' %>
+                  </div>
+                  <div class="col-md-6 adverse-event-class">
+                    <div class="rdio rdio-success mb5">
+                      <%= hidden_field_tag 'adverse_event[wrong_iol_power]', @adverse_event.wrong_iol_power, class: 'adverse_major_hidden' %>
+                      <%= radio_button_tag 'adverse_event[major-adverse-event]', true, @adverse_event.wrong_iol_power, id: 'wrong_iol_power', class: 'adverse-check' %>
+                      <label for="wrong_iol_power" style='width: 95%;'>IOL related complication </label>
+                    </div>
+                    <span class="wrong_iol_power_msg" style="display: none;font-size: 11px;color: red;">Please Select</span>
+                    <div class="col-md-12 col-sm-12 col-xs-12 second_stage" id="wrong_iol_power_list" style=<%="display:none;" unless @adverse_event.wrong_iol_power_one.present? %>>
+                      <div class="list">
+                        <%= f.input :wrong_iol_power_one, wrapper_html: {:class=>"col-md-12" },collection: [["Haptic Breakage","haptic_breakage"],["Wrong IOL Power leading to refractive surprise more than 2D","wrong_IOL_power_leading_to_refractive_surprise_more_than_2D"]], :as => :hg_radio_button, :label => false, :required => false,:class => 'btn btn-xs btn-white wrong_iol_power_one_button',style: "height:35px !important; font-size:13px !important;",  input_html: {name: "adverse_event[wrong_iol_power_one]" }, :checked => @adverse_event.wrong_iol_power_one %>
+                      </div>
+                    </div>
+                    <%= text_field_tag 'adverse_event[wrong_iol_power_comment]', @adverse_event.wrong_iol_power_comment, class: 'form-control adverse-text mb10', id: 'wrong_iol_power_comment' %>
+                  </div>
+                </div>
+              </div>
+              <% (@user_roles - ['General Ophthalmology']).each do |sub_speciality| %>
+                <div class="major-adverse-event <%= sub_speciality.downcase.gsub(' ','_')%>">
+                  <% options = @major_events[sub_speciality.downcase.gsub(' ','_')]%>
+                  <div class="row" style="border:1px solid #A9A9A9; font-size:14px; padding: 10px">
+                    <% if options.present? %>
+                      <% options.each do |option| %>
+                        <div class="col-md-6 adverse-event-class">
+                          <div class="rdio rdio-success mb5" type="radio">
+                            <%= hidden_field_tag "adverse_event['#{option[:value]}']", @adverse_event.send(option[:value]), class: 'adverse_major_hidden' %>
+                            <%= radio_button_tag 'adverse_event[major-adverse-event]', true, @adverse_event.send(option[:value]), id: option[:value], class: 'adverse-check' %>
+                            <label for="<%= option[:value]%>" style='width: 95%;'><%= option[:name]%></label>
+                          </div>
+                          <%= text_field_tag "adverse_event[#{option[:value]}_comment]", @adverse_event.send("#{option[:value]}_comment".to_sym), class: 'form-control adverse-text mb10', id: "#{option[:value]}_comment"%>
+                        </div>
+                      <% end %>
+                    <% else %>
+                      <div class="row">
+                        <div class="col-md-6 adverse-event-class">
+                          No Options available
+                        </div>
+                      </div>
+                    <% end %>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+            <% @sub_specialities.each do |sub_speciality| %>
+              <div class="minor-adverse-event <%= sub_speciality.downcase.gsub(' ','_')%>">
+                <% options = @minor_events[sub_speciality.downcase.gsub(' ','_')]%>
+                <div class="row" style="border:1px solid #A9A9A9; font-size:14px; padding: 10px">
+                  <% if options.present? %>
+                    <% options.each do |option| %>
+                      <div class="col-md-6 adverse-event-class">
+                        <div class="rdio rdio-success mb5" type="radio">
+                          <%= hidden_field_tag "adverse_event[#{option[:value]}]", @adverse_event.send(option[:value]), class: 'adverse_minor_hidden' %>
+                          <%= radio_button_tag 'adverse_event[minor-adverse-event]', true, @adverse_event.send(option[:value]), id: option[:value], class: 'adverse-check' %>
+                          <label for="<%= option[:value]%>" style='width: 95%;'><%= option[:name]%></label>
+                        </div>
+                        <%= text_field_tag "adverse_event[#{option[:value]}_comment]", @adverse_event.send("#{option[:value]}_comment".to_sym), class: 'form-control adverse-text mb10', id: "#{option[:value]}_comment"%>
+                      </div>
+                    <% end %>
+                  <% else %>
+                    <div class="row">
+                      <div class="col-md-6 adverse-event-class">
+                        No Options available
+                      </div>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer window-footer">
+        <% if params[:action] == "new" || params[:action] == 'create'%>
+          <%= f.submit 'Create Adverse Event', class: 'btn btn-success btn-sm create-adverse-event adverse_event_button' %>
+        <% else %>
+          <%= f.submit 'Update Adverse Event', class: 'btn btn-success btn-sm update-adverse-event adverse_event_button' %>
+        <% end %>
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<style type="text/css">
+  .adverse-event-datepicker,.adverse-event-timepicker {
+    cursor: pointer !important;
+    background-color: #fff !important;
+  }
+  label{
+    color: #000 !important;
+  }
+</style>

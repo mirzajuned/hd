@@ -1,0 +1,172 @@
+<%= javascript_include_tag "application-loggedin", "data-turbolinks-track" => true %>
+<input type="hidden" name="" class="path_for_change" value="new">
+<div class="modal-dialog modal-lg">
+  <!-- Modal content-->
+  <div class="modal-content">
+    <%= form_for @invoice,:format => :js,:method => :post,remote: true,:multipart => true,html: { :class => "invoice_new_form", :id => "invoice_new_form" } do |inv| %>
+      <%= inv.hidden_field :patient_id, value: @patient.id %>
+      <%= inv.hidden_field :admission_id, value: @admission.id %>
+      <%= inv.hidden_field :tpa_id, value: @tpa.id %>
+      <%= inv.hidden_field :organisation_id, value: @organisation_id %>
+      <%= inv.hidden_field :insurance_display_id, value: @displaycounter %>
+      <%= inv.hidden_field :mode_of_payment, value: "None" %>
+      <%= inv.hidden_field :facility_id,  value: @admission.facility_id.to_s %>
+      <%= inv.hidden_field :user_id,  value: current_user.id %>
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+        <h4 class="modal-title">Insurance Receipt</h4>
+      </div>
+      <div class="modal-body">
+        <div class="container-fluid">
+          <!-- Patient Info -->
+          <div class="row" id="patient_button">
+            <span class="btn btn-primary btn-xs mb10" id="add_patient_info" style="padding:0 5px;"><i class="fa fa-plus"></i> Edit Patient Info</span>
+            <%= render partial: 'inpatient/insurance/insured_patient_info', locals: { patient: @patient , admission: @admission} %>
+          </div>
+          <div class="patient_info_partial mb20" style="display:none;">
+            <%= render partial: 'inpatient/insurance/insured_patient_info_edit', locals: { patient: @patient , admission: @admission} %>
+          </div>
+          <!-- Patient Info Ends -->
+          <div class="services_items" id="services_items">
+            <!-- Display Once -->
+            <div class="service_row_count mb5 mt5" title="0">
+              <div class="row service_row mb10">
+                <div class="col-md-3">
+                  <!-- <input style="padding:5px 10px;" class="form-control service_name" placeholder="Service Name" type="text" name="invoice_insurance[services][0][name]"> -->
+                  <select class="form-control service_name" name="invoice_insurance[services][0][name]">
+                    <% @invoiceservicecard.each do |servicecard| %>
+                      <% if servicecard.invoice_item_card.where(card_deleted: false).count > 0 %>
+                        <option value="<%= servicecard.id.to_s %>"><%= servicecard.service_name %></option>
+                      <% end %>
+                    <% end %>
+                  </select>
+                </div>
+                <div class='col-md-4'>
+                  <button class="btn btn-primary btn-xs add_service_item" style="padding:0 5px;margin-top:3px;"><i class="fa fa-plus"></i> New Item</button>
+                </div>
+                <div class="col-md-3">
+                  <input style="padding:5px 10px;" class="form-control service_total text-right" placeholder="Service Total" type="text" name="invoice_insurance[services][0][service_total]" readonly="readonly">
+                </div>
+                <div class="col-md-2 text-right">
+                  <button class="btn btn-danger btn-xs remove_service_item" style="padding:0 5px;margin-top:3px;"><i class="fa fa-trash-alt"></i> Remove Service</button>
+                </div>
+              </div>
+              <div class="service_item_row_count mb10" id="service_item_row">
+                <div class="invoice_service_item_row row mt5" id="invoice_service_item_row">
+                  <div class="col-md-1 field_for_date">
+                    <input name="invoice_insurance[services][0][items][0][item_entry_date]" style="padding:5px 10px;" class="form-control i_item_entry_date" type="hidden" value="<%= Time.current %>">
+                  </div>
+                  <div class="col-md-3 field_for_description">
+                    <!-- <input name="invoice_insurance[services][0][items][0][description]" style="padding:5px 10px;" class="form-control i_description" placeholder="Description" type="text"> -->
+                    <select class="form-control i_description" name="invoice_insurance[services][0][items][0][description]"></select>
+                  </div>
+                  <div class="col-md-2 field_for_quantity">
+                    <input name="invoice_insurance[services][0][items][0][quantity]" style="padding:5px 10px;" class="form-control i_quantity" placeholder="Quantity" maxlength="4" value="1" type="text">
+                  </div>
+                  <div class="col-md-2 field_for_unit_price">
+                    <input name="invoice_insurance[services][0][items][0][unit_price]" style="padding:5px 10px;" class="form-control i_unit_price" placeholder="Unit Price" maxlength="12" type="text">
+                  </div>
+                  <div class="col-md-2 field_for_price">
+                    <input name="invoice_insurance[services][0][items][0][price]" style="padding:5px 10px;" class="form-control i_price" id="i_price" placeholder="Total" readonly="readonly" type="text">
+                    <input name="invoice_insurance[services][0][items][0][patient_payed]" style="padding:5px 10px;" class="form-control i_patient_payed text-right" value= "No" placeholder="Total" readonly="readonly" type="hidden">
+                  </div>
+                  <div class="col-md-2">
+                    <button class="btn btn-danger btn-xs remove_item" style="padding:0 5px;margin-top:3px;"><i class="fa fa-trash-alt"></i> Remove Item</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="row" style="margin-left:0px;">
+            <button class="btn btn-primary btn-xs" id="add_service_insurance" style="padding:0 5px;"><i class="fa fa-plus"></i> Add Service</button>
+          </div>
+          <div class="row">
+            <div class="row invoice_calculation_list">
+              <div class="row mb5">
+                <div class="col-md-3 col-md-offset-5 text-right">
+                  <b>Gross Bill Total :</b>
+                </div>
+                <div class="col-md-2 text-right">
+                  <input style="padding:5px 10px 0;border: none;border-bottom: 1px solid #aaa;" class="form-control invoice_gross_total text-right" id="invoice_gross_total" placeholder="Gross Amount" value="0" type="text" name="invoice_insurance[total]" readonly="readonly">
+                </div>
+              </div>
+              <div class="row mb5">
+                <div class="col-md-3 col-md-offset-5 text-right">
+                  <b>Discount :</b>
+                </div>
+                <div class="col-md-2 text-right">
+                  <input style="padding:5px 10px 0;border: none;border-bottom: 1px solid #aaa;" class="form-control discount_amount text-right" id="discount_amount" placeholder="Discount" value="0" type="text" name="invoice_insurance[additional_discount]">
+                </div>
+              </div>
+              <div class="row mb5">
+                <div class="col-md-3 col-md-offset-5 text-right">
+                  <b>Net Total :</b>
+                </div>
+                <div class="col-md-2 text-right">
+                  <input style="padding:5px 10px 0;border: none;border-bottom: 1px solid #aaa;" class="form-control invoice_net_total text-right" id="invoice_net_total" placeholder="Net Amount" value="0" type="text" name="invoice_insurance[net_amount]" readonly="readonly">
+                </div>
+              </div>
+              <% if @tpa.insurance_status == "Approved" || @tpa.insurance_status == "Waiting" %>
+                <div class="row mb5">
+                  <div class="col-md-3 col-md-offset-5 text-right">
+                    <b>Balance Amount Insurance :</b>
+                  </div>
+                  <div class="col-md-2 text-right">
+                    <input style="padding:5px 10px 0;border: none;border-bottom: 1px solid #aaa;" class="form-control amount_paid_tpa text-right" id="amount_paid_tpa" placeholder="Amount" value="0" type="text" name="invoice_insurance[amount_paid_tpa]">
+                  </div>
+                </div>
+                <div class="row mb5">
+                  <div class="col-md-3 col-md-offset-5 text-right">
+                    <b>Balance Amount Patient :</b>
+                  </div>
+                  <div class="col-md-2 text-right">
+                    <input style="padding:5px 10px 0;border: none;border-bottom: 1px solid #aaa;" class="form-control amount_paid_patient text-right" id="amount_paid_patient" placeholder="Amount" value="0" type="text" readonly="readonly" name="invoice_insurance[amount_paid_patient]">
+                  </div>
+                </div>
+              <% end %>
+              <div class="row mb5">
+                <div class="col-md-5">
+                  <b  style="margin-left:9%;">Comments:</b> <%= inv.text_area :comments, {class: "form-control", placeholder: "Comments", style: "margin-left:9%;width:95%"} %>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <%= inv.submit "Save", class: "btn btn-success", data: { 'disable-with': 'Please Wait...' }, :onclick => 'insurance_invoice_page()' %>
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<style type="text/css">
+  /*input {
+    border: none !important;
+    border-bottom: 1px solid #aaa !important;
+  }*/
+
+  .service_row_count {
+    border: 1px solid #aaa;
+    padding: 21px;
+    margin-bottom: 10px;
+  }
+
+  .patient_info_box {
+    border-bottom: 1px solid #aaa;
+    border-right: 1px solid #aaa;
+    border-left: 1px solid #aaa;
+    padding: 10px 0;
+    margin-bottom: 10px;
+  }
+
+  input.error, select.error {
+    border-color: #b94a48;
+    background-image: none;
+  }
+  input.valid, select.valid {
+    border-color: #468847;
+    background-image: none;
+  }
+</style>

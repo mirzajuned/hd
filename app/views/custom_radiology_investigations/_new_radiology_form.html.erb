@@ -1,0 +1,89 @@
+<%= javascript_include_tag "application-loggedin", "data-turbolinks-track" => true %>
+<div class="modal-dialog modal-lg">
+  <div class="modal-content">
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+      <h4 class="modal-title">Custom Radiology Investigation</h4>
+    </div>
+    <%= form_for(@custom_radiology_investigation, :remote=>true) do |f| %>
+
+      <div class="modal-body form-bordered clearfix custom_investigation_fields" style="padding-bottom: 51px;padding-top: 35px;">
+        <input type="hidden" name="custom_radiology_investigation[organisation_id]" value="<%= current_user.organisation_id %>">
+        <input type="hidden" name="custom_radiology_investigation[facility_id]" value="<%= current_facility.id %>">
+        <!-- <input type="hidden" class="department_id" name="custom_radiology_investigation[specialty_id]" value="<%#= current_user.department_id %>"> -->
+
+        <div class="row">
+          <div class="col-sm-2"></div>
+          <div class="col-sm-6">
+            <b>Investigation Name: </b>  
+            <%= text_field_tag "custom_radiology_investigation[investigation_name]",nil ,class: 'form-control', placeholder: 'Enter new Investigation name'  %>
+          </div>
+          <div class="col-sm-3">
+            <b>Specialty:</b>
+            <%= f.select :specialty_id, options_for_select(@available_specialties.pluck(:name, :id)),{ :include_blank => 'Select any Specialty' }, { :class => 'form-control specialty_dropdown' } %>
+          </div>
+        </div>
+      
+      </div>
+
+      <div class="modal-footer">
+        <%= submit_tag "Save", class: "save-btn btn btn-success", remote: true, 'data-disable-with' => "Please wait..", :onclick => 'validate_radiology_form()' %>
+        <button aria-hidden="true" class="btn btn-info signup-patient-form-close" data-dismiss="modal">Close</button>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<script type="text/javascript">
+
+  $('input[type="checkbox"]').click(function(){
+    var subset_value = $(this).prop("checked")
+    if (subset_value == true) {
+      $('.add_subsets_fields_rows').fadeIn()
+    }else {
+      $('.add_subsets_fields_rows').hide()
+    }
+  });
+
+  $("#radiology_set").on('change', function(e){
+    e.preventDefault();
+    var this_length = $(".selected-investigations").find('.radiology-investigation-row').length
+    var loinc_code = "<input type='hidden' name='custom_radiology_investigation[subtests_values][" + this_length + "][loinc_code]' class='form-control loinc_code' id='custom_radiology_investigation_set_subtests_values_" + this_length + "_loinc_code' value='" + $("#radiology_set option:selected").val() + "'>"
+    var investigationname = "<input type='text' name='custom_radiology_investigation[subtests_values][" + this_length + "][investigation_name]' class='form-control investigationname p5_10' id='custom_radiology_investigation_set_subtests_values_" + this_length + "_investigationname' value='" + $("#radiology_set option:selected").text() + "'>"
+
+    $(".selected-investigations").append("<div class='row radiology-investigation-row mb5'>" + loinc_code + 
+      "<div class='col-sm-10'>" + investigationname + "</div><div class='col-sm-2'><button class='btn btn-danger btn-xs delete-row'>&times;</button></div></div>")
+
+    $(".delete-row").on('click', function(){
+      $(this).closest('.radiology-investigation-row').remove()
+    })
+    $('#radiology_set option:selected').removeAttr('selected');
+  })
+  
+  validate_radiology_form()
+  function validate_radiology_form() {
+    $("#new_custom_radiology_investigation").validate({
+      rules: {
+        "custom_radiology_investigation[investigation_name]": {
+          remote:"/custom_radiology_investigations/inv_name_validation",
+          required: true,
+          minlength: 3
+        },
+        "custom_radiology_investigation[specialty_id]":{
+          required: true
+        }
+      },
+      messages: {
+        "custom_radiology_investigation[investigation_name]": {
+          required: "Please fill the Investigation name.",
+          remote: "Name already exist, type another"
+        },
+        "custom_radiology_investigation[specialty_id]":{
+          required: "Please select any Specialty"
+        }
+      }
+    });
+  }
+
+</script>
+

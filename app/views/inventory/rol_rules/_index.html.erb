@@ -1,0 +1,162 @@
+<div class="row">
+  <div class="col-md-8">
+    <h4>MANAGE ROL RULE</h4>
+  </div>
+  <div class="col-md-2 text-right">
+    <%= link_to auto_requisition_organisation_settings_path(organisation_id: current_user.organisation_id), :class => "btn btn-primary auto-requisition", data: { remote: true, 'toggle': "modal", 'target': '#rol-store-modal'} do %><i class=""></i>Auto Requisition<% end %>
+  </div>
+  <div class="col-md-2 text-right">
+    <%= link_to edit_multiple_inventory_rol_rules_path, class: 'btn btn-primary', data: { remote: true, 'toggle': 'modal', 'target': '#rol-rule-modal' } do %><i class="fa fa-plus"></i> Add ROL Rule<% end %>
+  </div>
+</div>
+<div class="row">
+  <div class="col-md-3 margin-top-8">
+    <div class="row">
+      <div class="col-md-2 margin-top-8"><%= label_tag "store", nil%></div>
+      <div class="col-md-5"><%= select_tag "store_filter", options_for_select(rol_rule_store_names), {class: 'form-control', prompt: "All Stores"} %></div>
+    </div>
+  </div>
+  <div class="col-md-3 margin-top-8">
+    <div class="row">
+      <div class="col-md-2 margin-top-8"><%= label_tag "category", nil%></div>
+      <div class="col-md-5"><%= select_tag "category_filter", options_for_select(rol_rule_category_names), {class: 'form-control', prompt: "All Categories"} %></div>
+    </div>
+  </div>
+  <div class="col-md-3 text-right">
+    <input type="text" name="" class="search-vendor-rol-rules form-control" placeholder="Search Vendor Group Name" value="" style="margin-top: 5px;">
+  </div>
+</div>
+<hr>
+<div class="row">
+  <div class="col-md-12">
+    <% if @inventory_rol_rules.count > 0 %>
+      <table id="manage_inventory_items_table" class="table table-primary table-bordered">
+        <thead>
+        <th>Item Name</th>
+        <th>Store Name</th>
+        <th>ROL Value</th>
+        <th>Category</th>
+        <th>Sub Category</th>
+        <th>Max Value</th>
+        <th>Min Value</th>
+<!--        <th class="text-center">Actions</th>-->
+        </thead>
+        <tbody>
+
+        <% @inventory_rol_rules.each do |rol_rule| %>
+          <% visibility = rol_rule.is_deleted ? 'visibility: hidden;' : 'visibility: visible' %>
+          <% variant = Inventory::Item::Variant.find_by(id: rol_rule.variant_id)  %>
+          <tr class="each-contact-table-row vendor_rol_rules_tr">
+            <td>
+              <b class="variant_name" style="color:#000;"><%= rol_rule.try(:variant_name) %></b>
+            </td>
+
+            <td>
+              <b class="store_name" style="color:#000;"><%= rol_rule.try(:store_name) %></b>
+            </td>
+
+            <td>
+              <b class="rol_value" style="color:#000;"><%= rol_rule.try(:rol_value) %></b>
+            </td>
+
+            <td>
+              <b class="category_name" style="color:#000;"><%= variant.try(:category_name) %></b>
+            </td>
+            <td>
+              <b class="sub_category_name" style="color:#000;"><%= variant.try(:sub_category_name) %></b>
+            </td>
+
+            <td>
+              <b class="max_value" style="color:#000;"><%= rol_rule.try(:max_value) %></b>
+            </td>
+
+            <td>
+              <b class="min_value" style="color:#000;"><%= rol_rule.try(:min_value) %></b>
+            </td>
+          </tr>
+        <% end %>
+        </tbody>
+      </table>
+    <% else %>
+      <div class="col-md-12 text-center mt10">
+        No Items to Show.
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<script type="text/javascript">
+  $(".search-vendor-rol-rules").on('keyup', function() {
+    search_data()
+  })
+
+  $("#store_filter, #category_filter").change(function() {
+    search_data()
+  })
+
+  function search_data(){
+    store_search = $("#store_filter").find(":selected").text().toUpperCase();
+    category_search = $("#category_filter").find(":selected").text().toUpperCase();
+    vendor_rol_rules = $(".vendor_rol_rules_tr");
+    vendor_rol_rules_count = vendor_rol_rules.length;
+    search = $(".search-vendor-rol-rules").val().toUpperCase().trim();
+    counter = 0
+    for (var i = vendor_rol_rules_count - 1; i >= 0; i--) {
+      store_name = $(vendor_rol_rules[i]).find(".store_name").html().toUpperCase()
+      category_name = $(vendor_rol_rules[i]).find(".category_name").html().toUpperCase()
+      variant_name = $(vendor_rol_rules[i]).find(".variant_name").html().toUpperCase()
+      sub_category_name = $(vendor_rol_rules[i]).find(".sub_category_name").html().toUpperCase()
+      rol_value = $(vendor_rol_rules[i]).find(".rol_value").html().toUpperCase()
+      max_value = $(vendor_rol_rules[i]).find(".max_value").html().toUpperCase()
+      min_value = $(vendor_rol_rules[i]).find(".min_value").html().toUpperCase()
+      search_conditions = (variant_name.indexOf(search) > -1 || sub_category_name.indexOf(search) > -1 || rol_value.indexOf(search) > -1 || max_value.indexOf(search) > -1 || min_value.indexOf(search) > -1)
+      search_parm = null
+      if (store_search == 'ALL STORES' && category_search == "ALL CATEGORIES") {
+        search_parm = true
+        if ($(".search-vendor-rol-rules").val().length > 0) {
+          search_parm = (search_conditions || store_name.indexOf(search) > -1 || category_name.indexOf(search) > -1)
+        }
+      } else if (store_search != "ALL STORES" && category_search != "ALL CATEGORIES") {
+        search_parm = ((category_name).indexOf(category_search) > -1 && (store_name).indexOf(store_search) > -1)
+        if ($(".search-vendor-rol-rules").val().length > 0) {
+          search_parm = search_parm && search_conditions
+        }
+      } else if (store_search == "ALL STORES") {
+        search_parm = ((category_name).indexOf(category_search) > -1)
+        if ($(".search-vendor-rol-rules").val().length > 0) {
+          search_parm = search_parm && (search_conditions || store_name.indexOf(search) > -1)
+        }
+      } else {
+        search_parm = ((store_name).indexOf(store_search) > -1)
+        if ($(".search-vendor-rol-rules").val().length > 0) {
+          search_parm = search_parm && (search_conditions || category_name.indexOf(search) > -1)
+        }
+      }
+
+      if (search_parm) {
+        $(vendor_rol_rules[i]).css("display", "");
+      } else {
+        $(vendor_rol_rules[i]).css("display", "None");
+        counter += 1
+      }
+    }
+
+    if (vendor_rol_rules_count == counter) {
+      if ($(".show-nothing").length <= 0) {
+        $("#vendor_group_master-list").append(`<tr class="show-nothing"><td class="text-center" colspan="5">Nothing to Show</td></tr>`)
+      }
+    } else {
+      $(".show-nothing").remove();
+    }
+  }
+</script>
+
+
+<style>
+  #confirmation-modal a{
+    display: inline-block !important;
+  }
+  .row-container{
+    height: 25px;
+  }
+</style>

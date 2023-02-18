@@ -1,0 +1,270 @@
+<%= javascript_include_tag "application-loggedin", "data-turbolinks-track" => true %>
+
+<%hsn_required = current_organisation['inventory_hsn_code_required']%>
+<div class="modal-dialog modal-lg" style="width: 95%;">
+  <div class="modal-content">
+    <%= form_tag '/inventory/items/update_multiple', id: 'new-items-form', method: :patch, remote: true do %>
+      <div class="modal-header">
+        <div class="row">
+          <div class="col-md-4 col-md-offset-4">
+            <h4 class="modal-title">Add Items</h4>
+          </div>
+          <div class="col-md-4 text-right">
+            <% if @items.count > 0 %>
+              <%= submit_tag 'Save', type: 'button', class: "btn btn-success", id: 'save-multiple-items', data: { 'disable-with': 'Please Wait...' }, onclick: 'validateItemsForm();', style: "margin-left:5px;" %>
+            <% else %>
+              <%= link_to bulk_upload_data_inventory_items_path, class: 'btn btn-primary', data: { remote: true, 'toggle': 'modal', 'target': '#bulk-upload-item-modal' } do %><i class="fa fa-plus"></i> Bulk Upload<% end %>
+            <% end %>
+            <button type="button" class="btn btn-default" data-dismiss="modal" style="margin-left:5px;">Close</button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-body" style="overflow-y: hidden; overflow-x: auto">
+        <div class="row header" style="position: sticky; top: 0">
+          <div>Sr. No</div>
+          <div class="select-width">Category*</div>
+          <div class="select-width">Sub Category</div>
+          <div style="width: 175px">Description*</div>
+          <div style="width: 175px">HSN Code<%= hsn_required ? "*" : "" %></div>
+          <div style="width: 175px">Brand/Company</div>
+          <div style="width: 175px">Manufacturer</div>
+          <div style="width: 175px">Model No.</div>
+          <div class="select-width">Price Range</div>
+          <div style="width: 100px">Tax Inclusive</div>
+          <div class="select-width">Tax*</div>
+          <div>Unit level</div>
+          <div>Expiry Present</div>
+          <div>Prescription Mandatory</div>
+          <div>Stockable</div>
+          <div class="select-width">Dispensing Unit</div>
+          <div class="select-width">Package Type</div>
+          <div>#Sub-package/Package</div>
+          <div class="select-width">Sub-package/ Package Type</div>
+          <div>#Unit/sub-package</div>
+          <div class="select-width">Unit/sub-package Type</div>
+          <div>Fixed threshold</div>
+          <div>Minimum Stock Units</div>
+          <div class="select-width">Minimum Stock%</div>
+          <div>Action</div>
+        </div>
+        <div class="row" style="margin-top: 50px; max-height: 60vh;overflow-x: hidden;overflow-y: auto;width: 3450px;">
+          <% if @items.count > 0 && @error.blank? %>
+            <% @items.each_with_index do |item, index| %>
+              <%category = Inventory::Category.find(item.category_id.to_s)%>
+              <div class="row body" data-index="<%=index%>">
+                <div class="t-cell" style="width: 50px"><%= index + 1 %></div>
+                <div class="t-cell select-width">
+                  <%= select_tag "inventory_item[#{index}][category_id]", options_for_select(@inventory_categories.map { |ele| [ele.name, ele.id.to_s, { "data-category-type": ele.type, "data-stockable": ele.stockable }] }, item.try(:category_id).to_s), { class: 'form-control p7_10 item_category', "data-index": index } %>
+                  <%= hidden_field_tag "inventory_item[#{index}][category]", item.category %>
+                  <%= hidden_field_tag "inventory_item[#{index}][category_name]", item.category %>
+                </div>
+                <div class="t-cell select-width item-sub-categories-data-<%=index%>">
+                  <% sub_categories = @inventory_sub_categories.select{|isc| isc.category_id.to_s == item.category_id.to_s } %>
+                  <%= render partial: '/inventory/items/sub_categories', locals: { sub_categories: sub_categories, index: index, item: item } %>
+                </div>
+                <div class="t-cell" style="width: 175px">
+                  <%= text_field_tag "inventory_item[#{index}][description]", item.description, required: true, class: "inventory_item_description", data: { index: index } %>
+                </div>
+                <div class="t-cell" style="width: 175px">
+                  <%= text_field_tag "inventory_item[#{index}][hsn_no]", item.hsn_no, required: hsn_required, class: 'inventory_item_hsn_no' %>
+                </div>
+                <div class="t-cell" style="width: 175px"><%= text_field_tag "inventory_item[#{index}][brand]", item.brand %></div>
+                <div class="t-cell" style="width: 175px"><%= text_field_tag "inventory_item[#{index}][manufacturer]", item.manufacturer %></div>
+                <div class="t-cell" style="width: 175px"><%= text_field_tag "inventory_item[#{index}][model_no]", item.model_no, class: "item_model_no" %></div>
+                
+                <div class="t-cell select-width">
+                  <%= select_tag "inventory_item[#{index}][pricing_index]", options_for_select(["Low", "Medium", "High"], item.pricing_index), { include_blank: false, prompt: 'select', style: 'min-width: 90px;', class: 'form-control p7_10 item_pricing_index' } %>
+                </div>
+                <div class="t-cell" style="width: 105px">
+                  <%= check_box_tag "inventory_item[#{index}][tax_inclusive]", item.tax_inclusive, item.tax_inclusive, class: 'form-control p7_10 tax_inclusive' %>
+                </div>
+                <div class="t-cell select-width">
+                  <%=hidden_field_tag "inventory_item[#{index}][tax_rate]",'', class: "inventory_item_tax_rate"%>
+                  <%=hidden_field_tag "inventory_item[#{index}][tax_name]",'', class: "inventory_item_tax_name"%>
+                  <%= select_tag "inventory_item[#{index}][tax_group_id]", options_for_select(@tax_groups.map { |ele| ["#{ele.name} - #{ele.rate}%", ele.id.to_s, "data-rate": ele.rate, "data-name": ele.name] }, item.try(:tax_group_id).to_s), { prompt: "please select", class: 'form-control p7_10  item_tax_group_id', "data-index": index, required: true } %>
+                </div>
+                <div class="t-cell" style="width: 80px">
+                  <%= check_box_tag "inventory_item[#{index}][unit_level]", item.unit_level, item.unit_level, class: 'form-control p7_10 item_unit_level' %>
+                </div>
+                <div class="t-cell" style="width: 110px;">
+                  <%= check_box_tag "inventory_item[#{index}][expiry_present]", item.expiry_present, item.expiry_present, class: 'form-control p7_10 expiry_present item_expiry_present'%>
+                </div>
+                <div class="t-cell" style="width: 165px;">
+                  <%= check_box_tag "inventory_item[#{index}][prescription_mandatory]", item.prescription_mandatory, item.prescription_mandatory, class: 'form-control p7_10 prescription_mandatory item_prescription_mandatory' %>
+                </div>
+                <div class="t-cell" style="width: 80px;">
+                  <%= check_box_tag "inventory_item[#{index}][stockable]", item.stockable, item.stockable, class: 'form-control p7_10 stockable' %>
+                </div>
+                <div class="select-width t-cell dispensing_units_<%=index%>">
+                  <% ds_units = @dispensing_units.select{|a| category.dispensing_unit_ids.map(&:to_s).include?(a.id.to_s) } %>
+                  <% selected_disp =  ds_units.pluck(:name).map{|a| a.gsub(',', '')}.include?(item.dispensing_unit) ? item.dispensing_unit : ds_units&.first&.name %>
+                  <%= select_tag "inventory_item[#{index}][dispensing_unit_id]", options_for_select(ds_units.map { |ele| [ele.name, ele.id.to_s] }, item.try(:dispensing_unit_id).to_s), { class: 'form-control p7_10  inventory_item_dispensing_unit_id', "data-index": index } %>                
+                  <%= hidden_field_tag "inventory_item[#{index}][dispensing_unit]", selected_disp %>
+                  <%= hidden_field_tag "inventory_item[#{index}][dispensing_unit_name]", selected_disp %>
+                </div>
+                
+                <div class="select-width t-cell">
+                  <%= select_tag "inventory_item[#{index}][package_type]", options_for_select(@package_types, item.try(:package_type)), { class: 'form-control p7_10  item_package_type', "data-index": index } %>
+                </div>
+                <div class="t-cell" style="width: 160px">
+                  <%= number_field_tag "inventory_item[#{index}][sub_package_units]", item.sub_package_units, min: 1, style: 'max-width: 50px', required: true %>
+                  </div>
+                <div class="select-width t-cell">
+                  <%= select_tag "inventory_item[#{index}][sub_package_type]", options_for_select(@sub_package_types, item.try(:sub_package_type)), { class: 'form-control p7_10  item_sub_package_type', "data-index": index } %>
+                  <span class="package_type_label"></span>
+                </div>
+                <div class="t-cell" style="width: 145px">
+                  <%= number_field_tag "inventory_item[#{index}][item_units]", item.item_units, min: 1, style: 'max-width: 50px', required: true %>
+                  </div>
+                <div class="select-width t-cell">
+                  <%= select_tag "inventory_item[#{index}][item_type]", options_for_select(@item_types, item.try(:item_type)), { class: 'form-control p7_10  item_item_type', "data-index": index } %>
+                  <span class="sub_package_type_label"></span>
+                </div>
+                <div class="t-cell" style=" width: 125px">
+                  <%= check_box_tag "inventory_item[#{index}][fixed_threshold]", item.fixed_threshold, item.fixed_threshold, class: 'form-control p7_10 item_fixed_threshold' %>
+                </div>
+                <div class="t-cell" style="width: 140px">
+                  <%= number_field_tag "inventory_item[#{index}][threshold_value]", item.threshold_value, style: "max-width: 50px;#{item.fixed_threshold ? '' : 'display: none' }", class: "item_threshold_value" %>
+                </div>
+                <div class="t-cell select-width">
+                  <%= select_tag "inventory_item[#{index}][threshold]", options_for_select([["10%", 10.0], ['20%', 20.0], ['30%', 30.0]], item.threshold.to_f), { include_blank: false, class: "#{item.fixed_threshold ? 'hidden' : ''} form-control p7_10  item_threshold", "data-index": index } %>
+                </div>
+                <div class="t-cell" style="width: 50px">
+                  <button class="btn btn-sm btn-danger remove-item">X</button>
+                </div>
+              </div>
+              <div class="row" style="width: 3450px">
+                <div class="col-md-3">
+                  <div class="row generic-compositions-container-<%=index%>">
+                    <div class="col-md-4">
+                      <span>Generic Compositions:</span>
+                      <span class="clear-generic-tag" style="text-decoration: underline; color: gray; cursor: pointer;">Clear All</span>
+                    </div>
+                    <div class="col-md-7 generic-compositions-<%=index%> generic-compositions-sections" style="min-height: 30px; margin-left: -80px">
+                      <%= render partial: "/inventory/items/generic_compositions", locals: { index: index, item: item } %>                  
+                    </div>
+                    <div class="col-md-1" style="position: absolute;bottom: 6px;right: 110px;">
+                      <button type='button' class="btn btn-primary btn-xs btn-add-item" style="padding: 3px 10px;" data-index="<%= index %>"><i class="fa fa-plus"></i></button>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="row">
+                    <div class="col-md-2">
+                      <span>Possible Variants:</span>
+                    </div>
+                    <div class="col-md-8 possible-variants-<%=index%>" style="min-height: 30px; margin-left: -25px">
+                      <%= render partial: "/inventory/items/possible_variants", locals: { index: index, item: item } %>
+                    </div>
+                    <div class="col-md-1" style="position: absolute;bottom: 8px;right: 120px;">
+                      <button type='button' class="btn btn-primary btn-xs btn-add-item-cf" style="padding: 3px 10px;" data-index="<%= index %>""><i class="fa fa-plus"></i></button>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3 medicine_classes">
+                  <div class="row" style="display: flex">
+                    <input type="text" name="" value="<%= inventory_item_medicine_classes(item) %>" id="item_medicine_class" class="form-control p7_10 item_medicine_class" placeholder="Search by class Name" data-index="<%=index%>" style="width: 175px;">
+                    <div class="btn-group" style="margin-bottom: 0px;margin-left: 5px" role="group" aria-label="">
+                      <a class="btn btn-success btn-sm" id=""><i class="fa fa-filter"></i>Filter</a>
+                      <button type="button" class="btn btn-success btn-sm dropdown-toggle " data-toggle="dropdown">
+                        <span class="caret"></span>
+                      </button>
+                      <ul class="dropdown-menu children">
+                        <% @generic_class_categories.each do |category| %>
+                          <li><a class="category-name" href="#" category_name="<%= category %>"><%= category %></a></li></li>
+                        <% end %>
+                      </ul>
+                    </div>
+                    <div class="filter_text" style="padding: 0;margin-left: 5px">
+                      <b style="float: left;">Filter :</b>
+                      <span class="clear-filters-tag" style="text-decoration: underline; color: gray;padding-right: 10px; float: right; cursor:pointer">Clear Filters</span>
+                      <br>
+                      <div class="AddedCategory"></div>
+                    </div>
+                  </div>
+                  <div class="row" >
+                    <div id="item_class_section" class="item_class_section" style="margin-top: 5px;top: 40px;display: block;width: 700px;">
+                    </div>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+          <% else %>
+            <div class="tr row error-row text-center">
+              <% if @error.present? %>
+                <%= @error %>
+              <% else %>
+                No Data to Display, please fill all the required details and upload it again.
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>
+<style>
+  .item-class-card{
+    padding-top: 1px;
+    margin-left: 3px;
+    margin-bottom: 3px;
+    overflow: hidden;
+    float: left;
+    padding-bottom: 3px;
+  }
+  .item-class-card .btn-remove-class{
+    float: right;
+    font-weight: bold;
+    color: red;
+    font-size: 25px;
+    cursor: pointer;
+  }
+  .d-flex{
+    display: flex;
+  }
+  .value-container .error{
+    position: absolute;
+    margin-top: 42px;
+  }
+  input.error, select.error {
+    border-color: #b94a48!important;
+    color: #b94a48!important;
+    background-image: none;
+  }
+  input.valid, select.valid {
+    border-color: #468847;
+    background-image: none;
+  }
+  .text-center {
+    text-align: center;
+  }
+  .header div {
+    padding: 5px 10px;
+    background-color: #2b78e4;
+    color: #ffffff;
+    text-align: center;
+    float: left;
+    height: 60px;
+  }
+  .header {
+    width: 3450px;
+  }
+  .body {
+    width: 3450px
+  }
+  .t-cell {
+    padding: 10px;
+    float: left;
+    text-align: center;
+  }
+  tr div {
+    padding: 10px;
+  }
+  .select-width  {
+    width: 150px;
+  }
+  #item_threshold {
+    min-width: 80px;
+  }
+</style>

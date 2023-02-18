@@ -1,0 +1,579 @@
+const surgeryPackageForm = "#surgery-package-form"
+
+// Validation
+const surgeryPackageValidation = () => {
+  $(surgeryPackageForm).validate({
+    rules: {
+      "package_definition[name]": { required: true },
+      "package_definition[facility_id]": { required: true },
+      "package_definition[specialty_id]": { required: true },
+      "package_definition[sub_specialty_id]": { required: true },
+      "package_definition[department_id]": { required: true },
+      "package_definition[service_group_id]": { required: true },
+      "package_definition[service_sub_group_id]": { required: true },
+      "package_definition[display_name]": { required: true },
+      "package_definition[valid_from]": { required: true },
+      "package_definition[valid_till]": { required: true },
+      "package_definition[service_type]": { required: true },
+      "package_definition[service_type_code_name]": { required: true }
+    },
+    messages: {}
+  });
+
+  $.validator.addMethod("NotEqualService", function(value, element) {
+    var $element = $(element);
+    var validateClass = $(element).attr('validate_class')
+    var $item_ids = $(`.${validateClass}`).not($element);
+    var item_idsArray = $.map($item_ids, function(item_ids) {
+      return $(item_ids).val();
+    });
+    if ($.inArray($element.val(), item_idsArray) >= 0) {
+      return false;
+    } else {
+      return true;
+    }
+  }, "Please select Unique Service");
+
+  jQuery.validator.addMethod("noSpace", function(value, element) { 
+    return value == '' || value.trim().length != 0;  
+  }, "Empty space");
+  
+  $.validator.addMethod("checkPackageCodes", function(val, element, opt){
+    var comparisionArray = []
+    for(i = 0; i < $(".user_package_code").length; i++){
+      comparisionArray.push($(`input[name="surgery_packages[${i}][user_package_code]"]`).val()) 
+    }
+    if(comparisionArray.filter(value => value == val).length > 1){
+      // console.log(comparisionArray, val)
+      return false
+    }
+    return true
+  }, "Duplicate")
+
+  // Surgery Package Fields
+  $.validator.addClassRules("package_contact_group_id", { required: true });
+  $.validator.addClassRules("package_payer_master_id", { required: true });
+  $.validator.addClassRules("package_type", { required: true });
+  $.validator.addClassRules("package_display_name", { required: true });
+  $.validator.addClassRules("package_no_of_days", { required: true });
+  $.validator.addClassRules("package_amount", { required: true });
+  $.validator.addClassRules("package_valid_from", { required: true });
+  $.validator.addClassRules("package_valid_till", { required: true });
+  for (var i =0 ; i < $(".user_package_code").length; i++) {
+
+    $(`#surgery_packages_${i}_user_package_code`).rules('add',{
+      required: true,
+      noSpace: true,
+      checkPackageCodes: true ,
+    })  
+    
+  }
+
+  // Service Fields
+  $.validator.addClassRules("package_services_item_type", { required: true });
+  $.validator.addClassRules("package_services_unit", { required: true });
+  $.validator.addClassRules("package_services_unit_price", { required: true });
+  $.validator.addClassRules("package_services_total_price", { required: true });
+
+  // Validate uniq within block
+  for (var i = $(".service-package-master").length - 1; i >= 0; i--) {
+    $.validator.addClassRules(`package_services_item_id_${i}`, { required: true, NotEqualService: true });
+  }
+};
+surgeryPackageValidation();
+
+// DatePicker for ValidFrom and ValidTill fields
+const datePickerOptions = () => {
+  let from_datepicker_options = { dateFormat: "dd/mm/yy" }
+  let till_datepicker_options = { minDate: -0, dateFormat: "dd/mm/yy" }
+
+  let validFromDp = $(".valid_from_datepicker")
+  for (var i = validFromDp.length - 1; i >= 0; i--) {
+    let validFromId = $(validFromDp[i]).attr('id')
+    $(`#${validFromId}`).datepicker(from_datepicker_options)
+  }
+
+  let validTillDp = $(".valid_till_datepicker")
+  for (var i = validTillDp.length - 1; i >= 0; i--) {
+    let validTillId = $(validTillDp[i]).attr('id')
+    $(`#${validTillId}`).datepicker(till_datepicker_options)
+  }
+}
+datePickerOptions();
+
+// Reset Index of all Fields
+const indexResetLogic = () => {
+  let surgeryPackageRow = $("#surgery-package-master").find(".surgery-package")
+  renumberIndex(surgeryPackageRow, ["input", "select"], 1, [".service-surgery-package"])
+};
+
+// Create Specialty dropdown on Facility change
+const createSpecialtyDropdown = (facility_id) => {
+  $(".specialty_id").html("")
+
+  fetch(`/surgery_packages/set_specialties?facility_id=${facility_id}`)
+  .then(data => data.json())
+  .then(function(data) {
+    let specialties = data['specialties']
+    $(".specialty_id").append(`<option value=""></option>`)
+    for(let specialty of specialties){
+      $(".specialty_id").append(`<option value=${specialty[1]}>${specialty[0]}</option>`)
+    }
+    $(".specialty_id").trigger('change', true)
+  })
+}
+
+// Create SubSpecialty dropdown on Specialty change
+const createSubSpecialtyDropdown = (specialty_id) => {
+  $(".sub_specialty_id").html("")
+
+  if(specialty_id != ''){
+    fetch(`/sub_specialties?specialty_id=${specialty_id}`)
+    .then(data => data.json())
+    .then(function(data) {
+      $('.sub_specialty_id').children().remove();
+
+      $('.sub_specialty_id').append($(`<option value=""> </option>`))
+      $.each(data, function(key, value) {
+        $('.sub_specialty_id').append($("<option></option>").attr("value", value[0]).text(value[1]));
+      });
+
+      $('.sub_specialty_id').trigger('change', true)
+    })
+  }
+}
+
+// Create Type dropdown on Specialty change
+const createTypeDropdown = (specialty_id) => {
+  $(".service_type").html("")
+
+  if(specialty_id == null){
+    typeArray = [['', '']]
+  } else if(specialty_id == '309988001'){
+    typeArray = [['', ''], ['Procedure', 'procedure'], ['Ophthal Investigation', 'ophthal'], ['Laboratory Investigation', 'laboratory'], ['Radiology Investigation', 'radiology']]
+  } else if(specialty_id == '309989009'){
+    typeArray = [['', ''], ['Laboratory Investigation', 'laboratory'], ['Radiology Investigation', 'radiology']]
+  } else {
+    typeArray = [['', ''], ['Procedure', 'procedure'], ['Laboratory Investigation', 'laboratory'], ['Radiology Investigation', 'radiology']]
+  }
+
+  for(let type of typeArray){
+    $(".service_type").append(`<option value=${type[1]}>${type[0]}</option>`)
+  }
+  $(".service_type").trigger('change')
+}
+
+// Search Procedure/Investigation
+const searchTypeCode = (url) => {
+  let specialty_id = $('.specialty_id').val();
+  let service_type = $(".service_type").val();
+
+  $('.service_type_code_name').autocomplete({
+    minLength: 2,
+    source: function(request, response) {
+      $.ajax({
+        dataType: "json",
+        type: 'get',
+        url: url,
+        data: {
+          search: request.term,
+          speciality_id: specialty_id,
+          remote: "true" },
+        success: function(data) {
+          response(data);
+        },
+        error: function(data) {
+        }
+      });
+    },
+    select: function( event, ui ) {
+      if(ui.item["code"] != undefined){ // Procedures
+        $(".service_type_code").val(ui.item["code"])
+      } else { // Investigations
+        $(".service_type_code").val(ui.item["investigation_id"])
+      }
+      $(".service_type_code_name").attr('readonly','readonly')
+      $(".clear-service-code").show();
+
+      $(".package_service_type_code").val($(".service_type_code").val())
+      $(".package_service_type_code_name").val(ui.item["value"])
+    },
+    create: function () {
+      $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+        if(item.procedure_type_label != undefined){ // Procedures
+          label = item.procedure_type_label
+        } else { // Investigations
+          label = item.investigation_type_label
+        }
+        return $(`<li style="background-color:#d9edf7;color:white;"></li>`)
+            .append(`<a>${item.label}&nbsp; &nbsp; &nbsp;<span class="badge pull-right">${label}</span></a>`)
+            .appendTo(ul);
+      };
+   },
+  });
+}
+
+// Reset Package Fields if any of Facility/Specialty/Department
+const resetPackageFields = () => {
+  $(".surgery-package").remove();
+  $(".btn-add-surgery-package").trigger('click')
+}
+
+const createItemDropdown = (lastPackageItem) => {
+  let facility_id = $("#package_definition_facility_id").val()
+  if(facility_id != ""){
+    fetch(`/surgery_packages/set_items?facility_id=${facility_id}`)
+    .then(data => data.json())
+    .then(function(data) {
+      let items = data['items']
+
+      $(lastPackageItem).append(`<option value=""></option>`)
+      for(let item of items){
+        $(lastPackageItem).append(`<option value=${item[1]} data-type='${item[2]}'>${item[0]}</option>`)
+      }
+    })
+  }
+}
+
+// Sets Package fields to newly added Package based on common fields selected on top
+const setPackageFields = (surgeryPackageBlock) => {
+  $(surgeryPackageBlock).find(".package_organisation_id").val($(".organisation_id").val())
+  $(surgeryPackageBlock).find(".package_facility_id").val($("#package_definition_facility_id").val())
+  $(surgeryPackageBlock).find(".package_specialty_id").val($(".specialty_id").val())
+  $(surgeryPackageBlock).find(".package_sub_specialty_id").val($(".sub_specialty_id").val())
+  $(surgeryPackageBlock).find(".package_department_id").val($(".department_id").val())
+  $(surgeryPackageBlock).find(".package_service_group_id").val($(".service_group_id").val())
+  $(surgeryPackageBlock).find(".package_service_sub_group_id").val($(".service_sub_group_id").val())
+  $(surgeryPackageBlock).find(".package_name").val($(".name").val())
+  $(surgeryPackageBlock).find(".package_display_name").val($(".display_name").val())
+  $(surgeryPackageBlock).find(".package_room_type").val($(".room_type").val())
+  $(surgeryPackageBlock).find(".package_service_type").val($(".service_type").val())
+  $(surgeryPackageBlock).find(".package_service_type_code_name").val($(".service_type_code_name").val())
+  $(surgeryPackageBlock).find(".package_service_type_code").val($(".service_type_code").val())
+  $(surgeryPackageBlock).find(".package_valid_from").val($(".valid_from").val())
+  $(surgeryPackageBlock).find(".package_valid_till").val($(".valid_till").val())
+}
+if("<%= params[:clone] %>" == 'true'){
+  setPackageFields($(".surgery-package:last"));
+}
+
+// Assigns Package Name value to hidden fields
+$(".name").on('keyup', function(){
+  let name = $(this).val();
+  $(".package_name").val(name)
+})
+
+// Create Specialty Dropdown and assigns Facility value to hidden fields
+$(".facility_id").on('change', function(){
+  let facility_id = $(this).val();
+  createSpecialtyDropdown(facility_id)
+  resetPackageFields();
+
+  $(".package_facility_id").val(facility_id)
+})
+
+// Create Type Dropdown and assigns Specialty value to hidden fields
+$(".specialty_id").on('change', function(e, triggered=false){
+  let specialty_id = $(this).val();
+  let facility_id = $("#package_definition_facility_id").val()
+  createSubSpecialtyDropdown(specialty_id)
+  createTypeDropdown(specialty_id)
+
+  if(triggered == false){
+    resetPackageFields();
+    $(".package_facility_id").val(facility_id)
+  }
+
+  $(".package_specialty_id").val(specialty_id)
+})
+
+// Create Type Dropdown and assigns Specialty value to hidden fields
+$(".sub_specialty_id").on('change', function(e, triggered=false){
+  let sub_specialty_id = $(this).val();
+  let specialty_id = $("#package_definition_specialty_id").val();
+  let facility_id = $("#package_definition_facility_id").val()
+  if(triggered == false){
+    resetPackageFields();
+    $(".package_facility_id").val(facility_id)
+    $(".package_specialty_id").val(specialty_id)
+  }
+
+  $(".package_sub_specialty_id").val(sub_specialty_id)
+})
+
+// Assigns Department value to hidden fields
+$(".department_id").on('change', function(){
+  let department_id = $(this).val();
+  $(".package_department_id").val(department_id)
+
+  resetPackageFields();
+})
+
+// Assigns Category value to hidden fields
+$(".service_group_id").on('change', function(){
+  let service_group_id = $(this).val();
+  $(".package_service_group_id").val(service_group_id)
+})
+
+// Assigns Sub Category value to hidden fields
+$(".service_sub_group_id").on('change', function(){
+  let service_sub_group_id = $(this).val();
+  $(".package_service_sub_group_id").val(service_sub_group_id)
+})
+
+// Assigns Display Name to Display Name fields
+$(".display_name").on('keyup', function(){
+  let display_name = $(this).val();
+  $(".package_display_name").val(display_name)
+})
+
+// Assigns Valid from to Valid from fields
+$(".valid_from").on('change', function(){
+  let valid_from = $(this).val();
+  $(".package_valid_from").val(valid_from)
+})
+
+// Assigns Valid till to Valid till fields
+$(".valid_till").on('change', function(){
+  let valid_till = $(this).val();
+  $(".package_valid_till").val(valid_till)
+})
+
+// Assigns Room Type value to hidden fields
+$(".room_type").on('change', function(){
+  let room_type = $(this).val();
+  $(".package_room_type").val(room_type)
+})
+
+// Unlock Search Procedure/Investigation Option based on selection
+$(".service_type").on('change', function(){
+  let service_type = $(this).val();
+
+  $(".search-header").html(`Search ${$('option:selected', this).html().split(" ")[0]}`)
+  $(".service_type_code_name").val('')
+  $(".service_type_code").val('')
+  $(".clear-service-code").hide();
+
+  if(service_type != ''){
+    $(".service_type_code_name").removeAttr('readonly', 'readonly')
+  } else {
+    $(".service_type_code_name").attr('readonly', 'readonly')
+  }
+
+  $(".package_service_type").val(service_type)
+  $(".package_service_type_code_name").val('')
+  $(".package_service_type_code").val('')
+})
+// Edit form
+$(".search-header").html(`Search ${$('option:selected', ".service_type").html().split(" ")[0]}`)
+
+// Search Procedure/Investigation based on user input
+$(".service_type_code_name").on('keyup', function(){
+  let service_type_code_name = $(this).val();
+  let service_type = $('.service_type').val();
+
+  if(service_type == "procedure"){
+    url = '/common_procedures/search'
+  } else if(service_type == "ophthal"){
+    url = '/ophthalmology_investigation_data/search'
+  } else if(service_type == "laboratory"){
+    url = '/laboratory_investigation_data/search'
+  } else if(service_type == "radiology"){
+    url = '/radiology_investigation_data/search'
+  }
+  searchTypeCode(url)
+})
+
+// Clear Code if users needs to Input another one
+$(".clear-service-code").on('click', function(e){
+  e.preventDefault();
+  $(".service_type_code_name").val('').removeAttr('readonly', 'readonly')
+  $(".service_type_code").val('')
+  $(".package_service_type_code_name").val('')
+  $(".package_service_type_code").val('')
+
+  $(this).hide();
+})
+
+// Add More Surgery Package
+$(".btn-add-surgery-package").on('click', function(e){
+  e.preventDefault();
+  let surgeryPackageBlock = `<%= render partial: 'surgery_package_details.html.erb' %>`
+  $("#surgery-package-master").append(surgeryPackageBlock)
+
+  setPackageFields($('.surgery-package:last'));
+  indexResetLogic();
+  datePickerOptions();
+
+  if($("#surgery-package-master").find(".surgery-package").length > 1){
+    $(".btn-remove-package").removeAttr('disabled', 'disabled')
+  } else {
+    $(".btn-remove-package").attr('disabled', 'disabled')
+  }
+
+  $(`#surgery_packages_${($('.user_package_code').length)-1}_user_package_code`).rules('add',{
+    required: true,
+    noSpace: true,
+    checkPackageCodes: true ,
+  })  
+})
+
+// Remove Surgery Package
+$(surgeryPackageForm).on('click', ".btn-remove-package", function(e){
+  e.preventDefault();
+  $(this).closest(".surgery-package").remove();
+
+  indexResetLogic();
+
+  if($("#surgery-package-master").find(".surgery-package").length == 1){
+    $(".btn-remove-package").attr('disabled', 'disabled')
+  }
+})
+
+// Add More Surgery Package -> Services
+$(surgeryPackageForm).on('click', ".btn-add-service", function(e){
+  e.preventDefault();
+  let serviceBlock = `<%= render partial: 'package_service_details.html.erb' %>`
+  let surgeryPackageBlock = $(this).closest(".surgery-package")
+
+  $(surgeryPackageBlock).find(".service-package-master").show().append(serviceBlock)
+  $(surgeryPackageBlock).find(".package_amount").attr('readonly', 'readonly')
+
+  indexResetLogic();
+
+  let packageItems = $(".package_services_item_id")
+  let lastPackageItem = $(surgeryPackageBlock).find(".package_services_item_id:last")
+
+  if(packageItems.length > 1){
+    $(lastPackageItem).html($(packageItems[0]).html())
+    $(lastPackageItem).val("")
+  } else {
+    createItemDropdown(lastPackageItem);
+  }
+
+  let surgeryPackage = $(".surgery-package")
+  for (var i = surgeryPackage.length - 1; i >= 0; i--) {
+    $(surgeryPackage[i]).find('.package_services_item_id').addClass(`package_services_item_id_${i}`)
+    $(surgeryPackage[i]).find('.package_services_item_id').attr('validate_class', `package_services_item_id_${i}`)
+
+    $.validator.addClassRules(`package_services_item_id_${i}`, { required: true, NotEqualService: true });
+  }
+})
+
+// Remove Surgery Package -> Services
+$(surgeryPackageForm).on('click', ".btn-remove-package-service", function(e){
+  e.preventDefault();
+
+  let servicePackageMaster = $(this).closest('.service-package-master')
+  let surgeryPackageBlock = $(this).closest(".surgery-package")
+
+  if($(this).hasClass('soft-remove')){
+    $(this).closest(".service-surgery-package").find('.package_services_is_active').val(false);
+
+    $(this).closest('.service-surgery-package').hide();
+  } else {
+    $(this).closest(".service-surgery-package").remove();
+  }
+
+  let services = $(servicePackageMaster).find('.service-surgery-package:visible')
+  if(services.length == 0){
+    $(surgeryPackageBlock).find(".package_amount").val('').removeAttr('readonly')
+    $(servicePackageMaster).hide();
+  } else {
+    packageTotal = 0;
+    for (var i = services.length - 1; i >= 0; i--) {
+      packageTotal += parseInt($(services[i]).find('.package_services_total_price').val())
+    }
+    $(surgeryPackageBlock).find(".package_amount").val(packageTotal).removeAttr('readonly')
+  }
+
+  indexResetLogic();
+})
+
+// Get List of Payers based on Contact Group
+$(surgeryPackageForm).on('change', ".package_contact_group_id", function(){
+  let contact_group_id = $(this).val();
+  let facility_id = $("#package_definition_facility_id").val()
+  let packageContactId = $(this).closest(".surgery-package").find('.package_payer_master_id')
+  if(contact_group_id == 'self'){
+    $(packageContactId).children().remove();
+    $(packageContactId).append($("<option></option>").attr("value", "").text("Select Payer"))
+    $(packageContactId).append($("<option></option>").attr("value", "general").text("Cash"))
+    $(packageContactId).trigger('change')
+  } else {
+    fetch(`/payer_masters/set_payers_list?contact_group_id=${contact_group_id}&facility_id=${facility_id}`)
+    .then(response => response.json())
+    .then(function(data){
+      $(packageContactId).children().remove();
+      $(packageContactId).append($("<option></option>").attr("value", "").text("Select Payer"))
+      $.each(data.payer_fields, function(key, value) {
+        $(packageContactId).append($("<option></option>").attr("value",value[0]).text(value[1]));
+      });
+
+      $(packageContactId).trigger('change')
+    })
+  }
+})
+
+$(surgeryPackageForm).on('keyup change', ".package_no_of_days", function(){
+  let no_of_days = parseInt($(this).val())
+  no_of_days = no_of_days > 0 ? no_of_days : 1
+
+  $(this).closest('.surgery-package').find('.room-charges-days').val(no_of_days)
+  $(this).closest('.surgery-package').find('.package_services_unit').trigger('change')
+})
+
+// Get ItemType based on Item
+$(surgeryPackageForm).on('change', ".package_services_item_id", function(){
+  let itemName = $(this).find('option:selected').html()
+  let itemType = $(this).find('option:selected').attr('data-type')
+
+  $(this).closest('.service-surgery-package').find('.package_services_item_name').val(itemName)
+  $(this).closest('.service-surgery-package').find('.package_services_item_type').val(itemType)
+
+  let unit = $(this).closest('.service-surgery-package').find('.package_services_unit')
+  if(itemType == 'Room Rent'){
+    let package_no_of_days = parseInt($(this).closest('.surgery-package').find('.package_no_of_days').val())
+    package_no_of_days = package_no_of_days > 0 ? package_no_of_days : 1
+    $(unit).addClass('room-charges-days').val(package_no_of_days)
+    $(unit).attr('readonly', 'readonly')
+  } else {
+    $(unit).removeClass('room-charges-days').val(1)
+    $(unit).removeAttr('readonly', 'readonly')
+  }
+  $(unit).trigger('change')
+})
+
+// Set Surgery Package Price based on Service Total
+$(surgeryPackageForm).on('change', ".package_services_total_price", function(){
+  let servicePrices = $(this).closest(".service-package-master").find(".package_services_total_price")
+  let packageAmount = 0
+  for (var i = servicePrices.length - 1; i >= 0; i--) {
+    servicePrice = parseInt($(servicePrices[i]).val())
+    if(!isNaN(servicePrice)){
+      packageAmount = packageAmount + servicePrice
+    }
+  }
+
+  $(this).closest(".surgery-package").find(".package_amount").val(packageAmount)
+})
+
+// Set Service Total Based on Unit/Days
+$(surgeryPackageForm).on('keyup change', ".package_services_unit", function(){
+  let unit = $(this).val()
+  let unit_cost = $(this).closest('.service-surgery-package').find('.package_services_unit_price').val()
+
+  let total_price = parseFloat(unit) * parseFloat(unit_cost)
+
+  $(this).closest('.service-surgery-package').find('.package_services_total_price').val(total_price).trigger('change')
+})
+
+// Set Service Total Based on Unit Cost
+$(surgeryPackageForm).on('keyup change', ".package_services_unit_price", function(){
+  let unit_cost = $(this).val()
+  let unit = $(this).closest('.service-surgery-package').find('.package_services_unit').val()
+
+  let total_price = parseFloat(unit) * parseFloat(unit_cost)
+
+  $(this).closest('.service-surgery-package').find('.package_services_total_price').val(total_price).trigger('change')
+})

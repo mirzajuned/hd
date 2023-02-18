@@ -1,0 +1,1211 @@
+<% current_date = Date.current %>
+
+<div id="filterModal" class="modal fade" role="dialog">
+  <div class="modal-dialog modal-dialog-custom">
+    <!-- Modal content-->
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="btn btn-succes" data-dismiss="modal">
+          <span class="glyphicon glyphicon-remove"></span>
+        </button>
+        <div style="float: right;">
+          <button type="button" class="btn btn-success" id="mis-custom-filter" data-dismiss="modal" >
+            <span class="glyphicon glyphicon-ok"></span> Apply
+          </button>
+          <%= link_to reports_view_mis_new_clinical_reports_path(group: @mis_params[:group], title: @mis_params[:title]),id: 'clear-to-default', data: { remote: true }, style: "color:#fff; display: none;" do %>
+            <button type="button" class="btn btn-danger" data-dismiss="modal">
+              <span class="glyphicon glyphicon-remove"></span>Clear to default
+            </button>
+          <% end %>
+        </div>
+      </div>
+      <div class="modal-body">
+        <div class="row">
+          <div class="panel-body">
+            <div class="col-md-4">
+              <div class="row">
+                <div class="col-md-12">
+                  <ul class="nav navbar-nav" style="font-size:16px;margin-right:2%;">
+                    <!-- TimePeriod -->
+                    <li class="dropdown" style="margin-right:25px;">
+                      <a class="dropdown-toggle" data-toggle="dropdown" href="javascript:void(0); " style="padding: 5px 2px; float: left;">
+                        <span class="mis-dropdown-title">Period</span>
+                        <span id="mis-date-filter" start-date="<%= @mis_params[:start_date] %>" end-date="<%= @mis_params[:end_date] %>"><%= @mis_params[:time_period] %></span>&emsp;<span class="fa fa-caret-down"></span>
+                      </a>
+                      <span id= "default-period" class="apply-default" style="float: right"> Apply default</span>
+                      <ul class="dropdown-menu mis-search-toggle-off" id="period-list" style="overflow-y: auto;max-height:400px;">
+                        <li class="period-list"><a class="mis-date-filter" href="javascript:void(0);" start-date="<%= current_date %>" end-date="<%= current_date %>">Today</a></li>
+                        <li class="period-list"><a class="mis-date-filter" href="javascript:void(0);" start-date="<%= current_date.beginning_of_week %>" end-date="<%= current_date.end_of_week %>">This Week</a></li>
+                        <li class="period-list"><a class="mis-date-filter" href="javascript:void(0);" start-date="<%= current_date.beginning_of_month %>" end-date="<%= current_date.end_of_month %>">This Month</a></li>
+                        <li class="period-list"><a class="mis-date-filter" href="javascript:void(0);" start-date="<%= current_date.beginning_of_quarter %>" end-date="<%= current_date.end_of_quarter %>">This Quarter</a></li>
+                        <li class="period-list"><a class="mis-date-filter" href="javascript:void(0);" start-date="<%= current_date.beginning_of_year %>" end-date="<%= current_date.end_of_year %>">This Year</a></li>
+                        <li class="period-list"><a class="mis-date-filter" href="javascript:void(0);" start-date="<%= current_date.yesterday %>" end-date="<%= current_date.yesterday %>">Yesterday</a></li>
+                        <li class="period-list"><a class="mis-date-filter" href="javascript:void(0);" start-date="<%= (current_date - current_date.wday).beginning_of_week %>" end-date="<%= (current_date - current_date.wday).end_of_week %>">Previous Week</a></li>
+                        <li class="period-list"><a class="mis-date-filter" href="javascript:void(0);" start-date="<%= (current_date - current_date.mday).beginning_of_month %>" end-date="<%= (current_date - current_date.mday).end_of_month %>">Previous Month</a></li>
+                        <li class="period-list"><a class="mis-date-filter" href="javascript:void(0);" start-date="<%= (current_date - 3.months).beginning_of_quarter %>" end-date="<%= (current_date - 3.months).end_of_quarter %>">Previous Quarter</a></li>
+                        <li class="period-list"><a class="mis-date-filter" href="javascript:void(0);" start-date="<%= (current_date - current_date.yday).beginning_of_year %>" end-date="<%= (current_date - current_date.yday).end_of_year %>">Previous Year</a></li>
+                        <li class="period-list"><a class="mis-date-filter" href="javascript:void(0);">Custom</a></li>
+                        <!-- Custom -->
+                      </ul>
+                    </li>
+                    <!-- Inventory -->
+                  </ul>
+                </div>
+                <div class="form-group col-md-6">
+                  <label class="f-title" for="pref-orderby" style="color: #428bca;">Start Date  </label>
+                  <%= text_field_tag :start_date, "", id: 'period_start_date',  class: 'form-control start-datepicker dropdown-filter' %>
+                </div>
+                <div class="form-group col-md-6">
+                  <label class="f-title" for="pref-orderby" style="color: #428bca;">End Date  </label>
+                  <%= text_field_tag :end_date, "", id: 'period_end_date',  class: 'form-control end-datepicker dropdown-filter' %>
+                </div>
+
+                <% @default_filter&.each do |filter|%>
+                  <div class="form-group col-md-12">
+                    <%= render partial: "/report_filters/#{filter.filter_type.downcase}.html.erb", locals: { filter: filter} %>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+            <div class="col-md-8 box-seperator">
+              <div class="row">
+                <% if params[:title] == 'location_statistics' ||  params[:title] == 'ipd_location_statistics' %>
+                  <div class="form-group col-md-6">
+                    <%= render partial: 'mis/clinical_reports/report_filters/location_filters.html.erb' %>
+                  </div>
+                <% end %>
+                <% if  ['investigation_detail', 'patient_detail', 'vision_improvement', 'inpatient_detail', 'procedure_detail', 'user_wise_tat', 'role_wise_tat'].include?(params[:title]) %>
+                  <% @clinical_filter.each do |filter| %>
+                    <div class="form-group col-md-6">
+                      <%= render partial: "/report_filters/#{filter.filter_type.downcase}.html.erb", locals: { filter: filter} %>
+                    </div>
+                  <% end %>
+                <% end %>
+                <% @general_filter&.each do |filter| %>
+                  <div class="form-group col-md-6">
+                    <%= render partial: "/report_filters/#{filter.filter_type.downcase}.html.erb", locals: { filter: filter} %>
+                  </div>
+                <% end %>
+                <% if params[:title] == 'patient_adverse_event' %>
+                  <% @adverse_filter.each do |filter| %>
+                    <div class="form-group col-md-6">
+                      <%= render partial: "/report_filters/#{filter.filter_type.downcase}.html.erb", locals: { filter: filter} %>
+                    </div>
+                  <% end %>
+                <% end %>
+                <!-- form group [search] -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<script>
+  // removing modal overlayer if it is present
+  $('.modal-backdrop').remove();
+  //  methood to update tag aarray every time data is being maniupated in filter
+  $('.end-datepicker').datepicker({
+    dateFormat: "yy-mm-dd"
+  });
+
+  $('.start-datepicker').datepicker({
+    dateFormat: "yy-mm-dd",
+    onSelect: function(dateText, inst) {
+      var selectedDate = $(this).datepicker("getDate");
+      $(".end-datepicker").datepicker("option", "minDate", selectedDate);
+    }
+  });
+
+  var period_start_date =  $("#mis-date-filter").attr("start-date");
+  var period_end_date = $("#mis-date-filter").attr("end-date");
+
+  $("#period_start_date").val(period_start_date);
+  $("#period_end_date").val(period_end_date);
+
+  let tags = ['Period-today' ];
+  let tags_hash = {period: 'Today' }
+
+  const tagContainer = document.querySelector('.tag-container');
+  const input = document.querySelector('.tag-container');
+
+  function createTag(label) {
+    const div = document.createElement('div');
+    div.setAttribute('class', 'tag');
+    const span = document.createElement('span');
+    span.innerHTML = label;
+    div.appendChild(span);
+    return div;
+  }
+
+  function clearTags() {
+    document.querySelectorAll('.tag').forEach(tag => {
+      tag.parentElement.removeChild(tag);
+  });
+  }
+
+  function addTags() {
+    tags =  tags.filter((a, b) => tags.indexOf(a) === b)
+    clearTags();
+    for(var index in tags_hash) {
+      tagContainer.prepend(createTag(tags_hash[index]));
+    }
+  }
+
+  document.addEventListener('click', (e) => {
+
+    if ((e.target.tagName === 'A') && ($(e.target).attr('class') == 'mis-date-filter')) {
+    var new_text = $(e.target).text();
+    $("#mis-date-filter").text(new_text);
+    if (new_text != 'Today'){
+      $("#default-period").show();
+    }else{
+      $("#default-period").hide();
+    }
+    if (new_text != 'Custom') {
+      var start_date = e.target.getAttribute('start-date');
+      var end_date = e.target.getAttribute('end-date');
+      var time_period = 'Period-' + todateFormat(start_date) + " to " + todateFormat(end_date);
+      $("#mis-date-filter").attr("start-date", start_date);
+      $("#mis-date-filter").attr("end-date", end_date);
+//    add date to start date and end date.
+      $("#period_start_date").val(start_date);
+      $("#period_end_date").val(end_date);
+//    tags.push(time_period)
+      tags_hash['period_date'] = time_period;
+    }else{
+      $("#period_start_date").val("");
+      $("#period_end_date").val("");
+    }
+    tags_hash['period'] = new_text
+    addTags();
+  }
+  })
+
+  function invertHash(original){
+    const modified = Object
+            .entries(original)
+            .reduce((all, [key, value]) => ({ ...all, [value]: key }), {});
+    return modified
+  }
+
+  function show_hide_event_description(event_description = ''){
+    let mis_event_category = $('#mis-event_category-filter').val()
+    $('#mis-event_description-filter').empty()
+    $('#mis-event_description-filter').attr('disabled',false)
+    if(mis_event_category == "major"){
+      $('#mis-event_description-filter').append('<option value="" selected>All</option>')
+      $('#mis-event_description-filter').append('<option value="patient_distress">Patient Distress managed within Hospital premises</option>')
+      $('#mis-event_description-filter').append('<option value="postop_inflammation">Postop Inflammation not requiring IVAB/PPV</option>')
+      $('#mis-event_description-filter').append('<option value="aqueous_meets_vitreous">Aqueous Meets Vitreous</option>')
+      $('#mis-event_description-filter').append('<option value="surgical_complications_repeat_surgeries">Surgical complications/Repeat surgeries</option>')
+      $('#mis-event_description-filter').append('<option value="wrong_iol_power">IOL related complication</option>')
+      $('#mis-event_description-filter').append('<option value="culture_postivity_ot_electrical">OT CULTURE positive</option>')
+      $('#mis-event_description-filter').append('<option value="customer_complaint_staff">Complaint letter/Mail towards doctor or staff</option>')
+      $('#mis-event_description-filter').append('<option value="pbk_surgery">PBK following any surgery in our hospital within 1 year of initial surgery</option>')
+      $('#mis-event_description-filter').append('<option value="rescheduling_cancelling_surgery">Rescheduling/cancelling surgery</option>')
+      $('#mis-event_description-filter').append('<option value="optical_related">Optical related</option>')
+      $('#mis-event_description-filter').append('<option value="stoppage_of_OT">Biomedical/electrical/ project related issue leading to stoppage of OT</option>')
+      $('#mis-event_description-filter').append('<option value="customer_complaint_department">Lab report of wrong patient or pharmacy dispensing wrong drugs</option>')
+      $('#mis-event_description-filter').append('<option value="consent_not_taken">Consent form not taken</option>')
+      $('#mis-event_description-filter').append('<option value="major_others">Others</option>')
+      $('#mis-sub_category-filter').attr('disabled',false)
+    } else if(mis_event_category == "minor"){
+      $('#mis-event_description-filter').append('<option value="" selected>All</option>')
+      $('#mis-event_description-filter').append('<option value="post_operative_CME_within_3_months">Post Operative CME within 3 months</option>')
+      $('#mis-event_description-filter').append('<option value="minor_drug_allergy">Allergy to dilating drops</option>')
+      $('#mis-event_description-filter').append('<option value="bio_medical_instrument">Biomedical / project related instrument repair ( non OT)</option>')
+      $('#mis-event_description-filter').append('<option value="simple_re_surgeries">Iris prolapse /cortex wash /  re suturing wound  / iol re-dialling /AC reformation</option>')
+      $('#mis-event_description-filter').append('<option value="conjunctivitis_in_COVID_times">Conjunctivitis in COVID times</option>')
+      $('#mis-event_description-filter').append('<option value="mis_diagnosis_management">Misdiagnosis, Mis management (e.g: uveitis Diagnosed as ACCO etc)</option>')
+      $('#mis-event_description-filter').append('<option value="minor_others">Others</option>')
+      $('#mis-sub_category-filter').attr('disabled',true)
+    } else if(mis_event_category == "critical"){
+      $('#mis-event_description-filter').append('<option value="">All</option>')
+      $('#mis-event_description-filter').append('<option value="globe_perforation">Globe Perforation</option>')
+      $('#mis-event_description-filter').append('<option value="expulsive_hemorrhage">Expulsive Hemorrhage</option>')
+      $('#mis-event_description-filter').append('<option value="death_inside_hospital_premises">Death inside hospital premises- during examination , pre intra or post op, GA related</option>')
+      $('#mis-event_description-filter').append('<option value="shifting_to_emergency">Major Distress Of Patient Which Requires Shifting To Emergency Services</option>')
+      $('#mis-event_description-filter').append('<option value="death_on_table_examination_during_surgeries">Death within 1 week of surgery</option>')
+      $('#mis-event_description-filter').append('<option value="hospital_staff_or_doctor_testing_COVID_positive">Hospital staff or doctor testing COVID +</option>')
+      $('#mis-event_description-filter').append('<option value="mlc_notifications_hospital">MLC Notifications To Hospital / Branch</option>')
+      $('#mis-event_description-filter').append('<option value="customer_complaint_public">Customer Related Complaint To Public Forum</option>')
+      $('#mis-event_description-filter').append('<option value="wrong_eye_patient_procedure">Wrong eye, wrong patient, wrong procedure</option>')
+      $('#mis-event_description-filter').append('<option value="patient_harassment_issues">Patient Harassment Issues</option>')
+      $('#mis-event_description-filter').append('<option value="doctor_security_issues">Doctor or staff security issues</option>')
+      $('#mis-event_description-filter').append('<option value="code_pink">CODE PINK ( Child Abduction )</option>')
+      $('#mis-event_description-filter').append('<option value="code_red">CODE RED ( Fire )</option>')
+      $('#mis-event_description-filter').append('<option value="end_ophthlmitis">Endopthalmitis obvious or suspected immediate or late</option>')
+      $('#mis-event_description-filter').append('<option value="anaphylaxis_drug_allergy">Anaphylaxis / Major Drug Allergy</option>')
+      $('#mis-event_description-filter').append('<option value="critical_others">Others</option>')
+      $('#mis-sub_category-filter').attr('disabled',true)
+    } else{
+      $('#mis-event_description-filter').append('<option value="" selected>All</option>')
+      $('#mis-event_description-filter').append('<option value="patient_distress">Patient Distress managed within Hospital premises</option>')
+      $('#mis-event_description-filter').append('<option value="postop_inflammation">POSTOP INFLAMMATION not requiring IVAB/PPV</option>')
+      $('#mis-event_description-filter').append('<option value="aqueous_meets_vitreous">AQUEOUS MEETS VITREOUS</option>')
+      $('#mis-event_description-filter').append('<option value="surgical_complications_repeat_surgeries">Surgical complications/Repeat surgeries</option>')
+      $('#mis-event_description-filter').append('<option value="wrong_iol_power">IOL related complication</option>')
+      $('#mis-event_description-filter').append('<option value="culture_postivity_ot_electrical">OT CULTURE positive</option>')
+      $('#mis-event_description-filter').append('<option value="customer_complaint_staff">Complaint letter/Mail towards doctor or staff</option>')
+      $('#mis-event_description-filter').append('<option value="pbk_surgery">PBK following any surgery in our hospital within 1 year of initial surgery</option>')
+      $('#mis-event_description-filter').append('<option value="rescheduling_cancelling_surgery">Rescheduling/cancelling surgery</option>')
+      $('#mis-event_description-filter').append('<option value="optical_related">Optical related</option>')
+      $('#mis-event_description-filter').append('<option value="stoppage_of_OT">Biomedical/electrical/ project related issue leading to stoppage of OT</option>')
+      $('#mis-event_description-filter').append('<option value="customer_complaint_department">Lab report of wrong patient or pharmacy dispensing wrong drugs</option>')
+      $('#mis-event_description-filter').append('<option value="consent_not_taken">Consent form not taken</option>')
+      $('#mis-event_description-filter').append('<option value="post_operative_CME_within_3_months">Post Operative CME within 3 months</option>')
+      $('#mis-event_description-filter').append('<option value="minor_drug_allergy">Allergy to dilating drops</option>')
+      $('#mis-event_description-filter').append('<option value="bio_medical_instrument">Biomedical / project related instrument repair ( non OT)</option>')
+      $('#mis-event_description-filter').append('<option value="simple_re_surgeries">Iris prolapse /cortex wash /  re suturing wound  / iol re-dialling /AC reformation</option>')
+      $('#mis-event_description-filter').append('<option value="conjunctivitis_in_COVID_times">Conjunctivitis in COVID times</option>')
+      $('#mis-event_description-filter').append('<option value="mis_diagnosis_management">Misdiagnosis, Mis management (e.g: uveitis Diagnosed as ACCO etc)</option>')
+      $('#mis-event_description-filter').append('<option value="minor_others">Others</option>')
+      $('#mis-event_description-filter').append('<option value="globe_perforation">Globe Perforation</option>')
+      $('#mis-event_description-filter').append('<option value="expulsive_hemorrhage">Expulsive Hemorrhage</option>')
+      $('#mis-event_description-filter').append('<option value="death_inside_hospital_premises">Death inside hospital premises- during examination , pre intra or post op, GA related</option>')
+      $('#mis-event_description-filter').append('<option value="shifting_to_emergency">Major Distress Of Patient Which Requires Shifting To Emergency Services</option>')
+      $('#mis-event_description-filter').append('<option value="death_on_table_examination_during_surgeries">Death within 1 week of surgery</option>')
+      $('#mis-event_description-filter').append('<option value="hospital_staff_or_doctor_testing_COVID_positive">Hospital staff or doctor testing COVID +</option>')
+      $('#mis-event_description-filter').append('<option value="mlc_notifications_hospital">MLC Notifications To Hospital / Branch</option>')
+      $('#mis-event_description-filter').append('<option value="customer_complaint_public">Customer Related Complaint To Public Forum</option>')
+      $('#mis-event_description-filter').append('<option value="wrong_eye_patient_procedure">Wrong eye, wrong patient, wrong procedure</option>')
+      $('#mis-event_description-filter').append('<option value="patient_harassment_issues">Patient Harassment Issues</option>')
+      $('#mis-event_description-filter').append('<option value="doctor_security_issues">Doctor or staff security issues</option>')
+      $('#mis-event_description-filter').append('<option value="code_pink">CODE PINK ( Child Abduction )</option>')
+      $('#mis-event_description-filter').append('<option value="code_red">CODE RED ( Fire )</option>')
+      $('#mis-event_description-filter').append('<option value="end_ophthlmitis">Endopthalmitis obvious or suspected immediate or late</option>')
+      $('#mis-event_description-filter').append('<option value="anaphylaxis_drug_allergy">Anaphylaxis / Major Drug Allergy</option>')
+      $('#mis-event_description-filter').append('<option value="critical_others">Others</option>')
+      $('#mis-sub_category-filter').attr('disabled',false)
+    }
+    if(event_description != ''){
+      $('#mis-event_description-filter option[value='+ event_description + ']').attr('selected','selected');
+    }
+  }
+  show_hide_event_description('<%= @mis_params[:event_description] %>')
+
+  $("#mis-age-filter").on("click", function(e){
+    e.preventDefault();
+    appendinTag()
+    addTags();
+  })
+
+  $("#mis-gender_type-filter").on("change", function(e){
+    e.preventDefault();
+    appendinTag()
+    addTags();
+  })
+
+  $("#mis-person_responsible-filter").on("change", function(e){
+    e.preventDefault();
+    appendinTag()
+    addTags();
+  })
+
+  $("#mis-event_category-filter").on("change", function(e){
+    e.preventDefault();
+    show_hide_event_description()
+    appendinTag()
+    addTags();
+  })
+
+  $("#mis-event_description-filter").on("change", function(e){
+    e.preventDefault();
+    filter_major_adverse_event()
+    appendinTag()
+    addTags();
+  })
+
+  if($('#mis-event_description-filter').val() == ''){
+    $('#mis-sub_category-filter').empty()
+    $('#mis-sub_category-filter').append('<option value="" selected>All</option>')
+    $('#mis-sub_category-filter').attr('disabled',true)
+  }
+
+  function filter_major_adverse_event(sub_category = ''){
+    let major_event_description= $('#mis-event_description-filter').val()
+    $('#mis-sub_category-filter').empty()
+    $('#mis-sub_category-filter').attr('disabled', false)
+    if(major_event_description == 'patient_distress'){
+      $('#mis-sub_category-filter').append('<option value="" selected>All</option>')
+      $('#mis-sub_category-filter').append('<option value="ga_or_la_related">GA or LA Related</option>')
+      $('#mis-sub_category-filter').append('<option value="vasovagal_attack">Vasovagal Attack</option>')
+      $('#mis-sub_category-filter').append('<option value="hypogylcemia">Hypogylcemia</option>')
+      $('#mis-sub_category-filter').append('<option value="wheezing_or_urticaria_after_florescein">Wheezing or Urticaria after florescein</option>')
+    }else if(major_event_description == 'postop_inflammation'){
+      $('#mis-sub_category-filter').append('<option value="" selected>All</option>')
+      $('#mis-sub_category-filter').append('<option value="fibrin_membrane">Fibrin Membrane</option>')
+      $('#mis-sub_category-filter').append('<option value="sterile_hypopyon">Sterile Hypopyon</option>')
+    }else if(major_event_description == 'aqueous_meets_vitreous'){
+      $('#mis-sub_category-filter').append('<option value="" selected>All</option>')
+      $('#mis-sub_category-filter').append('<option value="pc_rent">PC Rent</option>')
+      $('#mis-sub_category-filter').append('<option value="zonular_dialysis">Zonular Dialysis</option>')
+      $('#mis-sub_category-filter').append('<option value="pcr_with_nucleus_drop">PCR with Nucleus Drop</option>')
+      $('#mis-sub_category-filter').append('<option value="pcr_with_iol_drop">PCR with IOL Drop</option>')
+      $('#mis-sub_category-filter').append('<option value="glued_iol">Glued IOL</option>')
+    }else if(major_event_description == 'surgical_complications_repeat_surgeries'){
+      $('#mis-sub_category-filter').append('<option value="" selected>All</option>')
+      $('#mis-sub_category-filter').append('<option value="cornea">Cornea</option>')
+      $('#mis-sub_category-filter').append('<option value="cataract">Cataract</option>')
+      $('#mis-sub_category-filter').append('<option value="refractive">Refractive</option>')
+      $('#mis-sub_category-filter').append('<option value="retina">Retina</option>')
+      $('#mis-sub_category-filter').append('<option value="squint_revision_surgeries">Squint - Revision Surgeries</option>')
+      $('#mis-sub_category-filter').append('<option value="glaucoma">Glaucoma</option>')
+    }else if(major_event_description == 'wrong_iol_power'){
+      $('#mis-sub_category-filter').append('<option value="" selected>All</option>')
+      $('#mis-sub_category-filter').append('<option value="haptic_breakage">Haptic Breakage</option>')
+      $('#mis-sub_category-filter').append('<option value="wrong_IOL_power_leading_to_refractive_surprise_more_than_2D">Wrong IOL Power leading to refractive surprise more than 2D</option>')
+    }else if(major_event_description == 'rescheduling_cancelling_surgery'){
+      $('#mis-sub_category-filter').append('<option value="" selected>All</option>')
+      $('#mis-sub_category-filter').append('<option value="rbh">RBH</option>')
+      $('#mis-sub_category-filter').append('<option value="patient_related">Patient Related</option>')
+      $('#mis-sub_category-filter').append('<option value="doctor_related">Doctor Related</option>')
+      $('#mis-sub_category-filter').append('<option value="others">Others</option>')
+    }else if(major_event_description == 'optical_related'){
+      $('#mis-sub_category-filter').append('<option value="" selected>All</option>')
+      $('#mis-sub_category-filter').append('<option value="wrong_prescription">Wrong Prescription</option>')
+      $('#mis-sub_category-filter').append('<option value="vendor_related_misfit">Vendor Related Misfit</option>')
+      $('#mis-sub_category-filter').append('<option value="others">Others</option>')
+    } else{
+      $('#mis-sub_category-filter').append('<option value="" selected>All</option>')
+      $('#mis-sub_category-filter').attr('disabled',true)
+    }
+    if(sub_category != ''){
+      $('#mis-sub_category-filter option[value='+ sub_category + ']').attr('selected','selected');
+    }
+  }
+  filter_major_adverse_event('<%= @mis_params[:sub_category] %>')
+
+
+  $("#mis-sub_category-filter").on("change", function(e){
+    e.preventDefault();
+    appendinTag()
+    addTags();
+  })
+
+  $("#mis-appointmenttype-filter").on("change", function(e){
+    e.preventDefault();
+    appendinTag()
+    addTags();
+  })
+
+  $("#mis-facility_id-filter").on("change", function(e){
+    e.preventDefault();
+    appendinTag()
+    addTags();
+  })
+
+  $("#mis-pharmacy_store_id-filter").on("change", function(e){
+    e.preventDefault();
+    appendinTag()
+    addTags();
+  })
+  $("#mis-optical_store_id-filter").on("change", function(e){
+    e.preventDefault();
+    appendinTag()
+    addTags();
+  })
+
+  $("#mis-consulting_doctor-filter").on("change", function(e){
+    e.preventDefault();
+    appendinTag()
+    addTags();
+  })
+
+  $("#mis-location-type").on("change", function(e){
+    e.preventDefault();
+    appendinTag()
+    addTags();
+  })
+  $("#mis-moh-filter").on("change", function(e){
+    e.preventDefault();
+    appendinTag()
+    addTags();
+  })
+  $("#mis-ipd_current_status-filter").on("change", function(e){
+    e.preventDefault();
+    appendinTag()
+    addTags();
+  })
+  $("#mis-admission_type-filter").on("change", function(e){
+    e.preventDefault();
+    appendinTag()
+    addTags();
+  })
+  $("#mis-date_wise-filter").on("change", function(e){
+    e.preventDefault();
+    appendinTag()
+    addTags();
+  })
+  $("#mis-procedure_state-filter").on("change", function(e){
+    e.preventDefault();
+    appendinTag()
+    addTags();
+  })
+  $("#mis-procedure_date_wise-filter").on("change", function(e){
+    e.preventDefault();
+    appendinTag()
+    addTags();
+  })
+  $("#mis-performed_by-filter").on("change", function(e){
+    e.preventDefault();
+    appendinTag()
+    addTags();
+  })
+  $("#mis-advised_by-filter").on("change", function(e){
+    e.preventDefault();
+    appendinTag()
+    addTags();
+  })
+  $('[id^="ms-opt"]').on("change", function(e){
+    e.preventDefault();
+    appendinTag()
+    addTags();
+  })
+  $('#mis-role_id-filter').on("change", function(e){
+    e.preventDefault();
+    appendinTag()
+    addTags();
+  })
+  
+  let period =  $("#mis-date-filter").text();
+  let start_date = $('#mis-date-filter').attr("start-date")
+  let end_date = $('#mis-date-filter').attr("end-date")
+  let initial_age = 0;
+  let final_age = 0;
+  var age_in_range = $("#age_range").val();
+  if (age_in_range) {
+    range_arr = age_in_range.split("-");
+    initial_age = parseInt(range_arr[0]);
+    final_age = parseInt(range_arr[1]);
+  }
+
+  let gender = $('#mis-gender_type-filter').val();
+  let person_responsible =  $('#mis-person_responsible-filter').val();
+  let event_category = $('#mis-event_category-filter').val();
+  let event_description = $('#mis-event_description-filter').val();
+  let sub_category = $('#mis-sub_category-filter').val();
+  let location_type = $('#mis-location-type').val();
+  let appointmenttype =  $('#mis-appointmenttype-filter').val();
+  let facility =  $('#mis-facility_id-filter').val();
+  let doctor =  $('#mis-consulting_doctor-filter').val();
+  let selected_checkbox = $('#mis-appointment_type-filter').find("option:selected");
+  let arrSelected = [];
+  let current_facility_name = "<%= current_facility.name %>"
+  let current_facility_id = "<%= current_facility.id %>"
+  let moh =  $('#mis-moh-filter').val();
+  let ipd_current_status =  $('#mis-ipd_current_status-filter').val();
+  let admission_type =  $('#mis-admission_type-filter').val();
+  let date_wise =  $('#mis-date_wise-filter').val();
+  let procedure_state =  $('#mis-procedure_state-filter').val();
+  let procedure_date_wise =  $('#mis-procedure_date_wise-filter').val();
+  let advised_by =  $('#mis-advised_by-filter').val();
+  let performed_by =  $('#mis-performed_by-filter').val();
+  let referral_type =  $('#mis-referral_type-filter').val();
+  let referral_source =  $('#mis-referral_source-filter').val();
+  let role = $('#mis-role_id-filter').val();
+  let investigation_state = $('#mis-investigation_state-filter').val();
+  let investigation_date_wise = $('#mis-investigation_date_wise-filter').val();
+  let investigation_type = $('#mis-investigation_type-filter').val();
+  let performed_at = $('#mis-performed_at-filter').val();
+  let pharmacy_store_id = $('#mis-pharmacy_store_id-filter').val();
+  let optical_store_id = $('#mis-optical_store_id-filter').val();
+  let conversion_status = $('#mis-conversion_status-filter').val();
+
+
+  function appendinTag(){
+    tags_hash['period'] = period
+    let time_period = 'Period-' + todateFormat(start_date) + " to " + todateFormat(end_date);
+    tags_hash['period_date'] = time_period
+
+    // pharmacy_store_id
+    if (pharmacy_store_id != '' && pharmacy_store_id != null) {
+      tags_hash['pharmacy_store_id'] = $('#mis-pharmacy_store_id-filter option:selected').text();
+    } else {
+      delete tags_hash['pharmacy_store_id']
+    }
+    // optical_store_id
+    if (optical_store_id != '' && optical_store_id != null) {
+      tags_hash['optical_store_id'] = $('#mis-optical_store_id-filter option:selected').text();
+    } else {
+      delete tags_hash['optical_store_id']
+    }
+
+    if (final_age) {
+      let range = "Age-" + $( "#age_range" ).val();
+      tags_hash['age'] = range
+    } else{
+      delete tags_hash['age']
+    }
+// gender
+    if (gender != '' && gender != null) {
+//      tags.push($('#mis-gender-filter option:selected').text());
+      tags_hash['gender'] = $('#mis-gender_type-filter option:selected').text()
+    }else{
+      delete tags_hash['gender']
+    }
+
+    if (role != '' && role != null)
+    {
+      tags_hash['role'] = $('#mis-role_id-filter option:selected').text()
+    }
+    else
+    {
+      delete tags_hash['role']
+    }
+
+    if (investigation_state != '' && investigation_state != null)
+    {
+      tags_hash['investigation_state'] = "Investigation Status - " + $('#mis-investigation_state-filter option:selected').text()
+    }
+    else
+    {
+      delete tags_hash['investigation_state']
+    }
+
+    if (investigation_date_wise != '' && investigation_date_wise != null)
+    {
+      tags_hash['investigation_date_wise'] = "Sort By - " + $('#mis-investigation_date_wise-filter option:selected').text()
+    }
+    else
+    {
+      delete tags_hash['investigation_date_wise']
+    }
+
+    if (investigation_type != '' && investigation_type != null)
+    {
+      tags_hash['investigation_type'] = $('#mis-investigation_type-filter option:selected').text()
+    }
+    else
+    {
+      delete tags_hash['investigation_type']
+    }
+
+    if (performed_at != '' && performed_at != null)
+    {
+      tags_hash['performed_at'] = $('#mis-performed_at-filter option:selected').text()
+    }
+    else
+    {
+      delete tags_hash['performed_at']
+    }
+
+    //    person responsible
+    if (person_responsible != '' && person_responsible != null) {
+      tags_hash['person_responsible'] = $('#mis-person_responsible-filter option:selected').text();
+    }else{
+      delete tags_hash['person_responsible']
+    }
+
+    //adverse event category
+    if (event_category != '' && event_category != null) {
+      tags_hash['event_category'] = $('#mis-event_category-filter option:selected').text()
+    } else{
+      delete tags_hash['event_category']
+    }
+
+    //adverse event description
+    if (event_description != '' && event_description!= null) {
+      tags_hash['event_description'] = $('#mis-event_description-filter option:selected').text()
+    } else{
+      delete tags_hash['event_description']
+    }
+
+    //major adverse event sub category
+    if (sub_category != '' && sub_category != null) {
+      tags_hash['sub_category'] = $('#mis-sub_category-filter option:selected').text()
+    } else{
+      delete tags_hash['sub_category']
+    }
+
+//    location type
+    if (location_type != '' && location_type != null) {
+      tags_hash['location_type'] = $('#mis-location-type option:selected').text()
+    }else{
+      delete tags_hash['location_type']
+    }
+//    moh
+    if (moh != '' && moh != null) {
+      tags_hash['moh'] = $('#mis-moh-filter option:selected').text()
+    }else{
+      delete tags_hash['moh']
+    }
+    if (ipd_current_status != '' && ipd_current_status != null) {
+      tags_hash['ipd_current_status'] = $('#mis-ipd_current_status-filter option:selected').text()
+    }else{
+      delete tags_hash['ipd_current_status']
+    }
+    if (admission_type != '' && admission_type != null) {
+      tags_hash['admission_type'] = $('#mis-admission_type-filter option:selected').text()
+    }else{
+      delete tags_hash['admission_type']
+    }
+    if (date_wise != '' && date_wise != null) {
+      tags_hash['date_wise'] = $('#mis-date_wise-filter option:selected').text()
+    }else{
+      delete tags_hash['date_wise']
+    }
+
+    if (procedure_state != '' && procedure_state != null) {
+      tags_hash['procedure_state'] = $('#mis-procedure_state-filter option:selected').text()
+    } else {
+      delete tags_hash['procedure_state']
+    }
+
+    if (procedure_date_wise != '' && procedure_date_wise != null) {
+      tags_hash['procedure_date_wise'] = $('#mis-procedure_date_wise-filter option:selected').text()
+    } else {
+      delete tags_hash['procedure_date_wise']
+    }
+
+    if (advised_by != '' && advised_by != null) {
+      tags_hash['advised_by'] = "Advised By - " + $('#mis-advised_by-filter option:selected').text()
+    } else {
+      delete tags_hash['advised_by']
+    }
+
+    if (performed_by != '' && performed_by != null) {
+      tags_hash['performed_by'] =  'Performed By - ' + $('#mis-performed_by-filter option:selected').text()
+    } else {
+      delete tags_hash['performed_by']
+    }
+
+//    appointmenttype
+    if (appointmenttype != '' && appointmenttype != null) {
+//      tags.push($('#mis-appointmenttype-filter option:selected').text());
+      tags_hash['appointmenttype'] =   $('#mis-appointmenttype-filter option:selected').text();
+    }else{
+      delete tags_hash['appointmenttype']
+    }
+// facility
+    if (facility != '' && facility != null) {
+//      tags.push($('#mis-facility_id-filter option:selected').text());
+      tags_hash['facility'] = $('#mis-facility_id-filter option:selected').text();
+    }else{
+      delete tags_hash['facility']
+    }
+
+//    doctor
+    if (doctor != '' && doctor != null) {
+//      tags.push( $('#mis-consulting_doctor-filter option:selected').text());
+      tags_hash['doctor'] = $('#mis-consulting_doctor-filter option:selected').text();
+    }else{
+      delete tags_hash['doctor']
+    }
+
+    if (referral_type != '' && referral_type != null) {
+      tags_hash['referral_type'] = $('#mis-referral_type-filter option:selected').text()
+    } else {
+      delete tags_hash['referral_type']
+    }
+
+    if (referral_source != '' && referral_source != null) {
+      tags_hash['referral_source'] = $('#mis-referral_source-filter option:selected').text()
+    } else {
+      delete tags_hash['referral_source']
+    }
+
+    selected_checkbox.each((idx, val) => {
+      arrSelected.push(val.value);
+  });
+
+    if (arrSelected && arrSelected.length > 0 && arrSelected[0] != '' )  {
+//      arrSelected[arrSelected.length -1] != '' ? tags.push(arrSelected[arrSelected.length -1]) : ''
+      tags_hash['appointment_type'] = arrSelected.join();
+    }else{
+      delete tags_hash['appointment_type']
+    }
+
+  }
+
+  function todateFormat(dateString){
+    var dateParts = dateString.split("-");
+    return dateParts[2] + '/' + dateParts[1] + '/' + dateParts[0]
+  }
+
+  function intial_load() {
+    appendinTag();
+    addTags();
+  }
+  input.focus();
+  intial_load();
+
+  filter_btn_color ();
+  function filter_btn_color (){
+    var selected_facility = $('#mis-facility_id-filter option:selected').text();
+    var selected_period = $("#mis-date-filter").text();
+    var other_filters_selected = (final_age|| gender || location_type || appointmenttype || doctor || arrSelected  || moh || ipd_current_status || admission_type || date_wise || procedure_state || advised_by || performed_by || procedure_date_wise)
+    if ((selected_facility == current_facility_name) && (selected_period == 'Today') && other_filters_selected == false){
+      $('#mod-btn').removeClass( "btn-success" ).addClass( "btn-primary btn-primary-transparent" );
+      $('#clear-to-default').hide();
+    } else{
+      $('#mod-btn').removeClass( "btn-primary btn-primary-transparent" ).addClass( "btn-success" );
+      $('#clear-to-default').show();
+    }
+  }
+
+  $("#mis-facility_id-filter").on("change", function(e){
+    var default_value = $('#mis-facility_id-filter').val();
+    if (default_value == current_facility_id){
+      $("#default-facility_id").hide();
+    }else{
+      $("#default-facility_id").show();
+    }
+  })
+
+  $('#mis-appointmenttype-filter').on("change", function(e){
+    var default_value = $('#mis-appointmenttype-filter').val();
+    if (default_value == ''){
+      $("#default-appointmenttype").hide();
+    }else{
+      $("#default-appointmenttype").show();
+    }
+  })
+
+  $('#mis-gender_type-filter').on("change", function(e){
+    var default_value =  $('#mis-gender_type-filter').val();
+    if (default_value == ''){
+      $("#default-gender_type").hide();
+    }else{
+      $("#default-gender_type").show();
+    }
+  })
+
+  $("#mis-person_responsible-filter").on("change", function(e){
+    var default_value =  $('#mis-person_responsible-filter').val();
+    if (default_value == ''){
+      $("#default-person_responsible").hide();
+    }else{
+      $("#default-person_responsible").show();
+    }
+  })
+
+  $('#mis-event_category-filter').on("change", function(e){
+    var default_value =  $('#mis-event_category-filter').val();
+    if (default_value == ''){
+      $("#default-event_category").hide();
+    }else{
+      $("#default-event_category").show();
+    }
+    show_hide_event_description()
+  })
+
+  $('#mis-event_description-filter').on("change", function(e){
+    var default_value =  $('#mis-event_description-filter').val();
+    if (default_value == ''){
+      $("#default-event_description").hide();
+    } else{
+      $("#default-event_description").show();
+    }
+    filter_major_adverse_event()
+  })
+
+  $('#mis-sub_category-filter').on("change", function(e){
+    var default_value =  $('#mis-sub_category-filter').val();
+    if (default_value == ''){
+      $("#default-sub_category").hide();
+    } else{
+      $("#default-sub_category").show();
+    }
+  })
+
+
+  $("#mis-location-type").on("change", function(e){
+    var default_value =  $('#mis-location-type').val();
+    if (default_value == 'City'){
+      $("#default-location").hide();
+    }else{
+      $("#default-location").show();
+    }
+  })
+
+  $("#mis-moh-filter").on("change", function(e){
+    var default_value =  $('#mis-moh-filter').val();
+    if (default_value == ''){
+      $("#default-moh").hide();
+    }else{
+      $("#default-moh").show();
+    }
+  })
+
+  $("#mis-ipd_current_status-filter").on("change", function(e){
+    var default_value =  $('#mis-ipd_current_status-filter').val();
+    if (default_value == ''){
+      $("#default-ipd_current_status").hide();
+    }else{
+      $("#default-ipd_current_status").show();
+    }
+  })
+
+  $("#mis-admission_type-filter").on("change", function(e){
+    var default_value =  $('#mis-admission_type-filter').val();
+    if (default_value == ''){
+      $("#default-admission_type").hide();
+    }else{
+      $("#default-admission_type").show();
+    }
+  })
+  $("#mis-date_wise-filter").on("change", function(e){
+    var default_value =  $('#mis-date_wise-filter').val();
+    if (default_value == 'Admitted'){
+      $("#default-date_wise").hide();
+    }else{
+      $("#default-date_wise").show();
+    }
+  })
+  $("#mis-advised_by-filter").on("change", function(e){
+    var default_value =  $('#mis-advised_by-filter').val();
+    if (default_value == ''){
+      $("#default-advised_by").hide();
+    }else{
+      $("#default-advised_by").show();
+    }
+  })
+  $("#mis-performed_by-filter").on("change", function(e){
+    var default_value =  $('#mis-performed_by-filter').val();
+    if (default_value == ''){
+      $("#default-performed_by").hide();
+    }else{
+      $("#default-performed_by").show();
+    }
+  })
+
+  $("#mis-procedure_date_wise-filter").on("change", function(e){
+    var default_value =  $('#mis-procedure_date_wise-filter').val();
+    if (default_value == 'advised'){
+      $("#default-procedure_date_wise").hide();
+    }else{
+      $("#default-procedure_date_wise").show();
+    }
+  })
+
+  $("#mis-consulting_doctor-filter").on("change", function(e){
+    var default_value =  $('#mis-consulting_doctor-filter').val();
+    if (default_value == ''){
+      $("#default-consulting_doctor").hide();
+    }else{
+      $("#default-consulting_doctor").show();
+    }
+  })
+
+  $("#mis-investigation_state-filter").on("change", function(e){
+    var default_value =  $('#mis-investigation_state-filter').val();
+    if (default_value == ''){
+      $("#default-investigation_state").hide();
+    }else{
+      $("#default-investigation_state").show();
+    }
+  })
+
+  $("#mis-investigation_date_wise-filter").on("change", function(e){
+    var default_value =  $('#mis-investigation_date_wise-filter').val();
+    if (default_value == 'advised'){
+      $("#default-investigation_date_wise").hide();
+    }else{
+      $("#default-investigation_date_wise").show();
+    }
+  })
+
+  $("#mis-investigation_type-filter").on("change", function(e){
+    var default_value =  $('#mis-investigation_type-filter').val();
+    if (default_value == ''){
+      $("#default-investigation_type").hide();
+    }else{
+      $("#default-investigation_type").show();
+    }
+  })
+
+  $("#mis-performed_at-filter").on("change", function(e){
+    var default_value =  $('#mis-performed_at-filter').val();
+    if (default_value == ''){
+      $("#default-performed_at").hide();
+    }else{
+      $("#default-performed_at").show();
+    }
+  })
+
+  // $("#mis-referral_type-filter").on("change", function(e){
+  //   var default_value = $('#mis-referral_type-filter').val();
+  //   if (default_value == ''){
+  //     $("#default-referral_type").hide();
+  //   }else{
+  //     $("#default-referral_type").show();
+  //   }
+  // })
+
+  //  $("#mis-appointment_type-filter").on("change", function(e){
+  //    var default_value = $('#mis-appointment_type-filter').find("option:selected").val();
+  //    if (default_value == '' || default_value == null){
+  //      $("#default-appointment_type").hide();
+  //    }else{
+  //      $("#default-appointment_type").show();
+  //    }
+  //  })
+  $("#default-performed_at").on("click", function(e){
+    $('#mis-performed_at-filter').val("");
+    $("#default-performed_at").hide();
+  })
+
+  $("#default-advised_by").on("click", function(e){
+    $('#mis-advised_by-filter').val("");
+    $("#default-advised_by").hide();
+  })
+
+  $("#default-investigation_type").on("click", function(e){
+    $('#mis-investigation_type-filter').val("");
+    $("#default-investigation_type").hide();
+  })
+
+  $("#default-investigation_state").on("click", function(e){
+    $('#mis-investigation_state-filter').val("");
+    $("#default-investigation_state").hide();
+  })
+
+  $("#default-investigation_date_wise").on("click", function(e){
+    $('#mis-investigation_date_wise-filter').val("advised");
+    $("#default-investigation_date_wise").hide();
+  })
+
+
+  $("#default-facility_id").on("click", function(e){
+    $('#mis-facility_id-filter').val(current_facility_id);
+    $("#default-facility_id").hide();
+  })
+
+  $("#default-appointmenttype").on("click", function(e){
+    $('#mis-appointmenttype-filter').val("");
+    $("#default-appointmenttype").hide();
+  })
+
+  $("#default-gender_type").on("click", function(e){
+    $('#mis-gender_type-filter').val("");
+    $("#default-gender_type").hide();
+  })
+
+  $("#default-person_responsible").on("click", function(e){
+    $('#mis-person_responsible-filter').val("");
+    $("#default-person_responsible").hide()
+  })
+
+  $("#default-event_category").on("click", function(e){
+    $('#mis-event_category-filter').val("");
+    $("#default-event_category").hide();
+    show_hide_event_description()
+  })
+
+  $("#default-event_description").on("click", function(e){
+    $('#mis-event_description-filter').val("");
+    $("#default-event_description").hide();
+    filter_major_adverse_event()
+  })
+
+  $("#default-sub_category").on("click", function(e){
+    $('#mis-sub_category-filter').val("");
+    $("#default-sub_category").hide();
+  })
+
+  $("#default-location").on("click", function(e){
+    $('#mis-location-type').val('City');
+    $('#mis-location-type').hide();
+  })
+
+  $("#default-moh").on("click", function(e){
+    $('#mis-moh-filter').val("");
+    $('#default-moh').hide();
+  })
+
+  $("#default-ipd_current_status").on("click", function(e){
+    $('#mis-ipd_current_status-filter').val("");
+    $('#default-ipd_current_status').hide();
+  })
+  $("#default-admission_type").on("click", function(e){
+    $('#mis-admission_type-filter').val("");
+    $('#default-admission_type').hide();
+  })
+  $("#default-date_wise").on("click", function(e){
+    $('#mis-date_wise-filter').val("Admitted");
+    $('#default-date_wise').hide();
+  })
+
+  $("#default-procedure_state").on("click", function(e){
+    $('#mis-procedure_state-filter').val("");
+    $('#default-procedure_state').hide();
+  })
+  $("#default-procedure_date_wise").on("click", function(e){
+    $('#mis-procedure_date_wise-filter').val("");
+    $('#default-procedure_date_wise').hide();
+  })
+  $("#default-performed_by").on("click", function(e){
+    $('#mis-performed_by-filter').val("");
+    $('#default-performed_by').hide();
+  })
+  $("#default-consulting_doctor").on("click", function(e){
+    $('#mis-consulting_doctor-filter').val("");
+    $("#default-consulting_doctor").hide()
+  })
+  //  $("#default-appointment_type").on("click", function(e){
+  //    $('#mis-appointment_type-filter').find("option:selected").val("");
+  //    $('#default-appointment_type').hide();
+  //  })
+
+  $("#default-period").on("click", function(e){
+    var start_date = "<%= current_date.strftime("%Y-%m-%d") %>";
+    var end_date = "<%= current_date.strftime("%Y-%m-%d") %>";
+    $("#mis-date-filter").attr("start-date", start_date);
+    $("#mis-date-filter").attr("end-date", end_date);
+//    add date to start date and end date.
+    $("#period_start_date").val(start_date);
+    $("#period_end_date").val(end_date);
+    $("#mis-date-filter").text("Today");
+    $('#default-period').hide();
+  })
+
+  //   range control for age
+  $("#default-age").on("click", function(e){
+    $( "#age_range" ).val("0-0");
+    $( "#mis-age-filter" ).slider( "option", "values", [ 0, 0 ] );
+    $("#default-age").hide();
+  })
+
+  check_default_span();
+  function check_default_span(){
+
+    if (facility == current_facility_id){
+      $("#default-facility_id").hide();
+    }else{
+      $("#default-facility_id").show();
+    }
+    if (appointmenttype == ''){
+      $("#default-appointmenttype").hide();
+    }else{
+      $("#default-appointmenttype").show();
+    }
+
+    if (final_age == 0){
+      $("#default-age").hide();
+    }else {
+      $("#default-age").show();
+    }
+    if (period == 'Today'){
+      $("#default-period").hide();
+    }else{
+      $("#default-period").show();
+    }
+    if (gender == ''){
+      $("#default-gender_type").hide();
+    }else{
+      $("#default-gender_type").show();
+    }
+
+    if (person_responsible == ''){
+      $("#default-person_responsible").hide();
+    }else{
+      $("#default-person_responsible").show();
+    }
+
+    if (event_category == ''){
+      $("#default-event_category").hide();
+    } else{
+      $("#default-event_category").show();
+    }
+
+    if (event_description== ''){
+      $("#default-event_description").hide();
+    } else{
+      $("#default-event_description").show();
+    }
+
+    if (sub_category == ''){
+      $("#default-sub_category").hide();
+    } else{
+      $("#default-sub_category").show();
+    }
+
+    if (location_type == 'City'){
+      $("#default-location").hide();
+    }else{
+      $("#default-location").show();
+    }
+
+    if (doctor == ''){
+      $("#default-consulting_doctor").hide();
+    }else{
+      $("#default-consulting_doctor").show();
+    }
+
+    if (moh == ''){
+      $("#default-moh").hide();
+    }else{
+      $("#default-moh").show();
+    }
+
+    if (ipd_current_status == ''){
+      $("#default-ipd_current_status").hide();
+    }else{
+      $("#default-ipd_current_status").show();
+    }
+
+    if (admission_type == ''){
+      $("#default-admission_type").hide();
+    }else{
+      $("#default-admission_type").show();
+    }
+
+    if (procedure_state == ''){
+      $("#default-procedure_state").hide();
+    }else{
+      $("#default-procedure_state").show();
+    }
+    if (procedure_date_wise == 'advised'){
+      $("#default-procedure_date_wise").hide();
+    }else{
+      $("#default-procedure_date_wise").show();
+    }
+    if (performed_by == ''){
+      $("#default-performed_by").hide();
+    }else{
+      $("#default-performed_by").show();
+    }
+
+    if (advised_by == ''){
+      $("#default-advised_by").hide();
+    }else{
+      $("#default-advised_by").show();
+    }
+
+    if (investigation_state == ''){
+      $("#default-investigation_state").hide();
+    }else{
+      $("#default-investigation_state").show();
+    }
+    if (investigation_date_wise == 'advised'){
+      $("#default-investigation_date_wise").hide();
+    }else{
+      $("#default-investigation_date_wise").show();
+    }
+    if (investigation_type == ''){
+      $("#default-investigation_type").hide();
+    }else{
+      $("#default-investigation_type").show();
+    }
+     if (performed_at == ''){
+      $("#default-performed_at").hide();
+    }else{
+      $("#default-performed_at").show();
+    }
+
+//    var default_appointment_type = $('#mis-appointment_type-filter').find("option:selected").val();
+//    if (default_appointment_type == '' || default_appointment_type == null){
+//      $("#default-appointment_type").hide();
+//    }else{
+//      $("#default-appointment_type").show();
+//    }
+
+  }
+
+</script>

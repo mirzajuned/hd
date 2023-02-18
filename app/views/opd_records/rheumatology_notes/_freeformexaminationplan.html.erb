@@ -1,0 +1,165 @@
+<div class="row"> <!-- 1st row starts -->
+  <ul class="nav nav-tabs">
+    <!--Clinical Evaluation-->
+      <li class="active"><a href="#clinical_evaluation" data-toggle="tab">History </a></li>
+    <!--Diagnosis-->
+      <li><a href="#examination" data-toggle="tab">Examination</a></li>
+    <!--Plan-->
+      <li><a href="#plan" data-toggle="tab">Investigation</a></li>
+    <!--Medication-->
+      <li><a href="#diagnosis" data-toggle="tab">Diagnosis</a></li>
+      <li><a href="#advicetab" data-toggle="tab">Advice</a></li>
+  </ul>
+  <div class="tab-content" id="tabs" style="padding: 0px;margin: 15px;">
+    <div class="col-md-12 col-sm-12 mb10 tab-pane fade in active" id="clinical_evaluation">
+      <div class="col-md-10 col-sm-10 clinic">
+        <%= f.input :clincalevaluation, as: :text,  :label => false, :required => false, :input_html => {:class => "summernote clinical_evaluation", :rows => 2, :cols => 100, :name => "opdrecord[clincalevaluation]", :value => @opdrecord.read_attribute(:clincalevaluation) } %>
+      </div>
+    </div>
+
+    <div class="col-md-12 col-sm-10 mb10 tab-pane" id="examination">
+      <div class="col-md-10 col-sm-10">
+        <%= f.input :examination, as: :text,  :label => false, :required => false, :input_html => {:class => "summernote examination", :rows => 2, :cols => 100, :name => "opdrecord[examination]", :value => @opdrecord.read_attribute(:examination) } %>
+      </div>
+    </div>
+
+    <div class="col-md-12 col-sm-12 mb10 tab-pane" id="plan">
+      <% if @opdrecord.plan.present? %>  
+        <div class="col-md-10 col-sm-10">
+          <%= f.input :plan, as: :text, :label => false, :required => false, :input_html => {:class => "summernote", :rows => 2, :cols => 100, :name => "opdrecord[plan]", :value => @opdrecord.read_attribute(:plan) } %>
+        </div>
+      <% end %> 
+      <div class="col-md-12 col-sm-12">
+        <ul class="nav nav-tabs nav-justified">
+          <li class="active"><a href="#laboratory" data-toggle="tab"><strong>Laboratory</strong></a></li>
+          <li class=""><a href="#radiology" data-toggle="tab"><strong>Radiology</strong></a></li>
+        </ul>
+
+        <div class="tab-content">
+          <%= render partial: "opd_records/#{@speciality_folder_name}_notes/opd_partials/assessment_laboratory_tab", locals: { f: f, specalityfoldername: @speciality_folder_name, opdrecord: @opdrecord, templatetype: @templatetype, opdspeciality: @opdspeciality } %>
+          <%= render partial: "opd_records/#{@speciality_folder_name}_notes/opd_partials/assessment_radiology_tab", locals: { f: f, specalityfoldername: @speciality_folder_name, opdrecord: @opdrecord, templatetype: @templatetype, opdspeciality: @opdspeciality } %>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-md-12 col-sm-12 mb10 tab-pane" id="diagnosis">
+      <%= render partial: "opd_records/#{@speciality_folder_name}_notes/opd_partials/assessment_diagnosis_tab" , locals: { f: f, specalityfoldername: @speciality_folder_name, opdrecord: @opdrecord, templatetype: @templatetype, opdspeciality: @opdspeciality } %>    
+    </div>
+
+    <div class="col-md-12 col-sm-12 mb10 tab-pane" id="advicetab">
+      <%= render partial: "templates/common/freeformplan" , locals: { f: f, specalityfoldername: @speciality_folder_name, opdrecord: @opdrecord, templatetype: @templatetype, opdspeciality: @opdspeciality } %>
+    </div>
+  </div> <!-- 1st row ends -->
+</div>
+
+<script >
+  jQuery(document).ready(function(){
+    function _add_button_at_last() {
+      var row_count = jQuery("[id^='addnewmedicationbutton']").parents('.treatmentmedications:visible').length
+      jQuery("[id^='addnewmedicationbutton']:lt("+(row_count-1)+")").addClass("hidden")
+      jQuery("[id^='addnewmedicationbutton']:eq("+(row_count-1)+")").removeClass("hidden")
+    }
+
+    jQuery('tbody').on('click', "a[name*='addnewmedicationbutton']", function() {
+      var fieldcounter;
+      if (jQuery(".medication-table-body-added > .treatmentmedications").length == 0){
+        fieldcounter = 0;
+      } else {
+        fieldcounter = jQuery(".medication-table-body-added > .treatmentmedications").length;
+      }
+      var params = { counter: fieldcounter };
+      jQuery.ajax({
+        type: "GET",
+        dataType: "script",
+        url: "/opd_records/add_medication",
+        data: {ajax: params, remote: "true" },
+        async: false,
+        success: function(){
+          taper_form()
+        }
+      });
+      _renumber_id_after_remove("tbody.medication-table-body-added", "div.medication-table-body-removed");
+    })
+
+    jQuery('.medication-table-body-added').on('click', "a[name*='removemedicationbutton']", function() {
+      event.preventDefault();
+      var medications_removed_tr_html;
+      var fieldcounter;
+      fieldcounter = jQuery(this).attr('id').slice(-1);
+      var medications_tr_array = jQuery(this).parents('.treatmentmedications').find(".id");
+      if (medications_tr_array.length > 0) {
+        jQuery(this).parents('.treatmentmedications').find("input[name*='_destroy']").val("1");
+        medications_removed_tr_html = jQuery(this).parents('.treatmentmedications').wrap('<p/>').parent().html();
+        jQuery(this).parents('.treatmentmedications').unwrap();
+        jQuery('.medication-table-body-removed').append(medications_removed_tr_html);
+        jQuery(this).parents('.treatmentmedications').remove();
+        _renumber_id_after_remove("tbody.medication-table-body-added", "div.medication-table-body-removed");
+      } else {
+        jQuery(this).parents('.treatmentmedications').remove();
+        _renumber_id_after_remove("tbody.medication-table-body-added", "div.medication-table-body-removed");
+      }
+    });
+
+    function _renumber_id_after_remove(added, removed) {
+      var counter = 0;
+      jQuery(added).find("tr").each(function() {
+        jQuery(this).find("input").each(function(index, element) {
+          var nameattr, idattr;
+          nameattr = element.name.replace(/\[[0-9]+\]/g, '['+counter+']');
+          idattr = element.id.replace(/\_[0-9]+\_/g, '_'+counter+'_');
+          jQuery(this).attr('name', nameattr);
+          jQuery(this).attr('id', idattr);
+        });
+        jQuery(this).find("select").each(function(index, element) {
+          var nameattr, idattr;
+          nameattr = element.name.replace(/\[[0-9]+\]/g, '['+counter+']');
+          idattr = element.id.replace(/\_[0-9]+\_/g, '_'+counter+'_');
+          jQuery(this).attr('name', nameattr);
+          jQuery(this).attr('id', idattr);
+        });
+        jQuery(this).find("a").each(function(index, element) {
+          var idattr;
+          idattr = element.id.replace(/[0-9]/g, counter);
+          jQuery(this).attr('id', idattr);
+        });
+        counter++;
+      });
+      jQuery(removed).find("tr").each(function() {
+        jQuery(this).find("input").each(function(index, element) {
+          var nameattr, idattr;
+          nameattr = element.name.replace(/\[[0-9]+\]/g, '['+counter+']');
+          idattr = element.id.replace(/\_[0-9]+\_/g, '_'+counter+'_');
+          jQuery(this).attr('name', nameattr);
+          jQuery(this).attr('id', idattr);
+        });
+        jQuery(this).find("select").each(function(index, element) {
+          var nameattr, idattr;
+          nameattr = element.name.replace(/\[[0-9]+\]/g, '['+counter+']');
+          idattr = element.id.replace(/\_[0-9]+\_/g, '_'+counter+'_');
+          jQuery(this).attr('name', nameattr);
+          jQuery(this).attr('id', idattr);
+        });
+        jQuery(this).find("a").each(function(index, element) {
+          var idattr;
+          idattr = element.id.replace(/[0-9]/g, counter);
+          jQuery(this).attr('id', idattr);
+        });
+        counter++;
+      });
+      _add_button_at_last()
+    }
+  })
+  <%= render partial: 'time_slots/timeslot_datetime_changes.js' %>
+</script>
+
+<%= javascript_include_tag "autocomplete/medicine" %>
+
+<style>
+  .note-check{
+    position: absolute;
+  }
+  
+  .full_width{
+    width: 100% !important;
+  }
+</style>

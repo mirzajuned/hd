@@ -1,0 +1,114 @@
+<h4 class="text-center" style="margin: 10px; color: #00BFFF"><%= @inventory_order.department_name %> Order</h4>
+
+<div class="btn-group" style="margin: 10px;">
+
+  <% if (@inventory_order.is_invoice_created == false) %>
+    <%= link_to print_preview_invoice_inventory_orders_path(id: @inventory_order.id, from: 'sale'), class: "btn btn-warning btn-xs", id: 'invoice_preview_'+@inventory_order.id, data: { remote: true} do %><i class="fa fa-file-alt"></i> Order<% end %>
+  <% end %>
+
+      <a href="/invoice/inventory_orders/print?order_id=<%= @inventory_order.id %>&page_size=A4" class="btn btn-success btn-xs" target='_blank'> <i class="fa fa-print"></i>&nbsp;Print Order</a>
+      <% if @inventory_order.is_invoice_created %>
+        <a href="/invoice/inventory_invoices/print?invoice_id=<%= @inventory_order.invoice_id %>&page_size=A4" class="btn btn-danger btn-xs" target='_blank'> <i class="fa fa-print"></i>&nbsp;Print Invoice</a>
+      <% end %>
+      <!-- <a href="/invoice/inventory_orders/print?order_id=<%= @inventory_order.id %>&page_size=A5" class="btn btn-success btn-xs" target='_blank'> <i class="fa fa-print"></i>&nbsp;Print A5</a> -->
+      <%= link_to new_mail_record_tracker_path(record_name: 'Inventory Order', record_id: @inventory_order.id, record_model: 'Invoice::InventoryOrder', appointment_id: @inventory_order.try(:appointment_id), admission_id: @inventory_order.try(:admission_id), speciality: @inventory_order.try(:specalityname), :patient_id => @inventory_order&.patient_id, order_id: @inventory_order.id), class: "btn btn-xs btn-primary", data: { remote: true, 'disable-with' =>  "Please Wait...", 'toggle' => 'modal', 'target' => '#mail-record-modal'} do %> <i class="fa fa-envelope"></i> Email Order<% end %>
+      <% if @inventory_order.is_invoice_created %>
+        <%= link_to new_mail_record_tracker_path(record_name: 'Inventory Invoice', record_id: @inventory_order.invoice_id, record_model: 'Invoice::InventoryInvoice', appointment_id: @inventory_order.try(:appointment_id), admission_id: @inventory_order.try(:admission_id), speciality: @inventory_order.try(:specalityname), :patient_id => @inventory_order&.patient_id, invoice_id: @inventory_order.invoice_id), class: "btn btn-xs btn-info", data: { remote: true, 'disable-with' =>  "Please Wait...", 'toggle' => 'modal', 'target' => '#mail-record-modal'} do %> <i class="fa fa-envelope"></i> Email Bill<% end %>
+      <% end %>
+    <% recieved_amount_def = (@inventory_order.net_amount.to_f.round(2) - (@inventory_order.set_amount_received + @inventory_order.advance_payment.to_f.round(2)) < 0.1) || (@inventory_order.payment_pending.to_f == @inventory_order.net_amount.to_f)%>
+    <% unless @return_transaction.present? %>
+      <% if (@inventory_order.is_canceled == false) && (@inventory_order.state == 'delivered') && @inventory_order.payment_completed == true && @inventory_order.invoice_type == 'cash'%>
+        <!-- <%#= link_to return_invoice_inventory_transaction_returns_path(id: @inventory_order.id, patient_id: @inventory_order.patient_id, store_id: @inventory_order.store_id), class: "btn btn-primary btn-xs ", data: { remote: true, 'toggle' => 'modal', 'target' => '#return-invoice-inventory-modal', class: 'btn btn-info'} do %><i class="fa fa-exchange-alt"></i>&nbsp; Return<%# end %> -->
+      <% end %>
+    <% end %>
+  <% patially_paid = (@inventory_order.payment_completed == true || @inventory_order.payment_pending.to_f == @inventory_order.net_amount.to_f) %>
+  <% if @return_transaction.present? && @inventory_order.is_canceled == false && patially_paid && recieved_amount_def %>
+    <span class="tool-tip" data-toggle="tooltip" data-placement="bottom" title="Cannot be cancelled. A return is already collected against this invoice.">
+      <button type="button" disabled class=" btn btn-xs btn-danger tooltip-wrapper disabled" title="Receive Items" data-title="Cannot be cancelled. A return is already collected against this invoice."><i class="fa fa-trash-alt"></i>Cancel Order</button>
+    </span>
+  <% else %>
+    <%# if @inventory_order.is_canceled == false && (@inventory_order.created_at.to_date == Date.current || @inventory_order.invoice_type == 'credit')  && patially_paid && recieved_amount_def && @inventory_order.payment_received_breakups.any_payer_master?%>
+    <% if @inventory_order.is_invoice_created == false && @inventory_order.is_canceled == false %>
+      <% if Authorization::PolicyHelper.verification(current_user.id ,"HGP-100-118-101") %>
+        <%= link_to confirm_disable_invoice_inventory_orders_path(id: @inventory_order.id), class: "btn btn-xs btn-danger", data: { remote: true, 'toggle' => 'modal', 'target' => '#inventory-invoice-cancellation-modal', class: 'btn btn-info'} do %><i class="fa fa-trash-alt"></i>&nbsp; Cancel Order<% end %>
+      <% else %>
+        <a class="btn btn-xs btn-danger disabled" title="Not Authorized" style="pointer-events: all"><i class="fa fa-trash-alt"></i>&nbsp; Cancel Order</a>
+      <% end %>
+    <% end %>
+  <% end %>
+</div>
+
+<% if @inventory_order.is_invoice_created %>
+  <a href="/invoice/inventory_invoices?store_id=<%= @inventory_store.id %>&id=<%= @inventory_order.invoice_id %>&start_date=<%= params[:start_date] %>&end_date=<%= params[:end_date] %>&time_period=Today" data-remote="true" class="btn btn-primary btn-sm"><i class=""></i>More Action</a>
+<% end %>
+
+<%# if @inventory_order.is_invoice_created == false && @inventory_order.is_canceled == false && (@inventory_order.srn_pending == false || @is_srn_lot_created) %>
+<% if @inventory_order.is_invoice_created == false && @inventory_order.is_canceled == false && @inventory_order.srn_pending == false %>
+  <div class="btn-group" style="margin: 10px;">
+    <% if Authorization::PolicyHelper.verification(current_user.id ,"HGP-100-118-102") %>
+      <%= link_to review_order_invoice_inventory_invoices_path(id: @inventory_order.id, patient_id: @inventory_order.patient_id), class: "btn btn-warning", data: { remote: true, 'disable-with' =>  "Please Wait...", 'toggle' => 'modal', 'target' => '#review-order-modal', class: 'btn btn-info'} do %> <i class=""></i> Create Bill<% end %>
+    <% else %>
+      <a class="btn btn-warning disabled" title="Not Authorized" style="pointer-events: all"> Create Bill </a>
+    <% end %>
+  </div>
+<% end %>
+
+<%# if @inventory_order.is_invoice_created == false && @inventory_order.is_canceled == false && @inventory_order.requisition_pending && @stock_receive_note.nil? %>
+  <!-- <div class="btn-group" style="margin: 10px;"> -->
+    <%# if Authorization::PolicyHelper.verification(current_user.id ,"HGP-100-118-102") %>
+      <!-- <%#= link_to new_inventory_order_requisition_path(order_id: @inventory_order.id, patient_id: @inventory_order.patient_id, store_id: @inventory_order.store_id, from: 'inventory_order'), class: "btn btn-success", data: { remote: true, 'disable-with' =>  "Please Wait...", 'toggle' => 'modal', 'target' => '#inventory-modal', class: 'btn btn-info'} do %> <i class=""></i> Create Requisition<%# end %> -->
+    <%# else %>
+      <!-- <a class="btn btn-warning disabled" title="Not Authorized" style="pointer-events: all"> Create Bill </a> -->
+    <%# end %>
+  <!-- </div> -->
+<%# end %>
+
+<% if @inventory_order.department_id == '50121007' %>
+  <%= render partial: '/invoice/inventory_orders/state_transitions_form.html.erb' %>
+<% end %>
+<hr>
+<div class="row">
+  <%= render partial: '/invoice/inventory_orders/show_body.html.erb' %>
+</div>
+<hr style="height:1px;border:none;color:#333;background-color:#333;" />
+
+<div class="row">
+  <% if current_facility.show_finances %>
+    <div class="row no_margin no_padding" style="padding: 5px;">
+      <b style="margin-left: 25px; color: #1E90FF">TRANSACTIONS</b>
+      <%= render partial: 'prescriptions/inventory_orders.html.erb' %>
+    </div>
+    <hr>
+  <% end %>
+</div>
+
+<script type="text/javascript">
+  $('#btn_remove_item_confirm').on('click', function(){
+    $('#input_remove_confirmation').show()
+    $('#verified_item_remove').show()
+    $(this).hide()
+    $('#verified_item_remove').attr('disabled','disabled')
+    $(".item_code").addClass("glow-animation")
+  })
+
+  $('#input_remove_confirmation').on('keyup', function(){
+    if($(".invoice-number").text().trim() === $(this).val()){
+      $('#verified_item_remove').removeAttr('disabled')
+    } else {
+      $('#verified_item_remove').attr('disabled', 'disabled')
+    }
+
+  })
+
+  $("a").click(function (event) {
+    if ($(this).text().trim() == "Confirm Delete") {
+      if ($(this).hasClass("disabled")) {
+        event.preventDefault();
+      } else {
+        $(this).addClass("disabled");
+      }
+    }
+  });
+
+  $('[data-toggle="tooltip"]').tooltip()
+</script>

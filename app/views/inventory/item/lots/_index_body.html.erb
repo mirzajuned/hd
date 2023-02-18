@@ -1,0 +1,70 @@
+<% currency_symbol = current_facility.currency_symbol %>
+
+
+<% if controller_name == 'lots'
+     csize = [3, 3, 1, 2]
+   else
+     csize = [4, 5, 0, 0]
+   end
+ %>
+
+<% if @lots.length > 0 %>
+  <% @lots.each do |lot| %>
+    <% if lot.expiry.present? && params[:controller] == 'invoice/inventory_orders' %>
+      <% if lot.expiry < Date.current %>
+        <% expiry_status = '-expired' %>
+      <% else %>
+        <% expiry_status = '' %>
+      <% end %>
+    <% else %>
+      <% expiry_status = '' %>
+    <% end %>
+
+    <tr id="<%= lot.id %>" class="inventory-list-row<%= expiry_status %>">
+      <td>
+        <div class="row">
+          <input type="hidden" name="" class="item-lot-unit" value="<%= lot.unit_level %>">
+          <span class="col-md-7" style="overflow: hidden;white-space: nowrap;text-overflow: ellipsis;" title="<%= lot.description %>"><b><%= lot.description %></b></span>
+          <% if @inventory_store.department_id == '50121007' %>
+            <span class="col-md-2 text-center"><label class="label label-success" style="font-size: 9px; padding: 2px"><% if lot&.model_no.present? %><%= lot.model_no %><% else %>NA<% end %></label></span>
+            <span class="col-md-3"><label class="label label-info" style="font-size: 9px; padding: 2px"><%= lot.variant_code %></label></span>
+          <% else %>
+            <span class="col-md-3 col-md-offset-<%=csize[3]%>"><label class="label label-info" style="font-size: 9px; padding: 2px"><%= lot.variant_code %></label></span>
+          <% end %>
+        </div>
+        <div class="row">
+          <% if expiry_status == '' %>
+            <span class="col-md-<%=csize[0]%>" style="font-size: smaller"><b>Exp. <% if lot.expiry.present? %><%= lot.expiry.try(:strftime, '%d-%m-%Y') %><% else %>N.A<% end %></b></span>
+          <% else %>
+            <span class="col-md-<%=csize[0]%>" style="font-size: smaller; color: red;"><b>Exp. <% if lot.expiry.present? %><%= lot.expiry.try(:strftime, '%d-%m-%Y') %><% else %>N.A<% end %></b></span>
+          <% end %>
+          <% if controller_name == 'lots' %>
+            <span class="col-md-2 text-warning"><b><%= lot.transaction_type&.camelize %></b></span>
+            <span class="col-md-2"><b><% if lot.stock %><%= lot.stock %><% else %>0 or NA<% end %></b></span>
+          <% else %>
+            <span class="col-md-2"><b><%= lot.available_stock %></b></span>
+          <% end %>
+          <span class="col-md-<%=csize[1]%> text-right col-md-offset-<%=csize[2]%>"><b>&nbsp;<span style="padding: 3px;font-size:10px;"><%= currency_symbol %></span><%= lot.list_price&.round(2) %></b></span>
+        </div>
+        <div class="row">
+          <span class="col-md-3" style="font-size: 9px"><b><%= lot.batch_no %></b></span>
+          <span class="col-md-3" style="font-size: 9px; color: red"><b><%= lot.comment.try(:titleize) %></b></span>
+          <% if @sub_stores.present? && @sub_stores.length > 1 %>
+            <span class="col-md-2 text-warning"><b><%= lot.sub_store_name&.camelize %></b></span>
+          <% end %>
+          <span class="col-md-3" style="font-size: 9px"><b><%= lot.custom_field_tags&.reject(&:blank?)&.join(', ') %></b></span>
+
+        </div>
+        <% if ['inventory_invoices', 'inventory_orders', 'transfers', 'adjustments', 'trays', 'bill_of_materials'].include?(controller_name) %>
+          <div class="row">
+            <span class="col-md-12" style="font-size: 10px;font-style: italic;"><b><%= lot.generic_display_name %></b></span>
+          </div>
+        <% end %>
+      </td>
+    </tr>
+  <% end %>
+<% else %>
+  <tr>
+    <td align="center"><strong style="font-size: 20px;">Nothing to Display</strong></td>
+  </tr>
+<% end %>

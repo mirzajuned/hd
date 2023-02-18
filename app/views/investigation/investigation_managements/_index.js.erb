@@ -1,0 +1,202 @@
+// Window Size
+var window_height = $(window).height() - 50
+$(".sidebar_area").css('height',window_height)
+$(".investigation_main_content").css('height',window_height)
+
+$(window).resize(function() {
+  var window_height = $(window).height() - 50
+  $(".sidebar_area").css('height',window_height)
+  $(".investigation_main_content").css('height',window_height)
+})
+
+// To Refresh investigation Management Page
+function refresh_investigation_management(doctor_id, active_tab, patient_id, appointment_id, current_date="<%= @current_date %>"){
+  $.ajax({
+    type: "GET",
+    dataType: "script",
+    data: {
+      current_date: current_date,
+      active_user: doctor_id,
+      active_tab: active_tab,
+      patient_id: patient_id,
+      appointment_id: appointment_id,
+      doctors_list: $(".toggle-sidebar-doctors").attr('data-toggle-position')
+    },
+    url: "/investigation_management/<%= @department_id %>"
+  })
+}
+
+$(document).ready(function(){
+
+  $(".datepicker-for-btn").datepicker();
+  $('#investigation-datepicker-inline').datepicker({
+    dateFormat: "dd/mm/yy",
+    showOn: "button",
+    buttonText: '<i class="fa fa-calendar"></i>',
+    onSelect: function (dateText,obj) {
+      jQuery.ajax({
+        type: "GET",
+        dataType: "script",
+        url: '/investigation_management/<%= @department_id %>?current_date='+moment(dateText, "DD/MM/YYYY").format('DD-MMMM-YYYY')+'&active_user='+$("#sidebar_doctors_investigation .active").find('a').attr('data-doctor-id')+'&active_tab=' + $(".tab_active").find(".active").attr('data-tab-id') + '&doctors_list=' + $(".toggle-sidebar-doctors").attr('data-toggle-position'),
+      })
+    }
+  })
+  $(".ui-datepicker-trigger").addClass("btn btn-danger calender-btn navbar-btn navbar-btn-calender navbar-btn-hover")
+
+  $("#btn-investigation-backdate").on('click',function(){
+    var doctor_id = $("#sidebar_doctors_investigation .active").find('a').attr('data-doctor-id')
+    var active_tab = $(".tab_active").find(".active").attr('data-tab-id')
+    $.ajax({
+      type: "GET",
+      dataType: "script",
+      data: {
+        current_date: "<%= @current_date.yesterday %>",
+        active_user: doctor_id,
+        active_tab: active_tab,
+        doctors_list: $(".toggle-sidebar-doctors").attr('data-toggle-position')
+      },
+      url: "/investigation_management/<%= @department_id %>"
+    })
+  })
+
+  $("#btn-investigation-frontdate").on('click',function(){
+    var doctor_id = $("#sidebar_doctors_investigation .active").find('a').attr('data-doctor-id')
+    var active_tab = $(".tab_active").find(".active").attr('data-tab-id')
+    $.ajax({
+      type: "GET",
+      dataType: "script",
+      data: {
+        current_date: "<%= @current_date.tomorrow %>",
+        active_user: doctor_id,
+        active_tab: active_tab,
+        doctors_list: $(".toggle-sidebar-doctors").attr('data-toggle-position')
+      },
+      url: "/investigation_management/<%= @department_id %>"
+    })
+  })
+
+  $("#btn-investigation-today").on('click',function(){
+    var doctor_id = $("#sidebar_doctors_investigation .active").find('a').attr('data-doctor-id')
+    var active_tab = $(".tab_active").find(".active").attr('data-tab-id')
+    $.ajax({
+      type: "GET",
+      dataType: "script",
+      data: {
+        current_date: "<%= Date.current %>",
+        active_user: doctor_id,
+        active_tab: active_tab,
+        doctors_list: $(".toggle-sidebar-doctors").attr('data-toggle-position')
+      },
+      url: "/investigation_management/<%= @department_id %>"
+    })
+  })
+
+  $("#btn-investigation-management-refresh").on('click', function(){
+    var doctor_id = $("#sidebar_doctors_investigation .active").find('a').attr('data-doctor-id')
+    var active_tab = $(".tab_active").find(".active").attr('data-tab-id')
+    var patient_id = $(".investigation_today").find('.active').find('.active-investigation').attr('data-patient-id')
+    var appointment_id = $(".investigation_today").find('.active').find('.active-investigation').attr('data-appointment-id')
+    refresh_investigation_management(doctor_id,active_tab,patient_id,appointment_id,"<%= @current_date %>")
+  })
+})
+jQuery("#search_investigation").autocomplete({
+    minLength: 4,
+    source: function(request, response) {
+        jQuery.ajax({
+            dataType: "json",
+            type : 'get',
+            url: '/investigation/investigation_managements/search_investigation_lists',
+            //data: {searchpatient: params, remote: "true" },
+            data: {
+                current_date: '<%= @current_date %>',
+                active_tab: $(".tab_active").find(".active").attr('data-tab-id'),
+                filter: $(".search-filter.dropdown-toggle").attr('data-active-filter'),
+                q: $( "#search_investigation").val()
+            },
+            success: function(data) {
+              console.log(data);
+                //jQuery('#searchpatientkeyword').removeClass('ui-autocomplete-loading')
+                items = [];
+                x = [];
+                for (i = 0, len = data.length; i < len; i++) {
+                    items.push(data[i].fullname);
+                    x[data[i].fullname] = data[i].id;
+                }
+                response(data)
+            },
+            error: function(data) {
+                //jQuery('#searchpatientkeyword').removeClass('ui-autocomplete-loading');
+            }
+        })
+    },
+    create: function () {
+        $(this).data('ui-autocomplete')._renderItem = function (ul, patient) {
+          //console.log(patient);
+            $(ul).css("border","1px solid #000").css("border-top","none").css('max-height','50%').css('overflow','auto')
+            if (patient.patient_mrn.length > 0) {
+              mrn  = "<div class='badge badge-danger pull-right'><b>"+patient.patient_mrn+"</b></div>"
+            } else {
+              mrn = ""
+            }
+            
+            return $('<li>')
+                    .append(`
+                      <hr style="margin:0 0 5px;padding:0;border-color:#354670;">
+                      <a style="color:#428bca">
+                      <div>
+                        <div class='pull-left patient-box-left'><b>${patient.label}</b></div>
+                        <div class="badge badge-primary pull-right"><b>${patient.patient_display_id}</b></div>
+                      </div><br>
+                      <div>
+                        <div class='pull-left patient-box-left'><b>${patient.mobile_number}</b></div>
+                        <div class="badge badge-warning pull-right"><b>${patient.date}</b></div>
+                        ${mrn}
+                      </div>
+                      </a>
+                    `)
+                    .appendTo(ul);
+        }
+    },
+    select: function( event, ui ) {
+        console.log("UI",ui)
+        console.log("filter",ui.item["filter"])
+        filter = ui.item["filter"]
+
+
+        if (filter == "Active"){
+          $("a[href='#todays_patient_list']").trigger('click')
+          var idname = $("#todays_patient_list")
+          $(idname).find("[data-patient-id='" + ui.item["id"] + "']").trigger('click').addClass('active');
+        }
+        else if(filter == "Returning"){
+            $.ajax({
+              type: "GET",
+              dataType: "script",
+              data: {
+                  patient_id: ui.item["id"],
+                  current_date: ui.item["appointment_date"],
+                  appointment_id: ui.item["appointment_id"],
+                  active_tab: 'my_queue'
+              },
+              url: "/investigation_management/<%=@department_id%>",
+              success: function(){
+                $("a[data-filter-id='Returning']").trigger('click')
+                $('#search_investigation').val(ui.item["value"])
+                $(".summary_investigation_clickable.active-investigation").removeClass("active-investigation")
+                $("#todays_patient_list").find("[data-patient-id='" + ui.item["id"] + "']").trigger('click').addClass('active');
+              }
+            })
+        }
+    },
+    close: function() {
+
+    }
+})
+
+$(".dropdown-options").on('click',function(e){
+    e.preventDefault();
+    var button_html = $(this).text()[0] + " <span class='caret'></span>"
+    $(".search-filter.dropdown-toggle").html(button_html);
+    $(".search-filter.dropdown-toggle").attr('data-active-filter', $(this).attr('data-filter-id'));
+    $("#search_investigation").val("")
+});

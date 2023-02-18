@@ -1,0 +1,122 @@
+<% @user_time_slot ||= UserTimeSlot.find_by(user_id: @selected_doctor) if @selected_doctor %>
+<div class="row">
+  <div class="col-sm-12" id="user-calendar"></div>
+</div>
+
+<script>
+  let calendar = $("#user-calendar").fullCalendar({
+    contentHeight: $(window).height() * 0.70,
+    header: {
+      left: 'today',
+      center: 'prev title next',
+      right: ''
+    },
+    firstDay: '<%= Date.current.strftime('%w').to_i %>',
+    scrollTime: $.fullCalendar.moment().format('HH:MM:SS'),
+    slotDuration: '00:<%= @user_time_slot.present? ? @user_time_slot.try(:calendar_duration) : 10 %>:00',
+    // Workaround to disable entire Calendar
+    businessHours: {
+      dow: [0, 1, 2, 3, 4, 5, 6],
+      start: $.fullCalendar.moment(),
+      end: $.fullCalendar.moment()
+    },
+    selectConstraint: 'businessHours',
+    defaultView: "agendaWeek",
+    allDaySlot: false,
+    selectable: true,
+    select: function(start, end, view) {
+      alert(`
+        Date: ${$.fullCalendar.moment(start).format('DD/MM/YYYY')}
+        Time: ${$.fullCalendar.moment(start).format('hh:mm A')}
+      `);
+    },
+    events: {
+      type: 'get',
+      data: function(){
+        return {
+          facility_id: $("#appointment_facility_id").val(),
+          user_id: $("#appointment_consultant_id").val(),
+          department_id: 485396012
+        }
+      },
+      url: '/user_time_slots/0/show_calendar_data',
+      error: function() {
+        alert('Error Fetching Data!')
+      }
+    },
+    eventClick: function(calEvent) {
+
+      $('.fc-time-grid-event').css('border-color', 'rgb(255, 255, 255)');
+      $(this).css('border-color', 'black');
+
+      if (Date.parse(calEvent.start) < $.now() ){
+        notice = new PNotify({ title: 'Information', text: 'Please select valid time slot', icon: 'fa fa-stop', type: 'error' });
+        notice.get().click(function() { return notice.remove(); }); 
+      } 
+      else if (['Planned Leave', 'Meeting', 'Sick Leave', 'Emergency Leave', 'Personal Leave', 'Break'].includes(calEvent.title)) {
+        notice = new PNotify({ title: 'Information', text: `Doctor not available on selected slot, Please select available time slot.`, icon: 'fa fa-info-circle', type: 'error' });
+        notice.get().click(function() { return notice.remove(); });
+      } else if (calEvent.full) {
+        notice = new PNotify({ title: 'Information', text: 'The slot is fully booked.', icon: 'fa fa-stop', type: 'error' });
+        notice.get().click(function() { return notice.remove(); });
+      } else {
+        $('.appointment-timepicker').val($.fullCalendar.moment(calEvent.start).format('hh:mm A'))
+        $('.appointment-datepicker').val($.fullCalendar.moment(calEvent.start).format('DD/MM/YYYY'))
+        $('.appointment-timepicker').trigger("change")
+      }
+    },
+    eventRender : function(event, element) {
+      element[0].title = event.title;
+      // element[0].title = element.childNodes[0].firstChild.innerText;
+    }
+            
+  });
+
+  function resetDateTimeFields() {
+    $('#appointment_appointmentdate').val(null);
+    $('#appointment_time').val(null);
+  }
+
+  function refetchCalendarEvents() {
+    let slotDuration = $('#appointment_consultant_id').find('option:selected').attr('data-slot-duration') || 20;
+
+    $("#user-calendar").fullCalendar('refetchEvents');
+    $('#user-calendar').fullCalendar('option', 'slotDuration', `00:${slotDuration}:00`);
+  }
+
+  $('#appointment_facility_id').on('change', function() {
+    resetDateTimeFields();
+    refetchCalendarEvents();
+    enabled_disable_date_time();
+  })
+
+  $('#appointment_consultant_id').on('change', function() {
+    resetDateTimeFields();
+    refetchCalendarEvents();
+    enabled_disable_date_time();
+    appointment_page()
+  })
+  console.log('got herre')
+  // HACK: append data-slot-duration on first load
+  $('#appointment_consultant_id').find('option:selected').attr('data-slot-duration', '<%= @user_time_slot&.calendar_duration %>')
+</script>
+<style>
+  .fc-content{
+    top: 36%;
+  }
+  .fc-time{
+    text-align: center;
+  }
+  .fc-title{
+    text-align: center;
+  }
+  .holiday_slot{
+    font-size: 14px ;
+    font-weight: bold;
+  }
+  .ui-pnotify-icon{
+    position: relative;
+    top: 6px;
+  }
+.hover-end{padding:0;margin:0;font-size:75%;text-align:center;position:absolute;bottom:0;width:100%;opacity:.8}
+</style>

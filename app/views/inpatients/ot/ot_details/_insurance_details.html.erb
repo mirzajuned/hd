@@ -1,0 +1,75 @@
+<% if @admission.present? %>
+  <div class="row no_margin no_padding" style="padding: 5px;">
+    <div class="col-md-12">
+      <div class="row no_margin">
+        <h4 class="" style="display: inline"><b>Insurance Details: </b>
+        <%= link_to edit_inpatient_insurance_path(id: @admission.id.to_s,current_date: @current_date), data: {remote: true, 'toggle':  "modal", 'target': '#insurance-modal'}, class: "btn btn-link btn-xs edit_insurance_info", id: "insurance-btn" do %><i class="fa fa-edit"></i> Insure <% end %></h4>
+        <% if @admission.is_insured == 'No' %>
+          <label class="label label-default pull-right" style="font-size:12px;">Status: Not Insured</label>
+        <% else %>
+          <label class="label label-info pull-right" style="font-size:12px;">Status: &nbsp;&nbsp;<%= @admission.insurance_status.split('_').join(" ").upcase %></label>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <% if @admission.is_insured == 'Yes' %>
+    <div class="row no_margin no_padding" style="padding: 5px;">
+      <div class="col-sm-12">
+        <div class="row no_margin">
+        </div>
+        <div class="row no_margin yes_padding">
+          <div class="col-sm-2 no_padding text-left">Insurance Name</div>
+          <div class="col-sm-1 no_padding text-left">:</div>
+          <div class="col-sm-9 no_padding"><% if @admission.insurance_name.present? %><%= @admission.insurance_name %><% else %>Not Mentioned<% end %></div>
+        </div>
+        <% if current_facility.country_id == 'IN_108' %>
+          <div class="row no_margin yes_padding">
+            <div class="col-sm-2 no_padding text-left">TPA Name</div>
+            <div class="col-sm-1 no_padding text-left">:</div>
+            <div class="col-sm-9 no_padding"><% if @admission.tpa_contact_id.present? %><%= Contact.find_by(id: @admission.tpa_contact_id)&.display_name %><% else %>Not Mentioned<% end %></div>
+          </div>
+        <% end %>
+      
+        <div class="row no_margin yes_padding">
+          <div class="col-sm-6 no_padding text-left">Policy No. : <% if @admission.insurance_policy_no.present? %><%= @admission.insurance_policy_no %><% else %>--<% end %></div>
+          <div class="col-sm-6 no_padding ">Sum Insured : <% if @admission.sum_insured.present? %><%= @admission.sum_insured %><% else %>--<% end %></div>
+        </div>
+        <% if @admission.insurance_comments.present? %>
+          <div class="row no_margin yes_padding">
+            <div class="col-sm-2 no_padding text-left">Comments</div>
+            <div class="col-sm-1 no_padding text-left">:</div>
+            <div class="col-sm-8 no_padding"><%= @admission.insurance_comments %></div>
+          </div>
+        <% end %>
+        <div class="row no_margin yes_padding">
+          <div class="col-sm-3 no_padding text-left">Insurance Actions</div>
+          <div class="col-sm-1 no_padding text-left">:</div>
+          <div class="col-sm-6 no_padding text-left">
+            <% @courier_save = Inpatient::Insurance::Courier.find_by(admission_id: @admission.id) %>
+            <% if @courier_save.nil? %>
+              <%= link_to new_inpatient_courier_path(:admission_id => @admission.id.to_s, :admission_id => @admission.id, :patient_id => @admission.patient_id), id: "courier-btn", class: "btn btn-info btn-xs", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#insurance-modal'} do %> Courier Details <% end %>
+            <% else %>
+              <%= link_to inpatient_courier_path(id: @courier_save.id), id: "courier-btn", class: "btn btn-info btn-xs", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#insurance-modal'} do %> Show Courier Details <% end %>
+            <% end %>
+            <!-- Upload Paper Record -->
+              <button data-toggle="dropdown" title="Insurance Docs" id="upload_paper_<%= @admission.id.to_s %>" class="dropdown-toggle btn btn-xs btn-default hg-tooltip">
+                <i class="fa fa-info"></i><b>nsurance Uploads</b>
+              </button>
+              <ul role="menu" class="dropdown-menu pull-right">
+                <li><%= link_to paperrecords_upload_patient_asset_path(:patientid => @admission.patient.id, :category => "insurance"),:target => '_blank' do %> <i class="glyphicon glyphicon-cloud-upload"></i> Insurance Uploads <% end %></li>
+                <% @insurance_assets = PatientSummaryAssetUpload.where(parent_folder_id: "560cc6f72b2e26135d000004", patient_id: @admission.patient.id, is_deleted: false) %>
+                <% if @insurance_assets.count > 0 %>
+                  <li class="old_invoice_ss" style="text-align: center;font-size: 10px;opacity: 0.6; border-bottom: 1px solid #eee;border-top: 1px solid #eee;margin-top: 5px;"><span>Uploaded Documents</span></li>
+                  <% @insurance_assets.each do |psau| %>
+                    <li style="text-align:center;"><a href=<%= psau.asset_path.url %> target="_blank"><%= psau.name %></a></li>
+                  <% end %>
+                <% end %>
+              </ul>
+            <!-- Upload Paper Record End -->
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+<% end %>

@@ -1,0 +1,278 @@
+jQuery("#custom-procedure-modal").html("<%= escape_javascript(render 'new') %>")
+
+jQuery(document).ready(function() {
+  jQuery("#custom_new_procedure").hide();
+  jQuery("#attach_standard_procedure").hide();
+  jQuery("#custom_new_procedure_name").hide();
+  jQuery("#translated_standard_procedure").hide();
+
+  jQuery("input[name='custom_procedure_type']").on('click', function() {
+    var custom_type = jQuery("input[name='custom_procedure_type']:checked").val();
+    if (custom_type == 'create_new_procedure') {
+      jQuery("#custom_new_procedure_name").fadeIn();
+      jQuery("#custom_new_procedure").fadeIn();
+      jQuery("#attach_standard_procedure").hide();
+      jQuery("#translated_standard_procedure").hide();
+      jQuery("#search_procedure").val("");
+      jQuery("#search_procedure_code").val("")
+    } else if (custom_type == 'attach_procedure') {
+      jQuery("#custom_new_procedure").hide();
+      jQuery("#translated_standard_procedure").hide();
+      jQuery("#attach_standard_procedure").fadeIn();
+      jQuery("#custom_new_procedure_name").fadeIn();
+
+      if ($('#has_laterality').attr('checked')) {
+        $('#has_laterality').removeAttr('checked')
+      }
+    } else if (custom_type == 'translated_procedure') {
+      jQuery("#custom_new_procedure").hide();
+      jQuery("#attach_standard_procedure").hide();
+      jQuery("#translated_standard_procedure").fadeIn();
+    }
+  });
+});
+
+jQuery('#search_procedure').autocomplete({
+
+  minLength: 3,
+
+  source: function(request, response) {
+    var template_id = 244486005
+    var speciality_id = $('#speciality_id').val()
+    jQuery.ajax({
+      dataType: "json",
+      type: 'get',
+      url: '/common_procedures/search',
+      //data: {searchpatient: params, remote: "true" },
+      data: {
+        search: request.term,
+        template_id: template_id,
+        speciality_id: speciality_id,
+        remote: "true"
+      },
+      success: function(data) {
+        //jQuery('#searchpatientkeyword').removeClass('ui-autocomplete-loading')
+        response(data);
+      },
+      error: function(data) {
+        //jQuery('#searchpatientkeyword').removeClass('ui-autocomplete-loading');
+      }
+    });
+  },
+  select: function(event, ui) {
+    params = ui.item["code"]
+    name = ui.item["label"]
+    procedure_type = ui.item["procedure_type"]
+
+    jQuery("#search_procedure").val(name)
+    var search_procedure_code = ui.item["code"]
+    jQuery("#search_procedure_code").val(search_procedure_code)
+    jQuery("#search_procedure_type").val(procedure_type)
+    jQuery("#search_procedure_code_display").val(search_procedure_code)
+
+    $("#search_procedure_code_display").val(function(i, val) {
+      return val.toUpperCase();
+    });
+
+  },
+  create: function() {
+    $(this).data('ui-autocomplete')._renderItem = function(ul, item) {
+      // if (item.type) {
+      return $('<li>')
+        .append('<a>' + item.label + '&nbsp; &nbsp; &nbsp;' + "<span class=\"badge pull-right\">" + item.procedure_type_label + "</span>" + '</a>')
+        .appendTo(ul);
+      // }
+    };
+  },
+  close: function() {}
+});
+
+
+function validate_custom_procedure_page() {
+
+  $("#new_custom_common_procedure").validate({
+    rules: {
+      "custom_common_procedure[name]": {
+        remote: "/custom_common_procedures/name_validation?procedure_from=custom",
+        required: true,
+        minlength: 3
+      },
+      "synonym_common_procedure[search_procedure_name]": {
+        required: true
+      },
+      "searched_display_code": {
+        required: true
+      },
+      "custom_common_procedure[region][]": {
+        required: true
+      },
+      "synonym_common_procedure[name][0]": {
+        required: true,
+        remote: "/custom_common_procedures/name_validation?procedure_from=synonym",
+        minlength: 3
+      },
+      "synonym_common_procedure[name][1]": {
+        required: true,
+        remote: "/custom_common_procedures/name_validation?procedure_from=synonym",
+        minlength: 3
+      },
+      "synonym_common_procedure[name][2]": {
+        required: true,
+        remote: "/custom_common_procedures/name_validation?procedure_from=synonym",
+        minlength: 3
+      },
+      "custom_common_procedure[speciality_id]": {
+        required: true,
+      },
+      "translated_common_procedure[language]": {
+        required: true
+      },
+      "translated_common_procedure[search_procedure_name]": {
+        required: true
+      },
+      "translated_common_procedure[name][0]": {
+        required: true,
+        remote: "/custom_common_procedures/name_validation?procedure_from=translated",
+        minlength: 3
+      }
+    },
+
+    messages: {
+      "custom_common_procedure[name]": {
+        required: "Please fill the Procedure name.",
+        remote: "Name already exist in Custom/ Synonym, type another"
+      },
+      "synonym_common_procedure[search_procedure_name]": {
+        required: "This field is required."
+      },
+      "searched_display_code": {
+        required: "Code cant'be empty, choose Procedure from Dropdown by Search"
+      },
+      "custom_common_procedure[region][]": {
+        required: "Please select atleast one region "
+      },
+      "synonym_common_procedure[name][0]": {
+        required: "Please enter procedure name",
+        remote: "Name already exist in Custom/ Synonym, type another"
+      },
+      "synonym_common_procedure[name][1]": {
+        required: "Please enter procedure name",
+        remote: "Name already exist in Custom/ Synonym, type another"
+      },
+      "synonym_common_procedure[name][2]": {
+        required: "Please enter procedure name",
+        remote: "Name already exist in Custom/ Synonym, type another"
+      },
+      "custom_common_procedure[speciality_id]": {
+        required: "Please select any Specialty",
+      },
+      "translated_common_procedure[language]": {
+        required: "Please select any Language"
+      },
+      "translated_common_procedure[search_procedure_name]": {
+        required: "This field is required"
+      },
+      "translated_common_procedure[name][0]": {
+        required: "Please enter procedure name",
+        remote: "Name already exist in Custom/synonym/translated, type another"
+      }
+    },
+  });
+
+
+  $.validator.addMethod("ItemRequired", $.validator.methods.required, "Name can't be left blank");
+
+  $.validator.addClassRules("synonym_common_procedure", {
+    ItemRequired: true
+  });
+}
+
+validate_custom_procedure_page()
+
+
+//for creating new synonym names
+jQuery(".custom_common_procedure_fields").on('click', "#add_custom_synonym_name", function(e) {
+
+  var total_rows = $('.synonym_new_procedure_name_rows').find('.new_procedure_name_row').length
+
+  total_synonym_rows = total_rows + 1
+
+  var single_row_html = '<div class="col-md-12 row new_procedure_name_row" id="new_procedure_name_row" style="margin-bottom: 10px;">' +
+    '<div class="col-md-3"></div>' +
+    '<div class="col-md-6">' +
+    '<input class="form-control synonym_common_procedure" name="synonym_common_procedure[name][' + total_synonym_rows + ']" id="synonym_common_procedure_' + total_synonym_rows + '_name " type="text" placeholder="Enter new Procedure name">' +
+    '</div>' +
+    '<div class="col-md-1"><span id="remove_custom_synonym_name_' + total_synonym_rows + '" class="btn btn-sm btn-primary btn-danger glyphicon glyphicon-remove remove-icon">' +
+    '</span>' +
+    '</div>' +
+    '</div>'
+
+  jQuery(single_row_html).appendTo("#synonym_new_procedure_name_rows")
+
+  if ($(".synonym_new_procedure_name_rows").find('.remove-icon').length == 2) {
+    $('.add-icon').hide()
+  }
+})
+
+
+jQuery("body").on('click', "[id^=remove_custom_synonym_name_]", function(e) {
+
+  var id = e.currentTarget.id
+
+  jQuery("#" + id).closest('#new_procedure_name_row').remove()
+
+  if ($(".synonym_new_procedure_name_rows").find('.remove-icon').length < 2) {
+    $('.add-icon').show()
+  }
+})
+
+jQuery('#search_all_procedure').autocomplete({
+
+  minLength: 3,
+
+  source: function(request, response) {
+    let template_id = 244486005
+    let speciality_id = $('#speciality_id').val()
+    jQuery.ajax({
+      dataType: "json",
+      type: 'get',
+      url: '/common_procedures/search',
+      data: {
+        search: request.term,
+        template_id: template_id,
+        speciality_id: speciality_id,
+        remote: "true"
+      },
+      success: function(data) {
+        response(data);
+      },
+      error: function(data) {
+      }
+    });
+  },
+  select: function(event, ui) {
+    params = ui.item["code"]
+    name = ui.item["label"]
+    procedure_type = ui.item["procedure_type"]
+
+    jQuery("#search_all_procedure").val(name)
+    let search_procedure_code = ui.item["code"]
+    jQuery("#translated_procedure_code").val(search_procedure_code)
+    jQuery("#search_translated_procedure_type").val(procedure_type)
+    jQuery("#translated_procedure_code_display").val(search_procedure_code)
+
+    $("#search_procedure_code_display").val(function(i, val) {
+      return val.toUpperCase();
+    });
+  },
+  create: function() {
+    $(this).data('ui-autocomplete')._renderItem = function(ul, item) {
+      return $('<li>')
+        .append('<a>' + item.label + '&nbsp; &nbsp; &nbsp;' + "<span class=\"badge pull-right\">" + item.procedure_type_label + "</span>" + '</a>')
+        .appendTo(ul);
+    };
+  },
+  close: function() {}
+});
+
+$("#translated_common_procedure_language").select2();

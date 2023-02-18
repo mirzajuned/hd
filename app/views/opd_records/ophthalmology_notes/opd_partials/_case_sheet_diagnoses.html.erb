@@ -1,0 +1,207 @@
+<div class="col-md-12 other-diagnosis-list">
+  <strong style="color:#428bca;text-decoration:underline;font-size:15px;">Other Diagnosis within this Case</strong>
+  <table class="table table-bordered">
+    <tbody id='diagnosis-present' class='diagnosis-present'>
+      <input type="hidden" name="opdrecord[disabled_diagnosis_codes]" class="disabled_diagnosis_codes" value="<%= @opdrecord.try(:disabled_diagnosis_codes).to_s %>">
+      <% cs = @case_sheet.diagnoses.where(:record_id.nin => [@opdrecord.id], is_disabled: false).group_by(&:icddiagnosiscode) %>
+      <% counter = 0 %>
+      <% cs.each do |icddiagnosiscode, diagnoses| %>
+        <tr class="case-diagnosis">
+          <input type="hidden" class="diagnosis_saperatedicdcode" value="<%= diagnoses[0].saperatedicddiagnosiscode %>">
+          <input type="hidden" class="diagnosis_fullicdcode" value="<%= diagnoses[0].icddiagnosiscode %>">
+          <input type="hidden" class="diagnosis_enteredby" value="<%= current_user.fullname %>">
+          <input type="hidden" class="diagnosis_enteredby_id" value="<%= current_user.id.to_s %>">
+          <input type="hidden" class="diagnosis_updatedby" value="<%= current_user.fullname.to_s %>">
+          <input type="hidden" class="diagnosis_updatedby_id" value="<%= current_user.id.to_s %>">
+          <input type="hidden" class="diagnosis_diagnosiscomment" value="<%= diagnoses[0].diagnosis_comment %>">
+          <input type="hidden" class="diagnosis_usercomment" value="<%= diagnoses[0].users_comment %>">
+          <input type="hidden" class="diagnosis_entrydatetime" value="<%= Time.current.strftime("%d/%m/%Y | %H:%M %p") %>">
+          <input type="hidden" class="diagnosis_entrytime" value="<%= Time.current.strftime("%d/%m/%Y | %H:%M %p") %>">
+          <input type="hidden" class="diagnosis_updateddatetime" value="<%= Time.current.strftime("%d/%m/%Y | %H:%M %p") %>">
+          <input type="hidden" class="diagnosis_updatedtime" value="<%= Time.current.strftime("%d/%m/%Y | %H:%M %p") %>">
+          <input type="hidden" class="opdrecord_view_owner_id" value="<%= diagnoses[0].consultant_id %>">
+          <input type="hidden" class="opdrecord_view_owner_name" value="<%= diagnoses[0].consultant_name %>">
+          <input type="hidden" class="diagnosis_icd_type" value="<%= diagnoses[0].icd_type %>">
+          <td style="width:80%;">
+            <% if diagnoses[0].icd_type == 'TranslatedIcdDiagnosis' %>
+              <div><span style="color: #428bca" id="opdrecord_diagnosis_text_<%=counter%>_diagnosisoriginalname"><%= diagnoses[0][:diagnosisname].to_s.titleize.to_s.titleize %></span><% if diagnoses[0][:icddiagnosiscode].present? %> - <span><strong id="opdrecord_diagnosis_text_<%=counter%>_icddiagnosiscode"><%= diagnoses[0][:icddiagnosiscode].to_s.upcase.insert(3, '.')%></strong></span><% end %></div>
+            <% else %>
+              <div><span style="color: #428bca" id="opdrecord_diagnosis_text_<%=counter%>_diagnosisoriginalname"><%= diagnoses[0][:diagnosisoriginalname].to_s.titleize %></span><% if diagnoses[0][:icddiagnosiscode].present? %> - <span><strong id="opdrecord_diagnosis_text_<%=counter%>_icddiagnosiscode"><%= diagnoses[0][:icddiagnosiscode].to_s.upcase.insert(3, '.')%></strong></span><% end %></div>
+            <% end %>
+            <span style="font-size: 10px;"><%= diagnoses[0].advised_by %> on <%= diagnoses[0].advised_datetime.try(:strftime, "%d/%m/%Y") %> </span>
+          </td>
+          <td style="width:20%;">
+            <button class="btn btn-primary btn-add-to-template btn-xs">Add to Template</button>
+            <button class="btn btn-danger btn-disable-case btn-xs">Disable</button>
+            <button class="btn btn-danger btn-enable-case btn-xs" style="display: none;">Enable</button>
+          </td>
+        </tr>
+        <% counter += 1 %>
+      <% end %>
+    </tbody>
+  </table>
+</div>
+
+<% if true #Remove Row %>
+  <script type="text/javascript">
+    $(".btn-add-to-template").on('click', function(e){
+      e.preventDefault()
+
+      var fieldcounter;
+      if (jQuery(".diagnosis-added > .diagnosislist").length == 0){
+        fieldcounter = 0;
+      } else {
+        fieldcounter = jQuery(".diagnosis-added > .diagnosislist").length;
+      }
+
+      var case_diagnosis = $(this).closest(".case-diagnosis")
+      var saperatedicdcode = $(case_diagnosis).find(".diagnosis_saperatedicdcode").val()
+      var icdcode = $(case_diagnosis).find(".diagnosis_fullicdcode").val()
+      var entered_by = $(case_diagnosis).find(".diagnosis_enteredby").val()
+      var entered_by_id = $(case_diagnosis).find(".diagnosis_enteredby_id").val()
+      var updated_by = $(case_diagnosis).find(".diagnosis_updatedby").val()
+      var updated_by_id = $(case_diagnosis).find(".diagnosis_updatedby_id").val()
+      var diagnosis_comment = $(case_diagnosis).find(".diagnosis_diagnosiscomment").val()
+      var users_comment = $(case_diagnosis).find(".diagnosis_usercomment").val()
+      var entry_datetime = $(case_diagnosis).find(".diagnosis_entrydatetime").val()
+      var entry_time = $(case_diagnosis).find(".diagnosis_entrytime").val()
+      var updated_datetime = $(case_diagnosis).find(".diagnosis_updateddatetime").val()
+      var updated_time = $(case_diagnosis).find(".diagnosis_updatedtime").val()
+      var source = "opdrecord"
+      var icd_type = $(case_diagnosis).find(".diagnosis_icd_type").val()
+      var advised_by_id = $(case_diagnosis).find(".opdrecord_view_owner_id").val()
+      var advised_by = $(case_diagnosis).find(".opdrecord_view_owner_name").val()
+
+      var params = {entry_time: entry_time,updated_time: updated_time, icdcode: icdcode,saperatedicdcode: saperatedicdcode,entered_by_id: entered_by_id,entered_by: entered_by,updated_by_id:updated_by_id,updated_by: updated_by,entry_datetime: entry_datetime,updated_datetime: updated_datetime,diagnosis_comment: diagnosis_comment,users_comment: users_comment,counter: fieldcounter, advised_by_id: advised_by_id, advised_by: advised_by};
+      jQuery.ajax({
+        type: "GET",
+        dataType: "script",
+        url: "/icdtree/add_diagnosis_icd",
+        data: {ajax: params, icd_type: icd_type, source: source, remote: "true" },
+        success: function(){
+          $(case_diagnosis).hide()
+          if($(".case-diagnosis:visible").length <= 0){
+            $(".other-diagnosis-list").hide()
+          }
+        }
+      });
+    })
+
+    $(".btn-disable-case").on('click', function(e){
+      e.preventDefault()
+      var case_diagnosis = $(this).closest(".case-diagnosis")
+      var code = $(case_diagnosis).find('.diagnosis_fullicdcode').val()
+      var disabled_diagnosis_codes = $(".disabled_diagnosis_codes").val()
+      if(disabled_diagnosis_codes == ""){
+        final_disabled_diagnosis_codes = code
+      } else {
+        final_disabled_diagnosis_codes = disabled_diagnosis_codes + "," + code
+      }
+
+      $(".disabled_diagnosis_codes").val(final_disabled_diagnosis_codes)
+
+      $(case_diagnosis).hide()
+
+      if($(".case-diagnosis:visible").length <= 0){
+        $(".other-diagnosis-list").hide()
+      }
+    })
+  </script>
+<% end %>
+
+<% if false #Show Buttons %>
+  <script type="text/javascript">
+    $(".btn-add-to-template").on('click', function(e){
+      e.preventDefault()
+      var case_diagnosis = $(this).closest(".case-diagnosis")
+
+      // To avoid duplication
+      var skip_adding
+      var diagnosislist = $(".diagnosislist")
+      for (var i = diagnosislist.length - 1; i >= 0; i--) {
+        if($(diagnosislist[i]).find(".icddiagnosiscode").val() == $(case_diagnosis).find(".diagnosis_fullicdcode").val()){
+          skip_adding = true
+          break;
+        }
+      }
+
+      if(skip_adding){
+        alert("Already Present")
+      } else {
+        var fieldcounter;
+        if (jQuery(".diagnosis-added > .diagnosislist").length == 0){
+          fieldcounter = 0;
+        } else {
+          fieldcounter = jQuery(".diagnosis-added > .diagnosislist").length;
+        }
+
+        var saperatedicdcode = $(case_diagnosis).find(".diagnosis_saperatedicdcode").val()
+        var icdcode = $(case_diagnosis).find(".diagnosis_fullicdcode").val()
+        var entered_by = $(case_diagnosis).find(".diagnosis_enteredby").val()
+        var entered_by_id = $(case_diagnosis).find(".diagnosis_enteredby_id").val()
+        var updated_by = $(case_diagnosis).find(".diagnosis_updatedby").val()
+        var updated_by_id = $(case_diagnosis).find(".diagnosis_updatedby_id").val()
+        var diagnosis_comment = $(case_diagnosis).find(".diagnosis_diagnosiscomment").val()
+        var users_comment = $(case_diagnosis).find(".diagnosis_usercomment").val()
+        var entry_datetime = $(case_diagnosis).find(".diagnosis_entrydatetime").val()
+        var entry_time = $(case_diagnosis).find(".diagnosis_entrytime").val()
+        var updated_datetime = $(case_diagnosis).find(".diagnosis_updateddatetime").val()
+        var updated_time = $(case_diagnosis).find(".diagnosis_updatedtime").val()
+        var source = "opdrecord"
+        var icd_type = $(case_diagnosis).find(".diagnosis_icd_type").val()
+        var advised_by_id = $(case_diagnosis).find(".opdrecord_view_owner_id").val()
+        var advised_by = $(case_diagnosis).find(".opdrecord_view_owner_name").val()
+
+        var params = {entry_time: entry_time,updated_time: updated_time, icdcode: icdcode,saperatedicdcode: saperatedicdcode,entered_by_id: entered_by_id,entered_by: entered_by,updated_by_id:updated_by_id,updated_by: updated_by,entry_datetime: entry_datetime,updated_datetime: updated_datetime,diagnosis_comment: diagnosis_comment,users_comment: users_comment,counter: fieldcounter, advised_by_id: advised_by_id, advised_by: advised_by};
+        jQuery.ajax({
+          type: "GET",
+          dataType: "script",
+          url: "/icdtree/add_diagnosis_icd",
+          data: {ajax: params, icd_type: icd_type, source: source, remote: "true" },
+          success: function(){
+          }
+        });
+      }
+    })
+
+    $(".btn-disable-case").on('click', function(e){
+      e.preventDefault()
+      var case_diagnosis = $(this).closest(".case-diagnosis")
+      var code = $(case_diagnosis).find('.diagnosis_fullicdcode').val()
+      var disabled_diagnosis_codes = $(".disabled_diagnosis_codes").val()
+      if(disabled_diagnosis_codes == ""){
+        final_disabled_diagnosis_codes = code
+      } else {
+        final_disabled_diagnosis_codes = disabled_diagnosis_codes + "," + code
+      }
+
+      $(".disabled_diagnosis_codes").val(final_disabled_diagnosis_codes)
+
+      // To remove diagnosis from diagnosislist tray
+      var diagnosislist = $(".diagnosislist")
+      for (var i = diagnosislist.length - 1; i >= 0; i--) {
+        if($(diagnosislist[i]).find(".icddiagnosiscode").val() == code){
+          $(diagnosislist[i]).find(".removediagnosisbutton").trigger('click')
+        }
+      }
+
+      $(this).hide()
+      $(case_diagnosis).find('.btn-add-to-template').hide()
+      $(case_diagnosis).find('.btn-enable-case').show()
+    })
+
+    $(".btn-enable-case").on('click', function(e){
+      e.preventDefault()
+      var case_diagnosis = $(this).closest(".case-diagnosis")
+      var code = $(case_diagnosis).find('.diagnosis_fullicdcode').val()
+      var disabled_diagnosis_codes = $(".disabled_diagnosis_codes").val()
+      final_disabled_diagnosis_codes = disabled_diagnosis_codes.replace(code + ",", "").replace(code, "")
+
+      $(".disabled_diagnosis_codes").val(final_disabled_diagnosis_codes)
+
+      $(this).hide()
+      $(case_diagnosis).find('.btn-add-to-template').show()
+      $(case_diagnosis).find('.btn-disable-case').show()
+    })
+  </script>
+<% end %>

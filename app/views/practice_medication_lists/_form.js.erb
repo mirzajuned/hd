@@ -1,0 +1,280 @@
+// Class
+$("#item_medicine_class").autocomplete({
+  minLength: 2,
+  source: function(request, response) {
+    $.ajax({
+      dataType: "json",
+      type: 'get',
+      url: '/generic_compositions/search_class',
+      data: {
+        q: request.term,
+        category: $('.AddedCategory').text(),
+        remote: "true"
+      },
+      success: function(data) {
+        response(data);
+      },
+      error: function(data) {}
+    });
+  },
+  select: function(event, ui) {
+    var itemname = ui.item.name;
+    $(this).val(itemname);
+    let counter = $('.item-class-card').length
+    var form_name = $('#form_object_name').val()
+    if ($('.item_class_id[value='+ ui.item.class_id +']').length == 0)
+    {
+      $('#item_class_section').append(`
+        <div class="alert alert-info col-md-4 item-class-card">
+          <span class='btn-remove-class' aria-hidden="true">&times;</span></button>
+          <p>${itemname}</p>
+          <input type="hidden" name="${form_name}[medicine_class_name_attributes][${counter}][medicine_class]" class='item_class' readonly='true' value='${itemname}'>
+          <input type="hidden" name="${form_name}[medicine_class_name_attributes][${counter}][medicine_class_id]" class='item_class_id' readonly='true' value='${ui.item.class_id}'>
+        </div> 
+      `)
+    }
+    else
+    {
+      $('.item_class_id[value='+ ui.item.class_id +']').closest('.item-class-card').toggleClass('alert-danger', 1000).toggleClass('alert-danger', 1000);
+    }
+    $(this).val('');
+    return false;
+  },
+  create: function() {
+        $(this).data('ui-autocomplete')._renderItem = function(ul, item) {
+          return $('<li style=\"background-color: #d9edf7;\">')
+            .append('<a style=\"color:#000;text-shadow: 2px\">' + item.name + '&nbsp; &nbsp; &nbsp;' + '</a>')
+            .appendTo(ul);
+        };
+      },
+});
+
+$('#item_class_section').on('click', '.btn-remove-class', function(e){
+  e.preventDefault();
+  $(this).closest('.item-class-card').remove()
+  renumberIndex($('.item-class-card'), ['input', 'select'])
+})
+
+// Class
+
+//Generic compositions
+$('.btn-add-item').on('click', function(e){
+  e.preventDefault();
+  add_generic_composition()
+})
+
+function add_generic_composition()
+{
+  var form_name = $('#form_object_name').val()
+  let counter = $('.generic-composition-row').length
+  $('.generic-btn-container').remove()
+  $('.generic-composition-section').append(`
+    <div class="generic-composition-row mb10 col-sm-6">
+      <div class="col-md-6">
+        <input type="text" name="${form_name}[generic_names_attributes][${counter}][name]" class='item_name form-control p5_10'>
+        <input type="hidden" name="${form_name}[generic_names_attributes][${counter}][generic_id]" class='generic_id'>
+      </div>
+      <div class="col-md-4" style="padding: 0">
+        <div class="col-md-5" style="padding: 0;">
+          <input type="number" name="${form_name}[generic_names_attributes][${counter}][quantity]" class='item_quantity form-control' style="padding: 5px 2px;" step='0.00001' min=0.0>
+        </div>
+        <div class="col-md-7" style="padding: 0;">
+          <select name="${form_name}[generic_names_attributes][${counter}][unit]" class='form-control item_unit' style="padding: 6px 4px;">
+          <option value="">Select</option>
+          <option value="E/O">E/O</option>
+          <option value="mg">mg</option>
+          <option value="ml">ml</option>
+          <option value="%">%</option>
+          <option value="% E/O">% E/O</option>
+          <option value="% w/v">% w/v</option>
+          <option value="mg/ml">mg/ml</option>
+          <option value="w/v">w/v</option>
+          <option value="IU">IU</option>
+        </select>
+        </div>
+      </div>
+      <div class="col-md-2" style="padding: 0 3%;">
+        <button class="btn btn-danger btn-xs btn-remove-item" style="padding: 3px 10px;">&times;</button>
+      </div>
+    </div>
+    <div class='generic-btn-container col-md-1'>
+      <span class="btn btn-primary btn-xs btn-add-item" onclick='add_generic_composition()' disabled='disabled' style="padding: 3px 10px;"><i class="fa fa-plus"></i></sapn>
+    </div>
+  `)
+
+
+  if(counter > 0){
+    $('.btn-remove-item').removeAttr('disabled', 'disabled')
+  }
+}
+
+$('.generic-composition-section').on('click', '.btn-remove-item', function(e){
+  e.preventDefault();
+  $(this).closest('.generic-composition-row').remove();
+  genericName()
+  $('.generic-btn-container').remove()
+  $('.generic-composition-section').append(`
+    <div class='generic-btn-container col-md-1'>
+      <span class="btn btn-primary btn-xs btn-add-item" onclick='add_generic_composition()' disabled='disabled'><i class="fa fa-plus"></i></sapn>
+    </div>
+  `)
+
+  renumberIndex($('.generic-composition-row'), ['input', 'select'])
+
+  if ($('.generic-composition-row').length < 2)
+  {
+    $('.clear-generic-tag').hide()
+  }
+  if ( ($('.generic-composition-row:last .item_name').val() != '') && ($('.generic-composition-row').length > 0 ) )
+  {
+    $('.clear-generic-tag').show()
+  }
+
+  if ( ($('.generic-composition-row:last .item_name').attr('readonly') == 'readonly') || ($('.generic-composition-row').length < 1 ) )
+  {
+    $('.btn-add-item').removeAttr('disabled', 'disabled')
+  }
+  else
+  {
+    $('.btn-add-item').attr('disabled', 'disabled')
+  }
+})
+
+
+$('.generic-composition-section').on('change', '.item_unit', function(e) {
+  e.preventDefault();
+  let generic_composition_row = $(this).closest(".generic-composition-row")
+  $(generic_composition_row).find('.item_unit').val($(this).val())
+  name = $(this).closest('.generic-composition-row').find('.item_name').val()
+  qty = $(this).closest('.generic-composition-row').find('.item_quantity').val()
+  unit = $(this).closest('.generic-composition-row').find('.item_unit').val()
+  genericName()
+})
+
+function genericName()
+{
+  let contents = ""
+  $('.generic-composition-row').each(function(){
+    name = $(this).find('.item_name').val()
+    state = $(this).find('.item_name').attr('readonly')
+      if((name.length > 0) && (state == 'readonly') ){
+        qty = $(this).find('.item_quantity').val()
+        unit = $(this).find('.item_unit').val()
+        contents  += ', '+name+' '+qty+' '+unit
+      }
+   });  
+  //generic_name = name+' '+qty+' '+unit
+  //var generic_name_container = ($('#generic_name_container').val()+ ' ' + generic_name).replace(/^, /, '')
+  contents = contents.replace(/^, /, '').trim()
+  $('#generic_name_container').val(contents)
+  $('.generic_name_container').html(contents)
+}
+
+$('.generic-composition-section').on('keyup, change', '.item_quantity', function(e) {
+  genericName()
+})  
+
+$('.generic-composition-section').on('keyup', '.item_name', function(e) {
+  if ($(this).val().length >= 2) {
+    $(".item_name").autocomplete({
+      minLength: 2,
+      source: function(request, response) {
+        $.ajax({
+          dataType: "json",
+          type: 'get',
+          url: '/generic_compositions/search',
+          data: {
+            q: request.term,
+            remote: "true"
+          },
+          success: function(data) {
+            response(data);
+          },
+          error: function(data) {}
+        });
+      },
+      focus: function(event, ui) {
+      },
+      select: function(event, ui) {
+        var itemname = ui.item.name;
+        var old_element = $(".generic_id[value="+ui.item.generic_id+"]")
+        if (old_element.length > 0)
+        {
+          old_element.closest('.generic-composition-row').find("input").toggleClass('alert-danger', 1000).toggleClass('alert-danger', 2000);
+        }
+        else
+        {
+          $(this).prop('readonly', true).val(itemname);
+          $(this).closest('.generic-composition-row').find('.generic_id').val(ui.item.generic_id)
+          $('.generic-btn-container .btn-add-item').removeAttr('disabled', 'disabled')
+          $('.clear-generic-tag').show()
+          genericName()    
+        }   
+        return false;
+      },
+      create: function() {
+        $(this).data('ui-autocomplete')._renderItem = function(ul, item) {
+          return $('<li style=\"background-color: #d9edf7;\">')
+            .append('<a style=\"color:#000;text-shadow: 2px\">' + item.name + '&nbsp; &nbsp; &nbsp;' + '</a>')
+            .appendTo(ul);
+        };
+      },
+    });
+  }
+})
+
+$('.clear-generic-tag').on('click', function(e){
+  $('.generic-composition-section').html("")
+  $('.generic_name_container').html("")
+  add_generic_composition()
+  $('.btn-remove-item').attr('disabled', 'disabled')
+  $(this).hide()
+})
+
+//Validation
+
+function valivate_medication_list_form() {
+  $("#medication-list-form").validate();
+}
+
+$(".specialty_dropdown").on('change',function(){
+  var specialty_id = $(this).val();
+
+  $('.specialty_id_field').attr('value', specialty_id)
+})
+
+$.validator.addMethod("MedicationName", $.validator.methods.required,
+  "Name cannot be blank");
+$.validator.addMethod("MedicationSpecialty", $.validator.methods.required,
+  "Please Select any Specialty");
+$.validator.addClassRules("medication_name", { MedicationName: true});
+$.validator.addClassRules("dispensing_unit", { required: true});
+$.validator.addClassRules("specialty_dropdown", { MedicationSpecialty: true});
+
+
+$.validator.addMethod("genericNameValid", function(value, element) {
+  var state = $(element).attr('readonly')
+  var length = $(element).val().length
+  return ((state == 'readonly') || (length == 0))
+}, "Please search and select item from the list !");
+$.validator.addClassRules("item_name", { genericNameValid: true});
+
+jQuery.extend(jQuery.validator.messages, {
+  required: "Required",
+  remote: "Please fix this field.",
+  email: "Please enter a valid email address.",
+  url: "Please enter a valid URL.",
+  date: "Please enter a valid date.",
+  dateISO: "Invalid date.",
+  number: "Invalid No.",
+  digits: "Please enter only digits.",
+  creditcard: "Please enter a valid credit card number.",
+  equalTo: "Please enter the same value again.",
+  accept: "Please enter a value with a valid extension.",
+  maxlength: jQuery.validator.format("Please enter no more than {0} characters."),
+  minlength: jQuery.validator.format("Please enter at least {0} characters."),
+  rangelength: jQuery.validator.format("Please enter a value between {0} and {1} characters long."),
+  range: jQuery.validator.format("Please enter a value between {0} and {1}."),
+  max: jQuery.validator.format("Please enter a value less than or equal to {0}."),
+  min: jQuery.validator.format("Please enter a value greater than or equal to {0}.")
+});

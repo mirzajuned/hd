@@ -1,0 +1,289 @@
+<div class="row mb20" style="margin-top: 20px;">
+  <!-- Medication Set -->
+  <%= render partial: "inpatient/ipd_records/" + department + "/discharge/forms/medication.html.erb", locals: {f: f, admission: admission, patient: patient, tpa: tpa, ipdrecord: ipdrecord, department: department } %>
+  <div class="col-md-2">
+    <div class="btn btn-success save-medication-kit-btn mb10" style="width: 100%;"><i class="fa fa-hand-o-left"></i> Save Medication Set</div>
+    <!-- medication set dropdown -->
+    <div class="medication_set_dropdown_wrapper">
+      <input type="hidden" name="opd_ipd" value="[440654001,0]" id="find_in_set_type" class="find_in_set_type">
+      <input type="hidden" value="<%= admission.specialty_id %>" class="selected_specialty">
+      <%= render partial: "templates/shared/medication_set_dropdown" %>
+    </div>
+    <div class="mb5" style="border-bottom: solid"></div>
+    <label for="medicationsets-label">Medication Sets</label>
+    <div class="medication_kit_refresh">
+      <%= f.input :medicationsets, collection: MedicationKit.where(:user_id => current_user.id,:set_type.in => [440654001, 0], :organisation_id => current_user.organisation.id,level: "user"), input_html: { multiple: true, :size => '13', :style => 'height: 100%; width:100%', :class => 'form-control option_remover'}, as: :select,  :label => false,  :item_wrapper_class => 'form-control option_remover', :required => false %>
+    </div>
+  </div>
+</div>
+<div class="row">
+  <div class="col-md-9">
+    <div class="row mb20">
+      <div class="col-md-2 text-right">
+        <b>Precautions :</b>
+      </div>
+      <div class="col-md-4">
+        <%= f.text_area :precautions, {class: "form-control"} %>
+      </div>
+    </div>
+
+    <div class="row mb10">
+      <div class="col-md-12 col-lg-12 col-sm-12 col-xs-12">
+        <b>Follow up</b>
+      </div>
+    </div>
+    <div class="row mb10">
+      <div class="col-md-4 col-lg-4 col-sm-4 col-xs-12">
+        <div class="col-md-12">
+          <b>Date</b>
+        </div>
+        <div class="col-md-12">
+          <%= f.text_field :followup_date, { class: "datepicker_followup form-control" } %>
+        </div>
+      </div>
+
+      <div class="col-md-4 col-lg-4 col-sm-4 col-xs-12">
+        <div class="col-md-12">
+          Time
+        </div>
+        <div class="col-md-12 bootstrap-timepicker timepicker">
+          <%= f.text_field :followup_time, { class: "timepicker form-control" } %>
+        </div>
+      </div>
+      <div class="col-md-4 col-lg-4 col-sm-4 col-xs-12">
+        <% facilities_array = current_user.facilities.map { |facility| [facility.name, facility.id] } %>
+        <% if facilities_array.present? %>
+          <div class="col-md-12">
+            <b>Location</b>
+          </div>
+          <div class="col-md-12">
+            <%= f.select(:followup_facility, facilities_array.collect {|t| [t[0], t[1]]}, {}, {class: "followup_facility form-control", style: "width: 100%"} ) %>
+          </div>
+        <% else %>
+
+        <% end %>
+      </div>
+    </div> <!-- row end -->
+    <div class="row mb10">
+      <div class="col-md-4 col-lg-4 col-sm-4 col-xs-12">
+        <div class="col-md-12">
+          <b>Doctor</b>
+        </div>
+        <div class="col-md-12">
+            <% user_org = User.where(organisation_id: current_user.organisation_id, role_ids: 158965000).pluck(:fullname, :id) %>
+            <%= f.select(:followup_doctor_id, user_org.collect {|t| [t[0], t[1]]}, {}, {class: "followup_doctor form-control"} ) %>
+        </div>
+      </div>
+      <div class="col-md-4 col-lg-4 col-sm-4 col-xs-12">
+        <div class="col-md-12">
+          <b>Appointment Type</b>
+        </div>
+        <div class="col-md-12 ipd_appointment_types">
+         <% @appointment_types = AppointmentType.where(facility_id: current_facility.id,:is_active => true) %>
+          <% if @discharge_note.read_attribute(:appointment_type_id).nil? %>
+              <%= render partial: 'inpatient/ipd_record/discharge_note/ophthalmology_notes/appointment_type_partial', locals: {
+                name_attr:"inpatient_ipd_record[discharge_note_attributes][appointment_type_id]", option_values: @appointment_types, selected: ""} %>
+          <% else %>
+              <%= render partial: 'inpatient/ipd_record/discharge_note/ophthalmology_notes/appointment_type_partial', locals: {
+        name_attr:"inpatient_ipd_record[discharge_note_attributes][appointment_type_id]", option_values: @appointment_types, selected: @discharge_note.read_attribute(:appointment_type_id)} %>
+          <% end %>
+        </div>
+      </div>
+
+      <div class="col-md- col-lg-4 col-xs-12 col-sm-4">
+        <% if organisation_sub_appointments.present? %>
+        <div class="col-md-12">
+          Appointment Category
+        </div>
+        <div class="col-md-12">
+          <%= select_tag("inpatient_ipd_record[discharge_note_attributes][appointment_category_id]", options_for_select(organisation_sub_appointments.map {|apt_cat| [apt_cat.label, apt_cat.id ]}, @discharge_note.try(:appointment_category_id)), prompt: 'Appointment Category', class: "form-control full_width")%>
+        </div>
+        <% end %>
+      </div>
+
+    </div>
+     <div class="row mb10">
+      <div class="col-md-4 col-lg-4 col-sm-4 col-xs-12">
+        <div class="col-md-12">
+            &nbsp;
+        </div>
+        <div class="col-md-12">
+          <div class="ckbox ckbox-primary">
+            <% if @discharge_note.bookappointment.nil? %>
+              <%= f.check_box :bookappointment, {:class => "myclass", :id => "bookappointment", :checked => false}, "true", "false" %>
+            <label for="bookappointment">Followup Appointment**</label>
+            <% elsif @discharge_note.bookappointment == 'false' %>
+                <%= f.check_box :bookappointment, {:class => "myclass", :id => "bookappointment", :checked => false }, "true", "false" %>
+                <label for="bookappointment">Followup Appointment**</label>
+            <% elsif @discharge_note.bookappointment == 'true' %>
+                <%= f.check_box :bookappointment, {:class => "myclass", :id => "bookappointment", :checked => true} , "true", "false" %>
+                <label for="bookappointment">Followup Appointment**</label>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-md-6">
+        <div class="col-md-12">
+          <b>Management Plan</b>
+        </div>
+        <div class="col-md-12">
+          <%= f.text_area :advicemanagementplan, class: "advicemanagementplan form-control",:value => @discharge_note.read_attribute(:advicemanagementplan) %>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="col-md-3" id="booked-appointment-slots" style="background: #fcfcfc;border-left:1px solid #eee;">
+
+    <%= render partial: '/opd_appointments/available_slot.html.erb' %>
+  </div>
+</div>
+
+
+<script type="text/javascript">
+  doctor_id = jQuery('.followup_doctor').val()
+  date = jQuery('#inpatient_ipd_record_followup_date').val()
+  facility_id = jQuery("#inpatient_ipd_record_followup_facility").val();
+  // console.log(date, facility_id)
+  $.ajax({
+    url: '/opd_appointments/get_booked_appointments',
+    type: 'get',
+    data: {
+      doctor_id: doctor_id,
+      date: date,
+      facility_id: facility_id
+    },
+    success: function(res) {
+      // console.log('kfkgkdfj', res);
+    },
+  });
+
+  datepicker_options = {
+    minDate: 0,
+    dateFormat: "dd/mm/yy"
+  }
+  jQuery('.followup_doctor').change(function(){
+      doctor_id = this.value
+      date = jQuery('#inpatient_ipd_record_followup_date').val()
+      facility_id = jQuery('#inpatient_ipd_record_followup_facility').val()
+      $.ajax({
+        url: '/opd_appointments/get_booked_appointments',
+        type: 'get',
+        data: {
+          doctor_id: doctor_id,
+          date: date,
+          facility_id: facility_id
+        },
+        success: function(res) {
+           // console.log('kfkgkdfj', res);
+        },
+      });
+    })
+    jQuery('#inpatient_ipd_record_followup_date').change(function(){
+      date = this.value
+      doctor_id = jQuery('.followup_doctor').val()
+      facility_id = jQuery('#inpatient_ipd_record_followup_facility').val()
+      $.ajax({
+        url: '/opd_appointments/get_booked_appointments',
+        type: 'get',
+        data: {
+          doctor_id: doctor_id,
+          date: date,
+          facility_id: facility_id
+        },
+        success: function(res) {
+           // console.log('kfkgkdfj', res);
+        },
+      });
+    })
+    jQuery('#inpatient_ipd_record_followup_facility').on("change",function(){
+      var fac_id = jQuery("#inpatient_ipd_record_followup_facility").val();
+      var doctor_id = jQuery('.followup_doctor').val()
+      var date = jQuery('#inpatient_ipd_record_followup_date').val()
+      //load users
+      jQuery.ajax({
+        type: "GET",
+        dataType: "json",
+        url: "/main/get_user_id_admission_list",
+        data: {facility_id: fac_id},
+        success: function(response){
+          jQuery('.followup_doctor').children().remove();
+          jQuery.each(response, function(key, value) {
+            jQuery('.followup_doctor').append(jQuery("<option></option>").attr("value",value[1]).text(value[0]));
+          });
+          jQuery('.followup_doctor').trigger("change")
+        }
+      });
+      jQuery.ajax({
+        url: '/opd_appointments/get_booked_appointments',
+        type: 'get',
+        data: {
+          doctor_id: doctor_id,
+          date: date,
+          facility_id: fac_id
+        },
+        success: function(res) {
+           // console.log('kfkgkdfj', res);
+        },
+      });
+    });
+  $(".datepicker_followup").datepicker(datepicker_options);
+  <% unless @ipdrecord.followup_date.present? %>
+    $(".datepicker_followup").datepicker();
+  <% end %>
+  $(".timepicker").timepicker({minuteStep: 5});
+
+  // Code For Save Medication Set
+  jQuery(".save-medication-kit-btn").on('click', function(event) {
+      event.preventDefault();
+      jQuery(".save-medication-kit-btn").addClass("disabled");
+      // jQuery(".clear-procedure-note-button").addClass("disabled");
+      if (jQuery('.popover-save-medication-set').length) {
+        jQuery('.popover-save-medication-set').popover('destroy');
+      }
+     // var i = jQuery(this);
+     // var params = { proceduretext: jQuery('#ipdrecord_procedurenote').code() };
+      var specialty_id= parseInt($("#ipdrecord_specalityid").val())
+      jQuery(this).popover({
+        placement : 'left',
+        title : 'New Medication Set',
+        html : true,
+        content : function(){
+          jQuery.ajax({
+            type: "GET",
+            url: "/medication_kits/new_medication_kits_popup",
+            data: {specialty_id: specialty_id, remote: "true" }
+          }).done(function( data ) {
+            jQuery('.popover.in .popover-content').empty();
+            jQuery(".popover.in .popover-content").html(data);
+            jQuery(".popover.in").css("top","-50px")
+          });
+        },
+        template : '<div class="popover popover-save-medication-set" role="tooltip" style="width: 700px"><div class="arrow"></div><h5 class="popover-title"></h5><div class="popover-content"></div></div>'
+      }).popover('show');
+  });
+
+  jQuery('#inpatient_ipd_record_medicationsets').on('click', function() {
+    if (this.value != undefined && this.value != "" ) {
+      var params = { medicationkitid: this.value };
+      jQuery.ajax({
+        type: "GET",
+        url: "/opd_records/fill_ipd_medication_data",
+        data: {ajax: params, remote: "true" }
+      });
+    }
+  });
+</script>
+<style type="text/css">
+  [data-toggle='tooltip'] + .tooltip > .tooltip-inner {
+    background: black;
+    color:#ffffff;
+    border: 1px solid #000000;
+  }
+</style>
+<script type="text/javascript">
+  $('[data-toggle="tooltip"]').tooltip();
+</script>

@@ -1,0 +1,279 @@
+<% @speciality_folder_name = TemplatesHelper.get_speciality_folder_name(ipdrecord.specialty_id) %>
+<% all_procedures = Inpatient::Procedure.where(ipdrecord_id: ipdrecord.id).order("created_at DESC")%>
+<% performed_procedures = all_procedures.where(ipdrecord_id: ipdrecord.id,:procedurestatus.in =>["Performed"]).order("created_at DESC")%>
+<% procedures = all_procedures.where(ipdrecord_id: ipdrecord.id,:procedurestatus.nin =>["Performed"]).order("created_at DESC")%>
+<% diagnosis_from_opd = Inpatient::Diagnosis.where(ipdrecord_id: ipdrecord.id).order('created_at DESC')%>
+<%if opd_data %>
+    <% history = opd_data.history.values.join(",")%>
+<%else%>
+    <% history = ""%>
+<% end %>
+<div class="row mb30" style="margin-top:20px;">
+  <div class="col-md-2 ">
+    Reason for Admission :
+  </div>
+  <div class="col-md-2" style="margin-top:-5px;">
+    <%= f.text_field :admissionreason, {class: "form-control", value: @admission.admissionreason} %>
+  </div>
+  <div class="col-md-2 ">
+    Expected Management :
+  </div>
+  <div class="col-md-2" style="margin-top:-5px;">
+    <%= f.input :expected_management, collection: [ 'Surgical', 'Medical' ], :as => :hg_checkbox, :label => false, :required => false, :class => 'btn btn-xs btn-white r-chiefcomplaint', :input_html => {:name => "inpatient_ipd_record[expected_management]" }, :checked => ipdrecord.checkboxes_checked(ipdrecord.read_attribute(:expected_management)) %>
+  </div>
+  <div class="col-md-2 ">
+    Expected Length Of Stay :
+  </div>
+  <div class="col-md-2" style="margin-top:-5px; width: 15%">
+    <div class="input-group">
+      <%= f.text_field :expected_length_of_stay, {class: "form-control"} %>
+      <span class="input-group-addon">Days</span>
+    </div>
+  </div>
+</div>
+<div class="row mb30">
+  <div class="col-md-2 ">
+    Start Of Complaints :
+  </div>
+  <div class="col-md-2" style="margin-top:-5px;">
+    <%= f.text_field :injury_complaint_date, {class: "form-control injury_complaint_date"} %>
+  </div>
+  <div class="col-md-2 ">
+    Date of First OPD/EMR Visit:
+  </div>
+  <div class="col-md-2" style="margin-top:-5px;">
+    <%= f.text_field :first_opd_visit, {class: "form-control first_opd_visit"} %>
+  </div>
+  <div class="col-md-2 ">
+    Expected Date of Discharge :
+  </div>
+  <div class="col-md-2" style="margin-top:-5px;">
+    <%= f.text_field :expected_discharge_date, {class: "form-control expected_discharge_date"} %>
+  </div>
+</div>
+<div class="row mb30">
+  <div class="col-md-2 ">
+    Payment Type :
+  </div>
+  <div class="col-md-3">
+    <%= f.input :ipd_payment_type, collection: ['Cash', 'Credit Card', 'Debit Card', 'Cashless', 'Reimbursement', 'Govt. Scheme'], :as => :hg_checkbox, :label => false, :required => false, :class => 'btn btn-xs btn-white r-chiefcomplaint', style: "margin-top:-2px;", :input_html => {:name => "inpatient_ipd_record[ipd_payment_type]" }, :checked => ipdrecord.checkboxes_checked(ipdrecord.read_attribute(:ipd_payment_type)) %>
+  </div>
+  <div class="col-md-2 ">
+    Billing Category :
+  </div>
+  <div class="col-md-2">
+    <%= f.text_field :ipd_billing_category, {class: 'form-control'} %>
+  </div>
+  <div class="col-md-2 " style="width: 50%">
+    Medico-Legal Case :
+  </div>
+  <div class="col-md-1">
+    <%= f.input :medico_legal_case, wrapper_html: {:class=>"primary_assesment_rb"}, collection: ['Yes', 'No'], :as => :hg_radio_button,:label => false, :required => false, :class => 'btn btn-xs btn-white', style: "margin-top:-2px;", :input_html => {:name => "inpatient_ipd_record[medico_legal_case]" }, :checked => ipdrecord.read_attribute(:medico_legal_case) || "No" %>
+  </div>
+</div>
+<% if tpa.is_insured %>
+  <div class="row mb30">
+    <div class="col-md-2 ">
+      Insurance Company :
+    </div>
+    <div class="col-md-2">
+      <%= f.text_field :insurance_name, {class: 'form-control', value: tpa.insurance_name} %>
+    </div>
+    <div class="col-md-2 ">
+      TPA Provider Name :
+    </div>
+    <div class="col-md-2">
+      <%= f.text_field :tpa_name, {class: 'form-control', value: tpa.tpa_name} %>
+    </div>
+    <div class="col-md-2 ">
+      Government Scheme :
+    </div>
+    <div class="col-md-2">
+      <%= f.text_field :govt_scheme, {class: 'form-control'} %>
+    </div>
+  </div>
+<% end %>
+<%= f.hidden_field :selected_opdrecord_id, {class: 'form-control selected_opdrecord'} %>
+<div class="row mb30">
+  <div class="col-md-2 ">
+    Reason For Complaints :
+    <input type="text" class="form-control" name="search_diagnosis_keyword" id="search_diagnosis_keyword" placeholder="Search Diagnosis" style= "width: 80%;" />
+  </div>
+  <!--<div class="col-md-3">-->
+        <%#= f.text_area :reason_for_complaints, {style: "width:125%;", class: "form-control reason_for_complaints"} %>
+    <input type="hidden" id="diagnosis_count" value="<%= diagnosis_from_opd.count%>">
+    <% if (@speciality_folder_name.to_s.downcase == "orthopedics")%>
+        <input type="hidden" id="opdrecord_specalityid" value="309989009" />
+    <% elsif (@speciality_folder_name.to_s.downcase == "ophthalmology")%>
+        <input type="hidden" id="opdrecord_specalityid" value="309988001" />
+    <%end%>
+
+    <% if @action == "New" %>
+      <div class="col-md-10 diagnosis_from_opd">
+        <%= render partial: "inpatient/ipd_records/ipd_diagnosis_table", locals: { diagnosislist: []} %>
+      </div>
+    <% elsif @action == "Edit" %>
+      <div class="col-md-10 diagnosis_from_opd">
+        <%= render partial: "inpatient/ipd_records/ipd_diagnosis_table", locals: { diagnosislist: diagnosis_from_opd} %>
+      </div>
+    <%end%>
+
+
+
+</div>
+
+<div class="row mb20">
+  <div class="col-md-2 ">
+    Add Procedure:
+    <input type="text" class="form-control ui-autocomplete-input" id="search_procedure_keyword" placeholder="Search Procedure" style="width: 80%;" autocomplete="off">
+  </div>
+
+  <% if @action == "New" %>
+      <div class="col-md-10 add-procedure procedure_from_opd">
+        <%= render partial: 'inpatient/ipd_records/procedure_from_opd',locals: {procedures: []} %>
+      </div>
+  <%end%>
+  <% if @action == "Edit" %>
+      <div class="col-md-10 add-procedure procedure_from_opd">
+        <%= render partial: 'inpatient/ipd_records/procedure_from_opd',locals: {procedures: procedures} %>
+      </div>
+  <%end%>
+
+</div>
+<% if performed_procedures.count > 0 %>
+    <div class="row mb20">
+      <div class="col-md-2 ">
+        Procedure Performed:
+      </div>
+      <div class="col-md-8">
+        <table class="table table-bordered">
+          <tr>
+            <th>Name Of Surgery</th>
+            <th>Eye Operated</th>
+            <th>Date of Surgery</th>
+          </tr>
+
+          <% performed_procedures.each_with_index do |i|%>
+              <tr>
+                <td><%= i.procedurename%></td>
+                <% if i.procedureside == "8966001" %>
+                    <td>Left Eye</td>
+                <% elsif i.procedureside == "18944008" %>
+                    <td>Right Eye</td>
+                <% elsif i.procedureside == "40638003" %>
+                    <td>Both Eyes</td>
+                <%end%>
+                <td><%= i.surgerydate%></td>
+              </tr>
+          <%end%>
+
+        </table>
+      </div>
+    </div>
+<% end %>
+  <input type="hidden" id="procedure_count" value="<%= procedures.count%>">
+<div class="row mb20">
+  <div class="col-md-2">
+    Investigations :
+  </div>
+  <div class="col-md-3">
+    <%= f.text_area :investigations, {style: "width:125%;", class: "form-control investigation",value: @ipdrecord.investigations} %>
+  </div>
+  <div class="col-md-2 col-md-offset-1">
+    Comments :
+  </div>
+  <div class="col-md-3">
+    <%= f.text_area :procedure_planned, {style: "width:125%;", class: "form-control"}%>
+  </div>
+</div>
+<script type="text/javascript">
+  // datepicker
+  datepicker_options = {
+    changeMonth: true,
+    changeYear: true,
+    dateFormat: "dd/mm/yy"
+  };
+
+  datepicker_options_discharge = {
+    changeMonth: true,
+    changeYear: true,
+    dateFormat: "dd/mm/yy",
+    minDate: -0
+  }
+
+  $('.injury_complaint_date').datepicker(datepicker_options);
+  <% unless @ipdrecord.injury_complaint_date.present? %>
+    // $(".injury_complaint_date").datepicker("setDate", new Date());
+  <% end %>
+  $('.first_opd_visit').datepicker(datepicker_options);
+  <% unless @ipdrecord.first_opd_visit.present? %>
+    // $(".first_opd_visit").datepicker("setDate", new Date());
+  <% end %>
+  $('.expected_discharge_date').datepicker(datepicker_options_discharge);
+  <% unless @ipdrecord.expected_discharge_date.present? %>
+    // $(".expected_discharge_date").datepicker("setDate", new Date());
+  <% end %>
+  $("#procedure_count").val()
+  jQuery('#search_procedure_keyword').autocomplete({
+
+      minLength: 2,
+
+      source: function(request, response) {
+          jQuery.ajax({
+              dataType: "json",
+              type : 'get',
+              url: '/inpatient/ipd_records/searchprocedure',
+              //data: {searchpatient: params, remote: "true" },
+              data: {q: request.term,  remote: "true" },
+              success: function(data) {
+                  //jQuery('#searchpatientkeyword').removeClass('ui-autocomplete-loading')
+                  response( data);
+              },
+              error: function(data) {
+                  //jQuery('#searchpatientkeyword').removeClass('ui-autocomplete-loading');
+              }
+          });
+      },
+      select: function( event, ui ) {
+          params = ui.item["code"]
+          name = ui.item["value"]
+          var row_count = $("#procedure_count").val()
+          var single_text_box = '<div class="col-md-6"><hr style="margin-bottom: 10px;margin-top: 10px"><div class="col-md-7"><input type="text" name= "procedure_added[box_count][name]" class="form-control proc_box_box_count" style="width: 100%"><input type="hidden" class="proc_id_box_count" name="procedure_added[box_count][id]"></div><div class="col-md-3"><select class="form-control procedureside" name="procedure_added[box_count][side]"><option value=" "></option><option data-laterality="R" value="18944008">R</option><option data-laterality="L" value="8966001">L</option><option data-laterality="B/E" value="40638003">B/E</option></select></div><div class="col-md-2"><a id="removediagnosisbutton_box_count" class="btn btn-xs btn-primary btn-danger removediagnosisbutton" name="removediagnosisbutton"><span class="glyphicon glyphicon-remove"></span></a></div>'
+          single_text_box = single_text_box.replace(/box_count/g,row_count)
+          $(single_text_box).appendTo('.add-procedure')
+          $('.proc_box_'+row_count).val(name)
+          $('.proc_id_'+row_count).val(params)
+          $("#procedure_count").val(+row_count+1)
+          $(".removediagnosisbutton").on('click',function() {
+              $(this).parent().parent().remove()
+          })
+          $(".procedure-tooltip").hide()
+//    setTimeout(function() {
+//      jQuery("#search_diagnosis_keyword").val("")
+//    }, 10);
+      },
+      close: function() {
+          jQuery("#search_procedure_keyword").val("")
+      }
+
+  });
+  $(".removediagnosisbutton").on('click',function() {
+      $(this).parent().parent().remove()
+  })
+//  function get_diagnosis(){
+//      console.log("inside diagnosis");
+//      $.ajax({
+//          url: "/inpatient/ipd_records/get_diagnosis_output",
+//          data: {
+//              patient_id: '<%= @patient.id.to_s%>'
+//          },
+//          success: function(res){
+//              $(".reason_for_complaints").val(res.output)
+//          },
+//          error: function(err){
+//          }
+//      })
+//  }
+//  get_diagnosis();
+
+</script>

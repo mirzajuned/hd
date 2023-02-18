@@ -1,0 +1,120 @@
+<div class="inventory_items">
+  <table class="table table-striped">
+    <thead>
+      <tr class='thead-fixable'>
+        <td class='thead-fix'>Item Code</td>
+        <!-- <td class='thead-fix'>Category</td> -->
+        <td class='thead-fix'>Description</td>
+        <td class='thead-fix'>Brand</td>
+        <!-- <td class='thead-fix'>Pricing Index</td> -->
+        <td class='thead-fix'>Color</td>
+        <td class='thead-fix'>Gender</td>
+        <td class='thead-fix text-right'>Selling Price</td>
+        <td class='thead-fix'>Stock</td>
+        <td class='thead-fix'>Actions</td>
+      </tr>
+    </thead>
+    <tbody id="inventory_items" class="frame_optical_inventory">
+      <% @items.each do |item| %>
+        <tr>
+          <td><%= item.item_code %></td>
+          <!-- <td>Category</td> -->
+          <td><%= item.description %></td>
+          <td><%= item.brand %></td>
+          <td><%= item.color %></td>
+          <td><%= item.gender %></td>
+          <%item_oldest_lots= item.lots.where('stock' => {'$gte' => 1},is_deleted: false).order(created_at: "ASC")[0]%>
+          <% if item_oldest_lots.try(:list_price) %>
+            <td class="text-right">&#x20B9 <%= item_oldest_lots.list_price.round(2) %></td>
+          <% else %>
+            <td class="text-right">NA</td>
+          <% end %>
+          <td><%= item.stock %></td>
+          <td>
+            <% if current_inventory == 'central' %>
+              <a href="/inventory/items/<%=item.id%>" data-remote="true" class="btn btn-primary btn-xs"> Details</a>
+            <% else %>
+              <a href="/inventory/department/items/<%=item.id%>" data-remote="true" class="btn btn-primary btn-xs"> Details</a>
+            <% end %>
+            <% if current_inventory == '50121007' || current_inventory == '284748001' %>
+              <% if item.stock.present? && item.stock > 0 %>
+                <%if item.in_cart == false%>
+                    <button class="btn btn-xs btn-primary btnItemToFreeInvoice btnAddItemToFreeInvoice" data-model="<%= item.id %>" id=""><i class="fa fa-plus"></i> Free Receipt</button>
+                <%else%>
+                    <button class="btn btn-xs btn-warning btnItemToFreeInvoice btnRemoveItemToFreeInvoice" data-model="<%= item.id %>" id=""><i class="fa fa-minus"></i> Free Receipt</button>
+                <%end%>
+              <% else %>
+                <button class="btn btn-xs btn-primary" disabled="disabled" data-model="<%= item.id %>" id="">Out of Stock</button>
+              <% end %>
+            <% else %>
+              <% if item.checkoutable %>
+                <% if item.stock.present? && item.stock > 0 %>
+                  <%if item.in_cart == false%>
+                      <button class="btn btn-xs btn-primary btnItemToCart btnAddItemToCart" data-model="<%= item.id %>" id=""><i class="fa fa-plus"></i> Cart</button>
+                  <%else%>
+                      <button class="btn btn-xs btn-warning btnItemToCart btnRemoveItemFromCart" data-model="<%= item.id %>" id=""><i class="fa fa-minus"></i> Cart</button>
+                  <%end%>            
+                <% else %>
+                  <button class="btn btn-xs btn-primary" disabled="disabled" data-model="<%= item.id %>" id="">Out of Stock</button>
+                <% end %>
+              <% end %>
+            <% end %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+  <% if @items.count > 20 %>
+    <div class="show-more-timeline" style="margin:20px 0px;">
+      <div class="col-sm-offset-1 col-sm-11">
+        <div class="panel panel-success" style="padding:0px;box-shadow:0 0 5px;margin-bottom:10px;margin-right:10%;">
+          <div class="panel-body" style="border-left:4px solid #bec3c8;height: 20px;">
+            <div class="">
+              <div class="col-sm-12">
+                <div class="">
+                  <a class="col-sm-12", href="javascript:;", id="show_more_frame", data-count = "0" , style="text-align: center; position:relative; top:-10px; text-decoration: none;">
+                    <i class="fa fa-spinner fa-spin"></i> Click To Load More ...
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  <%end%>
+</div>
+<script>
+scrollinventory()
+  function scrollinventory(){
+    $(".inventory_items").scroll(function() {
+     
+      if($(".inventory_items").scrollTop() > $(".inventory_table_center").height() - $(".inventory_items").height()  - 70) {
+        $("#show_more_frame").trigger("click")
+        $(".inventory_items").off('scroll');
+        setTimeout(function() {   //calls click event after a certain time
+          scrollinventory()
+        }, 1000);
+      }
+    })
+  }   
+  $("#show_more_frame").on('click', function(e){
+    e.preventDefault();
+    var total_count_row =  $('#inventory_items tr').length;
+    $.ajax({
+      type: "GET",
+      dataType: "script",
+      data: {
+        total_count_row: total_count_row,
+        facility_id: "<%= @facilityid %>",
+        current_inventory: "<%= current_inventory %>"
+      },
+      url: "/inventory/show_more_frame",
+      success: function(){
+        if($('#inventory_items tr').length == <%= @items.count %>){
+          $('.show-more-timeline').remove();
+        }
+      }
+    })
+  })
+</script>

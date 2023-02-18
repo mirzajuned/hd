@@ -1,0 +1,163 @@
+<%= javascript_include_tag "application-loggedin", "data-turbolinks-track" => true %>
+<% total_appointment_types_count = 0 %>
+<div class="row" id="appointment-types-alert-messages"></div>
+<%= form_tag("/organisation_appointment_types/save_appointment_types", method: "post", remote: true, id: "appointment_types", class: "form form-bordered") do  %>
+  
+  <div class="row text-center">
+    <div class="col-md-12 alert alert-info" id="appointment-type-alert-messages" style="font-style: italic;padding-top:5px;padding-bottom:5px;padding-left:3px;padding-right:3px;">
+      Please click <strong>"Save List"</strong> button after Adding / Editing.  &nbsp;&nbsp; <span class="glyphicon glyphicon-arrow-right"></span>
+    </div>
+  </div>
+  
+  <!-- <div><%#= select_tag "specialty_id", options_for_select(@available_specialties.pluck(:name, :id), @selected_specialty), { class: "form-control specialty_dropdown" } %></div> -->
+  <div class="row">
+    <div class="col-md-2"></div>
+    <div class="col-md-7 text-center" style="font-size: 17px;text-decoration: underline;">
+      <strong><%= current_organisation["name"].upcase %>  APPOINTMENT TYPES </strong>
+    </div>
+    <div class="col-md-3">
+      <span class="btn btn-primary" id="add_new_appointment_type" style="padding-right: 10px;"><i class="fa fa-plus"></i> New</span>
+      <%= submit_tag("Save List",{:class=>"btn btn-success"}) %>
+    </div>
+  </div>
+  <hr>
+  
+  <input type="hidden" name="appointment_types_for_delete" id="appointment_types_for_deactivate" value="">
+  <input type="hidden" name="appointment_types_for_delete" id="appointment_types_for_activate" value="">
+  
+  <div id="full-appointment-types">
+    <div class="row form-group append-row-below text-center">
+      <div class="col-md-3"><b>Label</b></div>
+      <!-- <div class="col-md-2"><b>Slot Duration</b> (min)</div> -->
+      <div class="col-md-2"><b>Background Color</b></div>
+      <div class="col-md-1"><b>Default</b></div>
+      <div class="col-md-4"><b>Specialties</b></div>
+      <div class="col-md-1"><b>Actions</b></div>
+    </div>
+    <% if !@appointment_types.present? %>
+      <%# if @selected_specialty == "309988001" %>
+        <%#= render partial: "settings/admins/ophthal_appointment_type_fields", locals: { total_appointment_types_count: total_appointment_types_count } %>
+      <%# elsif  @selected_specialty == "309989009" %>
+        <%#= render partial: "settings/admins/ortho_appointment_type_fields", locals: { total_appointment_types_count: total_appointment_types_count }  %>
+      <%# end %>
+
+    <% else %>
+      <% @appointment_types.each_with_index do |each_appointment_type, index| %>
+        <%= fields_for "appointment_types[#{index}]", each_appointment_type do |app_type| %>
+          <div class="row form-group row_changed appointment_type_row text-center">
+            <%= app_type.hidden_field :id %>
+            <%= app_type.hidden_field :organisation_id %>
+            <%= app_type.hidden_field :duration %>
+            <%= app_type.hidden_field :default_set %>
+            <%= app_type.hidden_field :s_no %>
+            
+            <input type="hidden" name="appointment_types[<%= index %>][is_updated]" value="false" class="updated_check">
+
+            <% is_default_set = each_appointment_type.default_set ? true : false %>
+            <div class="col-md-3">
+              <%= app_type.text_field :label, { :class => "form-control appointment-label-validation", readonly: is_default_set } %>
+            </div>
+            <div class="col-md-2">
+              <%= app_type.text_field :background, {:class=>"form-control uniq_color background_selector"} %>
+            </div>
+            <div class="col-md-1">
+              <%= radio_button_tag :default,index,each_appointment_type.is_default,{:class=>"default_radio_btn #{each_appointment_type.is_default ? 'initial_check' : '' }", data: { confirm: 'Are you sure?', commit: 'Sure!'}, disabled: !each_appointment_type.is_active } %>
+            </div>
+            <div class="col-md-4" style="margin-left: 56px;">
+              <%= app_type.select :specialty_ids, options_for_select(@available_specialties, each_appointment_type.try(:specialty_ids)), {}, {class: 'form-control specialty_ids_dropdown', multiple: 'multiple', style:'max-height:34px;'} %>
+            </div>
+            <div class="col-md-1 active_deactive_wrap">
+              <button class="btn btn-xs  active_deactive 
+                <%= each_appointment_type.default_set ? 'btn-success' : (each_appointment_type.is_active ? 'is_active btn-danger' : 'is_deactive btn-success') %>" <%= (is_default_set || each_appointment_type.is_default) ? 'Predefined' : '' %> data-index="<%= index %>" type="button" <%= is_default_set ? 'disabled' : '' %>>
+                <%= each_appointment_type.default_set ? 'Predefined': (each_appointment_type.is_active ? 'Deactivate' : 'Activate' ) %>
+              </button>
+              <%= app_type.hidden_field :is_active, class: "is_active_deactive" %>
+            </div>
+          </div>
+        <% end %>
+        <% total_appointment_types_count += 1 %>
+      <% end %>
+      <input type="hidden" id="total_appointment_types_count" value="<%= total_appointment_types_count %>">
+    <% end %>
+  </div>
+<% end %>
+
+<style type="text/css">
+  input.error, select.error {
+    border-color: #b94a48;
+    background-image: none;
+  }
+  input.valid, select.valid {
+    border-color: #468847;
+    background-image: none;
+  }
+</style>
+
+<script>
+  $('.specialty_ids_dropdown').select2()
+
+  function appointment_type_page() {
+    $("#appointment_types").validate({
+
+      errorElement: 'div',
+      errorPlacement: function (error, element) {
+        error.insertAfter(element);
+      }
+    });
+  }
+  appointment_type_page()
+
+  // alias required to cRequired with new message
+  $.validator.addMethod("LabelRequired", $.validator.methods.required, "Label cannot be blank");
+  $.validator.addMethod("SpecialtyRequired", $.validator.methods.required, "Specialty required !!");
+  $.validator.addMethod("SlotRequired", $.validator.methods.required, "Slot time cannot be blank");
+  $.validator.addMethod("INumber", $.validator.methods.number, "Please enter a number");
+
+  jQuery.validator.addMethod("mintimeslot", function(value, element) {
+    return this.optional(element) || value >= 5;
+  }, jQuery.validator.format("Please enter the Value more than or equal to 5"));
+
+  $.validator.addClassRules("specialty_ids_dropdown", { SpecialtyRequired: true});
+  $.validator.addClassRules("appointment-label-validation", { LabelRequired: true});
+  $.validator.addClassRules("slot-duration-validation", { SlotRequired: true, INumber: true, mintimeslot: true});
+
+  // $(".save-appointment-type").on('click',function(e){
+  //     e.preventDefault();
+  //   var validate_form = $("#appointment_types").validate();
+  // })
+
+  $('.active_deactive').on('click',function(){
+    if($(this).hasClass('is_active')){
+      var change_current_checked_radio = $(this).closest('.row_changed').find('.default_radio_btn');
+      if(change_current_checked_radio.is(':checked')){
+        new PNotify({title: 'Error !',text: 'Please select a different default before disabling current appointment type',type: 'error'});
+      }else{
+        $(this).removeClass('btn-danger');
+        $(this).removeClass('is_active');
+        $(this).addClass('btn-success');
+        $(this).addClass('is_deactive');
+        $(this).html('Activate');
+        $(this).parent(".active_deactive_wrap").find('.is_active_deactive').val('false');
+        $(this).closest('.row_changed').find('.updated_check').val('true');
+        change_current_checked_radio.prop('disabled',true);
+      }
+    }else{
+      $(this).removeClass('btn-success');
+      $(this).removeClass('is_deactive');
+      $(this).addClass('btn-danger');
+      $(this).addClass('is_active');
+      $(this).html('Deactivate');
+      $(this).parent(".active_deactive_wrap").find('.is_active_deactive').val('true');
+      $(this).closest('.row_changed').find('.updated_check').val('true');
+      var change_current_checked_radio = $(this).closest('.row_changed').find('.default_radio_btn');
+      change_current_checked_radio.prop('disabled',false);
+    }
+  });
+
+  $(document).on('change','.row_changed *',function(e){
+    $(this).parent('.row_changed').find('.updated_check').val('true');
+  })
+
+  <%= render partial: 'settings/admins/color_picker.js.erb'%>
+  $('.background_selector').each(function(){})
+</script>

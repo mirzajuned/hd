@@ -1,0 +1,122 @@
+<%= javascript_include_tag 'application-loggedin', 'data-turbolinks-track' => true %>
+<div class="modal-dialog" style="width:95%;">
+  <div class="modal-content">
+    <div class="modal-header p7_10">
+
+      <button type="button" class="close" data-dismiss="modal">&times;</button>
+      <% if @invoice_type == "Invoice::Opd" || @invoice_type == "Invoice::Ipd" %>
+        <div class="modal-title row">
+          <h4 class="col-sm-6 text-right"><%= @invoice_type.split('::')[1].upcase %> Bills List (Payment Pending)</h4>
+          <div class="col-sm-3 col-sm-offset-1" style="padding: 7px;">
+            <label style="float: left;font-size: 14px;padding: 5px;"><b>Bill State :</b></label>
+            <%= select_tag :is_draft,options_for_select([["Final Bills", false], ["Draft Bills", true]], @is_draft),{:class => 'form-control', style: 'width: 60%;float: left;' } %>
+          </div>
+        </div>
+      <% else %>
+        <h4 class="modal-title"><%= @invoice_type.split('::')[1]&.gsub(/(?<=[a-z])(?=[A-Z])/, ' ')&.upcase %> Bills List (Payment Pending)</h4>
+      <% end %>
+    </div>
+    <div class="modal-body">
+
+      <div class="row">
+
+        <div class="col-sm-3">
+          <label class="col-sm-12">
+            <b>Patient :</b>
+            <span id="clear-patient-search" class="apply-default" style="display: none;"><b> Clear</b></span>
+          </label>
+          <div class="col-md-12">
+            <%= select_tag :patient_search,options_for_select(["MR No","Mobile No.", "Name", "Patient ID"], current_facility.try(:search_type)),{:class => 'form-control search-box-patient select_start_name', style: 'width: 30%;float: left;border-radius: 2px 0 0 2px' } %>
+            <input type="text" name="search_patient" id="search-patient" class="form-control" style="width: 70%;float: left;border-radius: 0 2px 2px 0;" placeholder="Type Atleast 5 Characters" maxlength="50">
+            <div class="patient-search-error-msg"></div>
+          </div>
+        </div>
+
+        <div class="col-sm-3">
+          <label><b>Pending since last :</b></label>
+          <span id="clear-since-last" class="apply-default" style="display: none;"><b> Clear</b></span>
+          <%= select_tag :since_last, options_for_select([['1-15 Days', '1'], ['16-30 Days', '2'], ['31-45 Days', '3'], ['46-60 Days', '4'], ['More than 60 Days', '5']]), class: 'form-control', include_blank: 'Pending Since' %>
+        </div>
+
+        <div class="col-sm-6">
+          <label class="col-sm-12"><b>Claim Processor :</b>
+            <span id="clear-claim-processor" class="apply-default" style="display: none;"><b> Clear</b></span>
+          </label>
+          <div class="col-sm-5">
+            <label class="col-sm-3" style="padding: 6px 4px;"><b>Type :</b></label>
+            <div class="col-sm-9">
+              <%= select_tag :claim_processor_type, options_for_select(@contact_groups), class: 'form-control invoice_contact_group', include_blank: 'Select contact type' %>
+            </div>
+          </div>
+
+          <div class="col-sm-5">
+            <label class="col-sm-3" style="padding: 6px 4px;"><b>Payer :</b></label>
+            <div class="col-sm-9">
+              <%= select_tag :claim_processor_payer, options_for_select([]), class: 'form-control invoice_payer_master', include_blank: 'Select contact type' %>
+            </div>
+          </div>
+          <div class="col-md-1">
+            <button class="btn btn-info search-button">Search</button>
+          </div>
+        </div>
+
+      </div>
+      <table class="table mis-dataTable dataTable nowrap text-center pending-table" id="settle_invoices_table">
+      </table>
+      <table class="table text-center mis-dataTable dataTable nowrap total-amounts-table pending-table">
+        <tr>
+        </tr>
+      </table>
+    </div>
+  </div>
+</div>
+<script>
+  settleBillTable("<%=params[:since_last]%>", "<%=params[:payer]%>", "<%=params[:contact_group_id]%>", "<%= params[:search_type]%>", "<%= params[:search_text]%>")
+</script>
+
+<style>
+  #free-invoice-inventory-modal{
+    background: rgba(0, 0, 0, 0.61);
+  }
+  .pending-table tbody {
+    display: block;
+    max-height: 65vh;
+    overflow: auto;
+  }
+  .pending-table thead, .pending-table tbody tr {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+  }
+  .pending-table thead {
+    width: calc( 100% - 1em )
+  }
+  pending-table {
+    min-width: 100%;
+  }
+  .billed-on{
+    width: 7%;
+  }
+  .payers{
+    width: 18%;
+  }
+  .patient-details{
+    width: 15%;
+  }
+  td.patient-details{
+    padding-left: 2% !important;
+  }
+  #invoice-modal{
+      background: rgba(0, 0, 0, 0.61)
+    }
+  .select2-height{
+    height: 30px !important;
+  }
+  select, input, button{
+    padding: 5px 10px !important;
+  }
+  .patient-search-error-msg {
+    margin-left: 30%;
+    color: red;
+  }
+</style>

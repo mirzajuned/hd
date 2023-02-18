@@ -1,0 +1,90 @@
+<%= f.hidden_field :is_edited, value: true %>
+<% @tray_transaction.items.each_with_index do |item, index| %>
+  <% if item.stock&.to_i > 0 %>
+    <table width="100%" class="inventory-tray-log-item" data-child-index= <%= index %>>
+      <% variant = Inventory::Item::Variant.find(item.variant_id) %>
+      <% lot = Inventory::Item::Lot.find(item.lot_id) %>
+      <% @item = Inventory::Item.find_by(id: item.item_id) %>
+      <%= hidden_field_tag "inventory_transaction_tray[items_attributes][#{index}][item_code]", variant.item_code %>
+      <%= hidden_field_tag "inventory_transaction_tray[items_attributes][#{index}][variant_code]", variant.variant_code %>
+      <%= hidden_field_tag "inventory_transaction_tray[items_attributes][#{index}][item_id]", variant.item_id %>
+      <%= hidden_field_tag "inventory_transaction_tray[items_attributes][#{index}][lot_id]", lot.id %>
+      <%= hidden_field_tag "inventory_transaction_tray[items_attributes][#{index}][variant_id]", variant.id %>
+      <%= hidden_field_tag "inventory_transaction_tray[items_attributes][#{index}][category]", variant.category %>
+      <%= hidden_field_tag "inventory_transaction_tray[items_attributes][#{index}][barcode]", variant.barcode %>
+      <%= hidden_field_tag "inventory_transaction_tray[items_attributes][#{index}][barcode_present]", variant.barcode_present %>
+      <%= hidden_field_tag "inventory_transaction_tray[items_attributes][#{index}][variant_reference_id]", variant.reference_id %>
+      <%= hidden_field_tag "inventory_transaction_tray[items_attributes][#{index}][item_reference_id]", @item.reference_id %>
+      <%= hidden_field_tag "inventory_transaction_tray[items_attributes][#{index}][facility_id]", variant.facility_id %>
+      <%= hidden_field_tag "inventory_transaction_tray[items_attributes][#{index}][store_id]", variant.store_id %>
+      <%= hidden_field_tag "inventory_transaction_tray[items_attributes][#{index}][organisation_id]", variant.organisation_id %>
+      <%= hidden_field_tag "inventory_transaction_tray[items_attributes][#{index}][search]", lot.search %>
+      <%= hidden_field_tag "inventory_transaction_tray[items_attributes][#{index}][variant_identifier]", variant.variant_identifier %>
+      <%= hidden_field_tag "inventory_transaction_tray[items_attributes][#{index}][mrp]", lot.mrp %>
+      <%= hidden_field_tag "inventory_transaction_tray[items_attributes][#{index}][list_price]", lot.list_price %>
+  		<tr>
+  			<td class="col-md-1 col-sm-1 col-xs-1">
+  				<% if lot.custom_field_data.present? %>
+            <% lot.custom_field_data.each do |k,v| %>
+              <%= hidden_field_tag "inventory_transaction_tray[items_attributes][#{index}][custom_field_data][#{k}]", v %>
+            <% end %>
+          <% end %>
+  				<%= select_tag "inventory_transaction_tray[items_attributes][#{index}][custom_field_tags]", options_for_select(lot.custom_field_tags,lot.custom_field_tags), include_hidden: false, multiple:true, style: "display: none;" %>
+          <strong><%= lot.description&.capitalize %></strong>
+          <%= hidden_field_tag "inventory_transaction_tray[items_attributes][#{index}][description]", lot.description, readonly: true, class: "item_description modalRequest_input_style", :placeholder=>"Description" %>
+          <%= hidden_field_tag "inventory_transaction_tray[items_attributes][#{index}][_destroy]", 0 , class: 'form-control' %>
+  			</td>
+        <td class="col-md-1 col-sm-1 col-xs-1">
+          <%= lot.category&.titleize %>
+        </td>
+  			<td class="col-md-1 col-sm-1 col-xs-1">
+  				<label class="label label-info" style="font-size: 10px; padding: 2px"><%= lot.batch_no %></label>
+          <%= hidden_field_tag "inventory_transaction_tray[items_attributes][#{index}][batch_no]", lot.batch_no, readonly: true, class: 'item_batch modalRequest_input_style', placeholder: 'Batch' %>
+          <%= hidden_field_tag "inventory_transaction_tray[items_attributes][#{index}][self_batched]", lot.self_batched %>
+  			</td>
+  			<td class="col-md-1 col-sm-1 col-xs-1">
+          <% if lot.expiry.present? %>
+            <%= lot.expiry.try(:strftime, "%d/%m/%Y") %>
+          <% else %>
+            N.A
+          <% end %>
+          <%= hidden_field_tag "inventory_transaction_tray[items_attributes][#{index}][expiry_present]", lot.expiry_present, readonly: true, class: '', placeholder: 'Expiry' %>
+          <%= hidden_field_tag "inventory_transaction_tray[items_attributes][#{index}][expiry]", lot.expiry, readonly: true, class: 'exp_datepicker item_expiry modalRequest_input_style', placeholder: 'Expiry' %>
+  			</td>
+  			<td class="col-md-1 col-sm-1 col-xs-1">
+  				<%= lot.list_price %>
+          <%= hidden_field_tag "inventory_transaction_tray[items_attributes][#{index}][list_price]", lot.list_price, readonly: true, class: "unit_item_list_price modalRequest_input_style", style: "width:100%; text-align:left" %>
+          <%= hidden_field_tag "inventory_transaction_tray[items_attributes][#{index}][unit_non_taxable_amount]", lot.unit_non_taxable_amount, readonly: true, class: "unit_non_taxable_amount modalRequest_input_style", style: "width:100%; text-align:left" %>
+          <%= hidden_field_tag "inventory_transaction_tray[items_attributes][#{index}][unit_taxable_amount]", lot.unit_taxable_amount, readonly: true, class: "unit_taxable_amount modalRequest_input_style", style: "width:100%; text-align:left" %>
+  			</td>
+        <td class="col-md-1 col-sm-1 col-xs-1">
+          <% if item.initial_stock.present? %>
+            <%= item.initial_stock %>
+          <% else %>
+            <%= item.stock %>
+          <% end %>
+        </td>
+  			<td class="col-md-1 col-sm-1 col-xs-1">
+          <% if (@tray_ids.include? params[:id]) || (@tray_transaction.status == 'closed') %>
+  				  <%= number_field_tag "inventory_transaction_tray[items_attributes][#{index}][stock]", item.stock.to_f, placeholder: 'Qty', style: 'width:100%;text-align:left', class: 'item_quantity modalRequest_input_style', min: '1', readonly: true %>
+          <% else %>
+            <%= number_field_tag "inventory_transaction_tray[items_attributes][#{index}][stock]", item.stock.to_f, placeholder: 'Qty', style: 'width:100%;text-align:left', class: 'item_quantity modalRequest_input_style', min: '1' %>
+            <input type="hidden" value="<%= lot&.stock + item.stock %>" class="item_max_quantity modalRequest_input_style" placeholder="" style="width:90%;text-align:left">
+            <%= hidden_field_tag "inventory_transaction_tray[items_attributes][#{index}][initial_stock]", item.initial_stock, class: 'initial_stock' %>
+          <% end %>
+  			</td>
+  			<td class="col-md-1 col-sm-1 col-xs-1 font_size">
+          <% total_list_price = item.stock&.to_f * lot.list_price %>
+  				<%= text_field_tag "inventory_transaction_tray[items_attributes][#{index}][total_list_price]", total_list_price&.round(2), readonly: true ,:class => "modalRequest_input_style item_total_price", :placeholder=>"", :style=>"width:100%;text-align:left" %>
+  			</td>
+  			<td class="col-md-1 col-sm-1 col-xs-1 font-size text-center">
+          <% if (@tray_ids.include? params[:id]) || (@tray_transaction.status == 'closed') %>
+  				  <button type="button" class="btn btn-link hg-tooltip delete_empty_item disabled" tabindex="-1" style="padding:0px;" title="Remove From List" value="<%= lot.id %>"><i class="fa fa-trash-alt"	style="color:#000;"></i></button>
+          <% else %>
+            <button type="button" class="btn btn-link hg-tooltip delete_empty_item" tabindex="-1" style="padding:0px;" title="Remove From List" value="<%= lot.id %>"><i class="fa fa-trash-alt"  style="color:#000;"></i></button>
+          <% end %>
+  			</td>
+  		</tr>
+  	</table>
+  <% end %>
+<% end %>

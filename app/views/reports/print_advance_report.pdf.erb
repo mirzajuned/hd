@@ -1,0 +1,135 @@
+<div class="col-md-12 text-center">
+  <b><%= current_facility.name.upcase %></b>
+</div>
+<br>
+<br>
+<div class="col-md-12 text-right" style="font-size:12px;">
+  <b>Date:</b> <%= @datepicker_date.strftime("%b %d, %Y") %>
+</div>
+<div class="row text-center" style="font-size:12px;">
+  <%= @title %>
+</div>
+<div class="row">
+  <table class="table">
+    <tr class="advance_head">
+      <th>S No.</th>
+      <th>Patient Name/ID</th>
+      <th>Created By</th>
+      <th><%= @title %> ID</th>
+      <th>Mode of Payment</th>
+      <th>Reason</th>
+      <th class="text-right">Amount</th>
+    </tr>
+    <% @total_list.each.with_index do |list, i| %>
+      <tr class="advance_data">
+        <td><%= i + 1 %></td>
+        <% unless @title == "Pharmacy Invoice" || @title == "Optical Invoice" %>
+          <td>
+            <div><%= list.patient.fullname %></div>
+            <div><%= PatientIdentifier.find_by(patient_id: list.patient_id.to_s).try(:patient_org_id) %></div>
+          </td>
+        <% else %>
+          <td>
+            <div><% if list.recipient? %><%= list.recipient %><% else %>-<% end %></div>
+            <div><% if list.patient_identifier? %><%= list.patient_identifier %><% else %>-<% end %></div>
+          </td>
+        <% end %>
+
+        <td>
+          <% if list.user_id.present? %>
+            <% user = User.find_by(id: list.user_id) %>
+            <% if user.present? %>
+              <%= user.try(:fullname) %>
+            <% end %>
+          <% else %>
+            -
+          <% end %>
+        </td>
+
+        <td><%= list.advance_display_id %><% if list.is_canceled %><strong style="color: #d43f3a"> - Cancelled</strong><% end %><% if list.is_refunded %><strong style="color: #d43f3a"> - Refunded(<% refund_amount_with_precision = number_with_precision(list.refund_amount, precision: 2) %><% refund_amount_display = Common::Finance::NumberFormatService.call(@number_format,refund_amount_with_precision) %><%= refund_amount_display %>)</strong><% end %></td>
+
+        <td>
+          <div>
+            <%= list.try(:mode_of_payment) %><% if list.mode_of_payment.present? %> (<%= list.currency_symbol %><% amount_with_precision = number_with_precision(list.amount.to_f, precision: 2) %><% amount_display = Common::Finance::NumberFormatService.call(@number_format, amount_with_precision) %><%= amount_display %>)<br><% else %>-<% end %>
+          </div>
+          <div>
+            <% if list[:card_number].present? %>
+              Card Number: <%= list[:card_number] %>
+            <% end %>
+            <% if list[:card_transaction_note].present? %>
+              Transaction Note: <%= list[:card_transaction_note] %>
+            <% end %>
+
+            <% if list[:paytm_transaction_id].present? %>
+              Transaction Id: <%= list[:paytm_transaction_id] %>
+            <% end %>
+            <% if list[:paytm_transaction_note].present? %>
+              Transaction Note: <%= list[:paytm_transaction_note] %>
+            <% end %>
+
+            <% if list[:gpay_transaction_id].present? %>
+              Transaction Id: <%= list[:gpay_transaction_id] %>
+            <% end %>
+            <% if list[:gpay_transaction_note].present? %>
+              Transaction Note: <%= list[:gpay_transaction_note] %>
+            <% end %>
+
+            <% if list[:phonepe_transaction_id].present? %>
+              Transaction Id: <%= list[:phonepe_transaction_id] %>
+            <% end %>
+            <% if list[:phonepe_transaction_note].present? %>
+              Transaction Note: <%= list[:phonepe_transaction_note] %>
+            <% end %>
+
+            <% if list[:transfer_date].present? %>
+              Date: <%= list[:transfer_date] %>
+            <% end %>
+            <% if list[:transfer_note].present? %>
+              Transaction Note: <%= list[:transfer_note] %>
+            <% end %>
+
+            <% if list[:cheque_date].present? %>
+              Date: <%= list[:cheque_date] %>
+            <% end %>
+            <% if list[:cheque_note].present? %>
+              Transaction Note: <%= list[:cheque_note] %>
+            <% end %>
+
+            <% if list[:other_transaction_id].present? %>
+              Transaction Id: <%= list[:other_transaction_id] %>
+            <% end %>
+            <% if list[:other_note].present? %>
+              Transaction Note: <%= list[:other_note] %>
+            <% end %>
+          </div>
+        </td>
+
+        <td>
+          <% if list[:reason].present? %>
+            <%= list[:reason] %>
+          <% else %>
+            -
+          <% end %>
+        </td>
+
+        <% if list.is_refunded? %>
+          <td class="text-right"><%= list.try(:currency_symbol) %><% amount_with_precision = number_with_precision(list.amount, precision: 2) %><% amount_display = Common::Finance::NumberFormatService.call(@number_format, amount_with_precision) %><%= amount_display %>(Refunded: <% refund_amount_with_precision = number_with_precision(list.try(:refund_amount), precision: 2) %><% refund_amount_display = Common::Finance::NumberFormatService.call(@number_format, refund_amount_with_precision) %><%= refund_amount_display %>)</td>
+        <% else %>
+          <td class="text-right"><%= list.try(:currency_symbol) %><% amount_with_precision = number_with_precision(list.amount, precision: 2) %><% amount_display = Common::Finance::NumberFormatService.call(@number_format, amount_with_precision) %><%= amount_display %>(Balance: <% amount_remaining_with_precision = number_with_precision(list.amount_remaining, precision: 2) %><% amount_remaining_display = Common::Finance::NumberFormatService.call(@number_format, amount_remaining_with_precision) %><%= amount_remaining_display %>)</td>
+        <% end %>
+      </tr>
+    <% end %>
+  </table>
+</div>
+
+<style type="text/css">
+  .advance_data * {
+    font-size: 9px;
+  }
+
+  .advance_head * {
+    font-size: 10px;
+    color: #000;
+
+  }
+</style>

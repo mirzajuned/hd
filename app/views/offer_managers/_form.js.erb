@@ -1,0 +1,423 @@
+var inventory_ary = [50121007, 284748001];
+function start_end_date_validation(){
+  var startDate = $("#offer_manager_start_date").val();
+  var endDate = $("#offer_manager_end_date").val();
+  if(startDate == ''){
+    $(".offer_manager-start-timepicker").val('')
+  }
+  if(endDate == ''){
+    $(".offer_manager-end-timepicker").val('')
+  }
+  $('.offer_manager-start-datepicker').datepicker({
+    minDate: new Date(),
+    dateFormat: "yy-mm-dd",
+    onSelect: function(dateText) {
+                startDate = dateText;
+                var timestamp = startDate + " " + $(".offer_manager-start-timepicker").val()
+                $( ".offer_manager-end-datepicker" ).datepicker( "option", "minDate", new Date(startDate) );
+                $("#offer_manager_start_datetime").attr("value", timestamp)
+                $("#offer_manager_start_date").attr("value", startDate)
+                $('.offer_manager-end-datepicker').datepicker("option", "minDate", new Date(startDate));
+                $('.offer_manager-end-datepicker').trigger('change')
+                check_end_date_time();
+              }
+  });
+  $('.offer_manager-start-timepicker').timepicker({minuteStep: 15});
+
+  $('.offer_manager-end-datepicker').datepicker({
+    minDate: new Date(),
+    dateFormat: "yy-mm-dd",
+    onSelect: function(dateText){
+                endDate = dateText;
+                if(startDate > endDate) {
+                  alert('Please select date grater than ' + startDate);
+                  $(this).val(startDate);
+                  $(this).datepicker("option", "minDate", new Date(startDate));
+                }
+                var timestamp = $(this).val() + " " + $(".offer_manager-end-timepicker").val()
+                $("#offer_manager_end_datetime").attr("value", timestamp)
+                $("#offer_manager_end_date").attr("value", $(this).val())
+                check_end_date_time();
+              }
+  });
+  $('.offer_manager-end-timepicker').timepicker({minuteStep: 15});
+}
+start_end_date_validation();
+
+function find_days_diff() {
+  var end_date = new Date($(".offer_manager-end-datepicker").val());
+  var start_date = new Date($(".offer_manager-start-datepicker").val());
+  var diff = new Date(end_date - start_date);
+  days = diff/1000/60/60/24;
+  if(isNaN(days)){
+    $('#div_days_diff').html('<b> - </b>');
+  } else {
+    $('#div_days_diff').html('<b>' + days + ' Days </b>');
+  }
+}
+
+function check_end_date_time(){
+  let start_date_val = $('#start_date').val()
+  let end_date_val = $('#end_date').val()
+  let start_time_val = $('#start_datetime').val()
+  let end_time_val = $('#end_datetime').val()
+  if(start_date_val != undefined && end_date_val != undefined) {
+    let start_date = start_date_val.split('-')
+    let end_date = end_date_val.split('-')
+    let new_start_date = start_date[0]+ "/" + start_date[1] + "/" + start_date[2]
+    let new_end_date = end_date[0]+ "/" + end_date[1] + "/" + end_date[2]
+    let start_date_time = new_start_date + " " + start_time_val
+    let end_date_time =  new_end_date + " " + end_time_val
+    let start_date_time_to_date = new Date(start_date_time)
+    let end_date_time_to_date = new Date(end_date_time)
+    if(start_date_time_to_date.getTime() >= end_date_time_to_date.getTime()) {
+      $('#end_date').css('text-shadow','red 0px 0px 10px').css('color','#333')
+      $('#end_date').css('border','2px solid red')
+      $('#end_datetime').css('text-shadow','red 0px 0px 10px').css('color','#333')
+      $('#end_datetime').css('border','2px solid red')
+      $(".save-offer-manager").prop('disabled', true);
+    } else {
+      $('#end_date').css('text-shadow','none').css('color','#000')
+      $('#end_date').css('border','1px solid #ccc')
+      $('#end_datetime').css('text-shadow','none').css('color','#000')
+      $('#end_datetime').css('border','1px solid #ccc')
+      $(".save-offer-manager").prop('disabled', false);
+    }
+    find_days_diff();
+  }
+}
+
+$(".offer_manager-start-datepicker").on('change', function(){
+  var timestamp = $(this).val() + " " + $(".offer_manager-start-timepicker").val()
+  $("#offer_manager_start_date").val($(this).val());
+  $("#offer_manager_start_datetime").val(timestamp)
+  check_end_date_time();
+}).trigger('change')
+
+$(".offer_manager-start-timepicker").on('change', function(){
+  var timestamp = $(".offer_manager-start-datepicker").val() + " " + $(this).val()
+  $("#offer_manager_start_date").val($(".offer_manager-start-datepicker").val())
+  $("#offer_manager_start_datetime").val(timestamp)
+  check_end_date_time();
+}).trigger('change')
+
+$(".offer_manager-start-timepicker").on('click', function(){
+  $(".offer_manager-start-timepicker").val("<%= Time.current.strftime('%I:%M %p') %>")
+}).trigger('change')
+
+$(".offer_manager-end-datepicker").on('change', function(){
+  var timestamp = $(this).val() + " " + $(".offer_manager-end-timepicker").val()
+  $("#offer_manager_end_date").val($(this).val())
+  $("#offer_manager_end_datetime").val(timestamp)
+  check_end_date_time();
+}).trigger('change')
+
+$(".offer_manager-end-timepicker").on('click', function(){
+  $(".offer_manager-end-timepicker").val("<%= Time.current.strftime('%I:%M %p') %>")
+}).trigger('change')
+
+$(".offer_manager-end-timepicker").on('change', function(){
+  var timestamp = $(".offer_manager-end-datepicker").val() + " " + $(this).val()
+  $("#offer_manager_end_date").attr("value", $(".offer_manager-end-datepicker").val())
+  $("#offer_manager_end_datetime").attr("value", timestamp)
+  check_end_date_time();
+}).trigger('change')
+
+function validate_offer_form() {
+  if($('#offer_manager_department_ids').length) {
+    selected_department_ids = function(){ return $('#offer_manager_department_ids').attr('value') };
+  } else {
+    selected_department_ids = '<%= @offer_manager.department_id %>';
+  }
+
+  $('#offer-manager-form').validate({
+    ignore: "",
+    rules: {
+      "offer_manager[department_ids]": {
+        required: true
+      },
+      "offer_manager[name]": {
+        required: true,
+        remote: {
+          url: "/offer_managers/validate_offer",
+          type: 'get',
+          data: {
+            organisation_id: $('#offer_manager_organisation_id').val(),
+            facility_id: $('#offer_managers_facility_id option:selected').attr('value'),
+            existing_name: '<%=raw @offer_manager.name %>',
+            department_id: selected_department_ids
+          }
+        }
+      },
+      "offer_manager[standard_code]": {
+        required: true,
+        remote: {
+          url: "/offer_managers/validate_offer",
+          type: 'get',
+          data: {
+            organisation_id: $('#offer_manager_organisation_id').val(),
+            facility_id: $('#offer_managers_facility_id option:selected').attr('value'),
+            existing_standard_code: '<%=raw @offer_manager.standard_code %>',
+            department_id: selected_department_ids
+          }
+        }
+      },
+      "offer_manager[service_id]": {
+        required: {
+          depends: function() {
+            return $('#offer_manager_service_id').length > 0;
+          }
+        }
+      },
+      "50121007_stores[]": {
+        required: {
+          depends: function() {
+            return $('#50121007_store_list').length > 0;
+          }
+        }
+      },
+      "284748001_stores[]": {
+        required: {
+          depends: function() {
+            return $('#284748001_store_list').length > 0;
+          }
+        }
+      },
+      "start_date": {
+        required: true
+      },
+      "start_datetime": {
+        required: true
+      },
+      "end_date": {
+        required: true
+      },
+      "end_datetime": {
+        required: true
+      },
+      "offer_manager[discount]": {
+        required: true
+      }
+    },
+    messages: {
+      "offer_manager[department_ids]": {
+        required: "Department ID Required"
+      },
+      "offer_manager[name]": {
+        required: "Name Required.",
+        remote: "Already Taken"
+      },
+      "offer_manager[standard_code]": {
+        required: "Offer Code Required.",
+        remote: "Already Taken"
+      },
+      "offer_manager[service_id]": {
+        required: "Service Required."
+      },
+      "50121007_stores[]": {
+        required: "Optical Store(s) Required."
+      },
+      "284748001_stores[]": {
+        required: "Pharmacy Store(s) Required."
+      },
+      "start_date": {
+        required: "Start Date Required."
+      },
+      "start_datetime": {
+        required: "Start Time Required."
+      },
+      "end_date": {
+        required: "End Date Required."
+      },
+      "end_datetime": {
+        required: "End Time Required."
+      },
+      "offer_manager[discount]": {
+        required: "Discount Required."
+      }
+    },
+    errorPlacement: function (error, element) {
+      var elem = $(element);
+      if(elem.hasClass("select2-hidden-accessible")) {
+        if($(element).attr("id") == "offer_manager_service_id"){
+          element = $("#select2-offer_manager_service_id-container").parent().parent();
+        } else {
+          element = $("#select2-" + elem.attr("id") + "-container").parent();
+        }
+      }
+      error.insertAfter(element);
+    }
+  });
+}
+validate_offer_form();
+
+// ******************** load services based on facility/department
+// Toggle services block
+function toggle_service_div(check_departments) {
+  if (check_departments) {
+    $('#div_services').show();
+  } else {
+    $('#div_services').hide();
+  }
+  if($('#offer_manager_department_ids').length) {
+    var selected_department = $('#offer_manager_department_ids').val();
+    load_services(check_departments, selected_department)
+  }
+}
+// load/unload services
+function load_services(check_departments, selected_department){
+  var department_id = selected_department; var selected = '';
+  var facility_id = $('#offer_managers_facility_id option:selected').attr('value');
+  if(check_departments && department_id != '' && facility_id != '') {
+    $('#div_services').show();
+    $.ajax({
+      type: "GET",
+      dataType: "json",
+      url: "/offer_managers/load_services",
+      data: {
+        department_id: department_id,
+        facility_id: facility_id
+      },
+      success: function(response){
+        $("#offer_manager_service_id").val('').trigger('change')
+        $('#offer_manager_service_id').children().remove();
+        $('#offer_manager_service_id').append($("<option></option>").attr("value",'').text(''));
+        $.each(response, function(key, value) {
+          $.each(value, function(k, val) {
+            var service_name = val['service_name'];
+            $('#offer_manager_service_id').append($("<option data-amount='" + val["amount"] + "'></option>").attr("value",val["_id"]).text(service_name + '('+ val['amount'] +')'));
+          })
+        });
+      }
+    });
+    // EOf fill departments
+  } else {
+    $('#offer_manager_service_id').children().remove();
+    $('#offer_manager_service_id').append($("<option></option>").attr("value", "").text('Select Service'));
+    $('#div_services').hide();
+  }
+}
+
+toggle_service_div(<%=(@offer_manager.try(:department_ids) & ['485396012', '486546481']) && (@offer_manager.try(:offer_type) == 'service')%>);
+// ******************** EOf load services based on facility/department
+
+// ******************** load stores based on facility/department
+// Toggle stores block
+function toggle_store_div(check_departments){
+  if ((check_departments == true || check_departments == 'true') && $('#offer_manager_department_ids').val() != '') {
+    $('#div_store').show();
+  } else {
+    $('#div_store').hide();
+  }
+}
+
+// load/unload stores
+function load_stores(department_id){
+  var selected = [];
+  if($('#'+department_id+'_store_list').length) {
+    selected = $('#'+department_id+'_store_list :selected').map((_, e) => e.value).get();
+    $('#'+department_id+'_store_list').children().remove();
+  }
+  var facility_id = $('#offer_managers_facility_id option:selected').attr('value');
+  $.ajax({
+    type: "GET",
+    dataType: "json",
+    url: "/offer_managers/load_stores",
+    data: {
+      department_id: department_id,
+      facility_id: facility_id,
+      user_id: $('#offer_manager_user_id').val()
+    },
+    success: function(response){
+      if($('#'+department_id+'_store_list').length) {
+        $.each(response, function(key, value) {
+          if ($.inArray(value["_id"], selected) !== -1) {
+            $('#'+department_id+'_store_list').append($("<option selected='selected'></option>").attr("value",value["_id"]).text(value["name"]));
+          } else {
+            $('#'+department_id+'_store_list').append($("<option></option>").attr("value",value["_id"]).text(value["name"]));
+          }
+        });
+      }
+    }
+  });
+  // EOf ajax call
+}
+toggle_store_div('<%=(@offer_manager.try(:department_ids) & ['50121007', '284748001'])%>');
+$('#offer_manager_department_ids').on('change', function(){
+  var selected_departments = $(this).val().split(',');
+  if(<%= @offer_manager.try(:offer_type) == 'service'%>) {
+    var check_inventory_departments = (($.inArray('485396012', selected_departments) !== -1) || ($.inArray('486546481', selected_departments) !== -1))
+    toggle_service_div(check_inventory_departments)
+  } else {
+    var check_departments = (($.inArray('50121007', selected_departments) !== -1) || ($.inArray('284748001', selected_departments) !== -1))
+    toggle_store_div(check_departments);
+  }
+});
+// ******************** EOf load stores based on facility/department
+
+$(".department_button").on('click', function(){
+  var id_field = $(this).attr('data-value');
+  var name_field = $(this).text();
+  load_department_rows(id_field, name_field, $(this).hasClass('btn-darkblue'));
+});
+
+function load_department_rows(department_id, department_name, is_selected) {
+  var length = $(".department_row").length;
+
+  var fields_line = ``;
+  fields_line += `<div class='col-md-12 col-sm-12 col-xs-12 department_row ${department_id}_fields'>`
+  fields_line += `<div class="col-md-2 col-sm-2 col-sx-2">`
+  fields_line += `<h5 class="seected_department_name">${department_name}</h5>`
+  fields_line += `</div>`
+  
+  fields_line += `<div class="col-md-5 col-sm-5 col-sx-5 ${department_id}_stores">`
+  if(department_id == '50121007' || department_id == '284748001') {
+    fields_line += `<select name="${department_id}_stores[]" id="${department_id}_store_list" class="form-control p5_10" multiple=true></select>`  
+  }
+  fields_line += `</div>`
+  fields_line += `</div>`
+
+  if (!is_selected){
+    $('.'+department_id+'_fields').show()
+  } else {
+    $('.'+department_id+'_fields').hide()
+  }
+  load_stores(department_id);
+
+  var count_class= $('.'+department_id+'_fields').length;
+  if(count_class < 1 && (department_id == '50121007' || department_id == '284748001')){
+    $(fields_line).appendTo("#div_store").fadeIn('slow');
+  }
+}
+
+$('#offer_managers_facility_id').on('change', function() {
+  if(<%=@offer_manager.try(:offer_type) == "bill"%>){
+    for (var i = $('.department_button').length - 1; i >= 0; i--) {
+      var _this = $('.department_button')[i];
+      if($(_this).hasClass('btn-darkblue')) {
+        var id_field = $(_this).attr('data-value');
+        var name_field = $(_this).text();
+        load_department_rows(id_field, name_field, false);
+      }
+    }
+  } else if(<%=@offer_manager.try(:offer_type) == "service"%>) {
+    var selected_department = $('#offer_manager_department_ids').val();
+    load_services(true, selected_department)
+  }
+});
+
+$('.department_service').on('click', function() {
+  var selected_department = $('#offer_manager_department_ids').val();
+  load_services(true, selected_department)
+})
+
+$('#offer_manager_name').on('blur', function() {
+  validate_offer_form();
+});
+
+$('#offer_manager_standard_code').on('blur', function() {
+  validate_offer_form();
+});
+
+$("#offer_managers_facility_id").select2( {dropdownParent: $('#offer-manager-modal') });
+$("#offer_manager_service_id").select2({ dropdownParent: $('#offer-manager-modal') });

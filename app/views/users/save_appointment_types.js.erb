@@ -1,0 +1,112 @@
+//$(".close").click()
+$(".appointment_types_refresh").html("<%= escape_javascript(render 'settings/doctors/appointment_types_partial') %>")
+
+
+jQuery("#full-appointment-types").on('click',"#add_appointment_type",function(e){
+
+  var total_rows = jQuery("#total_appointment_types_count").val();
+
+  var single_row_html = '<div class="row form-group"><input id="appointment_types_row_count_user_id" name="appointment_types[row_count][user_id]" type="hidden" value="<%=current_user.id.to_s %>"><div class="col-md-3"><input class="form-control appointment-label-validation" id="appointment_types_row_count_label" name="appointment_types[row_count][label]" type="text"></div><div class="col-md-2"><input class="form-control slot-duration-validation" id="appointment_types_row_count_duration" min="1" name="appointment_types[row_count][duration]" type="number"></div><div class="col-md-2"><input class="form-control" id="appointment_types_row_count_background" name="appointment_types[row_count][background]" type="text" value="hg_color_value"></div><div class="col-md-2"><input id="default_row_count" name="default" type="radio" value="row_count"></div><div class="col-md-1"><span id="add_appointment_type" class="btn btn-sm btn-primary btn-square glyphicon glyphicon-plus-sign"></span></div><div class="col-md-1"><span id="remove_appointment_type_row_count" class="btn btn-sm btn-primary btn-danger glyphicon glyphicon-remove"></span></div></div>';
+
+  single_row_html = single_row_html.replace(/row_count/g,total_rows);
+  single_row_html = single_row_html.replace(/hg_color_value/g,pallette_array[Math.floor(Math.random()*pallette_array.length)]);
+  jQuery("#total_appointment_types_count").val(+total_rows+1);
+
+  jQuery(single_row_html).appendTo("#full-appointment-types");
+  init_color_picker()
+
+});
+// to remove row
+
+jQuery("#full-appointment-types").on('click',"[id^=remove_appointment_type_]",function(e){
+  var id = e.currentTarget.id
+  var index = id.replace('remove_appointment_type_', '');
+
+  var default_id = 'default_'+index
+
+  if ($('#' + default_id).prop('checked')){
+    $('#appointment-types-alert-messages').show()
+    $("#appointment-types-alert-messages").html('You cannot delete the default appointment type, select another appointment type as a default to delete.')
+    jQuery('#appointment-types-alert-messages').addClass("alert alert-warning")
+    $('#appointment-types-alert-messages').delay(10000).fadeOut();
+  }
+
+  else{
+    if (jQuery("input[name='appointment_types[" + index + "][id]']").length) {
+      appointment_list = []
+      if (jQuery("#appointment_types_for_delete").val() != "") {
+        appointment_list = jQuery("#appointment_types_for_delete").val().split(',')
+      }
+      appointment_list.push(jQuery("input[name='appointment_types[" + index + "][id]']").val())
+      jQuery("#appointment_types_for_delete").val(appointment_list.join(","))
+    }
+    jQuery("#" + id).parent().parent().remove()
+  }
+})
+var pallette_array = [
+  "rgb(0, 0, 0)", "rgb(67, 67, 67)","rgb(152, 0, 0)", "rgb(255, 0, 0)",
+  "rgb(255, 153, 0)", "rgb(255, 255, 0)", "rgb(0, 255, 0)",
+  "rgb(0, 255, 255)", "rgb(74, 134, 232)", "rgb(0, 0, 255)", "rgb(153, 0, 255)", "rgb(255, 0, 255)",
+  "rgb(204, 65, 37)", "rgb(224, 102, 102)", "rgb(246, 178, 107)", "rgb(255, 217, 102)", "rgb(147, 196, 125)",
+  "rgb(118, 165, 175)", "rgb(109, 158, 235)", "rgb(111, 168, 220)", "rgb(142, 124, 195)", "rgb(194, 123, 160)",
+  "rgb(166, 28, 0)", "rgb(204, 0, 0)", "rgb(230, 145, 56)", "rgb(241, 194, 50)", "rgb(106, 168, 79)",
+  "rgb(69, 129, 142)", "rgb(60, 120, 216)", "rgb(61, 133, 198)", "rgb(103, 78, 167)", "rgb(166, 77, 121)",
+  "rgb(91, 15, 0)", "rgb(102, 0, 0)", "rgb(120, 63, 4)", "rgb(127, 96, 0)", "rgb(39, 78, 19)",
+  "rgb(12, 52, 61)", "rgb(28, 69, 135)", "rgb(7, 55, 99)", "rgb(32, 18, 77)", "rgb(76, 17, 48)"
+]
+function init_color_picker() {
+  $("[id^=appointment_types_][id$=_background]").spectrum({
+    showInput: true,
+    className: "full-spectrum",
+    showInitial: true,
+    showPalette: true,
+    showSelectionPalette: true,
+    maxSelectionSize: 10,
+    preferredFormat: "hex",
+    localStorageKey: "spectrum.healthgraph  ",
+    move: function (color) {
+
+    },
+    show: function () {
+
+    },
+    beforeShow: function () {
+
+    },
+    hide: function () {
+
+    },
+    change: function() {
+
+    },
+    palette: pallette_array
+  });
+}
+init_color_picker()
+
+
+function appointment_type_page() {
+  $("#appointment_types").validate({
+
+    errorElement: 'div',
+    errorPlacement: function (error, element) {
+      error.insertAfter(element);
+    }
+  });
+
+}
+appointment_type_page()
+
+
+// alias required to cRequired with new message
+$.validator.addMethod("LabelRequired", $.validator.methods.required, "Label cannot be blank");
+$.validator.addMethod("SlotRequired", $.validator.methods.required, "Slot time cannot be blank");
+$.validator.addMethod("INumber", $.validator.methods.number, "Please enter a number");
+
+jQuery.validator.addMethod("mintimeslot", function(value, element) {
+  return this.optional(element) || value >= 5;
+}, jQuery.validator.format("Please enter the Value more than or equal to 5"));
+
+
+$.validator.addClassRules("appointment-label-validation", { LabelRequired: true});
+$.validator.addClassRules("slot-duration-validation", { SlotRequired: true, INumber: true, mintimeslot: true});

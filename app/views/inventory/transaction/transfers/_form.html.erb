@@ -1,0 +1,100 @@
+<div class="row transaction-title">
+  <div class="col-sm-12 text-center" style="border-bottom:1px solid #ccc;border-top:1px solid #ccc;"><strong>Transfer</strong></div>
+</div>
+<div class="row transaction-common-fields" style="margin-top:15px;">
+  <div class="col-sm-6">
+    <strong>Note</strong><br>
+    <%= f.text_field :note, { class: 'form-control p7_10 fullname', placeholder: "Transaction Note" } %>
+    <%= f.hidden_field :count,value: params[:count] %>
+  </div>
+  <div class="col-sm-3">
+    <strong>Receiving Store</strong><br>
+    <% if ['facility_store', 'requisition_received'].include?(@from) %>
+      <input type="text" class="form-control p7_10 store-facility-name" readonly= "readonly" value="<%= @facility&.name %>&nbsp;/&nbsp;<%= @receive_store.name %>">
+      <%= f.hidden_field :receive_store_name, { value: @receive_store.name } %>
+      <%= f.hidden_field :receive_store_id, { value: @transfer_transaction.receive_store_id || @receive_store.id, class: 'receive-store-id' } %>
+      <%= f.hidden_field :receive_facility_id, { value: @facility&.id } %>
+      <%= f.hidden_field :receive_facility_name, { value: @facility&.name } %>
+      <%= f.hidden_field :transfer_type, { value: 'facility_store' } %>
+    <% elsif @from == 'central_hub' %>
+      <%= f.text_field :receive_store_name, { value: @receive_store.name, class: 'form-control store-facility-name p7_10', readonly: 'readonly' } %>
+      <%= f.hidden_field :receive_store_id, { value: @receive_store.id, class: 'receive-store-id' } %>
+      <%= f.hidden_field :transfer_type, { value: 'central_hub' } %>
+    <% else %>
+      <% selected_store = @receive_store_id.present? ? @receive_store_id : params[:receive_store_id] %>
+      <%= f.select :receive_store_id, options_for_select(@receive_stores, selected: selected_store), { include_blank: true }, {class: 'form-control'} %>
+      <%= f.hidden_field :receive_store_name, { value: "", class: 'receive-store-name' } %>
+      <%= f.hidden_field :transfer_type, { value: "#{@inventory_store.department_name}_store" } %>
+    <% end %>
+    <% if @from == 'requisition_received' %>
+      <%= f.hidden_field :request_from, { value: @from } %>
+      <%= f.hidden_field :requisition_received_id, { value: params[:id] } %>
+      <%= f.hidden_field :requisition_id, { value: @requisition_received.requisition_order_id } %>
+      <%= f.hidden_field :transfer_from, { value: "requisition" } %>
+      <%= f.hidden_field :optical_order_id, { value: @requisition_received.optical_order_id } %>
+    <% else %>
+      <%= f.hidden_field :transfer_from, { value: "store" } %>
+    <% end %>
+  </div>
+
+  <div class="col-sm-3">
+    <strong>Transaction Date</strong><br>
+    <% unless Authorization::PolicyHelper.verification(current_user.id,"HGP-100-106-104") %>
+      <%= f.text_field :transaction_date, { value: Date.current.strftime("%d/%m/%Y"), class: 'form-control p7_10 fullname', placeholder: "Date of transition", readonly: 'readonly' } %>
+    <% else %>
+      <%= f.text_field :transaction_date, { value: Date.current.strftime("%d/%m/%Y"), class: 'form-control p7_10 fullname transaction-datepicker', placeholder: "Date of transition" } %>
+    <% end %>
+  </div>
+
+  <%= f.hidden_field :entry_type, { value: "transfer" } %>
+  <%= f.hidden_field :entered_by, { value: current_user.fullname } %>
+  <%= f.hidden_field :user_id, { value: current_user.id } %>
+  <%= f.hidden_field :store_id, { value: @store_id } %>
+  <%= f.hidden_field :store_name, { value: @inventory_store.name } %>
+  <%= f.hidden_field :facility_id, { value: current_facility.id } %>
+  <%= f.hidden_field :organisation_id, { value: current_user.organisation_id } %>
+  <%= f.hidden_field :transaction_time, { value: Time.current } %>
+  <%= f.hidden_field :department_name, { value: @inventory_store.department_name } %>
+  <%= f.hidden_field :department_id, { value: @inventory_store.department_id } %>
+</div>
+
+<div class="transaction-lots-list" style="margin-top:15px;">
+  <table class="table transaction-lots-table ">
+    <thead class="transaction-table-head">
+      <tr class='thead-fixable'>
+        <td style="width:2%;padding-left: 2px;">#</td>
+        <td class='thead-fix' style="width:11%; padding-left: 0px;">Description</td>
+        <td class='thead-fix' style="width:20%">Barcode</td>
+        <td class='thead-fix' style="width:21%;">GRN No.</td>
+         <td class='thead-fix' style="width:10%;">GRN Date</td>
+        <td class='thead-fix' style="width:10%;">Batch</td>
+        <td class='thead-fix' style="width:10%;">Expiry</td>
+        <td class='thead-fix' style="width:6%;">MRP</td>
+        <td class='thead-fix' style="width:6%;">Rate</td>
+         <td class='thead-fix' style="width:6%;">Qty</td>
+        <td class='thead-fix' style="width:10%;">Amount</td>
+        <td class='thead-fix' style="width:10%">Action</td>
+      </tr>
+    </thead>
+    <%# <tbody class="transaction-table-body" style="overflow-y: auto">
+    </tbody> %>
+  </table>
+</div>
+
+<div class="transaction-table-body" style="overflow-y: auto">
+  <% unless @transfer_transaction.new_record? %>
+    <%= render 'inventory/transaction/transfers/lots.html', f: f %>
+  <% end %>
+</div>
+
+<style>
+  .transaction-datepicker{
+    cursor: pointer !important;
+  }
+  .disabled_row{
+    pointer-events: none;
+  }
+  .transaction-datepicker:disabled{
+    cursor: not-allowed !important;
+  }
+</style>

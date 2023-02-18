@@ -1,0 +1,147 @@
+<div class="services_items_invoice_template" id="services_items_invoice_template">
+  <!-- Display Once -->
+  <% unless @template_services.nil? %>
+    <div class="service_row_count mb5 mt5" title="0">
+      <div class="invoice_service_item_row_header row mt5" id="invoice_service_item_row_header">
+        <div class="col-md-4">
+          <b>Services</b>
+        </div>
+        <div class="col-md-2">
+          <b>Quantity</b>
+        </div>
+        <div class="col-md-2">
+          <b>Unit Price</b>
+        </div>
+        <div class="col-md-2">
+          <b>Total</b>
+        </div>
+        <div class="col-md-2">
+          <b>Actions</b>
+        </div>
+      </div>
+      <div class="service_item_row_count mb10" id="service_item_row">
+        <% @template_services.each do |i, service| %>
+          <% if service['entry_type'] == "service" %>
+            <div class="invoice_service_item_row row mt5" id="invoice_service_item_row">
+              <div class="col-md-12">
+                <div class="field_for_date">
+                  <input type="hidden" name="invoice_template[template_details][<%= i %>][entry_type]" class="i_entry_type" value="service">
+                </div>
+                <div class="col-md-2 field_for_payer" style="display: none;">
+                  <select class="form-control i_payer_master_id" name="invoice_template[template_details][<%= i %>][payer_master_id]">
+                    <% @payer_fields.each do |payer_master| %>
+                      <% if payer_master[:id].to_s == service['payer_master_id'].to_s %>
+                        <option value="<%= payer_master[:id].to_s %>" selected="selected"><%= payer_master[:display_name] %></option>
+                      <% end %>
+                    <% end %>
+                  </select>
+                </div>
+                <div class="col-md-4 field_for_description">
+                  <select class="form-control i_description" name="invoice_template[template_details][<%= i %>][description]">
+                    <option value=""></option>
+                    <!-- map all pricing_masters with this service payer_master_id -->
+                    <% pricing_masters = @pricing_masters.map { |_service_master_id, pms| pms.map { |pricing_master| pricing_master if pricing_master[:payer_master_id].to_s.strip == service['payer_master_id'].to_s.strip }.reject(&:nil?) }.flatten %>
+                    <!-- map all service_sub_group for optgroup -->
+                    <% service_sub_group_names = pricing_masters.map { |pm| pm.service_sub_group.name }.uniq %>
+                    <% service_sub_group_names.each do |sgn| %>
+                      <optgroup label="<%= sgn %>">
+                        <!-- Get all pricing within this service group -->
+                        <% sgn_pricing_masters = pricing_masters.select { |pm| (pm if pm.service_sub_group.name == sgn) }.reject(&:nil?) %>
+                        <% sgn_pricing_masters.each do |pricing_master| %>
+                          <% if pricing_master.id.to_s == service['description'].to_s %>
+                            <option value="<%= pricing_master.id.to_s %>" data-amount="<%= pricing_master.amount %>" data-service_code="<%= pricing_master.try(:service_code) %>" data-service_name="<%= pricing_master.service_name %>" selected="selected"><%= pricing_master.service_name %><span><% if pricing_master.try(:service_code).present? %> (<%= pricing_master.try(:service_code) %>) <% end %></span></option>
+
+                          <% else %>
+                            <option value="<%= pricing_master.id.to_s %>" data-amount="<%= pricing_master.amount %>" data-service_code="<%= pricing_master.try(:service_code) %>" data-service_name="<%= pricing_master.service_name %>"><%= pricing_master.service_name %><span><% if pricing_master.try(:service_code).present? %> (<%= pricing_master.try(:service_code) %>) <% end %></span></option>
+                          <% end %>
+                        <% end %>
+                      </optgroup>
+                    <% end %>
+                  </select>
+                  <% @pricing_master = PricingMaster.find_by(id: service['description']) %>
+                  <input name="invoice_template[template_details][<%= i %>][service_code]" style="padding:2px 10px; border: none" class="form-control i_service_code" placeholder="Service Code" value="<%= @pricing_master.try(:service_code) %>" type="text" readonly="readonly">
+                </div>
+                <div class="col-md-2 field_for_quantity">
+                  <input name="invoice_template[template_details][<%= i %>][quantity]" style="padding:5px 10px;" class="form-control i_quantity" placeholder="Quantity" value="<%= service['quantity'] %>" type="text">
+                </div>
+                <div class="col-md-2 field_for_unit_price">
+                  <input name="invoice_template[template_details][<%= i %>][unit_price]" style="padding:5px 10px;" class="form-control i_unit_price" placeholder="Unit Price" type="text" value="<%= service['unit_price'] %>">
+                </div>
+                <div class="col-md-2 field_for_price">
+                  <input name="invoice_template[template_details][<%= i %>][price]" style="padding:5px 10px;" class="form-control i_price" id="i_price" placeholder="Total" readonly="readonly" type="text" value="<%= service['price'] %>">
+                  <input type="hidden" name="invoice_template[services][<%= i %>][discount_amount]" class="service_discount_amount" value="0">
+                  <input type="hidden" name="invoice_template[services][<%= i %>][discount_percentage]" class="service_discount_percentage" value="">
+                  <input type="hidden" name="invoice_template[services][<%= i %>][net_item_price]" class="net_item_price" value="<%= service['price'] %>">
+                </div>
+                <div class="col-md-2">
+                  <button class="btn btn-danger btn-xs remove_service" style="padding:0 5px;margin-top:3px;"><i class="fa fa-trash-alt"></i> Remove</button>
+                </div>
+              </div>
+            </div>
+          <% elsif service['entry_type'] == "surgery_package" %>
+            <div class="invoice_service_item_row row mt5" id="invoice_service_item_row">
+              <div class="col-md-12">
+                <div class="field_for_date">
+                  <input type="hidden" name="invoice_template[template_details][<%= i %>][entry_type]" class="i_entry_type" value="surgery_package">
+                </div>
+                <div class="col-md-2 field_for_payer" style="display: none;">
+                  <select class="form-control i_payer_master_id" name="invoice_template[template_details][<%= i %>][payer_master_id]">
+                    <% @payer_fields.each do |payer_master| %>
+                      <% if payer_master[:id].to_s == service['payer_master_id'].to_s %>
+                        <option value="<%= payer_master[:id].to_s %>" selected="selected"><%= payer_master[:display_name] %></option>
+                      <% end %>
+                    <% end %>
+                  </select>
+                </div>
+                <div class="col-md-4 field_for_description">
+                  <select class="form-control i_description" name="invoice_template[template_details][<%= i %>][description]" data-type='surgery_package'>
+                    <option value="">Select Package</option>
+                    <optgroup label="Surgery Packages">
+                      <% @surgery_packages.each do |surgery_package| %>
+                        <% if surgery_package.payer_master_id.to_s.strip == service['payer_master_id'].to_s.strip %>
+                          <% if surgery_package.id.to_s == service['description'].to_s %>
+                            <option value="<%= surgery_package.id.to_s %>" data-amount="<%= surgery_package.amount %>" data-service_name="<%= surgery_package.display_name %>" selected="selected"><%= surgery_package.display_name %></option>
+                          <% else %>
+                            <option value="<%= surgery_package.id.to_s %>" data-amount="<%= surgery_package.amount %>" data-service_name="<%= surgery_package.display_name %>"><%= surgery_package.display_name %></option>
+                          <% end %>
+                        <% end %>
+                      <% end %>
+                    </optgroup>
+                  </select>
+                </div>
+                <div class="col-md-2 field_for_quantity">
+                  <input name="invoice_template[template_details][<%= i %>][quantity]" style="padding:5px 10px;" class="form-control i_quantity" placeholder="Quantity" value="<%= service['quantity'] %>" type="text">
+                </div>
+                <div class="col-md-2 field_for_unit_price">
+                  <input name="invoice_template[template_details][<%= i %>][unit_price]" style="padding:5px 10px;" class="form-control i_unit_price" placeholder="Unit Price" readonly="readonly" type="text" value="<%= service['unit_price'] %>">
+                </div>
+                <div class="col-md-2 field_for_price">
+                  <input name="invoice_template[template_details][<%= i %>][price]" style="padding:5px 10px;" class="form-control i_price" id="i_price" placeholder="Total" readonly="readonly" type="text" value="<%= service['price'] %>">
+                  <input type="hidden" name="invoice_template[services][<%= i %>][discount_amount]" class="service_discount_amount" value="0">
+                  <input type="hidden" name="invoice_template[services][<%= i %>][discount_percentage]" class="service_discount_percentage" value="">
+                  <input type="hidden" name="invoice_template[services][<%= i %>][net_item_price]" class="net_item_price" value="<%= service['price'] %>">
+                </div>
+                <div class="col-md-2">
+                  <button class="btn btn-danger btn-xs remove_service" style="padding:0 5px;margin-top:3px;"><i class="fa fa-trash-alt"></i> Remove</button>
+                </div>
+              </div>
+              <div class="col-md-12 package-breakup">
+                <% @surgery_package = SurgeryPackage.find_by(id: service['description'].to_s) %>
+                <%= render template: 'surgery_packages/set_package_services.html.erb' %>
+              </div>
+            </div>
+          <% end %>
+        <% end %>
+      </div>
+      <div class="row service_row mb10">
+        <div class='col-md-4'>
+          <button class="btn btn-primary btn-xs add_service_item" style="padding:0 5px;margin-top:3px;"><i class="fa fa-plus"></i> New Item</button>
+          <button class="btn btn-primary btn-xs add_service_package" style="padding:0 5px;margin-top:3px;"><i class="fa fa-plus"></i> New Package</button>
+        </div>
+        <div class="col-md-3">
+          <input type="hidden" name="invoice_template[total]" class="service_total" value="<%= @invoice_template.total %>">
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>

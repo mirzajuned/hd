@@ -1,0 +1,158 @@
+<%= javascript_include_tag "application-loggedin", "data-turbolinks-track" => true %>
+<div class="modal-dialog modal-lg">
+  <div class="modal-content">
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+      <h4 class="modal-title">Custom Laboratory Investigation</h4>
+    </div>
+
+    <%= form_tag('/laboratory_investigation_data', method: :post, remote: true, id: 'laboratory_form') do %>
+      <div class="modal-body form-bordered clearfix custom_investigation_fields" style="padding-bottom: 51px;padding-top: 35px;">
+        <input type="hidden" name="laboratory_investigation_data[organisation_id]" value="<%= current_user.organisation_id %>">
+        <input type="hidden" name="laboratory_investigation_data[created_by]" value="<%= current_user.id %>">
+
+        <div class="custom_investigation_section" id="custom_investigation_section">
+          <div class="row">
+            <div class="col-sm-1"></div>
+            <div class="col-sm-4">
+              <b>Investigation Name:</b>  
+              <%= text_field_tag "laboratory_investigation_data[investigation_name]",nil ,class: 'form-control', placeholder: 'Enter new Investigation name'  %>
+            </div>
+            <div class="col-sm-3">
+              <b>Range:</b>
+              <%= text_area_tag "laboratory_investigation_data[normal_range]",nil ,class: 'form-control',rows: 1, placeholder: 'Enter range'  %>
+            </div>
+            <div class="col-sm-3">
+              <b>Specialty:</b>
+              <%= select_tag "laboratory_investigation_data[specialty_id]", options_for_select(@available_specialties.pluck(:name, :id)), { :class => 'form-control specialty_dropdown', :include_blank => 'Select any Specialty' } %>
+            </div>
+          </div>
+
+          <div class="row check-box-row" style="padding-top: 20px;">
+            <div class="col-sm-4"></div>
+            
+            <div class="col-sm-2">
+              <div class="ckbox ckbox-primary mb5">
+                <input type="hidden" name="laboratory_investigation_data[has_sub_tests]" value='false'>
+                <%= check_box_tag 'laboratory_investigation_data[has_sub_tests]', true, false, {id: "has_sub_tests"} %>
+                <label for="has_sub_tests">Add Subsets</label>
+              </div>
+            </div>
+
+            <div class="col-sm-2">
+              <div class="ckbox ckbox-primary mb5">
+                <input type="hidden" name="laboratory_investigation_data[only_sub_test]" value='false'>
+                <%= check_box_tag 'laboratory_investigation_data[only_sub_test]', true, false, {id: "only_sub_test"} %>
+                <label for="only_sub_test">Only Subset</label>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="add_subsets_fields_rows" style="display: none;">
+            <div class="row new_subset_row"  style="margin-top: 25px">
+              <div class="col-md-1"></div>
+              <div class="col-md-4 opdrecord_laboratory_investigations_label_select" id="opdrecord_laboratory_investigations_label_select">
+                <label for="comments-textarealabel">Investigations</label>
+                <%= select_tag "laboratory_set", options_for_select(@laboratory_investigations.map{|inv| [ inv.investigation_name, inv.loinc_code ]}) ,{ multiple: true, :style => 'height: 250px; width:100%', :class => 'form-control' } %>
+                <p class="note-pane" style="color: red">** Select any Sub Investigation, if using Add Subsets option</p>
+              </div>
+              <div class="col-md-1"></div>
+              <div class="col-md-6 selected-investigations"  style="margin-top: 25px">
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <div class="row">
+          <div class="col-sm-9 text-left">
+            <span style="color: red"><b>Investigations with Only Subset option checked won't be available in templates.<br>  but can be avail for sub tests selections</b></span>
+          </div>
+          <div class="col-sm-3">
+            <%= submit_tag "Save", class: "save-btn btn btn-success", remote: true, 'data-disable-with' => "Please wait..", :onclick => 'validate_laboratory_form()' %>
+            <button aria-hidden="true" class="btn btn-info signup-patient-form-close" data-dismiss="modal">Close</button>      
+          </div>
+        </div>
+      </div>
+
+    <% end %>
+  </div>
+</div>
+
+<script type="text/javascript">
+  $('.note-pane').hide()
+  $('#laboratory_form').submit(function(){
+    var subset_value = $("#has_sub_tests").prop("checked")
+    if (subset_value == true){
+      if ($('.laboratory-investigation-row').length == 0) {
+        $('.note-pane').show()
+        return false;
+      }
+    }
+  });
+
+  $('#has_sub_tests').click(function(){
+    var subset_value = $(this).prop("checked")
+    if (subset_value == true) {
+      $('.add_subsets_fields_rows').fadeIn()
+      $(this).parents('.check-box-row').find('#only_sub_test').removeAttr('checked')
+    }else {
+      $('.add_subsets_fields_rows').hide()
+    }
+  });
+
+  $('#only_sub_test').click(function(){
+    var subset_value = $(this).prop("checked")
+    if (subset_value == true) {
+      $(this).parents('.check-box-row').find('#has_sub_tests').removeAttr('checked')
+       $('.add_subsets_fields_rows').hide()
+    }
+  });
+
+  $("#laboratory_set").on('change', function(e){
+    e.preventDefault();
+    $('.note-pane').hide()
+    var this_length = $(".selected-investigations").find('.laboratory-investigation-row').length
+    var loinc_code = "<input type='hidden' name='laboratory_investigation_data[subtests_values][" + this_length + "][loinc_code]' class='form-control loinc_code' id='custom_laboratory_investigation_set_subtests_values_" + this_length + "_loinc_code' value='" + $("#laboratory_set option:selected").val() + "'>"
+    var investigationname = "<input type='text' name='laboratory_investigation_data[subtests_values][" + this_length + "][investigation_name]' class='form-control investigationname p5_10' id='custom_laboratory_investigation_set_subtests_values_" + this_length + "_investigationname' value='" + $("#laboratory_set option:selected").text().replace(/'/g,"&apos;") + "'>"
+
+    $(".selected-investigations").append("<div class='row laboratory-investigation-row mb5'>" + loinc_code +
+      "<div class='col-sm-10'>" + investigationname + "</div><div class='col-sm-2'><button class='btn btn-danger btn-xs delete-row'>x</button></div></div>")
+
+    $(".delete-row").on('click', function(){
+      $(this).closest('.laboratory-investigation-row').remove()
+    })
+    $('#laboratory_set option:selected').removeAttr('selected');
+  })
+  
+  validate_laboratory_form()
+  function validate_laboratory_form() {
+
+    $("#laboratory_form").validate({
+      rules: {
+        "laboratory_investigation_data[investigation_name]": {
+          remote:"/laboratory_investigation_data/inv_name_validation",
+          required: true,
+          minlength: 3
+        },
+        "laboratory_investigation_data[specialty_id]": {
+          required: true,
+        }
+      },
+      messages: {
+        "laboratory_investigation_data[investigation_name]": {
+          required: "Please fill the Investigation name.",
+          remote: "Name already exist, type another"
+        },
+        "laboratory_investigation_data[specialty_id]": {
+          required: "Please select any Specialty",
+        }
+      }
+    });
+  }
+
+</script>
+

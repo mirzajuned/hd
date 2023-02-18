@@ -1,0 +1,144 @@
+<div class="modal-dialog modal-hg-template" style="width:90%;">
+  <div class="modal-content">
+    <%= form_for(@tapering, url: {controller: "tapering_kits", action: "create" }, :format => :js, :remote => true, method: :POST) do |taper| %>
+      <input type="hidden" name="med_id" value="<%= @med_id %>">
+      <%= taper.hidden_field :user_id, { value: current_user.id } %>
+      <%= taper.hidden_field :facility_id, { value: current_facility.id } %>
+      <%= taper.hidden_field :taperingtype, { value: @medicinedurationoption } %>
+      <%= taper.hidden_field :taperingduration, { value: @medicineduration } %>
+      <%= taper.hidden_field :taper_by, { value: "Frequency" } %>
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title">New Tapering Set</h4>
+      </div>
+      <div class="modal-body">
+        <div class="row">
+          <div class="col-md-2 col-sm-2 text-right">
+            <b>Medicine Name:</b>
+          </div>
+          <% if @source == "Templates" %>
+            <div class="col-md-2 col-sm-2">
+              <%= taper.text_field :medicine_name, { class: "form-control", value: @medicinename, readonly: "readonly" } %>
+            </div>
+            <div class="col-md-2 col-sm-2"></div>
+          <% else %>
+            <div class="col-md-2 col-sm-2">
+              <%= taper.text_field :medicine_name, { class: "form-control" } %>
+            </div>
+          <% end %>
+          <div class="col-md-4 col-sm-4 save_new_form_div">
+            <%= taper.submit "Save Tapering Set", { :class => 'btn btn-success pull-right save_new_form' } %>
+          </div>
+        </div>
+        <hr>
+        <div class="row">
+          <div class="mr10 col-md-4"></div>
+          <div class="col-md-7">
+            <div class="row radio_group">
+              <div class="col-md-12">
+                <span style="font-size:14px;color:black;margin-left: 91px;margin-right: 15px;"><b>Taper By</b></span>
+                <a class="rdio rdio-primary" style="margin-right: 20px;">
+                  <input id="taperingby_frequency" name="taperingby" class="taperingby" type="radio" value="Frequency" checked />
+                  <label for="taperingby_frequency">Frequency</label>
+                </a>
+                <a class="rdio rdio-primary">
+                  <input id="taperingby_dosage" name="taperingby" class="taperingby" type="radio" value="Dosage" />
+                  <label for="taperingby_dosage">Dosage</label>
+                </a>
+              </div>
+            </div>
+            <div class="row">
+              <span style="font-size:14px;color:red;"><b>Note:</b> Keep Frequency to <b>0</b> if you dont want to taper for that <b>Week/Month</b></span>
+            </div>
+          </div>
+        </div>
+        <div class="row day_tapering" style="padding:0 30px;">
+          <table class="table table-bordered taper_table">
+            <thead>
+              <tr>
+                <th class="col-md-1 col-sm-1">Sr no.</th>
+                <th class="col-md-1 col-sm-1">No of Days</th>
+                <th class="col-md-3-shared col-md-3-shared">Start Date</th>
+                <th class="col-md-3-shared col-md-3-shared">End Date</th>
+                <th class="col-md-3-shared col-md-3-shared">Start Time <a class="btn btn-link btn-xs text-right start_time_set_btn"><i class="fa fa-arrow-down"></i></a></th>
+                <th class="col-md-3-shared col-md-3-shared" width="16%">End Time <a class="btn btn-link btn-xs text-right end_time_set_btn"><i class="fa fa-arrow-down"></i></a></th>
+                <th class="freq_col col-md-2 col-sm-2">Frequency</th>
+                <th class="col-md-2 col-sm-2 dosage_col" style="display: none;">Dosage</th>
+                <th class="col-md-3-shared col-md-3-shared">Interval&nbsp;&nbsp;<a data-toggle="tooltip" data-placement="bottom" title="Time interval between two doses"><i class="fa fa-info-circle" aria-hidden="true"></i></a></th>
+                <th class="col-md-1 col-sm-1">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="tapering-kit-table-body-added" id="tapering_table">
+              <% @date_calculator_day = 0 %>
+              <% (1..@medicinefrequency).reverse_each.with_index do |frequency, i| %>
+                <tr class="taper_row">
+                  <td style="text-align: center;">
+                    <input style="padding:5px 10px;" name="<%= i+1 %>" class="form-control number_of_rows" value="<%= i+1 %>" readonly="readonly">
+                  </td>
+                  <td class="day_duration p5_10">
+                    <% if params[:medicinedurationoption] == "M" %>
+                      <% number_of_days = 30 * (params[:medicineduration].to_i) %>
+                    <% elsif params[:medicinedurationoption] == "W" %>
+                      <% number_of_days = 7 * (params[:medicineduration].to_i) %>
+                    <% else %>
+                      <% number_of_days = params[:medicineduration] %>
+                    <% end %>
+                    <input class="form-control p5_10 medicineduration_row" name="tapering_kit[tapering_set_attributes][<%= i %>][number_of_days]" value="<%= number_of_days %>" type="number" min="1" max="999" onKeyPress="if(this.value.length==3) return false;" required>
+                  </td>
+                  <td>
+                    <input style="padding:5px 10px;" class="form-control start_date" type="text" name="tapering_kit[tapering_set_attributes][<%= i %>][start_date]" readonly="readonly" value="<%= (Date.current + @date_calculator_day).strftime("%d/%m/%Y") %>">
+                  </td>
+                  <td>
+                    <input style="padding:5px 10px;cursor:pointer;" class="form-control end_date" type="text" name="tapering_kit[tapering_set_attributes][<%= i %>][end_date]" readonly="readonly">
+                  </td>
+                  <td class="bootstrap-timepicker timepicker">
+                    <input style="padding:5px 10px;cursor:pointer;" class="form-control timepicker_start_time" name="tapering_kit[tapering_set_attributes][<%= i %>][start_time]"  value="6:00 AM">
+                  </td>
+                  <td class="bootstrap-timepicker timepicker">
+                    <input style="padding:5px 10px;cursor:pointer;" class="form-control timepicker_end_time" name="tapering_kit[tapering_set_attributes][<%= i %>][end_time]" value="10:00 PM">
+                  </td>
+                  <td class="freq_col">
+                    <div class="input-group">
+                      <input style="padding:5px 10px;" class="form-control freq_val" value="<%= frequency %>" type="number" onkeypress="return event.charCode >= 48 && event.charCode <= 57" min = "1" name="tapering_kit[tapering_set_attributes][<%= i %>][frequency]">
+                      <span class="input-group-addon">times a day</span>
+                    </div>
+                  </td>
+                  <td class="dosage_col" style="display: none;">
+                    <% if i.to_i == 0 %>
+                      <% dosage_value = params[:medicinename] %>
+                    <% else %>
+                      <% dosage_value = "" %>
+                    <% end %>
+                    <div class="input-group">
+                      <input style="padding:5px 10px;" class="form-control" value="<%= dosage_value %>" name="tapering_kit[tapering_set_attributes][<%= i %>][dosage]">
+                    </div>
+                  </td>
+                  <td>
+                    <div class="input-group">
+                      <input style="padding:5px 10px;" class="form-control" value="<%= @interval %>" type="number" onkeypress="return event.charCode >= 48 && event.charCode <= 57" min = "0" name="tapering_kit[tapering_set_attributes][<%= i %>][interval]">
+                      <span class="input-group-addon">hour</span>
+                    </div>
+                  </td>
+                  <td style="text-align: center;">
+                    <div class="form-group">
+                      <a id="removetaperingrowbutton<%=i%>" class="btn btn-xs btn-primary btn-danger removetaperingrowbutton" href="javascript:;" name="removetaperingrowbutton"><span class="glyphicon glyphicon-remove"></span></a>
+                    </div>
+                  </td>
+                </tr>
+                <% @date_calculator_day += 1 %>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+        <div class="tapering-kit-table-body-removed" style="display:none;"></div>
+        <div class="row mt5 text-right" style="padding:0 30px;">
+          <button class="add_taper_new_row btn btn-primary btn-sm" style="padding: 0 5px;">Add Row</button>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<script type="text/javascript">
+  <%= render 'form.js.erb' %>
+</script>

@@ -1,0 +1,1 @@
+# IcdDiagnosisCodeAttribrute.delete_all

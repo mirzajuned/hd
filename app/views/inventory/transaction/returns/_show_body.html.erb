@@ -1,0 +1,220 @@
+<div class="container-fluid" id="freeInvoiceEdit" style="border-bottom:1px solid #eee;">
+  <div class="row mt10 mb5">
+    <div class="col-md-2 col-sm-6 font_size text-labels">
+      Return Receipt Id:
+    </div>
+    <div class="col-md-4 col-sm-6 font_size">
+      <%= @return_transaction.return_bill_number %>
+    </div>
+
+    <div class="col-md-2 col-sm-6 font_size text-labels">
+      Bill No:
+    </div>
+    <div class="col-md-4 col-sm-6 font_size">
+      <%= if @invoice.present?
+          @invoice.bill_number
+        elsif @inventory_invoice.present?
+          @inventory_invoice.bill_number
+        else
+          'Return Against Multiple Invoice'
+        end
+      %>
+    </div>
+    <div class="col-md-1 col-sm-6 font_size text-labels">
+      Patient:
+    </div>
+    <div class="col-md-2 col-sm-6 font_size">
+      <%= @return_transaction.recipient %>
+    </div>
+    <div class="col-md-2 col-sm-6 font_size text-labels">
+      Patient ID:
+    </div>
+    <div class="col-md-3 col-sm-6 font_size">
+      <%= @return_transaction.patient_identifier %>
+    </div>
+    <div class="col-md-2 col-sm-6 font_size text-labels">
+      Patient Mobile
+    </div>
+    <div class="col-md-2 col-sm-6 font_size">
+      <%= @return_transaction.recipient_mobile %>
+    </div>
+  </div>
+  <div class="row">
+    <h4 style="color: #00BFFF;">Item Details:</h4>
+  </div>
+  <div class="row check-font mt10 mb5">
+    <table class="table table table-striped table-bordered">
+      <thead>
+        <tr>
+          <th style="background-color: #4CAF50; color: white;">Code</th>
+          <th style="background-color: #4CAF50; color: white;">Description</th>
+          <th style="background-color: #4CAF50; color: white;">QTY</th>
+          <th style="background-color: #4CAF50; color: white;">Batch</th>
+          <% if @return_transaction.department_id == '50121007' %>
+            <th style="background-color: #4CAF50; color: white;">Model No</th>
+          <% end %>
+          <th style="background-color: #4CAF50; color: white;">Exp.Date</th>
+          <th style="background-color: #4CAF50; color: white;">U.Price with Tax</th>
+          <th style="background-color: #4CAF50; color: white;">Discount</th>
+          <th class="text-right" style="background-color: #4CAF50; color: white;">Return Amt.</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @return_transaction.items.each do |item| %>
+          <tr>
+            <td><%= item.item_code %></td>
+            <td><%= item.description&.capitalize %></td>
+            <td><%=item.stock.to_f %></td>
+            <td><%= item.batch_no %></td>
+            <% if @return_transaction.department_id == '50121007' %>
+              <td><%= item.model_no %></td>
+            <% end %>
+            <td>
+              <% if item.expiry_date.present? %>
+                <%= item.expiry_date %>
+              <% elsif item.expiry.present? %>
+                <%= item.expiry.try(:strftime, "%d/%m/%Y") %>
+              <% else %>
+                N.A
+              <% end %>
+            </td>
+            <td><%= number_with_precision item.list_price, precision: 2 %></td>
+            <td>
+              <% discount = item.discount_display_amount ||  item.discount_amount || 0 %>
+              <%= discount.zero? ? '-' : number_with_precision(discount, precision: 2) %>
+            </td>
+
+            <% if item.list_price.present? %>
+              <% list_price = item.list_price %>
+            <% else %>
+              <% list_price = 0 %>
+            <% end %>
+            <% if item.stock.present? %>
+              <% stock = item.stock %>
+            <% else %>
+              <% stock = 0 %>
+            <% end %>
+
+            <td class="text-right">
+              <% total = (item.total_list_price || (list_price * stock)) - discount %>
+              <%= number_with_precision total, precision: 2 %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+  <div class="row mb5">
+    <% if @return_transaction.try(:tax_breakup).count > 0 %>
+      <div class="col-sm-5 col-sm-offset-7 text-labels">
+        <div class="col-sm-6 font_size">
+          <b>Taxable Amount</b>
+        </div>
+        <div class="col-sm-3 text-center font_size">
+          :
+        </div>
+        <div class="col-sm-2 font_size">
+          <%= number_with_precision(@return_transaction.taxable_amount, precision: 2) %>
+        </div>
+      </div>
+      <div class="col-sm-5 col-sm-offset-7 text-labels">
+        <% @return_transaction.tax_breakup.try(:each) do |tax_breakup| %>
+          <div class="col-sm-6 font_size">
+            <b><%= tax_breakup[:name] %></b>
+          </div>
+          <div class="col-sm-3 text-center font_size">
+            :
+          </div>
+          <div class="col-sm-2 font_size">
+            <%= number_with_precision(tax_breakup[:amount], precision: 2) %>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+  <hr style="padding: 0px;margin: 0px;">
+  <div class="row mb5" style="border-top: 1px solid #eee">
+    <div class="col-sm-5 col-sm-offset-7 text-labels">
+      <div class="col-sm-7 font_size">
+        <b>Gross Return Amt.</b>
+      </div>
+      <div class="col-sm-2 text-center font_size" style="margin-left: -10px">
+        :
+      </div>
+      <div class="col-sm-2 font_size" id="" style="margin-left: 10px">
+          <%= number_with_precision @return_transaction.total_cost.to_f.round(2), precision: 2 %>
+      </div>
+      <% if @return_transaction.return_charges.present? %>
+        <div class="col-sm-6 font_size">
+          <b>Return charges</b>
+        </div>
+        <div class="col-sm-3 text-center font_size">
+          :
+        </div>
+        <div class="col-sm-2 font_size">
+          <%= number_with_precision @return_transaction.return_charges.to_f.round(2), precision: 2 %>
+        </div>
+      <%end%>
+      <div class="col-sm-6 font_size">
+        <b>Net Return Value</b>
+      </div>
+      <div class="col-sm-3 text-center font_size">
+        :
+      </div>
+      <div class="col-sm-2 font_size" id="">
+        <%= number_with_precision @return_transaction.return_amount.to_f.round(2), precision: 2 %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<% if @refund_payments.present? && @refund_payments.count > 0 %>
+  <hr style="height:1px;border:none;color:#333;background-color:#333;" />
+  <div class="row no_margin no_padding" style="padding: 5px;">
+    <b style="margin-left: 25px; color: #1E90FF">PATIENT ALL TRANSACTIONS</b>
+    <div class="row no_margin" style="padding: 10px;">
+      <div class="col-sm-12 mb10">
+        <% refund_payment_total = @refund_payments.group_by(&:currency_symbol) %>
+        <span>Refund Payment :
+            <label class="label label-warning">
+              <% counter = 0 %>
+              <% refund_payment_total.each do |currency_symbol, refund_payments| %>
+                <% if counter > 0 %>&nbsp;|&nbsp;<% end %> <%= currency_symbol %><%= (refund_payments.map { |va| va[:amount].to_f }.sum).try(:round, 3) %>
+                <% counter += 1 %>
+              <% end %>
+            </label>
+          </span>
+      </div>
+      <% @refund_payments.each do |refund_payment| %>
+        <div class="col-sm-4 mb3">
+          <%= link_to invoice_refund_payment_path(id: refund_payment.id), class: 'btn btn-xs btn-default', data: { :remote => true, 'toggle' => 'modal', 'target' => '#invoice-modal' } do %><%= refund_payment.currency_symbol %><%= refund_payment.amount.try(:round, 3) %> on <%= refund_payment&.payment_date&.strftime("%d %b'%y") %><% end %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+<% end %>
+
+<style>
+  .font_size {
+    font-size: 10px;
+  }
+  input[type=number]::-webkit-inner-spin-button,
+  input[type=number]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  .text-labels {
+    font-weight: bold;
+  }
+  .check-font table tr th {
+    padding: 2px 5px;
+  }
+
+  .check-font table tr td {
+    padding: 2px 5px;
+  }
+
+  .check-font {
+    font-size: 11px;
+  }
+</style>

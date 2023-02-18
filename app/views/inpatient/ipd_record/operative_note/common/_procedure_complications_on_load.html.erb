@@ -1,0 +1,45 @@
+<% default_has_complications = 'No' %>
+<% if ipdrecord.procedure.count == 1 && (procedure.performed_note_id.present? && procedure.performed_note_id.to_s == operative_note.id.to_s) %>
+  <% default_has_complications = 'Yes' %>
+<% end %>
+<% procedure_count = procedure_count %>
+<% procedure_id_s = procedure.id.to_s%>
+<input type="hidden" name="hdn_action" class="hdn_action" id="hdn_action_<%=procedure_id_s%>" value="new">
+<div id="div_procedure_<%=procedure_id_s%>" class="row mb20 p-4 div-shadow">
+  <div class="col-md-3 btn-group p-2">
+    <b style="color: #000"><%= "#{procedure.procedurename}, #{get_procedure_side_label(procedure.procedureside)}" %></b>
+    <input type="hidden" name="hdn_procedure_cnt" id="hdn_procedure_cnt_<%=procedure_id_s%>" value="<%=procedure_count%>">
+  </div>
+  <div class="col-md-1 btn-group">
+    <%= simple_fields_for :procedure do |p| %>
+      <%= p.input "has_complications_#{procedure_id_s}", wrapper_html: {class: "has_complications"}, collection: ['No', 'Yes'], as: :hg_radio_button, label: false, required: false, class: 'btn btn-xs btn-white has_complications_chk_val', style: "margin-top:-2px;", input_html: {name: "ipd_record[procedure][#{procedure_count}][has_complications]", id: "procedure_has_complications_#{procedure_id_s}" }, checked: "#{default_has_complications}" %>
+    <%end%>
+  </div>
+  <div class="col-md-8 btn-group">
+    <input type='text' placeholder='Complication Comment' name ="ipd_record[procedure][<%=procedure_count%>][complication_comment]" class='form-control procedure_complication_comment' value="<%=procedure.complication_comment%>" id="txt_complication_comment_<%=procedure_id_s%>">
+
+    <input type="hidden" name="ipd_record[procedure][<%=procedure_count%>][has_complication_created_by_id]" value="" id="hdn_has_complication_created_by_id_<%=procedure_id_s%>" />
+    <input type="hidden" name="ipd_record[procedure][<%=procedure_count%>][has_complication_created_by]" value="" id="hdn_has_complication_created_by_<%=procedure_id_s%>" />
+    <input type="hidden" name="ipd_record[procedure][<%=procedure_count%>][has_complication_created_by_datetime]" value="" id="hdn_has_complication_created_by_datetime_<%=procedure_id_s%>" />
+
+    <input type='hidden' name ="ipd_record[procedure][<%=procedure_count%>][complication_comment_entered_by_id]" id="complication_comment_entered_by_id<%=procedure_id_s%>" value="">
+    <input type='hidden' name ="ipd_record[procedure][<%=procedure_count%>][complication_comment_entered_by]" id="hdn_complication_comment_entered_by_<%=procedure_id_s%>" value="">
+    <input type='hidden' name ="ipd_record[procedure][<%=procedure_count%>][complication_comment_entered_at_facility]" id="hdn_complication_comment_entered_at_facility_<%=procedure_id_s%>" value="">
+    <input type='hidden' name ="ipd_record[procedure][<%=procedure_count%>][complication_comment_entered_at_facility_id]" id="hdn_complication_comment_entered_at_facility_id_<%=procedure_id_s%>" value="">
+    <input type='hidden' name ="ipd_record[procedure][<%=procedure_count%>][complication_comment_entered_datetime]" id="hdn_complication_comment_entered_datetime_<%=procedure_id_s%>" value="">
+    
+    <input type="hidden" name="hdn_is_new_complication" id="hdn_is_new_procedure_comment_<%=procedure_id_s%>" value="true">
+  </div>
+  <% display_div = (default_has_complications == 'No' || (procedure.has_complications && procedure.has_complications == 'No')) ? 'none' : 'block' %>
+  <div id="div_<%=procedure_id_s%>" style="display: <%=display_div%>" class="col-md-12 div_toggle_complication_list">
+      <% ipdrecord_complications = ipdrecord.complications.where(procedure_id: procedure_id_s) %>
+      <% excluded_procedure = (operative_note) ? ipdrecord.excluded_procedure?(operative_note.id.to_s, procedure) : false %>
+      <%= simple_fields_for :other do |o| %>
+        <% complications = complications_for_procedure_region(procedure.procedure_id.to_s, excluded_procedure) %>
+        <%= o.input "hdn_procedure_#{procedure.procedure_id.to_s}_#{procedure_id_s}", collection: complications, as: :hg_checkbox, label: false, required: false, class: 'btn btn-xs btn-white procedure_complication', input_html: {name: "hdn_procedures"}, :checked => ipdrecord_complications.pluck(:code) %>
+        <input type="hidden" name="hdn_is_new_complication" id="hdn_is_new_complication_<%=procedure_id_s%>" value="true">
+        <input type="hidden" name="hdn_complication_original_side" id="hdn_complication_original_side_<%=procedure_id_s%>" value="<%=procedure.procedureside.to_s%>">
+      <div class="div_complication_list" id="div_complaint_procedure_fields_add_<%=procedure_id_s%>"></div>
+    <% end %>
+  </div>
+</div>

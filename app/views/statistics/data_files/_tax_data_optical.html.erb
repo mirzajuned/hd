@@ -1,0 +1,60 @@
+<div class="row">
+  <div class="col-md-12 text-center">
+    <button class="btn btn-primary btn-xs pull-left statistics_parent_link all" data-filter="All"><i class="fa fa-arrow-left"></i> Back to Dashboard</button>
+    <h3 style="color:#000;">OPTICAL INVOICES <small>(<%= Date.parse(@start_date).strftime('%d/%m/%Y') %>)</small></h3>
+  </div>
+</div>
+
+<table class="table">
+  <thead style="border-top:1px solid #000;border-bottom:1px solid #000;">
+    <tr>
+      <th style="width:5%;">S No.</th>
+      <th>Patient Name</th>
+      <th>Receipt ID</th>
+      <th>Receipt Date</th>
+      <th class="text-right">Total (<%= @currency.symbol %>)</th>
+      <th class="text-right">Non-Taxable Amount</th>
+      <th class="text-right">Tax Breakup(<%= @currency.symbol %>)</th>
+      <th class="text-right">Total Tax(<%= @currency.symbol %>)</th>
+    </tr>
+  </thead>
+  <tbody style="border-top:1px solid #000;border-bottom:1px solid #000;">
+    <% if @optical.count > 0 %>
+      <tr>
+        <td class="main-display-row" colspan="4">Total <%= @optical.count %> Receipts :</td>
+        <td class="text-right main-display-row"><%= @currency.symbol %><%= (@optical.pluck(:total).map(&:to_f).sum).round(2) %></td>
+        <td class="text-right main-display-row"><%= @currency.symbol %><%= @optical.pluck(:non_taxable_amount).map(&:to_f).sum.round(2) %></td>
+        <td class="text-right main-display-row">
+          -
+          <%# tax_name_array = @tax_collected.pluck(:tax_details).flatten.map{ |tax| tax[:name] } %>
+          <%# tax_name_array.each do |tax_name| %>
+            <!-- <%#= tax_name %> - <%#= @tax_details_array.inject(0){|sum, x| (x[:name] == tax_name) ? sum += x[:total].to_f : sum} %><br> -->
+          <%# end %>
+        </td>
+        <td class="text-right main-display-row"><span style="color:#1CAF9A"><%= @currency.symbol %><%= (@optical.pluck(:tax_breakup).flatten.inject(0){|amount,x| amount += x[:amount].to_f}).round(2) %></span></td>
+      </tr>
+      <% @optical.order(created_at: :desc).each.with_index do |optical, i| %>
+      <tr>
+        <td style="width:5%;"><%= i+1 %></td>
+        <td><%= optical.patient.fullname %></td>
+        <td><%= optical.bill_number %></td>
+        <td><%= optical.created_at.strftime('%d/%m/%Y') %></td>
+        <td class="text-right"><%= @currency.symbol %><%= (optical.total).round(2) %></td>
+        <td class="text-right"><%= @currency.symbol %><%= (optical.non_taxable_amount).round(2) %></td>
+        <td class="text-right">
+          <span style="color:#000">
+            <% optical.tax_breakup.each do |tb| %>
+              <%= tb[:name] %>  - <%= @currency.symbol %><%= tb[:amount] %><br>
+            <% end %>
+          </span>
+        </td>
+        <td class="text-right"><span style="color:#1CAF9A"><%= @currency.symbol %><%= (optical.tax_breakup.inject(0){|amount,x| amount += x[:amount].to_f}).round(2) %></span></td>
+      </tr>
+      <% end %>
+    <% else %>
+      <tr>
+        <td colspan="11" class="text-center">No Data to Display</td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>

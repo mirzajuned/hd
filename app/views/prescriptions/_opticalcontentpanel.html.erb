@@ -1,0 +1,436 @@
+<!-- old -->
+<% if false %>
+  <%= render partial: 'opd_appointments/common_css_opd.html.erb' %>
+  <span style="display: none" id="current_date"><%= @current_date %></span>
+  <div class="col-sm-6 patient-list">
+    <div id="toolbar_area">
+      <div class="toolbar">
+        <nav class="navbar navbar-secondary navbar-inverse navbar-fixed-top" style="margin-top: 50px; left: auto; right: auto; width: 50%;z-index:auto;">
+          <div class="container-fluid" style="padding-right:0;border-right: 1px solid #aaa;">
+            <div class="col-md-1" style="padding-left:initial;margin-top: 2%">
+
+              <i class="fa fa-refresh refreshprescriptionlist" id="refreshprescriptionlist" style="padding: 4px"> </i>
+            </div>
+            <div class="col-md-3">
+
+              <input type="text" placeholder="Search here..." class="search-prescription form-control  ui-autocomplete-input" id="search_presecription" style="margin-top: 6px" autocomplete="off">
+            </div>
+
+            <div class="col-md-2 text-center">
+
+
+              <% if @current_date == Date.current %>
+                <button class="btn btn-danger navbar-btn navbar-btn-hover ps" style="padding-left: 8.4px !important;padding-right: 8.4px !important;background:transparent;" disabled="disabled"> Today</button>
+              <% else %>
+                <%= link_to optical_prescriptions_path(Date.current.strftime('%d-%b-%Y')), :class => "btn btn-danger navbar-btn navbar-btn-hover ps", :id => "admission_today_jump", style: "padding-left: 8.4px !important;padding-right: 8.4px !important;background:transparent;", :data => {:remote => true} do %> Today<% end %>
+              <% end %>
+
+
+            </div>
+            <div class="col-md-4 text-center">
+              <%= link_to optical_prescriptions_path("#{@current_date.yesterday.strftime("%d-%b-%Y")}"), :class => "btn btn-success  navbar-btn navbar-btn-hover ps", :id => "a_date_back_app",style: "padding-left: 8.4px !important;padding-right: 8.4px !important;border: none;margin-top:10px !important;font-size: 14px;padding-left:15px;!important", :data => {:remote => true} do %> <i class="fa fa-chevron-left"></i> <% end %>
+
+              <span style="font-size:16px;" id="current_date"><%= @current_date.strftime("%b %d, %Y") %></span>
+
+              <%= link_to optical_prescriptions_path("#{@current_date.tomorrow.strftime("%d-%b-%Y")}"), :class => "btn btn-success  navbar-btn navbar-btn-hover ps", :id => "a_date_back_app",style: "padding-left: 8.4px !important;padding-right: 8.4px !important;border: none;margin-top:10px !important;font-size: 14px;padding-left:15px;!important", :data => {:remote => true} do %> <i class="fa fa-chevron-right"></i> <% end %>
+            </div>
+            <div class="col-md-2 text-right">
+              <div class="col-md-2 text-right">
+                <input type="text" id="appointment-datepicker-inline" style="display: none;">
+              </div>
+            </div>
+
+          </div>
+        </nav>
+      </div>
+    </div><!-- #toolbar_area -->
+    <div class="sidebar_area_content" style="height: calc(100% - 50px);background-color: #EFEFEF;overflow-y:auto;">
+      <div class="row no_margin" style="width: 100%; margin-top: 0px;padding: 0px 15px">
+        <ul class="nav nav-tabs" role="tablist">
+          <li role="presentation" class="full-width prescription_type active" id="all_prescription">
+            <a href="#prescription_all" class="prescription_tab" aria-controls="home" role="tab" data-toggle="tab">
+              <span style="display: block; font-size: 16px;" class="prescription_scheduled_count"><%= @prescriptions.count %></span>
+              All
+            </a>
+          </li>
+          <li role="presentation" class="full-width prescription_type" id="converted_prescription">
+            <a href="#prescription_converted" class="prescription_tab" aria-controls="home" role="tab" data-toggle="tab">
+              <span style="display: block; font-size: 16px;" class="prescription_scheduled_count"><%= @converted_prescriptions.count %></span>
+              Converted
+            </a>
+          </li>
+          <li role="presentation" class="full-width prescription_type" id="not_converted_prescription">
+            <a href="#prescription_not_converted" class="prescription_tab" aria-controls="home" role="tab" data-toggle="tab">
+              <span style="display: block; font-size: 16px;" class="prescription_scheduled_count"><%= @not_converted_prescriptions.count %></span>
+              Not Converted
+            </a>
+          </li>
+
+          <li role="presentation" class="full-width prescription_type" id="returning_patient_prescription">
+            <a href="#returning_patient" class="prescription_tab" aria-controls="home" role="tab" data-toggle="tab">
+              <span style="display: block; font-size: 16px;" class="returning_patient">R</span>
+              Returning Patients
+            </a>
+          </li>
+
+        </ul>
+
+        <!-- <div class="col-sm-4 prescription-filter no_padding">
+          Scheduled
+        </div>
+        <div class="col-sm-4 prescription-filter no_padding">Waiting</div>
+        <div class="col-sm-4 prescription-filter no_padding">Checked Out</div> -->
+      </div>
+
+      <div class="row no_margin  summary_body collapse in" id="summary_appiontments_today">
+        <div class="prescriptions_today">
+          <div class="tab-content" style="background: #efefef">
+
+            <div role="tabpanel" class="prescription_type_content tab-pane active prescription_list" id="prescription_all">
+              <div id="prescription_all_not_finished" style="background:#fff;">
+              <% @prescriptions.try(:each_with_index) do |prescription, index| %>
+                <% if index == 0 %>
+                  <div class="row no_margin summary_prescription summary_prescription active" id="all_prescription_<%=prescription.id%>" data-patient-id="<%=prescription.patient_id%>" data-prescription-id="<%=prescription.id%>" style="border-left: 3px solid rgb(48, 113, 169);">
+                <% else %>
+                  <div class="row no_margin summary_prescription summary_prescription " id="all_prescription_<%=prescription.id%>" data-patient-id="<%=prescription.patient_id%>" data-prescription-id="<%=prescription.id%>" style="border-left: 3px solid rgb(48, 113, 169);">
+                <% end %>
+                  <div class="col-sm-4 no_padding" style="padding-right: 5%;font-size: 12px;">
+                    <span><%= Patient.find(prescription.patient_id).fullname.upcase %></span>
+                  </div>
+                  <div class="col-sm-3 no_padding" style="padding-right: 5%;font-size: 12px;">
+                    <span><%= PatientOtherIdentifier.find_by(patient_id: prescription.patient_id).try(:mr_no).try(:upcase) %></span>
+                  </div>
+                  <div class="col-sm-3 no_padding" style="padding-right: 5%;">
+                    <span class="label label-success"><%=prescription.doctor_name.capitalize%></span>
+                  </div>
+                  <div class="col-sm-2 no_padding text-center">
+                    <% unless prescription.converted.present? %>
+                      <span class="label label-default">Advised</span>
+                    <% else %>
+                      <% if prescription.converted == 'true'%>
+                        <span class="label label-info">Converted</span>
+                      <% else %>
+                        <span class="label label-danger">Not Converted</span>
+                      <% end %>
+                    <% end %>
+                  </div>
+
+                </div>
+              <% end %>
+
+              </div>
+
+            </div>
+              <div role="tabpanel" class="prescription_type_content tab-pane prescription_list" id="returning_patient">
+                <div class="row no_margin ">
+                  <div class="col-md-2">
+                        <label></label>
+                  </div>
+                  <div class="col-md-3 ">
+
+                  </div>
+                  <div class="col-md-7 pull-right">
+                      <input type="text" placeholder="Search Returning Patients by Name,MRN,Mobile......." class=" form-control" id="search_returning_patient" autocomplete="off">
+                      <span class="empty-result"></span>
+                  </div>
+                </div>
+
+
+              </div>
+            <div role="tabpanel" class="prescription_type_content prescription_tab_name tab-pane prescription_list" id="prescription_converted">
+              <% @converted_prescriptions.try(:each_with_index) do |prescription, index| %>
+                <% if index == 0 %>
+                  <div class="row no_margin summary_prescription summary_prescription active" id="converted_prescription_<%=prescription.id%>" data-patient-id="<%=prescription.patient_id%>" data-prescription-id="<%=prescription.id%>" style="border-left: 3px solid rgb(48, 113, 169);">
+                <% else %>
+                  <div class="row no_margin summary_prescription summary_prescription " id="converted_prescription_<%=prescription.id%>" data-patient-id="<%=prescription.patient_id%>" data-prescription-id="<%=prescription.id%>" style="border-left: 3px solid rgb(48, 113, 169);">
+                <% end %>
+                  <div class="col-sm-3 no_padding" style="padding-right: 5%;font-size: 12px; font-weight: 900">
+                    <span><%= Patient.find(prescription.patient_id).fullname.upcase %></span>
+                  </div>
+                  <div class="col-sm-3 no_padding" style="padding-right: 5%;font-size: 12px; font-weight: 900">
+                    <span><%= PatientOtherIdentifier.find_by(patient_id: prescription.patient_id).try(:mr_no) %></span>
+                  </div>
+                  <div class="col-sm-3 no_padding" style="padding-right: 5%;">
+                    <span class="label label-success"><%=prescription.doctor_name.capitalize%></span>
+                  </div>
+                  <div class="col-sm-3 no_padding text-center"><%=prescription.encounterdate.strftime("%d %b,%y")%></div>
+
+                </div>
+              <% end %>
+            </div>
+            <div role="tabpanel" class="prescription_type_content prescription_tab_name tab-pane prescription_list" id="prescription_not_converted">
+              <% @not_converted_prescriptions.try(:each_with_index) do |prescription, index| %>
+                <% if index == 0 %>
+                  <div class="row no_margin summary_prescription summary_prescription active" id="not_converted_prescription_<%=prescription.id%>" data-patient-id="<%=prescription.patient_id%>" data-prescription-id="<%=prescription.id%>" style="border-left: 3px solid rgb(48, 113, 169);">
+                <% else %>
+                  <div class="row no_margin summary_prescription summary_prescription " id="not_converted_prescription_<%=prescription.id%>" data-patient-id="<%=prescription.patient_id%>" data-prescription-id="<%=prescription.id%>" style="border-left: 3px solid rgb(48, 113, 169);">
+                <% end %>
+                  <div class="col-sm-3 no_padding" style="padding-right: 5%;font-size: 12px; font-weight: 900">
+                    <span><%= Patient.find(prescription.patient_id).fullname.upcase %></span>
+                  </div>
+                  <div class="col-sm-3 no_padding" style="padding-right: 5%;font-size: 12px; font-weight: 900">
+                    <span><%= PatientOtherIdentifier.find_by(patient_id: prescription.patient_id).try(:mr_no) %></span>
+                  </div>
+                  <div class="col-sm-3 no_padding" style="padding-right: 5%;">
+                    <span class="label label-success"><%=prescription.doctor_name.capitalize%></span>
+                  </div>
+                  <div class="col-sm-3 no_padding text-center"><%=prescription.encounterdate.strftime("%d %b,%y")%></div>
+
+                </div>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-sm-6 patient-details" style="height: 100%;padding: 0;background: white;">
+    <div class="toolbar">
+      <nav class="navbar navbar-secondary navbar-inverse navbar-fixed-top " style="margin-top: 50px; left: auto; right: auto; width: 50%;z-index:1000;">
+        <div class="container-fluid">
+          <div class="col-md-6">
+           <h4 style="margin:13px 0 0 0;font-size:18px;">Patient Details</h4>
+          </div>
+
+        </div>
+      </nav>
+    </div>
+    <div id="prescription-details" style="height: calc(100% - 50px); margin-top: 50px; overflow-y: auto;">
+      <div class="row no_margin" style="padding: 10px 10px 10px 20px;">
+        <div class="patient-prescription-details">
+        <%= render partial: "/prescriptions/optical_patient_details.html.erb", locals: { prescription: @prescriptions[0] } %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <style type="text/css">
+    .summary_prescription.active{
+      background: #49587E;
+      color: white;
+    }
+
+    .refreshprescriptionlist:hover {
+        border: white 1px solid;
+        border-radius: 10%;
+        padding: 4px
+      }
+
+    .summary_prescription{
+      font-size: 13px;
+      cursor: pointer;
+      margin-bottom: 3px;
+      padding: 7px;
+      background: white;
+      border: 1px solid #dedede;
+    }
+      body{
+          overflow: hidden !important;
+      }
+    .search-prescription{
+        background: transparent;
+        border: none;
+        border-bottom: 1px solid #fff;
+        padding: 5px;
+        margin-top: 10px;
+        font-size: 15px;
+        margin-left: -20px;
+        color: #fff;
+    }
+  </style>
+
+  <script type="text/javascript">
+    // var elements = document.getElementsByClassName("summary_prescription");
+    // // for (var i = 0, len = elements.length; i < len; i++) {
+    //     // elements[i].style ...
+    //     classname = $(elements[0]).attr('class')
+    //     if (classname.indexOf('active') != -1) {
+    //      $.ajax({
+    //         type: "GET",
+    //         data: {
+    //           prescription_id:  $(elements[0]).attr('data-prescription-id')
+    //         },
+    //         url: "/prescriptions/patientprescriptiondetails",
+    //         })
+    //     }
+    // // }
+
+    $('.summary_prescription').on('click', function(){
+      var elements = document.getElementsByClassName("summary_prescription");
+      for (var i = 0, len = elements.length; i < len; i++) {
+        classname = $(elements[i]).attr('class')
+        if (classname.indexOf('active') != -1) {
+          $(elements[i]).removeClass('active')
+        }
+      }
+      $(this).addClass('active')
+      $.ajax({
+        type: "GET",
+        data: {
+          prescription_id:  $(this).attr('data-prescription-id')
+        },
+        url: "/prescriptions/patientopticalprescriptiondetails",
+      })
+    })
+
+
+    $('.refreshprescriptionlist').on('click', function(){
+
+      $.ajax({
+        type: "GET",
+        data: {
+          current_date:  $('#current_date').text().trim()
+        },
+        url: "/prescriptions/optical_refresh",
+
+
+      })
+
+    })
+
+    $('#appointment-datepicker-inline').datepicker({
+          dateFormat: "dd/mm/yy",
+          //showButtonPanel: true,
+          showOn: "button",
+          // class: '',
+          buttonText: '<i class="fa fa-calendar"></i>',
+          onSelect: function (dateText,obj) {
+              pushPageState({x: "1"}, "", "/prescriptions/optical/"+moment(dateText, "DD/MM/YYYY").format('DD-MMM-YYYY'))
+              jQuery.ajax({
+                  type: "GET",
+                  dataType: "script",
+                  url: "/prescriptions/optical/"+moment(dateText, "DD/MM/YYYY").format('DD-MMM-YYYY')
+              })
+          }
+      })
+
+      $('.prescription_tab').on('click', function(){
+        first_patient = $($(this).attr('href')).find('.summary_prescription')[0];
+        if (first_patient) {
+          first_patient.click()
+         }
+     })
+
+
+
+    $("#search_presecription").autocomplete({
+        minLength: 2,
+
+
+        source: function(request, response) {
+            $.ajax({
+                dataType: "json",
+                type : 'get',
+                url: '/prescriptions/search_optical_prescription_lists',
+                //data: {searchpatient: params, remote: "true" },
+                data: {
+                    current_date: $("#current_date").text(),
+                    q: $( "#search_presecription").val(),
+                },
+                success: function(data) {
+                    console.log('item', data);
+                    items = [];
+                    x = [];
+                    for (i = 0, len = data.length; i < len; i++) {
+                      items.push(data[i].fullname);
+                      x[data[i].fullname] = data[i].id;
+                    }
+                    response(items)
+
+                },
+                error: function(data) {
+                }
+            })
+        },
+        select: function( event, ui ) {
+          console.log('abc', ui, "#"+idname+'_'+x[ui.item.value])
+            var idname = $(".prescription_type.active").attr("id")
+
+            $("#"+idname+'_'+x[ui.item.value]).children().click()
+
+        },
+    })
+    $("#search_returning_patient").autocomplete({
+        minLength: 2,
+
+
+        source: function(request, response) {
+            $.ajax({
+                dataType: "json",
+                type : 'get',
+                url: '/prescriptions/search_returning_patient',
+                //data: {searchpatient: params, remote: "true" },
+                data: {
+                    current_date: $("#current_date").text(),
+                    q: $( "#search_returning_patient").val(),
+                    category: $('.category-dropdown').val(),
+                    type: 'optical'
+                },
+                success: function(data) {
+                    console.log('item', data);
+                    if (data.length == 0){
+                      $('.empty-result').text('** No Matching Prescription found').css('color','red')
+                    }
+                    else{
+                        $('.empty-result').text('')
+                    }
+
+                    items = [];
+                    x = [];
+                    for (i = 0, len = data.length; i < len; i++) {
+                        items.push(data[i].fullname);
+                        x[data[i].fullname] = data[i].id;
+                    }
+                    response(data)
+
+                },
+                error: function(data) {
+                }
+            })
+        },
+        create: function () {
+            $(this).data('ui-autocomplete')._renderItem = function (ul, patient) {
+                $(ul).css("border","1px solid #000").css("border-top","none").css('max-height','50%').css('overflow','auto')
+                return $('<li>')
+                        .append('<hr style="margin:0 0 5px;padding:0;border-color:#354670;"><a style="color:#428bca"><b><span>' + patient.label + '</span><span class="badge badge-primary pull-right">' + patient.patient_display_id + '</span><br/><span class="">' + patient.mobile_number + '</span><span class="badge badge-warning pull-right">'+ patient.prescription_created_on + '</span><span class="badge badge-danger pull-right">' + patient.patient_mrn + '</span></b></a>')
+                        .appendTo(ul);
+            }
+        },
+        select: function( event, ui ) {
+
+            console.log('abc', ui.item.prescription_id)
+            var idname = $(".prescription_type.active").attr("id")
+
+            $("#"+idname+'_'+x[ui.item.value]).children().click()
+
+            $.ajax({
+                type: "GET",
+                data: {
+                    prescription_id:  ui.item.prescription_id
+                },
+                url: "/prescriptions/patientopticalprescriptiondetails",
+            })
+
+        },
+
+    })
+
+    // Window Size
+    var window_height = $(window).height() - 50
+    $(".patient-list").css('height',window_height)
+
+    $(window).resize(function() {
+      var window_height = $(window).height() - 50
+      $(".patient-list").css('height',window_height)
+    })
+  //  function isEmpty(obj) {
+  //      for(var prop in obj) {
+  //          if(obj.hasOwnProperty(prop))
+  //              return false;
+  //      }
+  //
+  //      return true;
+  //  }
+  </script>
+<% end %>

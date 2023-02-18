@@ -1,0 +1,77 @@
+<div class="row">
+  <div class="col-md-12">
+    <h2 style="font-size: 20px!important; text-align: center;"><%= @custom_consent.try(:name)%></h2>
+  </div>
+</div>
+<!-- Patient Info -->
+<% @w = Ward.find_by(id: @admission.ward_id) %>
+<% unless @w.nil? %><% @wr = @w.rooms.find_by(id: @admission.room_id) %><% else %><% @wr = nil %><% end %>
+<% unless @wr.nil? %><% @wrb = Ward.find_by(id: @admission.ward_id).rooms.find_by(id: @admission.room_id).beds.find_by(id: @admission.bed_id) %><% else %><% @wrb = nil %><% end %>
+
+<% template_fields = OrganisationsSetting.find_by(organisation_id: current_facility.organisation_id).custom_template_header_options[:ipd_settings][:templates][0].select{ |key, value| value == true } %>
+<% fields_names = OrganisationSettingsHelper.get_data('ipd_templates', template_fields).keys %>
+
+<div class="template_details row mb10 mt10">
+
+  <% template_fields.each_with_index do |(key, value), i| %>
+    <% field_name = fields_names[i] %>
+
+    <% if key == 'fullname' %>
+      <% field_value = "<b>#{@patient.fullname.to_s.upcase}</b>" %>
+
+    <% elsif key == 'admitting_doctor' %>
+      <% field_value = "<b>Dr. #{User.find_by(id: @admission.doctor).fullname.upcase}</b>" %>
+
+    <% elsif key == 'facility_name' %>
+      <% field_value = @admission.facility.name %>
+
+    <% elsif key == 'calculate_age_gender' %>
+      <% field_value = @patient.calculate_age.present? || @patient.gender.present? ? @patient.calculate_age.to_s + '/' + @patient.gender.to_s : 'Unavailable' %>
+    
+    <% elsif key == 'ward_bed_code' %>
+      <% field_value = @wrb.try(:code) %>
+
+    <% elsif key == 'admission_date' %>
+      <% field_value = @admission.admissiondate.present? ? @admission.admissiondate.strftime("%d %b'%y") : '-' %>
+
+    <% elsif key == 'referring_doctor' %>
+      <% field_value = @patient.referring_doctor.present? ? @patient.referring_doctor.try(:name) : '' %>
+
+    <% elsif key == 'mr_no' %>
+      <% field_value = @poi.present? && @poi.mr_no.present? ? @poi.mr_no : '' %>
+
+    <% elsif key == 'mobilenumber' %>
+      <% field_value = @patient.mobilenumber %>
+
+    <% elsif key == 'patient_identifier' %>
+      <% field_value = PatientIdentifier.find_by(patient_id: @patient.id.to_s).try(:patient_org_id) %>
+    <% end %>
+
+    <% if field_name.present? && field_value.present? %>
+      <div class="col-xs-2">
+        <b><%= field_name %></b>
+      </div>
+      <div class="col-xs-4">
+        : &nbsp; <%= field_value.try(:html_safe) %>
+      </div>
+    <% end %>
+  <% end %>
+</div>
+<!-- Patient Info Ends -->
+<div class="row mb10">
+  <div class="col-md-12">
+    <span><%= @language_consent&.content.to_s.html_safe() %></span>
+  </div>
+</div>
+
+<style type="text/css">
+  <% if params[:action] == 'print_ipd_consent' %>
+    .template_details {
+      font-size: 10px;
+    }
+  <% else %>
+    .template_details {
+      font-size: 12px;
+    }
+  <% end %>
+</style>

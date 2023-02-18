@@ -1,0 +1,140 @@
+// Form Validation
+function validate_notification_form() {
+  let formId = "<%= params[:action] %>" == 'new' ? '#new_organisation_notification' : '#edit_organisation_notification_<%= @organisation_notification.id.to_s %>'
+  $(formId).validate({
+    ignore: [],
+    rules: {
+      "organisation_notification[facility_ids][]": {
+        required: true,
+      },
+      "organisation_notification[role_ids][]": {
+        required: true,
+      },
+      "organisation_notification[title]": {
+        required: true,
+      },
+      "organisation_notification[body]": {
+        nonEmptyContent: true,
+      },
+      "organisation_notification[start_date]": {
+        required: true,
+        notGreaterStartDate: true
+      },
+      "organisation_notification[end_date]": {
+        required: true,
+      }
+    },
+    messages: {
+      "organisation_notification[facility_ids][]": {
+        required: 'Please select atleast 1 Facility',
+      },
+      "organisation_notification[role_ids][]": {
+        required: 'Please select atleast 1 Role',
+      },
+      "organisation_notification[title]": {
+        required: "Title is required."
+      },
+      "organisation_notification[start_date]": {
+        required: 'Start date is required.',
+      },
+      "organisation_notification[end_date]": {
+        required: 'End date is required.',
+      }
+    },
+    errorPlacement: function (error, element) {
+      if ($(element).attr('name') == 'organisation_notification[body]') {
+        element = $(element).siblings(':last');
+      } else if ($(element).hasClass("select2-hidden-accessible")) {
+        element = $(element).siblings(':last');
+      }
+      error.insertAfter(element);
+    }
+  });
+
+  $.validator.addMethod("notGreaterStartDate", function(value, element) {
+    let startDate = $('#organisation_notification_start_date').val();
+    let endDate = $('#organisation_notification_end_date').val();
+
+    if (startDate && endDate && moment(startDate, "DD/MM/YYYY") <= moment(endDate, "DD/MM/YYYY")) {
+      return true
+    } else {
+      return false
+    }
+  }, "Start date should not be greater than End date");
+
+  $.validator.addMethod("nonEmptyContent", function(value, element) {
+    return $('#organisation_notification_body').code().replace(/<[^>]+>/gm, '').length > 10
+  }, "Content should have atleast 10 characters");
+
+
+}
+
+// All Facilities Toggle Logic
+$("#organisation_notification_facility_ids").select2();
+$('#organisation_notification_all_facilities').on('click', function() {
+  if ($(this).is(':checked')) {
+    $("#organisation_notification_facility_ids").val(null).trigger('change');
+    $('#organisation_notification_facility_ids').attr('disabled', true);
+    $("#organisation_notification_facility_ids-error").remove();
+  } else {
+    $('#organisation_notification_facility_ids').removeAttr('disabled');
+  }
+});
+
+// All Roles Toggle Logic
+$("#organisation_notification_role_ids").select2();
+$('#organisation_notification_all_roles').on('click', function() {
+  if ($(this).is(':checked')) {
+    $("#organisation_notification_role_ids").val(null).trigger('change');
+    $('#organisation_notification_role_ids').attr('disabled', true);
+    $("#organisation_notification_role_ids-error").remove();
+  } else {
+    $('#organisation_notification_role_ids').removeAttr('disabled');
+  }
+});
+
+// NotificationTitleCharCount
+$('#organisation_notification_title').on('keyup', function() {
+  let title = $(this).val()
+
+  $('#titlecharMessage').html(`${title.length}/60 characters`);
+
+  if (title.length == 60) {
+    $('#titlecharMessage').addClass('text-danger');
+  } else {
+    $('#titlecharMessage').removeClass('text-danger');
+  }
+}).trigger('keyup');
+
+// Notification Body
+let summernote_options = {
+  toolbar: [
+    ['style', ['style']],
+    ['font', ['bold', 'italic', 'underline', 'clear']],
+    ['fontname', ['fontname']],
+    ['fontsize', ['fontsize']],
+    ['color', ['color']],
+    ['fontsize', ['insertUnorderedList', 'insertOrderedList', 'paragraph']],
+    ['height', ['height']],
+    ['table', ['table']]
+  ],
+  height: 200
+};
+$('#organisation_notification_body').summernote(summernote_options);
+
+// HACK: SummerNote Color Button UI Changes, Defaults to background: Yellow
+function summernoteColorBtn() {
+  let noteColorBtn = $('.note-recent-color')
+  $(noteColorBtn).attr('data-value', '{"backColor":"#fff"}');
+  $(noteColorBtn).find('.fa-font').css('background-color', 'transparent');
+}
+summernoteColorBtn();
+
+// Start/End Date Pickers
+let datepicker_options = {
+  minDate: 0,
+  dateFormat: "dd/mm/yy"
+}
+
+$('#organisation_notification_start_date').datepicker(datepicker_options);
+$('#organisation_notification_end_date').datepicker(datepicker_options);

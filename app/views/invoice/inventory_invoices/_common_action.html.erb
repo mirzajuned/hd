@@ -1,0 +1,57 @@
+<div class="btn-group">
+  <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+</div>
+<div class="btn-group">
+  <!--<a href="/invoice/inventories/department/pharmacy_invoices/<%=@inventory_invoice.id%>/edit" data-remote="true" class="btn btn-primary"> <i class="fa fa-pencil-alt"></i>&nbsp;Edit </a>-->
+</div>
+<div class="btn-group">
+  <a href="/invoice/inventory_invoices/print?invoice_id=<%= @inventory_invoice.id %>&page_size=A4" class="btn btn-success" target='_blank'> <i class="fa fa-print"></i>&nbsp;Print A4</a>
+</div>
+<div class="btn-group">
+  <a href="/invoice/inventory_invoices/print?invoice_id=<%= @inventory_invoice.id %>&page_size=A5" class="btn btn-success" target='_blank'> <i class="fa fa-print"></i>&nbsp;Print A5</a>
+</div>
+<div class="btn-group">
+  <% if (@inventory_invoice.payment_completed == false)  && (@inventory_invoice.is_canceled == false)  && (@inventory_invoice.payment_pending_breakups.count == 0) && (@inventory_order.present?) %>
+    <%= link_to review_order_invoice_inventory_invoices_path(id: @inventory_invoice.id, action_from: 'inventory_invoice', patient_id: @inventory_invoice.patient_id), class: "btn btn-warning", data: { remote: true, 'disable-with' =>  "Please Wait...", 'toggle' => 'modal', 'target' => '#review-order-modal', class: 'btn btn-info'} do %> <i class=""></i> Complete Payment<% end %>
+  <% end %>
+</div>
+
+<!-- <div class="btn-group">
+  <%# if (@inventory_invoice.payment_completed == false)  && (@inventory_invoice.is_canceled == false) && (@inventory_invoice.payment_pending_breakups.count == 0) %>
+    <%# if @appointment.present? %>
+      <%#= link_to new_invoice_advance_payment_path(appointment_id: @appointment.id, type: @inventory_store.department_name, patient_id: @appointment.patient_id, specialty_id: @appointment.specialty_id, department_id: @inventory_store.department_id, store_id: @inventory_store.id, invoice_id: @inventory_invoice.id), class: "btn btn-primary", data: { :remote => true, 'toggle' => 'modal', 'target' => '#invoice-modal' } do %>Advance Against Bill<%# end %>
+    <%# else %>
+      <%#= link_to new_invoice_advance_payment_path(type: @inventory_store.department_name, patient_id: @inventory_invoice.patient_id, department_id: @inventory_store.department_id, store_id: @inventory_store.id, invoice_id: @inventory_invoice.id), class: "btn btn-primary", data: { :remote => true, 'toggle' => 'modal', 'target' => '#invoice-modal' } do %>Advance Against Bill<%# end %>
+    <%# end %>
+  <%# end %>
+</div> -->
+<div class="btn-group">
+  <% patially_paid = (@inventory_invoice.payment_completed == true || @inventory_invoice.payment_pending.to_f == @inventory_invoice.net_amount.to_f) %>
+  <% recieved_amount_def = (@inventory_invoice.net_amount.to_f.round(2) - (@inventory_invoice.set_amount_received + @inventory_invoice.advance_payment.to_f.round(2)) < 0.1) || (@inventory_invoice.payment_pending.to_f == @inventory_invoice.net_amount.to_f)%>
+  <% if @inventory_invoice.department_name == "Pharmacy" || @inventory_invoice.department_name == "Optical" %> 
+    <% if Authorization::PolicyHelper.verification(current_user.id, "HGP-100-118-103") %>
+      <% if @return_transaction.present? && @inventory_invoice.is_canceled == false && patially_paid %>
+        <span class="tool-tip" data-toggle="tooltip" data-placement="bottom" title="Cannot be cancelled. A return is already collected against this invoice.">
+          <button type="button" disabled class=" btn btn-danger tooltip-wrapper disabled" title="Receive Items" data-title="Cannot be cancelled. A return is already collected against this invoice."><i class="fa fa-trash-alt"></i>Delete Invoice</button>
+        </span>
+      <% else %>
+        <% if @inventory_invoice.is_canceled == false && (@inventory_invoice.created_at.to_date == Date.current || @inventory_invoice.invoice_type == 'credit') && (@inventory_invoice.payment_completed == true || @inventory_invoice.payment_pending.to_f == @inventory_invoice.net_amount.to_f) && recieved_amount_def && @inventory_invoice.payment_received_breakups.any_payer_master?%>
+          <%= link_to confirm_disable_invoice_inventory_invoices_path(id: @inventory_invoice.id), class: "btn btn-danger ", data: { remote: true, 'toggle' => 'modal', 'target' => '#inventory-invoice-cancellation-modal', class: 'btn btn-info'} do %><i class="fa fa-trash-alt"></i>&nbsp; Cancel Bill<% end %>
+        <% end %>
+      <% end %>
+    <% else %>
+      <button type="button" disabled class=" btn btn-danger" style="pointer-events: all" title="Not Authorized"><i class="fa fa-trash-alt"></i>Cancel Bill</button>
+    <% end %>
+  <% else %>
+    <% if @return_transaction.present? && @inventory_invoice.is_canceled == false && patially_paid %>
+      <span class="tool-tip" data-toggle="tooltip" data-placement="bottom" title="Cannot be cancelled. A return is already collected against this invoice.">
+        <button type="button" disabled class=" btn btn-danger tooltip-wrapper disabled" title="Receive Items" data-title="Cannot be cancelled. A return is already collected against this invoice."><i class="fa fa-trash-alt"></i>Delete Invoice</button>
+      </span>
+    <% else %>
+      <% if @inventory_invoice.is_canceled == false && (@inventory_invoice.created_at.to_date == Date.current || @inventory_invoice.invoice_type == 'credit') && (@inventory_invoice.payment_completed == true || @inventory_invoice.payment_pending.to_f == @inventory_invoice.net_amount.to_f) && recieved_amount_def && @inventory_invoice.payment_received_breakups.any_payer_master?%>
+        <%= link_to confirm_disable_invoice_inventory_invoices_path(id: @inventory_invoice.id), class: "btn btn-danger ", data: { remote: true, 'toggle' => 'modal', 'target' => '#inventory-invoice-cancellation-modal', class: 'btn btn-info'} do %><i class="fa fa-trash-alt"></i>&nbsp; Cancel Bill<% end %>
+      <% end %>
+    <% end %>
+  <% end %>
+  
+</div>

@@ -1,0 +1,166 @@
+  function new_tags_unique_id() {
+    var uniqueid = Math.floor(Math.random() * 26) + Date.now();
+    return uniqueid;
+  }
+
+  $(document).ready(function() {
+
+    var select2_x_option = {
+      tags: true,
+      tokenSeparators: [',', ';'],
+      createTag: function(tag) {
+        return {
+          //id: new_tags_mongo_id(),
+          id: "#!##" + new_tags_unique_id(),
+          text: tag.term
+        };
+      },
+      theme: "bootstrap",
+      minimumInputLength: 1,
+      multiple: true,
+    };
+
+    jQuery('.upload-paper-records-form').on('select2:select', '.select2_selectedtags', function(e) {
+      var current_class = jQuery(this).attr("class");
+      var target_tags_id = jQuery(this).attr("target-tags");
+      var target_tagnames_id = jQuery(this).attr("target-tagnames");
+      var target_tags_value = "";
+      var target_tagnames_value = "";
+      var target_tags_prev_value = jQuery("input[name='" + target_tags_id + "']").val();
+      var target_tagnames_prev_value = jQuery("input[name='" + target_tagnames_id + "']").val();
+
+      if (target_tags_prev_value.length > 0) {
+        var id_values_array = target_tags_prev_value.split(",");
+        var names_values_array = target_tagnames_prev_value.split(",");
+        id_values_array.push(e.params['data'].id);
+        names_values_array.push(e.params['data'].text);
+      } else {
+        var id_values_array = [];
+        var names_values_array = [];
+        id_values_array.push(e.params['data'].id);
+        names_values_array.push(e.params['data'].text);
+      }
+      jQuery("input[name='" + target_tags_id + "']").val(id_values_array.toString());
+      jQuery("input[name='" + target_tagnames_id + "']").val(names_values_array.toString());
+    });
+
+    //jQuery('.q_reported_time').timepicker(timepicker_opt);
+
+    var previewNode = document.querySelector("#template");
+    previewNode.id = "";
+    var previewTemplate = previewNode.parentNode.innerHTML;
+    previewNode.parentNode.removeChild(previewNode);
+
+    Dropzone.options.uploadPaperRecordsForm = { // The camelized version of the ID of the form element
+
+      // The configuration we've talked about above
+      thumbnailWidth: 80,
+      thumbnailHeight: 80,
+      parallelUploads: 20,
+      previewTemplate: previewTemplate,
+      paramName: "inventory_vendor_asset_upload[asset_path]",
+      autoQueue: false, // Make sure the files aren't queued until manually added
+      previewsContainer: "#previews", // Define the container to display the previews
+      clickable: ".fileinput-button",
+      dictDefaultMessage: "",
+      // The setting up of the dropzone
+      init: function() {
+        var myDropzone = this;
+        $(this).removeClass("dropzone");
+
+        // First change the button to actually tell Dropzone to process the queue.
+        this.element.querySelector("input[type=submit]").addEventListener("click", function(e) {
+          // Make sure that the form isn't actually being sent.
+          e.preventDefault();
+          e.stopPropagation();
+          myDropzone.processQueue();
+        });
+
+        myDropzone.on("addedfile", function(file) {
+          $(".drophere-row").hide()
+          $.each($(".filename"), function(index, namefield) {
+            $(namefield).attr("name", "name[" + index + "]");
+            
+          });
+
+          $(".reset-drag").on('click', function(){
+            if($(".reset-drag").length < 1){
+              $(".drophere-row").show()
+            }
+          })
+        });
+
+        // Update the total progress bar
+        myDropzone.on("totaluploadprogress", function(progress) {
+          document.querySelector("#total-progress .progress-bar").style.width = progress + "%";
+        });
+
+
+        myDropzone.on("sending", function(file, xhr, formData) {
+          // Show the total progress bar when upload starts
+          document.querySelector("#total-progress").style.opacity = "1";
+
+        });
+
+        // Hide the total progress bar when nothing's uploading anymore
+        myDropzone.on("queuecomplete", function(progress) {
+          document.querySelector("#total-progress").style.opacity = "0";
+          var response_message = $(".response-message")
+          for (var i = response_message.length - 1; i >= 0; i--) {
+            if($(response_message[i]).find('.label').hasClass('label-success')){
+              var confirm_exit = true
+            } else {
+              var confirm_exit = false
+              break;
+            }
+          }
+          //    alert("All Uploads successful")
+          if(confirm_exit == true){
+            if (confirm("All Uploads successful")) {
+              close();
+            }
+          } else {
+            $(".response-message").find('.label-success').closest('.dz-image-preview').remove()
+            alert("Upload(s) Have Failed.Please Retry.")
+          }
+        });
+        document.querySelector("input[type=submit].start").onclick = function() {
+          $(".response-message").find('.label-danger').closest('.dz-image-preview').remove()
+          myDropzone.enqueueFiles(myDropzone.getFilesWithStatus(Dropzone.ADDED));
+        };
+      },
+      success: function(file, response) {
+        if(response.success == true){
+          $(file.previewElement).find('.post-response').remove()
+          $(file.previewElement).find('.response-message').css('display','block').append('<label class="label label-success" style="font-size:20px;"><i class="fa fa-check"></i> File Uploaded Successfully.</label>')
+        } else {
+          $(file.previewElement).find('.post-response').remove()
+          $(file.previewElement).find('.response-message').css('display','block').append('<label class="label label-danger" style="font-size:20px;"><i class="fa fa-times"></i> File Uploading Failed.</label>')
+        }
+      }
+    }
+
+
+  });
+  $('#upload-paper-records-form').on('success', function() {
+    var args = Array.prototype.slice.call(arguments);
+
+    // Look at the output in you browser console, if there is something interesting
+    console.log(args);
+  });
+
+  function close_window() {
+
+  }
+
+
+  var window_height = $(window).height()
+
+  $("#upload-paper-records-form").css('height', window_height-20)
+  $(".dropbox-box").css('padding',(window_height/6 + 25) + 'px')
+
+  $(window).resize(function() {
+    var window_height = $(window).height()
+    $("#upload-paper-records-form").css('height', window_height-20)
+    $(".dropbox-box").css('padding',(window_height/6 + 25) + 'px')
+  })

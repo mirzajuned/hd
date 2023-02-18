@@ -1,0 +1,115 @@
+(function($){
+    $.fn.email_multiple = function(options) {
+      let defaults = {
+        reset: false,
+        fill: false,
+        data: null,
+        container: '',
+        element: '',
+        show_error: false
+      };
+
+      let props = $.extend(defaults, options);
+      let email = '';
+      let pattern = /^[A-Za-z0-9._-]+@[A-Za-z0-9._-]+\.[A-Za-z]{2,6}$/;
+
+        return this.each(function() {
+          $(this).closest('div').after(`
+            <span class="email_error error-${props.element}" style="color: #a14d4d;">
+              **Please enter valid Email address
+            </span>
+            <span class="dup_email_error dup-error-${props.element}" style="color: #a14d4d;">
+              **Duplicate emails founded
+            </span>
+          `)
+          $(this).after(
+            `<div class='all-mail ${props.container}'></div>
+             <input type="text" name="email_name_${props.element}" class='multi-input ${props.element}' autocomplete="new-password" placeholder="Enter Email ..." />
+            `);
+          let $orig = $(this);
+          let $element = $('.'+props.element);
+          let $container = $('.'+props.container)
+          $element.keyup(function (e) {
+            $element.css({'outline-color': 'black', 'border': '2px solid black'})
+            if (e.keyCode === 13 || e.keyCode === 32 || e.keyCode == 188) {
+              let getValue = $element.val();
+              // if ( e.keyCode == 188 || e.keyCode === 32 ) {
+              //   getValue = getValue.slice(0, -1);
+              // }
+              // if (/^[A-Za-z0-9._-]+@[A-Za-z0-9._-]+\.[A-Za-z]{2,6}$/.test(getValue)){
+              if (pattern.test(getValue)){
+                $('.'+props.container).append(`
+                  <span class="email-ids">
+                  <span class='mail'>${getValue}</span>
+                  <span class="cancel-email">x</span></span>
+                `);
+                $element.val('');
+                email += getValue + ',';
+                props.show_error = false;
+              } else {
+                props.show_error = true;
+                $element.css({'outline-color': 'red', 'border': '2px solid red'})
+              }
+            }
+            
+            $orig.val(email.slice(0, -1))
+            if(props.element == 'email-receiver-input') {
+              validate_mail_form(e, props.show_error)
+            } else {
+              validate_cc_mail_form(e, props.show_error)
+            }
+            // validate_mail_form(e)
+            // validate_cc_mail_form(e)
+          });
+
+          $(document).on('click','.'+props.container +' .cancel-email',function(e){
+            e.preventDefault();
+            $(this).parent().remove();
+            email = ''
+            $container.find('.mail').each(function(){
+              email += $(this).html().trim() + ','
+            })
+            $orig.val(email.slice(0, -1))
+            if(props.element == 'email-receiver-input') {
+              validate_mail_form(e, props.show_error)
+            } else {
+              validate_cc_mail_form(e, props.show_error)
+            }
+            // validate_mail_form(e)
+            // validate_cc_mail_form(e)
+          });
+
+          $(document).on('focusout', '.'+props.element, function(e){
+            // var event = $.Event( "keyup", { which: 13 , keyCode: 13} );
+            var event = $.Event( "keyup", { which: 32, keyCode: 32} );
+            $(this).trigger(event);
+          })
+
+          if(props.data){
+            $.each(props.data, function (x, y) {
+              // if (/^[A-Za-z0-9._-]+@[A-Za-z0-9._-]+\.[A-Za-z]{2,6}$/.test(y)){
+              if (pattern.test(y)){
+                $('.'+props.container).append(`
+                  <span class="email-ids">
+                  <span class='mail'>${y}</span>
+                  <span class="cancel-email">x</span></span>
+                `);
+                $element.val('');
+                email += y + ',';
+                props.show_error = false;
+              } else {
+                props.show_error = true;
+                $element.css('outline-color', 'red')
+              }
+            })
+            $orig.val(email.slice(0, -1))
+          }
+          if(props.reset){
+            $('.email-ids').remove()
+          }
+          // return $orig.hide()
+          return $orig;
+        });
+    };
+
+})(jQuery);

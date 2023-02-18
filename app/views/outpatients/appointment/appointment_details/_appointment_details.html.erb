@@ -1,0 +1,137 @@
+<div class="row mb10">
+  <% if @appointment_list_view&.current_state != 'Completed' %>
+    <%# if @appointment.try(:created_from) == 'Integration' %>
+    <div class="col-md-3">
+      <% if (@appointment.try(:organisation_id).to_s == '5e21ffd6cd29ba0ce0bf5a1e') && (@appointment.try(:created_from) == 'Integration') %>
+        <label class="label label-info">Created From Integration</label>
+      <% elsif Authorization::PolicyHelper.verification(current_user.id ,"HGP-102-104-101") %>
+        <%= link_to edit_appointment_path(:id => @appointment.id, current_date: @current_date), :class => "btn btn-success btn-success-transparent btn-xs", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#appointment-modal'} do %><i class="fa fa-edit "></i> Edit<% end %>
+      <% end %>
+    </div>
+  <% end %>
+  <!-- Add Admission -->
+  <div class="col-md-9 text-right">
+    <!-- Surgery Advised -->
+    <% if @appointment.surgery_advised? %>
+      <button class="btn btn-danger btn-danger-transparent btn-surgery_advised btn-xs" data-state="false">Cancel Surgery Advised</button>
+    <% else %>
+      <button class="btn btn-primary btn-primary-transparent btn-surgery_advised btn-xs" data-state="true">Surgery Advised</button>
+    <% end %>
+    <span id="add-admission-from-appointment">
+      <!-- Add Admission Partial for Soft Reload -->
+      <%= render partial: 'outpatients/appointment/appointment_details/add_admission_section.html.erb' %>
+    </span>
+  </div>
+</div>
+<div class="row no_margin yes_padding">
+  <div class="col-sm-2 no_padding text-left">Consultant</div>
+  <div class="col-sm-1 no_padding text-left">:</div>
+  <div class="col-sm-3 no_padding"><b><%= @consultant %></b></div>
+  <div class="col-sm-2 no_padding text-left">Appt/OP ID</div>
+  <div class="col-sm-1 no_padding text-left">:</div>
+  <div class="col-sm-3 no_padding"><%= @appointment.display_id %></div>
+</div>
+<div class="row no_margin yes_padding">
+  <div class="col-sm-2 no_padding text-left">Scheduled By</div>
+  <div class="col-sm-1 no_padding text-left">:</div>
+  <div class="col-sm-3 no_padding"><%= @appointment_list_view.try(:scheduling_user) %></div>
+  <% unless @appointment.ref_doc_name.blank? %>
+    <div class="col-sm-2 no_padding text-left">Referred By</div>
+    <div class="col-sm-1 no_padding text-left">:</div>
+    <div class="col-sm-3 no_padding">Dr. <%= @appointment.ref_doc_name %></div>
+  <% end %>
+</div>
+<div class="row no_margin yes_padding">
+  <div class="col-sm-2 no_padding text-left">Scheduled Time</div>
+  <div class="col-sm-1 no_padding text-left">:</div>
+  <div class="col-sm-3 no_padding"><%= @appointment.scheduling_time.try(:strftime, '%d %b at %I:%M %p')  %></div>
+  <div class="col-sm-2 no_padding text-left">Booking Time</div>
+  <div class="col-sm-1 no_padding text-left">:</div>
+  <div class="col-sm-3 no_padding"><%= @appointment.created_at.try(:strftime, '%d %b at %I:%M %p') %></div>
+</div>
+<div class="row no_margin yes_padding mb10">
+  <div class="col-sm-2 no_padding text-left">Appointment Type</div>
+  <div class="col-sm-1 no_padding text-left">:</div>
+  <div class="col-sm-9 no_padding">
+    <% if @appointment.appointment_type.present? %>
+      <% if @appointment.appointmenttype.present? && @appointment.appointmenttype == 'walkin' %>
+        <span class="label label-default" style="background: <%= @appointment.appointment_type.background %>;margin-left: 0"><%= @appointment.appointment_type.label %><%= " | Walk-in" %></span>
+      <% else %>
+        <span class="label label-default" style="background: <%= @appointment.appointment_type.background %>;margin-left: 0"><%= @appointment.appointment_type.label %><%= " | #{@appointment.appointmenttype.titleize}" if @appointment.appointmenttype %></span>
+      <% end %>  
+    <% else %>
+      Please Update Appointment Type
+    <% end %>
+  </div>
+</div>
+
+<% if current_facility.consultancy_type_enabled %>
+  <div class="row no_margin yes_padding mb10">
+    <div class="col-sm-2 no_padding text-left">Consultancy Type</div>
+    <div class="col-sm-1 no_padding text-left">:</div>
+    <div class="col-sm-6 no_padding">
+      <% consultancy_type = @appointment.consultancy_type %>
+      <% consultancy_type_reason = @appointment.consultancy_type_reason %>
+      <% consultancy_type_by = @appointment.consultancy_type_by %>
+      <% if consultancy_type.present? %>
+        <% is_free = (consultancy_type == "h1.001") %>
+        <span class="label label-default" style="background: <%= is_free ? "#d9534f" : "#1CAF9A" %>;margin-left: 0"><%= is_free ? "Free" : "Paid" %><%= consultancy_type_reason.present? ? " - #{consultancy_type_reason}" : "" %> <%= consultancy_type_by.present? ? "(#{consultancy_type_by})" : "" %></span>
+      <% elsif current_facility.show_finances %>
+        <span class="label label-default" style="background: <%= (@past_invoices == []) ? "#d9534f" : "#1CAF9A" %>;margin-left: 0"><%= (@past_invoices == []) ? "Free" : "Paid" %><%= consultancy_type_reason.present? ? " - #{consultancy_type_reason}" : "" %> <%= consultancy_type_by.present? ? "(#{consultancy_type_by})" : "" %></span>
+      <% else %>
+        -
+      <% end %>
+    </div>
+  </div>
+<% end %>
+
+<% if @appointment.specialty_id == '309988001' %>
+  <div class="row no_margin yes_padding" id='patient-dilation-section'>
+    <%= render partial: 'outpatients/appointment/appointment_details/patient_dilation_section.html.erb' %>
+  </div>
+<% end %>
+<div class="row no_margin yes_padding" style="margin-top:5px;">
+  <div class="col-sm-2 no_padding text-left">Appointment Actions</div>
+  <div class="col-sm-1 no_padding text-left">:</div>
+  <div class="col-sm-5 no_padding">
+    <%# if @appointment.try(:created_from) == 'Integration' %>
+    <% if (@appointment.try(:organisation_id).to_s == '5e21ffd6cd29ba0ce0bf5a1e') && (@appointment.try(:created_from) == 'Integration') %>
+      N.A
+    <% else %>
+      <% unless @organisations_setting.try(:time_slots_enabled) %>
+        <% if @appointment_list_view&.current_state == 'Scheduled' %>
+          <% if Authorization::PolicyHelper.verification(current_user.id, "HGP-102-104-103") %>
+            <%= link_to opd_appointments_rescheduleappointment_path(:appointment_id => @appointment.id), :class => "btn btn-primary btn-primary-transparent btn-xs", :id => "reschedule_"+@appointment.id.to_s , :title => "Reschedule Appointment", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#appointment-modal'} do %> <i class="fa fa-edit"></i> Reschedule<% end %>&nbsp;
+          <% else %>
+            <a class="btn btn-primary btn-xs disabled" style="pointer-events:all;cursor:not-allowed" title="Not Authorized"><i class="fa fa-edit"></i> Reschedule</a>&nbsp;
+          <% end %>
+        <% else %>
+          <% if Authorization::PolicyHelper.verification(current_user.id, "HGP-102-104-103") %>
+            <button class="btn btn-primary btn-primary-transparent btn-xs btn-reschedule">Reschedule</button>
+          <% else %>
+            <a class="btn btn-primary btn-xs disabled" style="pointer-events:all;cursor:not-allowed" title="Not Authorized"> Reschedule</a>&nbsp;
+          <% end %>
+        <% end %>
+      <% end %>
+      <% if Authorization::PolicyHelper.verification(current_user.id, "HGP-102-104-102") %>
+        <% if @appointment_list_view&.current_state != 'Scheduled' || @invoices&.count.to_i > 0 || @appointment_opd_records&.count.to_i > 0 %>
+          <button class="btn btn-danger btn-danger-transparent btn-xs btn-cancel">Cancel</button>
+        <% else %>
+          <%= link_to opd_appointments_cancelappointmentform_path(:appointment_id => @appointment.id), :class => "btn btn-danger btn-xs btn-danger-transparent", :id => "cancel_appointment"+@appointment.id.to_s , :title => "Cancel Appointment", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#appointment-modal'} do %> <i class="fa fa-trash-alt"></i> Cancel<% end %>
+        <% end %>
+      <% else %>
+        <button class="btn btn-danger btn-xs disabled" style="pointer-events: all" title="Not Authorized"><i class="fa fa-trash-alt"></i> Cancel</button>
+      <% end %>
+    <% end %>
+  </div>
+  <div class="col-md-3 no_padding">
+    <% if @patient.try(:reg_status) %>
+      <% if Authorization::PolicyHelper.verification(current_user.id,"HGP-102-109-100") %>
+        <%= link_to paperrecords_upload_patient_asset_path(:patientid => @appointment.patient.id),:target => '_blank',:class=>"btn btn-info btn-xs btn-info-transparent" do %> <i class="glyphicon glyphicon-cloud-upload"></i>Upload papers<% end %>
+      <% else %>
+        <a class="btn btn-info btn-xs disabled" style="pointer-events: all" title="Not Authorized"><i class="glyphicon glyphicon-cloud-upload"></i>Upload papers</a>
+      <% end %>
+<!--    <%#= link_to paperrecords_ai_evaluation_path(:patientid => @appointment.patient.id),:target => '_blank',:class=>"btn btn-info btn-xs btn-info-transparent" do %> <i class="glyphicon glyphicon-cloud-upload"></i>Evaluate Image<%# end %>-->
+    <% end %>
+  </div>
+</div>

@@ -1,0 +1,884 @@
+// Set Form Height
+$(".admission-form-body").css('height', $(window).height() - 230 + "px").css('overflow', 'scroll')
+
+$(window).resize(function() {
+  $(".admission-form-body").css('height', $(window).height() - 230 + "px").css('overflow', 'scroll')
+})
+
+// Appointment DateTime Picker
+if ($('#admission_planned_hospitalization').is(':checked')) {
+  $('.admission-datepicker').datepicker({dateFormat: "dd/mm/yy"});
+}
+if($('#admission_planned_hospitalization:checked').val() == undefined){
+  $('.expected_days_planned_admission').hide()
+}
+
+<% if params[:action] == "new" || @admission_list_view.try(:current_state) == "Scheduled" %>
+  $('.discharge-datepicker').datepicker({dateFormat: "dd/mm/yy"});
+  <% if params[:action] == 'new' %>
+    $('.admission-datepicker').on('change',function(){
+      var admission_date = $(this).val()
+      if($('.discharge-datepicker').val() != ""){
+        $('.discharge-datepicker').val(admission_date)
+      }
+    })
+  <% end %>
+<% else %>
+  $('.discharge-datepicker').datepicker({
+    dateFormat: "dd/mm/yy",
+    minDate: <%= (Date.parse(@min_date.to_s) - Date.current) %>,
+  });
+<% end %>
+
+$('.admission-timepicker').timepicker();
+$('.discharge-timepicker').timepicker();
+$('.reporting-timepicker').timepicker();
+
+$('.discharge-timepicker').on('click', function(){
+  $(".discharge-timepicker").val("<%= Time.current.strftime('%I:%M %p') %>")
+})
+
+// Set ReportingTime to empty
+if("<%= @admission.reporting_time.to_s %>" === ""){
+  $('.reporting-timepicker').val('');
+}
+
+// Set ReportingTime on field click
+$('.reporting-timepicker').on('click', function(){
+ if($(".reporting-timepicker").val() == '') {
+   $(".reporting-timepicker").val("<%= Time.current.strftime('%I:%M %p') %>")
+ }
+})
+
+if("<%= @discharge_time.to_s %>" === ""){
+  $('.discharge-timepicker').val("")
+}
+
+// This Code to Set Date for Time as Date Selected
+$(".admission-datepicker").on('change', function(){
+  var timestamp = $(this).val() + " " + $(".admission-timepicker").val()
+  $("#admission_admissiontime").attr("value", timestamp)
+}).trigger('change')
+
+$(".admission-form").on('change', ".admission-timepicker", function(){
+  var timestamp = $(".admission-datepicker").val() + " " + $(this).val()
+  $("#admission_admissiontime").attr("value", timestamp)
+}).trigger('change')
+
+$(".discharge-datepicker").on('change', function(){
+  var timestamp = $(this).val() + " " + $(".discharge-timepicker").val()
+  $("#admission_dischargetime").attr("value", timestamp)
+}).trigger('change')
+
+$(".discharge-timepicker").on('change', function(){
+  var timestamp = $(".discharge-datepicker").val() + " " + $(this).val()
+  $("#admission_dischargetime").attr("value", timestamp)
+}).trigger('change')
+
+$(".reporting-datepicker").on('change', function(){
+  var timestamp = `${$(this).val()} ${$(".reporting-timepicker").val()}`
+  $("#admission_reporting_time").attr("value", timestamp)
+}).trigger('change')
+
+$(".reporting-timepicker").on('change', function(){
+  var timestamp = `${$(".reporting-datepicker").val()} ${$(this).val()}`
+  $("#admission_reporting_time").attr("value", timestamp)
+}).trigger('change')
+
+$("#admission_admissiondate").on('change', function(){
+  $(this).trigger('keyup');
+
+  check_admission_end_date_time()
+
+  // Set Reporting Date
+  const admissionDate = $(this).val();
+  $('.reporting-datepicker').val($(this).val());
+});
+
+$("#admission_dischargedate").on('change', function(){
+  check_admission_end_date_time()
+});
+
+$('.admission-form').on('change', '#admission_time', function() {
+  check_admission_end_date_time()
+});
+
+$("#dischargetime").on('change', function(){
+  check_admission_end_date_time()
+});
+
+/*
+function available_admission_doctors(){
+  already_selected_doctor = $("#admission_doctor").val()
+  $('#admission_doctor_1 option[value='+ already_selected_doctor +']').remove();
+  $('#admission_doctor_2 option[value='+ already_selected_doctor +']').remove();
+  $('#admission_doctor_3 option[value='+ already_selected_doctor +']').remove();
+
+}
+*/
+
+$('#admission_doctor').on('change', function(e, data, triggered=false, ) {
+  let doctor_id = $(this).val();
+  let facility_id = $('#admission_facility_id').val();
+  let department_id = '486546481'
+  // Check TimeSlot
+  $.ajax({
+    type: 'GET',
+    dataType: 'json',
+    url: "/admissions/user_time_slot_check",
+    data: { doctor_id, facility_id, department_id },
+    success: function(response) {
+      if (response) {
+        $('.admission-datepicker').datepicker('destroy');
+        $('#admission_admissiondate').removeClass('admission-datepicker').removeClass('hasDatepicker');
+        $('.admission-time').html(`
+          <div class="bootstrap-timepicker timepicker">
+            <input type="text" name="admission_time" id="admission_time" class="form-control p7_10" readonly="readonly" value='<%= @admission.admissiontime ? @admission.admissiontime.strftime('%I:%M %p') : '' %>'>
+          </div>
+        `)
+
+        if (!triggered || '<%= params[:action] %>' ==  'new') {
+          if(!(typeof(data) === 'undefined') && Object.keys(data).length  > 0 ){
+            $('#admission_admissiondate').val(data['admissiondate']);
+            $('#admission_admissiontime').val(data['admissiontime']);
+            $('#admission_time').val(data['time']);
+          }else{
+            $('#admission_admissiondate').val('');
+            $('#admission_admissiontime').val('');
+            $('#admission_time').val('');
+          }
+        }
+        if($('#admission_admissiondate').hasClass('hasDatepicker')){
+          $('.expected_planned_admission_notify').show()
+        }else{
+          $('.expected_planned_admission_notify').hide()
+        }
+      } else {
+        $('#admission_admissiondate').addClass('admission-datepicker');
+        $('.admission-datepicker').datepicker({ dateFormat: "dd/mm/yy" });
+
+        $('.admission-time').html(`
+          <% if  params[:action] == 'new' %>
+            <div class="bootstrap-timepicker timepicker">
+              <input type="text" name="admission_time" id="admission_time" class="form-control p7_10 admission-timepicker" value="<%= Time.current.strftime('%I:%M %p') %>">
+          <% else %>
+            <div class="bootstrap-timepicker timepicker">
+              <input type="text" name="admission_time" id="admission_time" class="form-control p7_10 admission-timepicker" value="<%= @admission.admissiontime ? @admission.admissiontime.strftime('%I:%M %p') : Time.current.strftime('%I:%M %p') %>">
+            </div>
+          <% end %>
+        `)
+        $('.admission-timepicker').timepicker();
+
+        setAdmissionDate()
+      }
+    }
+  });
+}).trigger('change', true);
+
+const ipdCalendarModal = () => {
+  let doctor_id = $('#admission_doctor').val();
+  let facility_id = $('#admission_facility_id').val();
+  let department_id = '486546481'
+  let organisation_id = $('#admission_organisation_id').val()
+  let specialty_id = $('#admission_specialty_id').val()
+  $.ajax({
+    type: 'GET',
+    dataType: 'script',
+    url: "/admissions/calendar_time_slot",
+    data: { doctor_id, facility_id, department_id, organisation_id, specialty_id},
+    success: function(response) {
+
+    }
+  });
+}
+
+$('.admission-form-body').on('click', '#admission_admissiondate', function() {
+  if (!$(this).hasClass('admission-datepicker')) {
+    let hospitalizationType = $('.admission_hospitalization_type:checked').val();
+
+    if (hospitalizationType) {
+      ipdCalendarModal();
+    } else {
+      $('.admission-type-error').html(`
+        <b>Please Select Type</b>
+      `).css('text-shadow','red 0px 0px 10px').css('color','#333')
+    }
+  }
+});
+
+$('.admission-form-body').on('click', '#admission_time', function() {
+  if (!$(this).hasClass('admission-timepicker')) {
+    let hospitalizationType = $('.admission_hospitalization_type:checked').val();
+
+    if (hospitalizationType) {
+      ipdCalendarModal();
+    } else {
+      $('.admission-type-error').html(`
+        <b>Please Select Type</b>
+      `).css('text-shadow','red 0px 0px 10px').css('color','#333')
+    }
+  }
+});
+
+//Admission end date-time should not be greater than or equal to Discharge start end date-time
+function check_admission_end_date_time(){
+  let start_date = $("#admission_admissiondate").val().split('/')
+  let new_start_date = start_date[2]+ "/" + start_date[1] + "/" + start_date[0]
+  let end_date = $("#admission_dischargedate").val().split('/')
+  let new_end_date = end_date[2]+ "/" + end_date[1] + "/" + end_date[0]
+  let start_date_time = new_start_date + " " + $("#admission_time").val()
+  let end_date_time =  new_end_date + " " + $("#dischargetime").val()
+  let start_date_time_to_date = new Date(start_date_time)
+  let end_date_time_to_date = new Date(end_date_time)
+  if(start_date_time_to_date.getTime() >= end_date_time_to_date.getTime()) {
+    $("#discharge_end_date_time").css('text-shadow','red 0px 0px 10px').css('color','#333')
+    $("#admission_dischargedate").css('border','2px solid red')
+    $("#dischargetime").css('border','2px solid red')
+    $(".btn-create-admission").prop('disabled', true);
+  } else {
+    $("#discharge_end_date_time").css('text-shadow','none').css('color','#000')
+    $("#admission_dischargedate").css('border','1px solid #ccc')
+    $("#dischargetime").css('border','1px solid #ccc')
+    $(".btn-create-admission").prop('disabled', false);
+  }
+}
+
+<% if @admission_list_view && @admission_list_view.try(:current_state) != "Scheduled" %>
+  $(".admission-datepicker").attr('disabled','disabled')
+  $(".admission-timepicker").attr('disabled','disabled')
+  $(".reporting-timepicker").attr('disabled','disabled')
+<% end %>
+
+<% if params[:action] == 'edit' %>
+  $("#admission_specialty_id").attr('disabled','disabled')
+<% end %>
+
+function toggle_specialty_dropdown(){
+  if($('#admission_specialty_id').find('option').length === 1){
+   $(".specialty_dropdown_div").hide();
+  } else {
+    $(".specialty_dropdown_div").show();
+  }
+}
+toggle_specialty_dropdown();
+
+// Change specialties onChange Facility
+$("#admission_facility_id").on('change', function(e,data){
+  var facility_id = $(this).val();
+  var specialty_id = $('#admission_specialty_id').val()
+  // get_facility_specialties(facility_id, specialty_id)
+
+  if(!(typeof(data) === 'undefined') && !((data['user_id']) === 'undefined')){
+    get_facility_specialties(facility_id, specialty_id, data)
+  }else{
+    get_facility_specialties(facility_id, specialty_id, {})
+  }
+})
+
+// to get doctors only when specialty dropdown changes
+$("#admission_specialty_id").on('change', function(){
+  var specialty_id = $(this).val()
+  var facility_id = $("#admission_facility_id").val();
+
+  get_specialty_users(facility_id, specialty_id)
+  get_specialty_case_sheets(specialty_id)
+})
+
+function get_facility_specialties(selected_facility_id, specialty_id, data){
+  $.ajax({
+    type: "GET",
+    dataType: "json",
+    url: "/admissions/get_facility_specialties",
+    data: { facility_id: selected_facility_id, selected_specialty_id: specialty_id, action_type: '<%= params[:action] %>' },
+    success: function(response){
+
+      <% if params[:action] == 'edit' %>;
+        if (response.length == 0){
+          notice = new PNotify({
+            title: 'Notice', text: 'Specialty Not Available in selected Facility or Logged in user', type: 'error'
+          });
+          notice.get().click(function(){ notice.remove() });
+
+          $('#admission_facility_id').attr("value", '<%= @selected_facility %>').trigger('change.select2');           // resetting dropdown values, if specialty not found in selected facility
+          var specialty_id = $('#admission_specialty_id').val()
+          get_specialty_users('<%= @selected_facility %>', specialty_id, data)
+          return false
+        }
+      <% end %>
+
+      $('#admission_specialty_id').children().remove();
+
+      if (response.length == 0){
+        $('#admission_specialty_id').append($("<option></option>").attr("value","").text("No Specialty Available")).trigger('change.select2');
+      }else{
+
+        $.each(response, function(key, value) {
+          $('#admission_specialty_id').append($("<option></option>").attr("value",value["_id"]).text(value["name"])).trigger('change.select2');
+        });
+
+        $('#admission_specialty_id').siblings(".select2").children().children().css("background-color",'rgb(247, 232, 225)')
+        setTimeout(function(argument) {
+          $('#admission_specialty_id').siblings(".select2").children().children().css("background-color",'')
+        }, 300)
+      }
+      var specialty_id = $('#admission_specialty_id').val()
+      get_specialty_users(selected_facility_id, specialty_id, data)
+      <% unless params[:action] == 'edit' %>;
+        get_specialty_case_sheets(specialty_id)       // case - sheet method not calling on edit as specialty won't be changed
+      <% end %>
+      toggle_specialty_dropdown();
+    }
+  })
+}
+
+function get_specialty_case_sheets(specialty_id){
+  $.ajax({
+    type: "GET",
+    dataType: "json",
+    url: "/admissions/get_specialty_case_sheets",
+    data: { specialty_id: specialty_id, patient_id: '<%= @patient.try(:id) %>' },
+    success: function(response){
+      $('#admission_case_sheet_id').children().remove();
+      $('#admission_case_sheet_id').append($("<option></option>"))
+
+      $.each(response, function(key, value) {
+        date = moment(value[3]).format('DD/MM/YYYY')
+        case_name = value[1] + " - " +  value[2] + "(" + date + ")"
+        $('#admission_case_sheet_id').append($("<option></option>").attr("value", value[0]).text(case_name))
+      });
+      $('#admission_case_sheet_id').append($("<option></option>").attr("value", 'new_case').text('Add New Case'))
+      $('#admission_case_sheet_id').trigger('change.select2');
+
+      if (response.length > 0){
+        $.ajax({
+          type: "GET",
+          url: "/case_sheets/get_case_sheet_details",
+          data: { source: "Admission", patient_id: '<%= @patient.try(:id) %>', id: response[0][0], specialty_id: specialty_id },
+        })
+        $('.hidden_case_sheet_id').val(response[0][0])
+        $('#admission_case_sheet_id').val(response[0][0]).trigger('change.select2')
+      }else{
+        $.ajax({
+          type: "GET",
+          url: "/case_sheets/get_case_sheet_details",
+          data: { source: "Admission", patient_id: '<%= @patient.try(:id) %>', id: 'new_case', specialty_id: specialty_id },
+        })
+        $('#admission_case_sheet_id').val('new_case').trigger('change.select2')
+        $('.hidden_case_sheet_id').attr('value', '')
+      }
+
+    }
+  })
+}
+
+function get_specialty_users(facility_id, specialty_id, data){
+  $.ajax({
+    type: "GET",
+    dataType: "json",
+    url: "/admissions/get_users_from_specialty",
+    data: { facility_id: facility_id, specialty_id: specialty_id },
+    success: function(response){
+      $('#admission_doctor').children().remove();
+      $('#admission_doctor_1').children().remove();
+      $('#admission_doctor_2').children().remove();
+      $('#admission_doctor_3').children().remove();
+
+      if (response.length == 0){
+        $('#admission_doctor').append($("<option></option>").attr("value","").text("No Doctors Available for this specialty")).trigger('change.select2');
+        $('#admission_doctor_1').append($("<option></option>").attr("value","").text("No Doctors Available for this specialty")).trigger('change.select2');
+        $('#admission_doctor_2').append($("<option></option>").attr("value","").text("No Doctors Available for this specialty")).trigger('change.select2');
+        $('#admission_doctor_3').append($("<option></option>").attr("value","").text("No Doctors Available for this specialty")).trigger('change.select2');
+      }else{
+
+        $('#admission_doctor_1').append($("<option></option>").attr("value", '').text('Select')).trigger('change.select2');
+        $('#admission_doctor_2').append($("<option></option>").attr("value", '').text('Select')).trigger('change.select2');
+        $('#admission_doctor_3').append($("<option></option>").attr("value", '').text('Select')).trigger('change.select2');
+        $.each(response, function(key, value) {
+          if(value[2] == undefined){
+            text_value = value[0]
+          } else {
+            text_value = value[0] + " | " + value[2]
+          }
+          $('#admission_doctor').append($("<option></option>").attr("value", value[1]).text(text_value)).trigger('change.select2');
+          $('#admission_doctor_1').append($("<option></option>").attr("value", value[1]).text(text_value)).trigger('change.select2');
+          $('#admission_doctor_2').append($("<option></option>").attr("value", value[1]).text(text_value)).trigger('change.select2');
+          $('#admission_doctor_3').append($("<option></option>").attr("value", value[1]).text(text_value)).trigger('change.select2');
+        });
+      }
+
+      <% if params[:action] == 'edit' %>;
+        var doctors_ids = []
+        $('#admission_doctor option').each(function(key, val){ doctors_ids.push(val.value) })
+        $('#admission_doctor_1 option').each(function(key, val){ doctors_ids.push(val.value) })
+        $('#admission_doctor_2 option').each(function(key, val){ doctors_ids.push(val.value) })
+        $('#admission_doctor_3 option').each(function(key, val){ doctors_ids.push(val.value) })
+        if (doctors_ids.indexOf('<%= @selected_doctor %>') > -1){
+          $('#admission_doctor').attr("value", '<%= @selected_doctor %>').trigger('change.select2');
+          $('#admission_doctor_1').attr("value", '<%= @selected_doctor %>').trigger('change.select2');
+          $('#admission_doctor_2').attr("value", '<%= @selected_doctor %>').trigger('change.select2');
+          $('#admission_doctor_3').attr("value", '<%= @selected_doctor %>').trigger('change.select2');
+        }
+      <% end %>
+
+      $('#admission_doctor').siblings(".select2").children().children().css("background-color",'rgb(247, 232, 225)')
+      $('#admission_doctor_1').siblings(".select2").children().children().css("background-color",'rgb(247, 232, 225)')
+      $('#admission_doctor_2').siblings(".select2").children().children().css("background-color",'rgb(247, 232, 225)')
+      $('#admission_doctor_3').siblings(".select2").children().children().css("background-color",'rgb(247, 232, 225)')
+      setTimeout(function(argument) {
+        $('#admission_doctor').siblings(".select2").children().children().css("background-color",'')
+        $('#admission_doctor_1').siblings(".select2").children().children().css("background-color",'')
+        $('#admission_doctor_2').siblings(".select2").children().children().css("background-color",'')
+        $('#admission_doctor_3').siblings(".select2").children().children().css("background-color",'')
+        admission_page()
+      }, 300)
+      if(Object.keys(data).length > 0){
+        $('#admission_doctor').val(data['user_id']).trigger('change',data)
+      }else{
+        $('#admission_doctor').trigger('change', {});
+      }
+      $('#admission_doctor_1').trigger('change');
+      $('#admission_doctor_2').trigger('change');
+      $('#admission_doctor_3').trigger('change');
+
+    }
+  });
+}
+
+$(".insurer_company_fields").hide();
+$(".insurer_field").click(function(){
+  if ($('#insurer_company').is(':checked')) {
+    $(".insurer_company_fields").show();
+  } else {
+    $(".insurer_company_fields").hide();
+  }
+});
+
+// setting date format
+Date.prototype.toInputFormat = function() {
+  var yyyy = this.getFullYear().toString();
+  var mm = (this.getMonth()+1).toString();
+  var dd  = this.getDate().toString();
+  return (dd + '/'  + mm + '/' + yyyy)
+};
+
+function calculate_admission_date(days){
+  if(days != null){
+    var date = new Date();
+    date.setDate(date.getDate() + days);
+    if ($('.admission-datepicker').length > 0) {
+      $('.admission-datepicker').val(date.toInputFormat())
+      $('#admission_admissiondate').trigger('keyup');
+      $('.reporting-datepicker').val(date.toInputFormat())
+    } else {
+      $('#admission_admissiondate').val('');
+      $('#admission_time').val('');
+    }
+  }
+}
+
+// Logic for Admission type from Admission section
+const setAdmissionDate = () => {
+  $('.admission-type-error').html('')
+
+  if ($('#admission_planned_hospitalization').is(':checked')) {
+    $(".expected_days_planned_admission").show();
+    $('#planned_hospitalization').attr('checked','checked')
+    if ("<%= @admission.patient_arrived %>" == 'false'){ calculate_admission_date(4) }
+    $('.admission-datepicker').datepicker({dateFormat: "dd/mm/yy"});
+    var admission_time = $("#admission_time").val()
+    var timestamp = $(".admission-datepicker").val() + " " + admission_time
+    $("#admission_admissiontime").attr("value", timestamp)
+    if($('#admission_admissiondate').hasClass('hasDatepicker')){
+      $('.expected_planned_admission_notify').show()
+    }else{
+      $('.expected_planned_admission_notify').hide()
+    }
+  } else if ($('#admission_emergency_hospitalization').is(':checked')) {
+    $(".expected_days_planned_admission").hide();
+    $('#emergency_hospitalization').attr('checked','checked')
+    if ("<%= @admission.patient_arrived %>" == 'false'){ calculate_admission_date(0) }
+    $('.admission-datepicker').datepicker("destroy");
+    var admission_time = $("#admission_time").val()
+    var timestamp = $(".admission-datepicker").val() + " " + admission_time
+    $("#admission_admissiontime").attr("value", timestamp)
+  } else if ($('#admission_same_day_hospitalization').is(':checked')) {
+    $(".expected_days_planned_admission").hide();
+    $('#same_day_hospitalization').attr('checked','checked')
+    if ("<%= @admission.patient_arrived %>" == 'false'){ calculate_admission_date(0) }
+    $(".admission-datepicker").datepicker("destroy");
+    var admission_time = $("#admission_time").val()
+    var timestamp = $(".admission-datepicker").val() + " " + admission_time
+    $("#admission_admissiontime").attr("value", timestamp)
+  } else {
+    $(".expected_days_planned_admission").show();
+    $('#planned_hospitalization').attr('checked','checked')
+    if ("<%= @admission.patient_arrived %>" == 'false'){ calculate_admission_date(4) }
+    $(".admission-datepicker").datepicker("destroy");
+    var admission_time = $("#admission_time").val()
+    var timestamp = $(".admission-datepicker").val() + " " + admission_time
+    $("#admission_admissiontime").attr("value", timestamp)
+  }
+}
+
+$(".admission_hospitalization_type").click(function() {
+  setAdmissionDate()
+});
+
+if("<%= params[:action] == 'new' %>" == 'true'){
+  $("#planned_hospitalization").trigger('click')
+  calculate_admission_date(4)
+}
+
+// Logic for Admission type from Insurance section
+$(".hospitalization_type").click(function(){
+  $('.admission-type-error').html('')
+  if ($('#planned_hospitalization').is(':checked')) {
+    $(".expected_days_planned_admission").show();
+    $('#admission_planned_hospitalization').attr('checked','checked')
+    if("<%= @admission.patient_arrived %>" == 'false'){ calculate_admission_date(4) }
+    $('.admission-datepicker').datepicker({dateFormat: "dd/mm/yy"});
+  } else if ($('#emergency_hospitalization').is(':checked')) {
+    $(".expected_days_planned_admission").hide();
+    $('#admission_emergency_hospitalization').attr('checked','checked')
+    if ("<%= @admission.patient_arrived %>" == 'false'){ calculate_admission_date(0) }
+    $('.admission-datepicker').datepicker("destroy");
+  } else if ($('#same_day_hospitalization').is(':checked')) {
+    $(".expected_days_planned_admission").hide();
+    $('#admission_same_day_hospitalization').attr('checked','checked')
+    if ("<%= @admission.patient_arrived %>" == 'false'){ calculate_admission_date(0) }
+    $(".admission-datepicker").datepicker("destroy");
+  } else {
+    $(".expected_days_planned_admission").show();
+    $('#admission_planned_hospitalization').attr('checked','checked')
+    if ("<%= @admission.patient_arrived %>" == 'false'){ calculate_admission_date(4) }
+    $('.admission-datepicker').datepicker({dateFormat: "dd/mm/yy"});
+  }
+});
+
+$("#admission_planned_admission_days").val(4)
+$("#admission_planned_admission_days").on("change", function(){
+  var no_of_days = parseInt($("#admission_planned_admission_days option:selected").val())
+  calculate_admission_date(no_of_days)
+})
+
+// Logic For IsInsured from admission section
+$(".is_insured_admission_field").click(function(){
+  if ($('#is_insured_admission_true').is(':checked')) {
+    $('#is_insured_true').attr('checked','checked')
+    $(".tpa_form_checked").show();
+  }else{
+    $('#is_insured_false').attr('checked','checked')
+    $(".tpa_form_checked").hide();
+    if("<%= @admission.patient_arrived %>" == 'false'){ calculate_admission_date(0) }
+  }
+});
+
+// Logic For IsInsured from insurance section
+$(".is_insured_field").click(function(){
+  if ($('#is_insured_true').is(':checked')) {
+    $('#is_insured_admission_true').attr('checked','checked')
+    $(".tpa_form_checked").show();
+  } else {
+    $('#is_insured_admission_false').attr('checked','checked')
+    $(".tpa_form_checked").hide();
+    if("<%= @admission.patient_arrived %>" == 'false'){ calculate_admission_date(0) }
+  }
+});
+
+// setting false on new admission
+$('#is_insured_false').attr('checked','checked')
+if($('#is_insured_true').is(':checked')){
+  $(".tpa_form_checked").show();
+} else {
+  $(".tpa_form_checked").hide();
+}
+
+var is_insured = "<%= @admission.try(:is_insured) %>"
+if (is_insured == "Yes") {
+  $('#is_insured_admission_true').attr('checked','checked');
+}
+
+$(".btn-discharge-clear").on('click', function(e){
+  e.preventDefault();
+  $('.discharge-datepicker').val("")
+  $('.discharge-timepicker').val("")
+  $("#admission_dischargetime").val("")
+})
+
+// CaseSheet Change
+$(".case_sheet_list").select2();
+$(".case_sheet_list").on('change', function(){
+  var specialty_id = $("#admission_specialty_id").val();
+  var case_id = $(this).val()
+
+  if(case_id != ""){
+    $.ajax({
+      dataType: "script",
+      type: 'get',
+      url: '/case_sheets/get_case_sheet_details',
+      data: {
+        id: case_id,
+        specialty_id: specialty_id,
+        patient_id: "<%= @patient.try(:id).to_s %>",
+        source: "Admission"
+      },
+      success: function(response){}
+    });
+  } else {
+    $("#case_details").html("")
+  }
+})
+
+function validate_case_sheet_selected(){
+  if($('#admission_case_sheet_id').val() == ""){
+    $(".case-details").trigger('click')
+    return false
+  } else {
+    $("#admissions-details").trigger('click')
+  }
+}
+
+function validate_admission_details(){
+  if($('.admission_hospitalization_type:checked').val() == undefined){
+    $("#admissions-details").trigger('click')
+    return false
+  }
+}
+
+function validate_is_insured(){
+  if($('#is_insured_true').is(':checked')){
+    $('.insurance-details').trigger('click')
+  } else {
+    $("#admissions-details").trigger('click')
+  }
+}
+
+const country_id = "<%= current_facility.country_id %>"
+// Validate Form
+function admission_page() {
+  validate_is_insured()
+  validate_case_sheet_selected()
+  validate_admission_details()
+
+  $(".admission-form").validate({
+    rules: {
+      "patient[fullname]": {
+        required: true,
+        noSpace: true
+      },
+      "patient[firstname]": {
+        required: true,
+        noSpace: true
+      },
+      "patient[mobilenumber]": {
+        required: true,
+        number: true,
+        noSpace: true
+      },
+      "patient_other_identifier[mr_no]": {
+        remote: "/patients/check_mrn?existing_mrn=<%= @patient.try(:patient_mrn) %>"
+      },
+      "patient[city]": {
+        minlength: 3,
+        remote: "/locations/check_city?country_id=" + country_id
+      },
+      "patient[state]": {
+        minlength: 3,
+        remote: "/locations/check_state?country_id=" + country_id
+      },
+      "patient[pincode]": {
+        minlength: 3,
+        remote: "/locations/check_pincode?country_id=" + country_id
+      },
+      "patient[commune]": {
+        minlength: 3,
+        remote: "/locations/check_commune?country_id=" + country_id
+      },
+      "patient[district]": {
+        minlength: 3,
+        remote: "/locations/check_district?country_id=" + country_id
+      },
+      "patient[email]": {
+        mymail: true
+      },
+      "admission[admissiondate]": {
+        required: true,
+        remote: '/admissions/validate?admission_id=<%= @admission.id.to_s %>&<%= "patient_id=#{@patient.id}" if @patient.present? && !@patient.new_record? %>'
+      },
+      "admission[facility_id]": {
+        required: true,
+      },
+      "admission[doctor]": {
+        required: true,
+        //notEqualToGroup: ['.distinctdoctors']
+      },
+      "admission[case_sheet_id]": {
+        required: true,
+      },
+      "admission[admission_type]": {
+        required: true,
+      },
+      "admission[insurance_contact_id]": {
+        required: true,
+      },
+       "admission[insurance_contact_no]": {
+        required: true,
+      },
+       "admission[insurance_contact_person]": {
+        required: true,
+      },
+      "admission[insurance_address]": {
+        required: true,
+      },
+      "admission[insurance_policy_no]": {
+        required: true,
+      },
+      "admission[insurance_policy_expiry_date]": {
+        required: true,
+      },
+      "admission[tpa_contact_id]": {
+        required: true
+      },
+      "admission[tpa_contact_no]": {
+        required: true,
+      },
+      "admission[tpa_contact_person]": {
+        required: true,
+      },
+      "admission[tpa_address]": {
+        required: true,
+      },
+      "admission[specialty_id]": {
+        required: true,
+      },
+      "reporting_time": {
+        required: true,
+      },
+      "admission_time": {
+        required: true,
+      }
+    },
+    messages: {
+      "patient[fullname]": {
+        required: "Full Name is Required."
+      },
+      "patient[firstname]": {
+        required: "First Name is Required."
+      },
+      "patient[mobilenumber]": {
+        required: "Number is Required",
+      },
+      "patient_other_identifier[mr_no]": {
+        remote: "MRN Already Taken",
+      },
+      "patient[city]": {
+        remote: "Select from List"
+      },
+      "patient[state]": {
+        remote: "Select form List"
+      },
+      "patient[pincode]": {
+        remote: "Select from List"
+      },
+      "patient[commune]": {
+        remote: "Select from List"
+      },
+      "patient[district]": {
+        remote: "Select from List"
+      },
+      "admission[admissiondate]": {
+        required: 'Admission date is required',
+        remote: 'An admission already exists'
+      },
+      "admission[facility_id]": {
+        required: " - Location is Required",
+      },
+      "admission[doctor]": {
+        required: " - Doctor is Required",
+      },
+      "admission[case_sheet_id]": {
+        required: "Please select Case",
+      },
+      "admission[policy_expiry_date]": {
+        required: "Please select Date",
+      },
+      "admission[admission_type]": {
+        required: "Please Select Type",
+      },
+      "admission[specialty_id]": {
+        required: "Please select any Specialty",
+      },
+      "reporting_time": {
+        required: "Reporting Time is required.",
+      },
+    },
+    errorPlacement: function (error, element) {
+      var name = $(element).attr('name')
+      if((name == "patient[firstname]") || (name == "patient[mobilenumber]")) {
+        $(".required-message").find('b').css('text-shadow','red 0px 0px 10px').css('color','#333')
+      } else if(name == "patient[gender]") {
+        $(".patient-gender").siblings("label").css('text-shadow','red 0px 0px 10px')
+      } else if(name == "patient[dob]") {
+        $(".dob-error-message").text('Invalid Format.').css('text-shadow','red 0px 0px 10px')
+      } else if($(element).hasClass("select2-hidden-accessible")) {
+        element = $("#select2-" + $(element).attr("id") + "-container").parent();
+        error.insertAfter(element);
+      } else if(name == 'admission[admission_type]') {
+        $('.admission-type-error').html(`
+          <b>Please Select Type</b>
+        `).css('text-shadow','red 0px 0px 10px').css('color','#333')
+      } else if((name == "patient[pincode]") || (name == "patient[state]") || (name == "patient[city]") || (name == "patient[commune]") || (name == "patient[district]")) {
+        $(".patient_address_label").find('b').css('text-shadow','red 0px 0px 10px');
+      } else {
+        error.insertAfter(element);
+      }
+    }
+  });
+
+
+  jQuery.validator.addMethod("unique", function(value, element, params) {
+    var prefix = params;
+    var selector = jQuery.validator.format("[name!='{0}'][unique='{1}']", element.name, prefix);
+    var matches = new Array();
+    $(selector).each(function(index, item) {
+      if (value == $(item).val() && value != '') {
+        matches.push(item);
+      }
+    });
+
+    return matches.length == 0;
+  }, "Value is not unique.");
+
+  jQuery.validator.classRuleSettings.unique = {
+    unique: true
+  };
+
+  jQuery.validator.addMethod("noSpace", function(value, element) {
+    return value == '' || value.trim().length != 0;
+  });
+
+  jQuery.validator.addMethod("validDate", function(value, element) {
+    return value == '' || moment(value, 'DD/MM/YYYY', true).isValid();
+  });
+
+  $.validator.addMethod("mymail", function(value, element) {
+    return this.optional( element ) || /^([a-zA-Z0-9_\.\-])+\@(([a-zA-Z0-9\-])+\.)+([a-zA-Z0-9]{2,4})+$/.test( value );
+  }, "Enter valid email!");
+
+  $.validator.addClassRules("patient-dob", { validDate: true });
+
+  var validationArray = <%= raw @organisation_setting.try(:validate_patient) || [] %>;
+
+  for(let field of validationArray){
+    $.validator.addClassRules(`${field}`, { required: true });
+  }
+
+  if($(".admission_hospitalization_type:checked").val() == 'emergency' && country_id == 'VN_254'){
+    $.validator.addClassRules("patient-emergencycontactname", { required: true });
+    $.validator.addClassRules("patient-emergencymobilenumber", { required: true });
+  } else {
+    $.validator.addClassRules("patient-emergencycontactname", { required: false });
+    $.validator.addClassRules("patient-emergencymobilenumber", { required: false });
+  }
+}
+admission_page()

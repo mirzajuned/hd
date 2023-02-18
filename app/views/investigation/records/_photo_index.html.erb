@@ -1,0 +1,320 @@
+<div class="modal-dialog modal-lg" style="width: 90%;"> <!-- 80% -->
+  <div class="modal-content">
+    <div class="modal-header hidden-print">
+      <div class="pull-right">
+        <button aria-hidden="true" class="btn btn-sm btn-default" data-dismiss="modal">Close</button>
+      </div>
+      <div class="text-center">
+        <h4 class="modal-title">
+          <% if @investigation_detail.present? %>
+            <%= @investigation_detail.try(:name) %>
+            <% if @investigation_detail.try(:investigation_side).present? %>
+              <% if @investigation_detail.try(:investigation_side) == '40638003' %>
+                (B/E)
+              <% elsif @investigation_detail.try(:investigation_side) == '18944008' %>
+                (R)
+              <% elsif @investigation_detail.try(:investigation_side) == '8966001' %>
+                (L)
+              <% end %>
+            <% end %>
+            <% if @investigation_detail.try(:radiology_options).present? %>
+              <% if @investigation_detail.try(:radiology_options) == '90084008' %>
+                w/o contrast
+              <% elsif @investigation_detail.try(:radiology_options) == '51619007' %>
+                with contrast
+              <% elsif @investigation_detail.try(:radiology_options) == '429859008' %>
+                with complete screening
+              <% elsif @investigation_detail.try(:radiology_options) == '431985004' %>
+                screening of other region
+              <% elsif @investigation_detail.try(:radiology_options) == '22400007' %>
+                3D-reconstruction
+              <% end %>
+            <% end %>
+          <% else %>
+            Patient Asset
+          <% end %>
+        </h4>
+      </div>
+    </div>
+
+    <div class="modal-body">
+      <div class="row">
+        <div class="col-md-2">
+          <div class="row mini-images" style="overflow: auto;">
+            <div class="col-md-12 text-center">
+              <% if @current_image.present? %>
+                <img src="<%= @current_image.asset_path_url %>" data-zoom-id='zoom_01' data-image-id='<%= @current_image.id %>' class="zoom_01 img-responsive image-mini-clickable active_image" data-rel="prettyPhoto" alt="">
+                <p style="margin: 5px 0;"><%= @current_image.name %></p>
+              <% end %>
+            </div>
+            <% @all_current_investigation_uploads.each_with_index do |upload,i| %>
+              <div class="col-md-12 text-center">
+                <img src="<%= upload.asset_path.url %>" data-zoom-id='zoom_0<%= i + 2 %>' data-image-id='<%= upload.id %>' class="zoom_0<%= i + 2 %> img-responsive image-mini-clickable" data-rel="prettyPhoto" alt="">
+                <p style="margin: 5px 0;"><%= upload.name %></p>
+              </div>
+            <% end %>
+          </div>
+        </div>
+        <div class="col-md-7" style="border-left:1px solid #eee;border-right:1px solid #eee">
+          <div class="row content display-container photo-body" style="background: black;margin:0 5px;">
+            <%= render 'image_body' %>
+          </div>
+        </div>
+        <div class=" col-md-3 details-body">
+          <!-- Show Photo details -->
+          <% if @current_image.present? %>
+            <%= render partial: 'photo_detail.html.erb', locals: { current_image: @current_image } %>
+          <% end %>
+        </div>
+      </div>
+
+
+      <% enable_auto_evaluation = OrganisationsSetting.find_by(organisation_id: @current_facility.organisation_id).try(:enable_auto_evaluation) %>
+      <% if enable_auto_evaluation == true %>
+        <hr style="margin:5px;">
+        <div class="row">
+          <div class="col-md-12">
+            <div class="row mt10">
+              <div class="col-md-2">
+                Evaluation Remark :
+              </div>
+              <% if @investigation_detail.try(:evaluation_data).present? %>
+                <div class="col-md-4 evaluation-response">
+                  <%= render partial: 'investigation/investigation_details/evaluate_image.html', locals:{investigation_detail: @investigation_detail} %>
+                </div>
+              <% else %>
+                <div class="col-md-4 evaluation-response">
+                  <button class="btn btn-info evaluate-button">Auto-Evaluate</button>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+
+      <% if @investigation_detail.present? %>
+        <hr style="margin:5px;">
+        <div class="row">
+        <div class="col-md-12">
+          <div class="row mt10">
+            <div class="col-md-2">
+              Doctor's Remark :
+            </div>
+            <% if current_user.has_role?(:doctor) %>
+              <div class="col-md-4" id='doctors-remark' style="<%= 'display:none;' if @investigation_detail.try(:upload_remark).present? %>">
+                <textarea placeholder="Doctor's Remark" class="form-control doctors-remark"><%= @investigation_detail.try(:upload_remark) %></textarea>
+              </div>
+            <% end %>
+            <div class="col-md-4" id='doctors-remark-view' style="<%= 'display:none;' if @investigation_detail.try(:upload_remark).nil? %>">
+              <span class="text-remark-upload"><%= @investigation_detail.try(:upload_remark) %></span>
+              <% if current_user.has_role?(:doctor) %>
+                <button class="btn btn-link edit-doctors-remark" style="padding:0px 10px;"><i class="fa fa-edit"></i></button>
+              <% end %>
+            </div>
+            <% if current_user.has_role?(:doctor) %>
+              <div class="col-md-2 save-remark-div" style="<%= 'display:none;' if @investigation_detail.try(:upload_remark).present? %>">
+                <button class="btn btn-success save-doctors-remark">Save</button>
+              </div>
+            <% end %>
+            <!-- <div class="col-md-6">
+              Uploader's Remark :
+              <div class="input-group">
+                <input type="text" name="uploader_comment" class="form-control" placeholder="Uploader's Remark" style="padding: 8px;">
+                <span class="input-group-btn">
+                  <%#= button_tag type: 'submit', class: "btn btn-default", id: "create-comment" do %>Save<%# end %>
+                </span>
+              </div>
+            </div> -->
+          </div>
+        </div>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="modal-footer hidden-print">
+      <div class="form-actions">
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .photo-body{
+      background-color: #000;
+      height: 100%;
+      min-height: 480px;
+      position: relative;
+      text-align: center;
+      -webkit-user-select: none;
+      line-height: 520px;
+  }
+  .photo-body img{
+      max-width: 100%;
+      max-height: 100%;
+      margin: auto;
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+  }
+  .zoomContainer{
+      z-index: 9999;
+  }
+  .zoomWindow{
+      z-index: 9999;
+  }
+
+  .black, .hover-black:hover {
+      color: #fff!important;
+      background-color: #000!important;
+  }
+  .display-left {
+      position: absolute;
+      top: 50%;
+      left: 0%;
+      transform: translate(0%,-50%);
+      -ms-transform: translate(-0%,-50%);
+  }
+  .button {
+      height: 100%;
+      min-height: 480px;
+      border: none;
+      display: inline-block;
+      outline: 0;
+      padding: 8px 16px;
+      vertical-align: middle;
+      overflow: hidden;
+      text-decoration: none;
+      color: inherit;
+      background-color: inherit;
+      text-align: center;
+      cursor: pointer;
+      white-space: nowrap;
+  }
+  .display-right {
+      position: absolute;
+      top: 50%;
+      right: 0%;
+      transform: translate(0%,-50%);
+      -ms-transform: translate(0%,-50%);
+  }
+
+  .active_image {
+    box-shadow: 0 0 12px #000;
+  }
+
+</style>
+<script>
+  <% if @all_current_investigation_uploads.count > 0 %>
+    var slideIndex = 1;
+    showDivs(slideIndex);
+    function plusDivs(n) {
+        showDivs(slideIndex += n);
+        var current_image_id = $('.mySlides').siblings('img:visible').data('image-id')
+        var zoom_image_id = $('.mySlides').siblings('img:visible').attr('id')
+        $(".mini-images").find('.image-mini-clickable').removeClass('active_image')
+        $(".mini-images").find('.' + zoom_image_id).addClass('active_image')
+        $.ajax({
+            url: '/investigation/records/fetch_photo_details',
+            data: {current_image_id: current_image_id}
+        });
+    }
+
+    function showDivs(n) {
+        var i;
+        var x = document.getElementsByClassName("mySlides");
+        if (n > x.length) {slideIndex = 1}
+        if (n < 1) {slideIndex = x.length}
+        for (i = 0; i < x.length; i++) {
+            x[i].style.display = "none";
+        }
+        x[slideIndex-1].style.display = "block";
+    }
+
+    function checkKey(e) {
+      if(!($('textarea').is(":focus"))){
+        e.preventDefault()
+        e = e || window.event;
+        if ((e.keyCode == 37 || e.keyCode == 38 ) && e.target.nodeName.toLowerCase() != 'input'){
+            plusDivs(-1)
+        }else if((e.keyCode == 39 || e.keyCode == 40 ) && e.target.nodeName.toLowerCase() != 'input'){
+            plusDivs(1)
+        }
+      }
+    }
+
+    document.onkeydown = checkKey;
+
+    $(".image-mini-clickable").on('click', function(){
+      $(".mini-images").find('.image-mini-clickable').removeClass('active_image')
+      $(this).addClass('active_image')
+      var small_image_id = $(this).attr('data-zoom-id')
+      $('.mySlides').css('display','none')
+      $('#'+small_image_id).css('display','block')
+      var current_image_id = $(this).attr('data-image-id')
+      $.ajax({
+          url: '/investigation/records/fetch_photo_details',
+          data: {current_image_id: current_image_id}
+      });
+    })
+  <% end %>
+
+  $(".mini-images").css('height', $(".photo-body").height() + 'px')
+
+  $(".save-doctors-remark").on('click', function(e){
+    e.preventDefault()
+    upload_remark = $(".doctors-remark").val()
+    if(upload_remark.length > 0){
+      $.ajax({
+        type: "GET",
+        dataType: "script",
+        data: {
+          investigation_detail_id: "<%= @investigation_detail.try(:id).to_s %>",
+          upload_remark: upload_remark
+        },
+        url: '/investigation/investigation_details/save_upload_remark',
+        success: function(){
+          $("#doctors-remark").hide()
+          $("#doctors-remark-view").show()
+          $("#doctors-remark-view").find('.text-remark-upload').html(upload_remark)
+          $('.edit-remark-div').show()
+          $('.save-remark-div').hide()
+        }
+      })
+    }
+  })
+
+  $('.evaluate-button').on("click", function() {
+    $.ajax({
+      type: "GET",
+      dataType: "script",
+      url: "/investigation/investigation_details/evaluate_image",
+      data: {
+        investigation_detail_id: "<%= @investigation_detail.try(:id).to_s %>",
+        image: "<%= @current_image.asset_path_url %>"
+      },
+      success: function(data) {
+      }
+    });
+  });
+
+
+  $(".edit-doctors-remark").on('click', function(e){
+    e.preventDefault()
+    $("#doctors-remark").show()
+    $("#doctors-remark-view").hide()
+    $('.edit-remark-div').hide()
+    $('.save-remark-div').show()
+  })
+
+  $('#fill-lab-record').on('shown.bs.modal', function (e) {
+      $("#zoom_01").elevateZoom({
+          zoomType: "lens",
+          lensShape: "round",
+          lensSize: 300
+      });
+  });
+
+</script>

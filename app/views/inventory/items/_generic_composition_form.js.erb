@@ -1,0 +1,186 @@
+$('.btn-add-item').on('click', function(e){
+  e.preventDefault();
+  add_generic_composition()
+})
+
+$('.clear-generic-tag').on('click', function(e){
+  $('.generic-composition-section').html("")
+  add_generic_composition()
+  $('.btn-remove-item').attr('disabled', 'disabled')
+  $(this).hide()
+})
+
+function add_generic_composition()
+{
+  let counter = $('.generic-composition-row').length
+  $('.generic-btn-container').remove()
+  $('.generic-composition-section').append(`
+    <div class="generic-composition-row mb10 col-sm-5">
+      <div class="col-md-5">
+        <input type="text" name="inventory_item[generic_names_attributes][${counter}][name]" class='item_name form-control p5_10'>
+        <input type="hidden" name="inventory_item[generic_names_attributes][${counter}][generic_id]" class='generic_id form-control p5_10'>
+      </div>
+      <div class="col-md-5" style='padding: 0;'>
+        <div class="col-md-5" style="padding: 0;">
+          <input type="number" name="inventory_item[generic_names_attributes][${counter}][quantity]" class='item_quantity form-control p5_2' step='0.00001' min=0.0>
+        </div>
+        <div class="col-md-7" style="padding: 0;">
+          <select name="inventory_item[generic_names_attributes][${counter}][unit]" class='form-control item_unit p6_10'>
+          <option value="">Select</option>
+          <option value="E/O">E/O</option>          
+          <option value="mg">mg</option>
+          <option value="ml">ml</option>
+          <option value="%">%</option>
+          <option value="% E/O">% E/O</option>
+          <option value="% w/v">% w/v</option>
+          <option value="mg/ml">mg/ml</option>
+          <option value="w/v">w/v</option>
+          <option value="IU">IU</option>
+        </select>
+        </div>
+      </div>
+      <div class="col-md-2">
+        <button class="btn btn-danger btn-xs btn-remove-item" style="padding: 3px 10px;">&times;</button>
+      </div>
+    </div>
+    <div class='generic-btn-container col-md-1'>
+      <span class="btn btn-primary btn-xs btn-add-item" onclick='add_generic_composition()' disabled='disabled'><i class="fa fa-plus"></i></sapn>
+    </div>
+  `)
+
+
+  if(counter > 0){
+    $('.btn-remove-item').removeAttr('disabled', 'disabled')
+  }
+}
+
+$('.generic-composition-section').on('click', '.btn-remove-item', function(e){
+  e.preventDefault();
+  name = $(this).closest('.generic-composition-row').find('.item_name').val()
+  qty = $(this).closest('.generic-composition-row').find('.item_quantity').val()
+  unit = $(this).closest('.generic-composition-row').find('.item_unit').val()
+  generic_name = name+' '+qty+' '+unit
+  var a = $('.Additem').text().replace(generic_name, '')
+  $('.Additem').empty()
+  $(".Additem").text(($(".Additem").text() + ', ' + a).replace(/^, /, ''));
+  $(this).closest('.generic-composition-row').remove();
+  $('.generic-btn-container').remove()
+  $('.generic-composition-section').append(`
+    <div class='generic-btn-container col-md-1'>
+      <span class="btn btn-primary btn-xs btn-add-item" onclick='add_generic_composition()' disabled='disabled'><i class="fa fa-plus"></i></sapn>
+    </div>
+  `)
+
+  renumberIndex($('.generic-composition-row'), ['input', 'select'])
+
+  if ($('.generic-composition-row').length < 2)
+  {
+    $('.clear-generic-tag').hide()
+  }
+  if ( ($('.generic-composition-row:last .item_name').val() != '') && ($('.generic-composition-row').length > 0 ) )
+  {
+    $('.clear-generic-tag').show()
+  }
+
+  if ( ($('.generic-composition-row:last .item_name').val() != '') || ($('.generic-composition-row').length < 1 ) )
+  {
+    $('.btn-add-item').removeAttr('disabled', 'disabled')
+  }
+  else
+  {
+    $('.btn-add-item').attr('disabled', 'disabled')
+  }
+  // if(counter == 1){
+  //   $('.btn-remove-item:first').attr('disabled', 'disabled')
+  // }
+})
+
+function composition_unit(composition_unit) {
+  $('#item_generic_unit').val(composition_unit)
+}
+
+$('.generic-composition-section').on('change', '.item_unit', function(e) {
+  e.preventDefault();
+  let generic_composition_row = $(this).closest(".generic-composition-row")
+  $(generic_composition_row).find('.item_unit').val($(this).val())
+  name = $(this).closest('.generic-composition-row').find('.item_name').val()
+  qty = $(this).closest('.generic-composition-row').find('.item_quantity').val()
+  unit = $(this).closest('.generic-composition-row').find('.item_unit').val()
+  generic_name = name+' '+qty+' '+unit
+  $(".Additem").text(($(".Additem").text() + ', ' + generic_name).replace(/^, /, ''));
+})
+
+$('.generic-composition-section').on('keyup', '.item_quantity', function(e) {
+  var name = $('#generic_name').val()
+  var qty = $(this).val()
+  $('.generic-name').text(name + ' ' + qty)
+})  
+
+$('.generic-composition-section').on('keyup', '.item_name', function(e) {
+  if ($(this).val().length >= 2) {
+    $(".item_name").autocomplete({
+      minLength: 2,
+      source: function(request, response) {
+        $.ajax({
+          dataType: "json",
+          type: 'get',
+          url: '/generic_compositions/search',
+          data: {
+            q: request.term,
+            remote: "true"
+          },
+          success: function(data) {
+            response(data);
+          },
+          error: function(data) {}
+        });
+      },
+      focus: function(event, ui) {
+      },
+      select: function(event, ui) {
+        var itemname = ui.item.name;
+        var old_element = $(".generic_id[value="+ui.item.generic_id+"]")
+        if (old_element.length > 0)
+        {
+          old_element.closest('.generic-composition-row').find(".item_name").toggleClass('alert-danger', 1000).toggleClass('alert-danger', 2000);
+        }
+        else
+        {
+          $(this).prop('readonly', true).val(itemname);
+          $(this).closest('.generic-composition-row').find('.generic_id').val(ui.item.generic_id)
+          $('.generic-btn-container .btn-add-item').removeAttr('disabled', 'disabled')
+          $('.clear-generic-tag').show()    
+        }  
+        return false;
+      },
+      create: function() {
+        $(this).data('ui-autocomplete')._renderItem = function(ul, item) {
+          return $('<li>')
+            .append('<a style=\"color:#000;text-shadow: 2px\">' + item.name + '&nbsp; &nbsp; &nbsp;' + '</a>')
+            .appendTo(ul);
+        };
+      },
+    });
+  }
+})
+
+
+addButton()
+
+function addButton()
+{
+  if ($('.generic-composition-row:last item_name').val() != '')
+  {
+    $('.btn-add-item').removeAttr('disabled', 'disabled')
+  }
+  else
+  {
+    $('.btn-add-item').attr('disabled', 'disabled')
+  }
+}
+
+<% if @inventory_item.category == 'medication' && @inventory_item.generic_names.count == 0 %>
+  add_generic_composition()
+  $('.btn-add-item').attr('disabled', 'disabled')
+  $('.clear-generic-tag').hide()
+<%end%>

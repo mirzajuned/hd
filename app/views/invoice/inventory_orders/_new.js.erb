@@ -1,0 +1,250 @@
+var search_type = $("#search_type").val()
+searchTypeForm(search_type)
+
+$("#lots_search_barcode").keypress(function(e) {
+  if(e.which == 13) {
+    if ($('#lots_search_barcode').val() != '') {
+      $("#search_by_barcode").click();
+    }
+  }
+});
+
+$('#search_by_barcode').on('click', function(e) {
+  e.preventDefault();
+  $('#show_more_lots').show();
+  var query = $('#lots_search_barcode').val()
+  var searchtype = $("#search_type").val()
+  if (query != '') {
+    $.ajax({
+      type : 'get',
+      url: '/invoice/inventory_orders/filter_lots',
+      data: {
+        q: query,
+        search_type: searchtype,
+        store_id: '<%= @inventory_store.id %>',
+        item_type: '<%= @category %>',
+        remote: 'true'
+      },
+    })
+  }
+})
+
+$("input:text").focus(function() { $(this).select(); } );
+
+$(window).resize(function() {
+  adjust_height()
+})
+
+adjust_height()
+function adjust_height(){
+  modalContentHeigth = $(window).height() - 275
+  $(".items-lots").height(modalContentHeigth)
+  itemsLots = modalContentHeigth - $('.invoice-header').height()
+  $('.items-lots-body').height(itemsLots)
+  $('.items-body').height(itemsLots)
+  prescriptionHeight = $('.prescription-information').height()
+  invoiceInfoHeight = $('.invoice-information').height()
+  invoiceListHeight = modalContentHeigth - $('.invoice-title').height() - $('.invoice-common-fields').height() - prescriptionHeight - invoiceInfoHeight  - 70
+  $('.invoice-table-body').height(invoiceListHeight - $('.invoice-table-head').height())
+}
+
+function filter_index(query) {
+  if (query.length > 0){
+    $(".items-lots-search").find(".fa").show()
+  }
+  else {
+    $(".items-lots-search").find(".fa").hide()
+  }
+  $('#show_more_lots').show();
+  $.ajax({
+    type : 'get',
+    url: '/invoice/inventory_orders/filter_lots',
+    data: {
+      q: query,
+      store_id: '<%= @inventory_store.id %>',
+      item_type: '<%= @category %>',
+      remote: 'true'
+    },
+  })
+}
+
+$(".items-lots-search").find(".fa").on('click',function(){
+  $("#lots_search").val("")
+  $("#lots_search_barcode").val("")
+  $("#lots_search_generic_name").val("")
+  filter_index("")
+})
+
+$("#lots_search").on("keyup", function () {
+  query = $(this).val()
+  filter_index(query)
+})
+
+$("#lots_search_generic_name").on("keyup", function () {
+  query = $(this).val()
+  if (query.length > 0){
+    $(".items-lots-search").find(".fa").show()
+  }
+  else {
+    $(".items-lots-search").find(".fa").hide()
+  }  
+  $('#show_more_lots').show();
+  searchtype = $("#search_type").val()
+  $.ajax({
+    type : 'get',
+    url: '/invoice/inventory_orders/filter_lots',
+    data: {
+      q: query,
+      search_type: searchtype,
+      store_id: '<%= @inventory_store.id %>',
+      item_type: '<%= @category %>',
+      remote: 'true'
+    },
+  })
+})
+
+$("#lots_search_barcode").on("keyup", function () {
+  query = $(this).val()
+  if (query.length > 0){
+    $(".items-lots-search").find(".fa").show()
+  }
+  else {
+    $(".items-lots-search").find(".fa").hide()
+  }
+})
+
+$('.searchtype').on('click', function() {
+ var search_type = $(this).attr('input-value')
+  searchTypeForm(search_type)
+})
+
+function searchTypeForm(search_type)
+{
+  if (search_type == 'Description') {
+    $('.search-barcode').hide();
+    $('#lots_search').show();
+    $('#lots_search_barcode').hide();
+    $('#lots_search_generic_name').hide()
+  } else if (search_type =='GenericName'){
+    $('.search-barcode').hide();
+    $('#lots_search_barcode').hide();
+    $('#lots_search').hide();
+    $('#lots_search_generic_name').show()  
+  } else{
+    $('.search-barcode').show();
+    $('#lots_search_barcode').show();
+    $('#lots_search').hide();
+    $('#lots_search_generic_name').hide()
+  }
+  filter_index("")
+  // $(".items-lots-search .fa").trigger('click')
+}
+
+function itemFromType(type) {
+  $('.create-item-sale-order').hide()
+  if (type == 'Stockable') {
+    $('.items-lots-table').show();
+    $('.items-table').hide();
+    $('.create-item-sale-order').hide();
+    $('.vendor-nonstockable').hide()
+  } else {
+    $('.items-table').show();
+    $('.create-item-sale-order').show()
+    $('.items-lots-table').hide();
+    $('.vendor-nonstockable').show();
+  }
+}
+
+$('.itemfrom').on('click', function() {
+ var item_from = $(this).attr('input-value')
+  itemFromType(item_from)
+})
+
+itemFromType('Stockable')
+var  vendor_id = '<%= params[:vendor_id]%>'
+if(vendor_id != ''){
+  $(".stockable").removeClass("btn-brown")
+  $(".non-stockable").addClass("btn-brown")
+  itemFromType('NonStockable')
+}
+
+function isScrolledIntoLastRow(last_row_elem, scrollable_container) {
+  if (last_row_elem.length == 1) {
+    var top_of_element = $(last_row_elem).offset().top - $(scrollable_container).offset().top ;
+    var table_height = $(scrollable_container).innerHeight()
+    return top_of_element <= table_height
+  }
+}
+
+scrollinventory()
+function scrollinventory(){
+  $(".items-lots-body").scroll(function() {
+    last_row_elem = $('.items-lots-body').find('tr:nth-last-child(1)')
+    scrollable_container = $(".items-lots-body")
+    if (isScrolledIntoLastRow(last_row_elem, scrollable_container)) {
+      $("#show_more_lots").trigger("click")
+      $(".items-lots-body").off('scroll');
+      setTimeout(function() {   //calls click event after a certain time
+        scrollinventory()
+      }, 500);
+    }
+  })
+}
+$("#show_more_lots:visible").on('click', function(e){
+  e.preventDefault();
+  var total_count_row =  $('.items-lots-body tr').length;
+  var query = ""
+  var search_type = $("#search_type").val()
+  switch(search_type) {
+    case 'Description':
+      query = $("#lots_search").val()
+      break;
+    case 'GenericName':
+      query = $('#lots_search_generic_name').val()
+      break;
+    default:
+      query = $('#lots_search_barcode').val()
+  }  
+  $.ajax({
+    type: "GET",
+    dataType: "script",
+    data: {
+      total_count_row: total_count_row,
+      item_type: "<%= @category %>",
+      store_id: "<%= @inventory_store.id %>",
+      search_type: search_type,
+      q:query
+    },
+    url: "/invoice/inventory_orders/append_lots",
+  })
+})
+
+$('.create-item-sale-order').on('click', function() {
+  $("#inventory-item-modal").css({'background-color': 'rgb(0, 0, 0, .5)'})
+})
+function yes_filter(element, prev){
+   $('.tbody_medication').remove();
+   $(".items-body tr").removeClass("disabled_row")
+   $(".items-body tr").css('background-color', '#FFB6C1')
+}
+function confirmationModal(method, prev){
+  return `<div class="modal-dialog modal-sm">
+      <div class="modal-content">
+          <div class="modal-header">
+            <div class="row text-center">
+              <h5><b>Confirmation Requird!</b></h5>
+            </div>
+          </div>
+          <div class="modal-body">
+            <p>You are about to change vendor</p>
+            <p><span class='text-danger'> All unsaved changes will be lost.</span>
+            Would you still want to change vendor ?</p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-info cancel-filter" onclick='cancel_filter("${method}_dropdown", "${prev}")' data-dismiss="modal">No don't change</button>
+            <button type="button" class="btn btn-danger" onclick='yes_filter("${method}_dropdown", "${prev}")'  data-dismiss="modal">Yes change</button>
+          </div>
+      </div>
+    </div>`
+}
+<%= render partial: "invoice/inventory_orders/inventory_common_validator.js.erb" %>

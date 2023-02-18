@@ -1,0 +1,103 @@
+if ("<%=@counter%>" == 0){
+  jQuery(".inter_facility_referral_added").prepend('<%= escape_javascript(render partial: "opd_referrals/add_inter_facility_referral", locals: {i: @counter}) %>')
+} else {
+
+jQuery(".inter_facility_referral_added> .inter-facility-referral:last").after('<%= escape_javascript(render partial: "opd_referrals/add_inter_facility_referral", locals: {i: @counter}) %>')
+
+}
+
+datepicker_options = {
+  dateFormat: "dd/mm/yy",
+  minDate: 0
+};
+
+jQuery('.inter-referraltime-timepicker').timepicker({minuteStep: 5});
+jQuery('.inter-referraldate-datepicker').datepicker(datepicker_options);
+
+$(".inter-referraldate-datepicker").on('change', function(){
+  var timestamp = $(this).val() + " " + $(this).parents('.inter-facility-referral').find('.inter-referraltime-timepicker').val()
+  $(this).parents('.inter-facility-referral').find('.inter-referraldate').attr("value", timestamp)
+  $(this).parents('.inter-facility-referral').find('.inter-referraltime').attr("value", timestamp)
+})
+
+$(".inter-referraltime-timepicker").on('change', function(){
+  var timestamp = $(this).parents('.inter-facility-referral').find(".inter-referraldate-datepicker").val() + " " + $(this).val()
+  $(this).parents('.inter-facility-referral').find('.inter-referraldate').attr("value", timestamp)
+  $(this).parents('.inter-facility-referral').find('.inter-referraltime').attr("value", timestamp)
+})
+
+function get_facility_specialties(facility_id, counter) {
+  $.ajax({
+    type: "GET",
+    dataType: "json",
+    url: "/main/get_facility_specialties",
+    data: { facility_id: facility_id },
+
+    success: function (response) {
+      jQuery('#opdrecord_inter_facility_referral_attributes_'+counter+'_to_facility_specialty').children().remove();
+
+      jQuery.each(response, function (key, value) {
+        jQuery('#opdrecord_inter_facility_referral_attributes_'+ counter +'_to_facility_specialty').append($("<option></option>").attr("value", value["_id"]).text(value["name"]));
+      });
+
+      $('#opdrecord_inter_facility_referral_attributes_'+ counter +'_to_facility_specialty').css("background-color",'rgb(247, 232, 225)')
+      setTimeout(function(argument) {
+        $('#opdrecord_inter_facility_referral_attributes_'+ counter +'_to_facility_specialty').css("background-color",'')
+      }, 300)
+
+      var specialty_id = jQuery(".to_facility_specialty_"+ counter).val()
+      get_specialty_doctors(facility_id, specialty_id, counter)
+    }
+  });
+}
+
+function get_specialty_doctors(facility_id, specialty_id, counter) {
+  $.ajax({
+    type: "GET",
+    dataType: "json",
+    url: "/main/get_users_from_specialty",
+    data: { facility_id: facility_id, specialty_id: specialty_id },
+
+    success: function (response) {
+      $('#opdrecord_inter_facility_referral_attributes_'+counter+'_to_user').children().remove()
+      var users = eval(response["users"])
+
+      if (users.length == 0){
+        $('#opdrecord_inter_facility_referral_attributes_'+counter+'_to_user').append($("<option></option>").attr("value","").text("No Doctors Available for this specialty"));
+        $('#opdrecord_inter_facility_referral_attributes_'+counter+'_to_user').trigger('change');
+        $('#doc_not_found_label_'+ counter).fadeIn()
+      } else {
+        $.each(users, function(key, value) {
+          $('#opdrecord_inter_facility_referral_attributes_'+counter+'_to_user').append($("<option></option>").attr("value", value[1]).text(value[0])).trigger('change');
+        });
+        $('#doc_not_found_label_'+ counter).fadeOut()
+      }
+
+      $('#opdrecord_inter_facility_referral_attributes_'+ counter +'_to_user').css("background-color",'rgb(247, 232, 225)')
+      setTimeout(function(argument) {
+        $('#opdrecord_inter_facility_referral_attributes_'+ counter +'_to_user').css("background-color",'')
+      }, 300)
+    }
+  });
+}
+
+$('.to-facility-inter-referral').on("change", function(){
+  var facility_id = this.value
+  var counter = $(this).attr("id").match(/\d+/)[0]
+
+  get_facility_specialties(facility_id, counter)
+})
+
+$('.to_facility_specialty_dropdown').on("change", function(){
+  var specialty_id = this.value
+  var counter = $(this).attr("id").match(/\d+/)[0]
+  var facility_id = $('#opdrecord_inter_facility_referral_attributes_'+ counter +'_to_facility').val()
+
+  get_specialty_doctors(facility_id, specialty_id, counter)
+});
+
+$('#inter_facility_referral_<%=@counter%>_clear_referraldate').on('click', function(e) {
+  e.preventDefault();
+  $('#inter_facility_referral_<%=@counter%>_referraldate').val("");
+  $('#opdrecord_inter_facility_referral_attributes_<%=@counter%>_referraldate').val("");
+});

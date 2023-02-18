@@ -1,0 +1,652 @@
+<!-- Not In Use -->
+<% if false %>
+  <% @advance = AdvancePayment.where(patient_id: @admission_selected.patient_id, type: "IPD", advance_state: "None") %>
+  <% @invoice_templates = InvoiceTemplate.where(facility_id: current_facility.id, version: "v21.0") %>
+  <% @cash_register_templates = CashRegisterTemplate.where(:user_id => current_user.id) %>
+  <% @inv_ins_id = Invoice::Insurance.find_by(admission_id: @admission_selected.id) %>
+  <% @inv_est_id = Invoice::InsuranceEstimate.find_by(admission_id: @admission_selected.id) %>
+  <% @copayment = Copayment.find_by(admission_id: @admission_selected.id) %>
+  <%# if DocReminderNote.find_by(patient_id: @admission_selected.patient.id.to_s) == nil %>
+    <%# @reminder_text = "" %>
+  <%# else %>
+    <%# @reminder_text = DocReminderNote.find_by(patient_id: @admission_selected.patient.id.to_s).reminder_text %>
+  <%# end %>
+  <input type="hidden" name="none" id="admission_refresher" value="<%= @admission_selected.id.to_s %>">
+  <input type="hidden" name="none" id="tab_selector" value="">
+
+  <div class="row no_margin" style="padding: 10px 10px 10px 20px;">
+    <div class="row no_margin no_padding" style="padding: 5px;">
+      <%= hidden_field_tag :hidden_appointment_id, @admission_selected.id %>
+      <div class="col-sm-3 text-center no_padding">
+        <% if @admission_selected.patient.patientassets.count > 0%>
+          <%= image_tag(@admission_selected.patient.patientassets.last.asset_path_url, class: "patient_profile_pic") %>
+        <%else%>
+          <%= image_tag('placeholder.png', class: "patient_profile_pic") %>
+        <%end%>
+      </div>
+      <div class="col-sm-9">
+        <div class="row no_margin">
+          <h4 class="" style="display: inline">Patient Details <%= link_to edit_patient_path(:id => @admission_selected.patient.id, current_date: @current_date), :class => "btn btn-link btn-xs edit_patient_info", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#appointment-modal'} do %><i class="fa fa-edit"></i><% end %></h4>
+          <a href="/patients/summary?admission_id=<%= @admission_selected.id.to_s %>&patientid=<%= @admission_selected.patient_id.to_s %>&opd=440654001" class="pull-right btn btn-default btn-xs btn-engage-patient ps" data-remote="true">View Summary</a>
+        </div>
+        <div class="row no_margin">
+          <div class="col-sm-4 no_padding text-left">Full Name</div>
+          <div class="col-sm-1 no_padding text-left">:</div>
+          <div class="col-sm-7 no_padding"><%= @admission_selected.patient.fullname %><% if @admission_selected.patient.gender.present? %> (<%= @admission_selected.patient.gender[0] %>)<% end %></div>
+        </div>
+        <div class="row no_margin">
+          <div class="col-sm-4 no_padding text-left">Patient ID</div>
+          <div class="col-sm-1 no_padding text-left">:</div>
+          <div class="col-sm-7 no_padding"><%=PatientIdentifier.find_by(patient_id: @admission_selected.patient.id.to_s).try(:patient_org_id) %></div>
+        </div>
+        <div class="row no_margin">
+          <div class="col-sm-4 no_padding text-left">Date of Birth (Age)</div>
+          <div class="col-sm-1 no_padding text-left">:</div>
+          <div class="col-sm-6 no_padding"><%= @admission_selected.patient.dob ? @admission_selected.patient.dob.strftime("%d %b %Y") : "Unavailable" %><% if @admission_selected.patient.exact_age.present? %> <strong>|</strong> <%=@admission_selected.patient.exact_age.to_s.split("-").join(" ") %><% end %></div>
+        </div>
+        <div class="row no_margin">
+          <div class="col-sm-4 no_padding text-left">Primary Contact</div>
+          <div class="col-sm-1 no_padding text-left">:</div>
+          <div class="col-sm-7 no_padding"><%= @admission_selected.patient.mobilenumber %></div>
+        </div>
+
+        <% if @admission_selected.patient.blood_group.present? %>
+          <div class="row no_margin">
+            <div class="col-sm-4 no_padding text-left">Blood Group</div>
+            <div class="col-sm-1 no_padding text-left">:</div>
+            <div class="col-sm-7 no_padding"><%= @admission_selected.patient.blood_group %></div>
+          </div>
+        <% else %>
+          <% unless @admission_selected.patient.secondarymobilenumber.blank? %>
+            <div class="row no_margin">
+              <div class="col-sm-4 no_padding text-left">Secondary Contact</div>
+              <div class="col-sm-1 no_padding text-left">:</div>
+              <div class="col-sm-7 no_padding"><%= @admission_selected.patient.secondarymobilenumber %></div>
+            </div>
+          <% end %>
+        <% end %>
+
+        <%if PatientOtherIdentifier.find_by(patient_id: @admission_selected.patient.id).present? %>
+            <div class="row no_margin">
+              <%if PatientOtherIdentifier.find_by(patient_id: @admission_selected.patient.id).mr_no.present? && PatientOtherIdentifier.find_by(patient_id: @admission_selected.patient.id).ip_no.present?%>
+                  <div class="col-sm-2 no_padding text-left">MR NO :</div>
+                  <div class="col-sm-4 no_padding"><%= PatientOtherIdentifier.find_by(patient_id: @admission_selected.patient.id).try(:mr_no) %></div>
+                  <div class="col-sm-2 no_padding text-left">IP NO :</div>
+                  <div class="col-sm-4 no_padding"><%= PatientOtherIdentifier.find_by(patient_id: @admission_selected.patient.id).try(:ip_no) %></div>
+              <%end%>
+              <%if PatientOtherIdentifier.find_by(patient_id: @admission_selected.patient.id).mr_no.present? && PatientOtherIdentifier.find_by(patient_id: @admission_selected.patient.id).ip_no.blank?%>
+                  <div class="col-sm-4 no_padding text-left">MR NO</div>
+                  <div class="col-sm-1 no_padding text-left">:</div>
+                  <div class="col-sm-7 no_padding"><%= PatientOtherIdentifier.find_by(patient_id: @admission_selected.patient.id).try(:mr_no) %></div>
+              <%end%>
+              <%if PatientOtherIdentifier.find_by(patient_id: @admission_selected.patient.id).ip_no.present? && PatientOtherIdentifier.find_by(patient_id: @admission_selected.patient.id).mr_no.blank?%>
+                  <div class="col-sm-4 no_padding text-left">IP NO</div>
+                  <div class="col-sm-1 no_padding text-left">:</div>
+                  <div class="col-sm-7 no_padding"><%= PatientOtherIdentifier.find_by(patient_id: @admission_selected.patient.id).try(:ip_no) %></div>
+              <%end%>
+            </div>
+        <%end%>
+
+      </div>
+    </div><!-- .row -->
+    <div class="row no_margin no_padding" style="padding: 5px;">
+      <div class="col-sm-6">
+        <!-- Reminder Note Here -->
+        <!-- <div class="row no_margin">
+          <%# if current_user.roles[0].try(:name) == "doctor" || current_user.roles[1].try(:name) == "doctor" %>
+            <div class="doctor_reminder">
+              <%#= text_area_tag :reminder_text, @reminder_text, rows:1, style: "width:100%;max-width:280px;",spellcheck: "false", placeholder: "Reminder note...", class: "doc_reminder_text", title: @reminder_text%>
+            </div>
+          <%#end%>
+        </div> -->
+      </div>
+      <div class="col-sm-6">
+        <% if @admission_selected.admissiondate <= Date.current %>
+          <div class="row no_margin">
+            <% unless @admission_selected.isdischarged? %>
+              <% if @admission_selected.patient_arrived? %>
+                <%= link_to ipd_patients_discharge_path(:admission_id => @admission_selected.id, :patient_id => @admission_selected.patient.id, current_date: @current_date),class: "btn btn-danger btn-xs pull-right", :title => "Are you sure that you want to discharge -- #{@admission_selected.patient.fullname} ?", :data => {:remote => true, :confirm => "<h4>Discharge this patient ?</h4>".html_safe, :commit => 'Discharge ' + @admission_selected.patient.fullname } do %> Discharge Patient<% end %>
+                <button class="btn btn-darkblue btn-xs pull-right mark-not-arrived" style="margin-right: 5px;">NA</button>
+              <% else %>
+                <button id="mark-patient-admitted" class="btn btn-darkblue btn-xs pull-right">Admit Patient</button>
+              <% end %>
+            <% else %>
+              <span class="label label-danger pull-right">Discharged at <%= @admission_selected.dischargetime.strftime('%I:%M %p') %></span>
+              <br>
+              <% if current_user.has_role?(:owner) || current_user.has_role?(:doctor) || current_user.has_role?(:admin) %>
+                <button class="btn btn-link pull-right" id="btn-cancel_discharge" style="padding:0px;font-size:10px;color:#f00">Click to Re-Admit</button>
+              <% end %>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <% if current_facility.show_finances? %>
+      <hr style="border: 0.5 dotted #ababab; margin: 10px;"/>
+      <div class="row no_margin" style="margin-bottom: 0px; margin-right:15px;">
+      <% if @tpa.is_insured? %>
+        <div style="display: inline;">
+          <% if @inv_est_id.nil? %>
+            <span style="margin-left:10px;">Estimate Receipt Amount : <label class="label label-info"> No Receipt Found </label></span>
+          <% else %>
+            <span style="margin-left:10px;">Estimate Receipt Amount : <label class="label label-info"><i class="fa fa-rupee"></i> <%= @inv_est_id.total.to_i %> </label></span>
+          <% end %><br>
+          <% if @inv_ins_id.nil? %>
+            <span style="margin-left:10px;">Receipt Amount : <label class="label label-success"> No Receipt Found </label></span>
+          <% else %>
+            <span style="margin-left:10px;">Receipt Amount : <label class="label label-success"><i class="fa fa-rupee"></i> <%= @inv_ins_id.net_amount.to_i %> </label></span>
+          <% end %>
+        </div>
+      <% else %>
+        <% @invoices = Invoice::Ipd.where(admission_id: @admission_selected.id) %>
+        <% if @invoices.count < 1 %>
+          <div style="display: inline; margin-left: 10px;">
+            Receipt Amount : <label class="label label-success"> No Receipt Found </label>
+          </div>
+        <% else %>
+          <% maintotalinvoice =  @invoices.pluck(:net_amount) %>
+          <div style="display: inline; margin-left: 10px;">
+            Receipt Amount : <label class="label label-success"><i class="fa fa-rupee"></i> <%= (maintotalinvoice.inject(0){|sum,x| sum + x }).to_i %> </label>
+          </div>
+        <% end %>
+      <% end %>
+      <% if @tpa.is_insured? %>
+        <div class="btn-group pull-right" style="margin-bottom: 0; margin-left: 10px;margin-top:-15px;">
+      <% else %>
+        <div class="btn-group pull-right" style="margin-bottom: 0; margin-left: 10px;">
+      <% end %>
+        <% if @tpa.is_insured? %>
+          <div class="btn-group">
+            <% if @inv_est_id.nil? %>
+              <%= link_to new_invoice_insurance_estimate_path(:tpa_id => @tpa.id.to_s, :admission_id => @admission_selected.id, :patient_id => @admission_selected.patient_id), class: "btn btn-info btn-xs", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#insurance-modal'} do %> Estimate Receipt <% end %>
+            <% else %>
+              <%= link_to invoice_insurance_estimate_path(id: @inv_est_id.id), class: "btn btn-info btn-xs", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#insurance-modal'} do %> View Estimate Receipt <% end %>
+            <% end %>
+            <button type="button" class="btn btn-xs btn-success dropdown-toggle" data-toggle="dropdown">
+            <i class="fa fa-rupee"></i> Receipt</button>
+            <ul class="dropdown-menu" role="menu" aria-labelledby="invoice-print-dropdown" style="margin-left:7%;">
+              <% if @inv_ins_id.nil? %>
+                <!-- Free Receipt -->
+                <li style="text-align:center;">
+                  <%= link_to new_invoice_insurance_path(:tpa_id => @tpa.id.to_s, :admission_id => @admission_selected.id, :patient_id => @admission_selected.patient_id), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#insurance-modal'} do %> New Receipt <% end %>
+                </li>
+              <% else %>
+                <!-- Free Receipt -->
+                <li style="text-align:center;">
+                  <%= link_to invoice_insurance_path(id: @inv_ins_id.id), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#insurance-modal'} do %> View Receipt <% end %>
+                </li>
+              <% end %>
+              <% if @copayment.nil? %>
+                <li style="text-align:center;">
+                  <%= link_to new_copayment_path(:admission_id => @admission_selected.id), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#insurance-modal'} do %> Co Payment <% end %>
+                </li>
+              <% else %>
+                <li style="text-align:center;">
+                  <%= link_to edit_copayment_path(id: @copayment.id, admission_id: @admission_selected.id), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#insurance-modal'} do %><i class="fa fa-edit fa-xs"></i> Co Payment <% end %>
+                </li>
+              <% end %>
+            </ul>
+          </div>
+        <% else %>
+          <div class="btn-group">
+            <button type="button" class="btn btn-xs btn-success dropdown-toggle" data-toggle="dropdown">
+              <i class="fa fa-rupee"></i> Receipt
+            </button>
+            <ul class="dropdown-menu" role="menu" aria-labelledby="invoice-print-dropdown">
+              <!-- Stored Receipts -->
+              <% @invoice_templates.each do |invoice_template| %>
+                <li style="text-align:center;">
+                  <%= link_to new_invoice_ipd_path(:admissionid => @admission_selected.id, :typeid => Global.ehrcommon.ipd.id, :type => Global.ehrcommon.ipd.abbr,:invoice_template => invoice_template[:template_details]), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#invoice-modal'} do %><%= invoice_template[:name]%><% end %>
+                </li>
+              <% end %>
+              <!-- Free Receipt -->
+              <li style="text-align:center;">
+                <a href="#" class="ipd_invoice_action text-center" data-path="/invoice/ipd/new" data-typeid="<%= Global.ehrcommon.ipd.id %>" data-type="<%= Global.ehrcommon.ipd.abbr %>" data-toggle="modal" data-target="#invoice-modal">Create Free Receipt</a>
+              </li>
+              <!-- Advance Receipt -->
+              <li style="text-align:center;">
+                <%= link_to new_invoice_advance_payment_path(:admission_id => @admission_selected.id, :type => Global.ehrcommon.ipd.abbr, patient_id: @admission_selected.patient_id), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#invoice-modal'} do %> Advance Receipt<% end %>
+              </li>
+              <!-- Refund Receipt -->
+<!--              <li style="text-align:center;">-->
+<!--                <%#= link_to new_invoice_refund_payment_path(:admission_id => @admission_selected.id, :type => Global.ehrcommon.ipd.abbr, patient_id: @admission_selected.patient_id), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#invoice-modal'} do %> Refund Receipt<%# end %>-->
+<!--              </li>-->
+              <!-- Old Invoices -->
+              <% patient_pastinvoices = Invoice::Ipd.where(:patient_id => @admission_selected.patient_id) %>
+              <% if patient_pastinvoices.size > 0 %>
+                <li class="old_invoice_ss"><span>Previous Receipts</span></li>
+                <% patient_pastinvoices.newest_invoice_first.each do |patient_pastinvoice| %>
+                    <li style="text-align:center;">
+                      <%= link_to invoice_ipd_path(:id => patient_pastinvoice.id), :data => {:remote => true} do %><%= patient_pastinvoice.created_at.strftime("%d %b'%y at %I:%M %p") %><% end %>
+                    </li>
+                <% end %>
+              <% end %>
+              <!-- All Invoices End -->
+            </ul>
+          </div>
+
+      <!--     <div class="btn-group">
+            removed_cash_register_from_here
+          </div> -->
+          <!-- Cash Register End -->
+        <% end %>
+      </div><!-- btn-group -->
+      </div>
+      <% if @advance.count > 0 %>
+      <div class="row no_margin">
+        <div class="col-sm-4">
+            <% maintotaladvance =  @advance.all.pluck(:amount) %>
+            <span>Advance Payment : <label class="label label-warning"><i class="fa fa-rupee"></i> <%= (maintotaladvance.inject(0){|sum,x| sum + x }).to_i %> </label></span>
+        </div>
+        <div class="col-sm-8">
+          <p style="font-size:10px;"><b style="font-size:14px;">Note:</b> This is Amount Which Is Not Yet Been Adjusted Or Refunded</p>
+        </div>
+        <div class="col-sm-12">
+          <b>Advances :</b> <span style="font-size:9px;">(Click to Edit)</span>
+        </div>
+        <% @advance.each do |adv| %>
+          <div class="col-sm-4">
+            <%= link_to edit_invoice_advance_payment_path(id: adv.id,:admission_id => @admission_selected.id, :type => Global.ehrcommon.ipd.abbr, patient_id: @admission_selected.patient_id), class: "btn btn-xs btn-default", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#invoice-modal'} do %><i class="fa fa-rupee"></i><%= adv.amount %> on <%= adv.created_at.strftime("%d %b'%y") %><% end %>
+          </div>
+        <% end %>
+      </div>
+      <% end %>
+    <% end %>
+    <hr style="border: 0.5 dotted #ababab; margin: 10px;"/>
+    <div class="row no_margin no_padding" style="padding: 5px;">
+      <div class="col-sm-12">
+        <div class="row no_margin">
+          <h4 class="" style="display: inline">Admission Details</h4>
+          <%= link_to edit_admission_path(:id => @admission_selected.id, current_date: @current_date), :class => "btn btn-link btn-xs edit_patient_info", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#admission-modal'} do %><i class="fa fa-edit"></i><% end %>
+          <% unless @admission_selected.patient_arrived? %>
+            <%= link_to admission_path(:id => @admission_selected.id),class: "btn btn-link btn-xs pull-right",method: 'delete', :title => "Delete this admission ?", :data => {:remote => true, :confirm => "<h4>Are you sure that you want to delete admission for -- #{@admission_selected.patient.fullname} ?</h4>".html_safe, :commit => 'Delete Admission' }, style: "margin-top: -5px;color:#f00;" do %>Delete Admission<% end %>
+          <% end %>
+        </div>
+        <div class="row no_margin yes_padding">
+          <div class="col-sm-3 no_padding text-left">Assigned Doctor</div>
+          <div class="col-sm-1 no_padding text-left">:</div>
+          <div class="col-sm-3 no_padding"><%= User.find(@admission_selected.doctor).fullname %></div>
+          <div class="col-sm-1 no_padding text-left">ID</div>
+          <div class="col-sm-1 no_padding text-left">:</div>
+          <div class="col-sm-3 no_padding"><%= @admission_selected.display_id %></div>
+        </div>
+        <div class="row no_margin yes_padding">
+          <div class="col-sm-3 no_padding text-left">Admission Reason</div>
+          <div class="col-sm-1 no_padding text-left">:</div>
+          <div class="col-sm-6 no_padding"><% if @admission_selected.admissionreason.present? %><%= @admission_selected.admissionreason %><% else %> Not Stated <% end %></div>
+        </div>
+        <div class="row no_margin yes_padding">
+          <div class="col-sm-3 no_padding text-left">Management Plan</div>
+          <div class="col-sm-1 no_padding text-left">:</div>
+          <div class="col-sm-8 no_padding"><% if @admission_selected.managementplan.present? %><%= @admission_selected.managementplan %><% else %>No Plans Mentioned<% end %></div>
+        </div>
+        <% if Ward.where(:facility_id => current_facility.id).count > 0 %>
+          <div class="row no_margin yes_padding">
+            <div class="col-sm-3 no_padding text-left">Bed Assigned&nbsp; ( <i class="fa fa-bed"></i> )</div>
+            <div class="col-sm-1 no_padding text-left">:</div>
+            <div class="col-sm-8 no_padding">
+              <% if @admission_selected.daycare == true %>
+                Daycare &nbsp;<% unless @admission_selected.isdischarged? %><%= link_to ipd_patients_new_bed_path(:admissionid => @admission_selected.id, :patientid => @admission_selected.patient.id),:class => "btn btn-link btn-xs assign_new_bed",:title => "Assign Bed", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#inpatient-modal'} do %> <i class="fa fa-edit"></i><% end %><% end %>
+              <% else %>
+                <% if @admission_selected.ward_id.nil? %>
+                  Daycare &nbsp;<% unless @admission_selected.isdischarged? %><%= link_to ipd_patients_new_bed_path(:admissionid => @admission_selected.id, :patientid => @admission_selected.patient.id),:class => "btn btn-link btn-xs assign_new_bed",:title => "Assign Bed", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#inpatient-modal'} do %> <i class="fa fa-edit"></i><% end %><% end %>
+                <% else %>
+                  <%= Room.find(@admission_selected.room_id).beds.find(@admission_selected.bed_id).code %> (<%= Ward.find(@admission_selected.ward_id).name %>/<%= Room.find(@admission_selected.room_id).name %>) &nbsp;<% unless @admission_selected.isdischarged? %><%= link_to ipd_patients_new_bed_path(:admissionid => @admission_selected.id, :patientid => @admission_selected.patient.id),:class => "btn btn-link btn-xs edit_existing_bed", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#inpatient-modal'} do %> <i class="fa fa-edit"></i><% end %><% end %>
+                <% end %>
+              <% end %>
+            </div>
+          </div>
+        <% else %>
+          <div class="row no_margin yes_padding">
+            <div class="col-sm-3 no_padding text-left">Bed ( <i class="fa fa-bed"></i> )</div>
+            <div class="col-sm-1 no_padding text-left">:</div>
+            <div class="col-sm-8 no_padding">
+              Daycare
+            </div>
+          </div>
+        <% end %>
+        <% unless @admission_selected.isdischarged? %>
+          <div class="row no_margin yes_padding">
+            <div class="col-sm-3 no_padding text-left">Consents</div>
+            <div class="col-sm-1 no_padding text-left">:</div>
+            <div class="col-sm-8 no_padding" style="margin-top:0px">
+              <%= link_to ipd_patients_print_admissionconsent_path(:admission_id => @admission_selected.id, :patient_id => @admission_selected.patient.id, :format => :pdf), class: "btn btn-danger btn-xs consent_for_patients", :target => "_blank" do %><i class="fa fa-print"></i>&nbsp; Admission<% end %>&nbsp;
+              <%= link_to inpatient_ipd_records_consent_note_path(:admission_id => @admission_selected.id, :patient_id => @admission_selected.patient.id),class: "btn btn-danger btn-xs consent_for_patients", :remote => true do %><i class="fa fa-print"></i>&nbsp; Operative<% end %>
+              <%= link_to ipd_patients_scheduleot_path(:admission_id => @admission_selected.id, :patient_id => @admission_selected.patient.id, ottime: "current_time"), class: "btn btn-info btn-xs pull-right", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#templates-modal'} do %> Schedule OT<% end %>
+            </div>
+          </div>
+          <div class="row no_margin yes_padding" style="margin-top:10px;">
+            <div class="col-sm-3 no_padding text-left">Notes</div>
+            <div class="col-sm-1 no_padding text-left">:</div>
+            <div class="col-sm-8 no_padding">
+              <% ipdrecord_find_admissionnote = Inpatient::IpdRecord.find_by(:admission_id => @admission_selected.id.to_s, :patient_id => @admission_selected.patient.id.to_s, :template_type => "admissionnote") %>
+              <% if ipdrecord_find_admissionnote.nil? %>
+                <%= link_to new_inpatient_ipd_record_path(:admission_id => @admission_selected.id.to_s,:templatetype => 'admissionnote'), class: "btn btn-primary btn-xs notes_for_patients admission_note", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#ipdrecord-modal'} do %> Admission<% end %>
+              <% else %>
+                <%= link_to edit_inpatient_ipd_record_path(:id => ipdrecord_find_admissionnote.id.to_s, :admission_id => @admission_selected.id.to_s, :templatetype => 'admissionnote'), class: "btn btn-primary btn-xs notes_for_patients admission_note", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#ipdrecord-modal'} do %> <i class="fa fa-edit"></i> Admission<% end %>
+              <% end %>
+              &nbsp;
+              <% ipdrecord_find_otnote = Inpatient::IpdRecord.find_by(:admission_id => @admission_selected.id.to_s, :patient_id => @admission_selected.patient.id.to_s, :template_type => "operativenote") %>
+              <% if ipdrecord_find_otnote.nil? %>
+                  <%= link_to new_inpatient_ipd_record_path(:admission_id => @admission_selected.id, :templatetype => 'operativenote'), class: "btn btn-primary btn-xs notes_for_patients operative_note", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#ipdrecord-modal'} do %> Operative<% end %>
+              <% else %>
+                  <%= link_to edit_inpatient_ipd_record_path(:id => ipdrecord_find_otnote.id.to_s, :admission_id => @admission_selected.id.to_s, :templatetype => 'operativenote'), class: "btn btn-primary btn-xs notes_for_patients operative_note", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#ipdrecord-modal'} do %> <i class="fa fa-edit"></i> Operative<% end %>
+              <% end %>
+              &nbsp;
+              <% ipdrecord_find_dcnote = Inpatient::IpdRecord.find_by(:admission_id => @admission_selected.id.to_s, :patient_id => @admission_selected.patient.id.to_s, :template_type => "dischargenote") %>
+              <% if ipdrecord_find_dcnote.nil? %>
+                  <%= link_to new_inpatient_ipd_record_path(:admission_id => @admission_selected.id, :templatetype => 'dischargenote'), class: "btn btn-primary btn-xs notes_for_patients discharge_note", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#ipdrecord-modal'} do %> Discharge<% end %>
+              <% else %>
+                  <%= link_to edit_inpatient_ipd_record_path(:id => ipdrecord_find_dcnote.id.to_s, :admission_id => @admission_selected.id.to_s, :templatetype => 'dischargenote'), class: "btn btn-primary btn-xs notes_for_patients discharge_note", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#ipdrecord-modal'} do %> <i class="fa fa-edit"></i> Discharge<% end %>
+              <% end %>|
+              <%= link_to ipd_patients_view_all_discharge_notes_path(:admission_id => @admission_selected.id, :patient_id => @admission_selected.patient.id), class: "btn btn-primary btn-xs notes_for_patients", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#templates-modal'} do %>All Notes <% end %>
+            </div>
+          </div>
+          <% unless @admission_selected.bed_id.nil? %>
+            <div class="row no_margin yes_padding" style="margin-top:10px;">
+              <div class="col-sm-3 no_padding text-left">Ward Notes</div>
+              <div class="col-sm-1 no_padding text-left">:</div>
+              <div class="col-sm-8 no_padding" style="margin-top:0px">
+                <% ipdrecord_find_wardnote = Inpatient::IpdRecord.where(:admission_id => @admission_selected.id.to_s, :patient_id => @admission_selected.patient.id.to_s, :template_type => "wardnote") %>
+                <% if ipdrecord_find_wardnote.count == 0 %>
+                    <%= link_to new_inpatient_ipd_record_path(:admission_id => @admission_selected.id, :templatetype => 'wardnote'), class: "btn btn-primary btn-xs notes_for_patients", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#ipdrecord-modal'} do %> New<% end %>
+                <% else %>
+                    <%= link_to new_inpatient_ipd_record_path(:admission_id => @admission_selected.id, :templatetype => 'wardnote'), class: "btn btn-primary btn-xs notes_for_patients", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#ipdrecord-modal'} do %> New<% end %>
+                    &nbsp;
+                    <%= link_to inpatient_ipd_records_all_ward_note_path(admission_id: @admission_selected.id), class: "btn btn-primary btn-xs notes_for_patients", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#ipdrecord-modal'} do %> View All<% end %>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        <% else %>
+          <div class="row no_margin yes_padding">
+            <div class="col-sm-3 no_padding text-left">All Notes</div>
+            <div class="col-sm-1 no_padding text-left">:</div>
+            <div class="col-sm-6 no_padding text-left">
+              <%= link_to ipd_patients_view_all_discharge_notes_path(:admission_id => @admission_selected.id, :patient_id => @admission_selected.patient.id), class: "btn btn-primary btn-xs notes_for_patients", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#templates-modal'} do %> <i class="fa fa-print"></i> Notes to Patient <% end %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div><!-- .row -->
+    <% if @admission_selected.insurance_status == "Not Insured" %>
+      <hr style="border: 0.5 dotted #ababab; margin: 10px;"/>
+      <div class="row no_margin no_padding" style="padding: 5px;">
+        <div class="col-md-12">
+          <div class="row no_margin">
+            <h4 class="" style="display: inline">Insurance Details<% unless @admission_selected.isdischarged? %><%= link_to edit_inpatient_insurance_path(id: @tpa.id.to_s,current_date: @current_date), data: {remote: true, 'toggle':  "modal", 'target': '#insurance-modal'}, class: "btn btn-link btn-xs edit_insurance_info", id: "isinsured_waiting" do %><i class="fa fa-edit"></i> Insure<% end %><% end %></h4>
+              <label class="label label-default pull-right" style="font-size:12px;">Status: Not Insured</label>
+          </div>
+        </div>
+      </div>
+    <% else %>
+      <hr style="border: 0.5 dotted #ababab; margin: 10px;"/>
+      <div class="row no_margin no_padding" style="padding: 5px;">
+        <div class="col-sm-12">
+          <div class="row no_margin">
+            <% if @tpa.insurance_status == "Waiting" %>
+              <h4 class="" style="display: inline">Insurance Details<% unless @admission_selected.isdischarged? %><%= link_to inpatient_insurance_path(id: @tpa.id.to_s,current_date: @current_date, click_path:"Admission List"), data: {remote: true, 'toggle':  "modal", 'target': '#insurance-modal'}, class: "btn btn-link btn-xs edit_patient_info", id: "isinsured_waiting" do %><i class="fa fa-edit"></i><% end %><% end %></h4>
+              <label class="label label-info pull-right" style="font-size:12px;">Status: Waiting</label>
+            <% elsif @tpa.insurance_status == "Approved" %>
+              <h4 class="" style="display: inline">Insurance Details<% unless @admission_selected.isdischarged? %><%= link_to inpatient_insurance_path(id: @tpa.id.to_s,current_date: @current_date, click_path:"Admission List"), data: {remote: true, 'toggle':  "modal", 'target': '#insurance-modal'}, class: "btn btn-link btn-xs edit_patient_info", id: "isinsured_waiting" do %><i class="fa fa-edit"></i><% end %><% end %></h4>
+              <label class="label label-success pull-right" style="font-size:12px;">Status: Approved</label>
+            <% elsif @tpa.insurance_status == "Rejected" %>
+              <h4 class="" style="display: inline">Insurance Details<% unless @admission_selected.isdischarged? %><%= link_to inpatient_insurance_path(id: @tpa.id.to_s,current_date: @current_date, click_path:"Admission List"), data: {remote: true, 'toggle':  "modal", 'target': '#insurance-modal'}, class: "btn btn-link btn-xs edit_patient_info", id: "isinsured_waiting" do %><i class="fa fa-edit"></i><% end %><% end %></h4>
+              <label class="label label-danger pull-right" style="font-size:12px;">Status: Rejected</label>
+            <% end %>
+          </div>
+          <div class="row no_margin yes_padding">
+            <div class="col-sm-3 no_padding text-left">Insurance Name</div>
+            <div class="col-sm-1 no_padding text-left">:</div>
+            <div class="col-sm-3 no_padding"><% if @tpa.insurance_name.present? %><%= @tpa.insurance_name %><% else %>Not Mentioned<% end %></div>
+            <div class="col-sm-2 no_padding text-left">TPA Name</div>
+            <div class="col-sm-1 no_padding text-left">:</div>
+            <div class="col-sm-2 no_padding"><% if @tpa.tpa_contact_id.present? %><%= Contact.find_by(id: @tpa.tpa_contact_id)&.display_name %><% else %>Not Mentioned<% end %></div>
+            
+          </div>
+          <div class="row no_margin yes_padding">
+            <div class="col-sm-4 no_padding text-left">Policy No. : <% if @tpa.policy_no.present? %><%= @tpa.policy_no %><% else %>--<% end %></div>
+            <div class="col-sm-4 no_padding text-left">Bracket Amount : <% if @tpa.bracket_amount.present? %><%= @tpa.bracket_amount %><% else %>--<% end %></div>
+            <div class="col-sm-4 no_padding text-left">Approved Amount : <% if @tpa.approved_amount.present? %><%= @tpa.approved_amount %><% else %>--<% end %></div>
+          </div>
+          <% if @tpa.comment.present? %>
+            <div class="row no_margin yes_padding">
+              <div class="col-sm-3 no_padding text-left">Comments</div>
+              <div class="col-sm-1 no_padding text-left">:</div>
+              <div class="col-sm-8 no_padding"><%= @tpa.comment %></div>
+            </div>
+          <% end %>
+          <div class="row no_margin yes_padding">
+            <div class="col-sm-3 no_padding text-left">Insurance Actions</div>
+            <div class="col-sm-1 no_padding text-left">:</div>
+            <div class="col-sm-6 no_padding text-left">
+              <% @courier_save = Inpatient::Insurance::Courier.find_by(admission_id: @admission_selected.id) %>
+              <% if @courier_save.nil? %>
+                <%= link_to new_inpatient_courier_path(:tpa_id => @tpa.id.to_s, :admission_id => @admission_selected.id, :patient_id => @admission_selected.patient_id), class:"btn btn-info btn-xs edit_courier_info", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#insurance-modal'} do %> Courier Details <% end %>
+              <% else %>
+                <%= link_to inpatient_courier_path(id: @courier_save.id), class:"btn btn-info btn-xs edit_courier_info", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#insurance-modal'} do %> Show Courier Details <% end %>
+              <% end %>
+              <!-- Upload Paper Record -->
+                <button data-toggle="dropdown" title="Insurance Docs" id="upload_paper_<%= @admission_selected.id.to_s %>" class="dropdown-toggle btn btn-xs btn-default hg-tooltip">
+                  <i class="fa fa-info"></i><b>nsurance Uploads</b>
+                </button>
+                <ul role="menu" class="dropdown-menu pull-right">
+                  <li><%= link_to paperrecords_upload_patient_asset_path(:patientid => @admission_selected.patient.id, :category => "insurance"),:target => '_blank' do %> <i class="glyphicon glyphicon-cloud-upload"></i> Insurance Uploads <% end %></li>
+                  <% @insurance_assets = PatientSummaryAssetUpload.where(parent_folder_id: "560cc6f72b2e26135d000004", patient_id: @admission_selected.patient.id, is_deleted: false) %>
+                  <% if @insurance_assets.count > 0 %>
+                    <li class="old_invoice_ss" style="text-align: center;font-size: 10px;opacity: 0.6; border-bottom: 1px solid #eee;border-top: 1px solid #eee;margin-top: 5px;"><span>Uploaded Documents</span></li>
+                    <% @insurance_assets.each do |psau| %>
+                      <li style="text-align:center;"><a href=<%= psau.asset_path.url %> target="_blank"><%= psau.name %></a></li>
+                    <% end %>
+                  <% end %>
+                </ul>
+              <!-- Upload Paper Record End -->
+            </div>
+          </div>
+        </div>
+      </div><!-- .row -->
+    <% end %>
+    <hr style="border: 0.5 dotted #ababab; margin: 10px;"/>
+    <% if @tpa.is_insured? %>
+
+      <% end %>
+    <!-- <div class="row no_margin no_padding">
+      <div class="row no_margin no_padding" style="padding: 5px;">
+        <div class="col-sm-12">
+          <div class="row no_margin">
+            <div class="col-md-3"></div>
+          </div>
+        </div>
+      </div>
+    </div> -->
+      </div>
+  </div>
+
+
+
+  <style type="text/css">
+    .patient_profile_pic{
+      border: 3px solid white;
+      border-radius: 3px;
+      box-shadow: 0px 0px 5px rgba(0,0,0,0.4);
+      width: 75%;
+      height: 85%;
+    }
+
+    .btn-engage-patient{
+      margin-left: 10px;
+    }
+
+    .edit_patient_info,.edit_insurance_info,.assign_new_bed,.edit_existing_bed,.edit_patient_info_ward {
+      color: #636e7b;
+    }
+    .edit_patient_info:hover,.edit_insurance_info:hover,.assign_new_bed:hover,.edit_existing_bed:hover,.edit_patient_info_ward:hover {
+      text-decoration: none;
+      color: #636e7b;
+    }
+    .yes_padding {
+      padding: 2px 5px;
+    }
+
+    .consent_for_patients {
+      color: #d9534f;
+      background-color: transparent;
+    }
+
+    .notes_for_patients {
+      color: #337ab7;
+      background-color: transparent;
+    }
+
+    .edit_courier_info {
+      color: #5bc0de;
+      background-color: transparent;
+    }
+
+    .consent_for_patients:hover, .notes_for_patients:hover, .edit_courier_info:hover {
+      text-decoration: none;
+    }
+
+    .old_invoice_ss {
+      text-align:center;
+      font-size:10px;
+      border-top: 1px solid #ccc;
+      border-bottom: 1px solid #ccc;
+    }
+
+    /*.doc_reminder_text{
+      border: 0px;
+      width: 90%;
+      color: white;
+      background: #3071A9;
+      border-radius: 3px;
+      padding: 3px;
+      overflow-y: hidden;
+    }
+
+    .doc_reminder_text:focus {
+      background-color: #FFF;
+      color: #000;
+    }
+
+    .doc_reminder_text:hover {
+
+    }*/
+  </style>
+
+  <script type="text/javascript">
+    $(".edit_patient_info").on('hover', function(){
+      $(this).append("&nbsp;Edit")
+    })
+    $(".edit_patient_info").on('mouseleave', function(){
+      $(this).html("<i class='fa fa-edit'></i>")
+    })
+
+    $(".assign_new_bed").on('hover', function(){
+      $(this).append("&nbsp;Assign Bed")
+    })
+    $(".assign_new_bed").on('mouseleave', function(){
+      $(this).html("<i class='fa fa-edit'></i>")
+    })
+
+    $(".edit_existing_bed").on('hover', function(){
+      $(this).append("&nbsp;Change Bed")
+    })
+    $(".edit_existing_bed").on('mouseleave', function(){
+      $(this).html("<i class='fa fa-edit'></i>")
+    })
+
+    function refresh_stuff(){
+      $("#sidebar_doctors_admission").find(".current_doctor_admission").find('a').trigger('click');
+    }
+
+    function refresh_stuffx(){
+      var x = $(".summary_admission_clickable").attr('data-admission-id')
+      $("#sidebar_doctors_admission").find(".current_doctor_admission").find('a').trigger('click');
+      if($(".summary_admission_clickable").length > 1){
+        $(".admission_type_content").find("[data-admission-id='" + x + "']").trigger('click');
+      } else {
+        $("#admission_summary").remove();
+      }
+    }
+
+    $(".ipd_invoice_action").on('click', function(e){
+      e.preventDefault();
+      var _this = this;
+      $.ajax({
+        url: $(_this).attr('data-path'),
+        dataType: 'script',
+        data: {
+          type: $(_this).attr('data-type'),
+          cash_register_template: $(_this).attr('data-cash-register-template'),
+          typeid: $(_this).attr('data-typeid'),
+          admissionid: "<%= @admission_selected.id %>",
+          admission_id: "<%= @admission_selected.id %>"
+        }
+      })
+    })
+
+    // $(".doc_reminder_text").on('focusout',function(e){
+
+    //   $(this).attr('title',$(this).val())
+
+
+    //   jQuery.ajax({
+    //     type: "GET",
+    //     url: '/patients/save_doc_reminder_note',
+    //     data: {
+    //       reminder_text: $(this).val(),
+    //       patient_id:'<%= @admission_selected.patient.id.to_s %>',
+    //       doctor_id: '<%= @admission_selected.doctor.to_s %>',
+    //       remote: "true"
+    //     },
+    //     success: function(res){
+    //     }
+    //   });
+    // })
+
+    $("#mark-patient-admitted").on('click', function(){
+      jQuery.ajax({
+        type: "GET",
+        dataType: "json",
+        url: "/admissions/"+ '<%= @admission_selected.id.to_s %>' +"/patient_arrived",
+        data: {
+          id: '<%= @admission_selected.id.to_s %>'
+        },
+        success: function(res){
+          refresh_stuffx()
+        }
+      })
+    })
+
+    $("#btn-cancel_discharge").on('click', function(){
+      jQuery.ajax({
+        type: "GET",
+        dataType: "json",
+        url: "/admissions/"+ '<%= @admission_selected.id.to_s %>' +"/cancel_discharge",
+        data: {
+          id: '<%= @admission_selected.id.to_s %>'
+        },
+        success: function(res){
+          refresh_stuff()
+        }
+      })
+    })
+
+    $(".mark-not-arrived").on('click', function(){
+      jQuery.ajax({
+        type: "GET",
+        dataType: "JSON",
+        url: "/admissions/"+ '<%= @admission_selected.id.to_s %>' +"/mark_not_arrived",
+        data: {
+          id: '<%= @admission_selected.id.to_s %>'
+        },
+        success: function(res){
+          refresh_stuffx()
+        }
+      })
+    })
+
+  </script>
+<% end %>

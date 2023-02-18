@@ -1,0 +1,182 @@
+<% if @exception_sessions.active.count > 0 %>
+  <div class="row">
+    <div class="col-md-12">
+      <table class="table">
+        <thead>
+          <tr>
+            <th class="text-center bg-info" colspan="3"><b>Active Exceptions</b></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @exception_sessions.active.includes(:facility).group_by(&:shared_id).each do |shared_id, sessions| %>
+            <% next if sessions.empty? %>
+            <tr>
+              <td class="text-center" colspan="3">
+                <%= sessions[0]&.start_date&.strftime('%d %b\'%y') %> - <%= sessions[0]&.end_date&.strftime('%d %b\'%y') %>
+              </td>
+            </tr>
+            <tr>
+              <% sessions.group_by(&:days).each do |days, g_sessions| %>
+                <td class="text-center" colspan="3">
+                  <%= days.join(' - ') %>
+                </td>
+                <tr>
+                  <% g_sessions.each_with_index do |session, i| %>
+                    <td class="text-center">
+                      Session <%= i + 1 %><br>
+                      <%= session.facility.name %> - <%= session.department_name %><br>
+                      <%= session.start_time %> - <%= session.end_time %><br>
+                      <%= session.slot_duration %> Minutes - <%= session.time_duration %> Minutes
+                    </td>
+                  <% end %>
+                </tr>
+              <% end %>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+<% end %>
+
+<% @exception_sessions.future.group_by(&:shared_id).each do |shared_id, sessions| %>
+  <% days = sessions[0]&.days %>
+  <% start_date = sessions[0]&.start_date&.strftime('%d/%m/%Y') %>
+  <% end_date = sessions[0]&.end_date&.strftime('%d/%m/%Y') %>
+
+  <div class="exception-sessions-row">
+    <hr>
+    <div class="row">
+      <div class="col-md-12">
+        <div class="row mb10">
+          <div class="col-md-3">
+            <b>Start Date</b>
+            <%= text_field_tag 'user_time_slot[0][exception_start_date]', start_date, class: 'form-control p5_10 exception_sessions_0_start_date exception_sessions_start_date', readonly: 'readonly' %>
+          </div>
+          <div class="col-md-3">
+            <b>End Date</b>
+            <%= text_field_tag 'user_time_slot[0][exception_end_date]', end_date, class: 'form-control p5_10 exception_sessions_0_end_date exception_sessions_end_date', readonly: 'readonly' %>
+          </div>
+        </div>
+        <div class='sub-section'>
+          <% sessions.group_by(&:days).each do |days, g_sessions| %>
+            <div class="sub-section-rows">
+              <hr>
+              <div class="row mb10 each-ckbox">
+                <div class="col-md-10">
+                  <% Date::DAYNAMES.each do |day| %>
+                    <div class="ckbox ckbox-primary">
+                      <%= check_box_tag 'user_time_slot[0][exception_ckbox_days][]', day, days&.include?(day), { id: "exception_sessions_0_ckbox_days_#{day}", class: 'exception_sessions_0_ckbox_days exception_sessions_ckbox_days', 'data-day': day } %>
+                      <label for="exception_sessions_0_ckbox_days_<%= day %>"><%= day %></label>
+                    </div>
+                  <% end %>
+                </div>
+                <div class="col-md-2 text-right">
+                  <button type="button" class="btn btn-danger btn-xs exception-remove-section-row soft-delete <%= 'hidden' if sessions.count == 1 %>" id='exception_sessions_0_remove'>Remove Sub Section</button>
+                </div>
+              </div>
+              <div class="row">
+                <% g_sessions.each_with_index do |session, i| %>
+                  <div class="col-md-4">
+                    <div class="each-exception-session">
+                      <h4 class="text-center">
+                        <span>Session <%= i + 1 %></span>
+                        <button type="button" class="btn btn-link pull-right clear-selection" style="padding: 0px;">Clear</button>
+                      </h4>
+                      <div class="row">
+                        <%= hidden_field_tag "user_time_slot[exception_sessions_attributes][#{i}][id]", session.id.to_s %>
+                        <%= hidden_field_tag "user_time_slot[exception_sessions_attributes][#{i}][_destroy]", 0, class: 'exception_sessions_destroy' %>
+                        <%= hidden_field_tag "user_time_slot[exception_sessions_attributes][#{i}][shared_id]", shared_id, class: 'exception_session_shared_id' %>
+                        <%= hidden_field_tag "user_time_slot[exception_sessions_attributes][#{i}][start_date]", start_date, class: 'exception_session_start_date' %>
+                        <%= hidden_field_tag "user_time_slot[exception_sessions_attributes][#{i}][end_date]", end_date, class: 'exception_session_end_date' %>
+                        <div class="hidden-days">
+                          <% Date::DAYNAMES.each do |day| %>
+                            <%= check_box_tag "user_time_slot[exception_sessions_attributes][#{i}][days][]", day, days&.include?(day), { class: "exception_sessions_days_#{day}" } %>
+                          <% end %>
+                        </div>
+                        <div class="col-md-6 mb10">
+                          <b>Facility</b>
+                          <%= select_tag "user_time_slot[exception_sessions_attributes][#{i}][facility_id]", options_for_select(@facilities_array, session.facility_id), include_blank: true, class: "form-control p7_10 exception_sessions_facility_id section-exception-session-#{i}-facility_id" %>
+                        </div>
+                        <div class="col-md-6 mb10">
+                          <b>Department</b>
+                          <%= select_tag "user_time_slot[exception_sessions_attributes][#{i}][department_id]", options_for_select([['OPD', '485396012'], ['IPD', '486546481']], session.department_id), include_blank: true, class: "form-control p7_10 exception_sessions_department_id section-exception-session-#{i}-department_id" %>
+                        </div>
+                        <div class="col-md-6 mb10">
+                          <b>Start Time</b>
+                          <%= text_field_tag "user_time_slot[exception_sessions_attributes][#{i}][start_time]", session.start_time, class: "form-control p7_10 exception_sessions_start_time section-exception-session-#{i}-start_time", readonly: 'readonly', data: { provide: 'timepicker', 'minute-step': 5, 'show-inputs': false } %>
+                        </div>
+                        <div class="col-md-6 mb10">
+                          <b>End Time</b>
+                          <%= text_field_tag "user_time_slot[exception_sessions_attributes][#{i}][end_time]", session.end_time, class: "form-control p7_10 exception_sessions_end_time section-exception-session-#{i}-end_time", readonly: 'readonly', data: { provide: 'timepicker', 'minute-step': 5, 'show-inputs': false } %>
+                        </div>
+                        <div class="col-md-6 mb10">
+                          <b>Slot Duration</b>
+                          <%= number_field_tag "user_time_slot[exception_sessions_attributes][#{i}][slot_duration]", session.slot_duration, class: "form-control p7_10 exception_sessions_slot_duration section-exception-session-#{i}-slot_duration", min: 1, max: 120 %>
+                        </div>
+                        <div class="col-md-6 mb10">
+                          <b>Time Duration</b>
+                          <%= number_field_tag "user_time_slot[exception_sessions_attributes][#{i}][time_duration]", session.time_duration, class: "form-control p7_10 exception_sessions_time_duration section-exception-session-#{i}-time_duration", min: 1, max: 120 %>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                <% end %>
+                <% (g_sessions.count..2).each do |i| %>
+                  <div class="col-md-4">
+                    <div class="each-exception-session">
+                      <h4 class="text-center">
+                        <span>Session <%= i + 1 %></span>
+                        <button type="button" class="btn btn-link pull-right clear-selection" style="padding: 0px;">Clear</button>
+                      </h4>
+                      <div class="row">
+                        <%= hidden_field_tag "user_time_slot[exception_sessions_attributes][#{i}][shared_id]", shared_id, class: 'exception_session_shared_id' %>
+                        <%= hidden_field_tag "user_time_slot[exception_sessions_attributes][#{i}][start_date]", start_date, class: 'exception_session_start_date' %>
+                        <%= hidden_field_tag "user_time_slot[exception_sessions_attributes][#{i}][end_date]", end_date, class: 'exception_session_end_date' %>
+                        <div class="hidden-days">
+                          <% Date::DAYNAMES.each do |day| %>
+                            <%= check_box_tag "user_time_slot[exception_sessions_attributes][#{i}][days][]", day, days&.include?(day), { class: "exception_sessions_days_#{day}" } %>
+                          <% end %>
+                        </div>
+                        <div class="col-md-6 mb10">
+                          <b>Facility</b>
+                          <%= select_tag "user_time_slot[exception_sessions_attributes][#{i}][facility_id]", options_for_select(@facilities_array, ''), include_blank: true, class: "form-control p7_10 exception_sessions_facility_id section-exception-session-#{i}-facility_id" %>
+                        </div>
+                        <div class="col-md-6 mb10">
+                          <b>Department</b>
+                          <%= select_tag "user_time_slot[exception_sessions_attributes][#{i}][department_id]", options_for_select([['OPD', '485396012'], ['IPD', '486546481']], ''), include_blank: true, class: "form-control p7_10 exception_sessions_department_id section-exception-session-#{i}-department_id" %>
+                        </div>
+                        <div class="col-md-6 mb10">
+                          <b>Start Time</b>
+                          <%= text_field_tag "user_time_slot[exception_sessions_attributes][#{i}][start_time]", nil, class: "form-control p7_10 exception_sessions_start_time section-exception-session-#{i}-start_time", readonly: 'readonly', data: { provide: 'timepicker', 'minute-step': 5, 'show-inputs': false } %>
+                        </div>
+                        <div class="col-md-6 mb10">
+                          <b>End Time</b>
+                          <%= text_field_tag "user_time_slot[exception_sessions_attributes][#{i}][end_time]", nil, class: "form-control p7_10 exception_sessions_end_time section-exception-session-#{i}-end_time", readonly: 'readonly', data: { provide: 'timepicker', 'minute-step': 5, 'show-inputs': false } %>
+                        </div>
+                        <div class="col-md-6 mb10">
+                          <b>Slot Duration</b>
+                          <%= number_field_tag "user_time_slot[exception_sessions_attributes][#{i}][slot_duration]", nil, class: "form-control p7_10 exception_sessions_slot_duration section-exception-session-#{i}-slot_duration", min: 1, max: 120 %>
+                        </div>
+                        <div class="col-md-6 mb10">
+                          <b>Time Duration</b>
+                          <%= number_field_tag "user_time_slot[exception_sessions_attributes][#{i}][time_duration]", nil, class: "form-control p7_10 exception_sessions_time_duration section-exception-session-#{i}-time_duration", min: 1, max: 120 %>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+        <div class="row mt10">
+          <div class="col-md-12 text-right">
+            <button type="button" class="btn btn-primary btn-xs add-more-sub-exception">Add Sub Section</button>
+            <button type="button" class="btn btn-danger btn-xs exception-remove-slot-row soft-delete">Remove Timings</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+<% end %>

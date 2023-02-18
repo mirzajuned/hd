@@ -1,0 +1,242 @@
+
+let invoice_type, old_invoice_type;
+
+const payerOptions = (requestFrom) => {
+  let generalOption = `<option value="general" selected="selected">General</option>`
+  let patientOption = `<option value="<%= @patient.id.to_s %>" selected="selected"><%= @patient.fullname&.titleize %></option>`
+  let selectedOption = (requestFrom == "servicePanel") ? generalOption : patientOption
+  let payerFields;
+
+  if($('.invoice_payer_master_id').val() == ''){
+    payerFields = selectedOption
+  } else if($('.invoice_payer_master_id').val() != ''){
+    payerFields = `<option value="${$('.invoice_payer_master_id').val()}">${$('.invoice_payer_master_id').find('option:selected').html()}</option>`
+  } else {
+    payerFields = ``
+  }
+  
+  return payerFields
+}
+
+// Code for Invoice Type
+function toggle_payment_pending(invoice_type="", auto=false){
+  switch(invoice_type) {
+    case "cash": case "":
+      $("#payment-pending-form").hide();
+      $('#payer_display_dropdowns').hide();
+
+      let actionNew = '<%= params[:invoice_template_id].nil? %>' == 'true'
+      if((auto == false && $('.invoice_payer_master_id').val() != '') || actionNew){
+        for (var i = $('.i_description').length - 1; i >= 0; i--) {
+          reset_payer_dropdown()
+        }
+        $('.invoice_contact_group_id').val('').trigger('change');
+        $('.invoice_insurer_group_id').val('').trigger('change');
+        toggleInsurer()
+      }
+
+      $(".remove_payment_pending").trigger("click");
+      break;
+    case "credit":
+      $('#payer_display_dropdowns').show();
+
+      $("#payment-pending-form").show()
+      if($(".payment_pending_row").length == 0){ $("#add_payment_pending").trigger("click") }
+      break;
+  }
+}
+$("#payment-pending-form").hide()
+
+ $(".invoice_type").on("click", function(){
+  old_invoice_type = invoice_type
+  invoice_type = $(this).val()
+  if(old_invoice_type !== invoice_type){
+    toggle_payment_pending(invoice_type)
+  }
+}); 
+
+
+$(".invoice_contact_group_id").select2({dropdownAutoWidth : true})
+$(".invoice_payer_master_id").select2({dropdownAutoWidth : true})
+$(".invoice_insurer_group_id").select2({dropdownAutoWidth : true});
+$(".invoice_insurer_id").select2({dropdownAutoWidth : true}); 
+$('.invoice_contact_group_id').on('change', function(e, triggered=false){
+  let contact_group_id = $(this).val();
+
+  if(contact_group_id != ""){
+    fetch(`/payer_masters/set_payers_list?contact_group_id=${contact_group_id}&facility_id=<%= current_facility.id.to_s %>`)
+    .then(response => response.json())
+    .then(function(data){
+      $(".invoice_payer_master_id").children().remove();
+      $(".invoice_payer_master_id").append($("<option></option>").attr("value", "").text("Select Contact"))
+      $.each(data.payer_fields, function(key, value) {
+        if(value[0] == '<%= @inventory_invoice.payer_master_id %>'){
+          $(".invoice_payer_master_id").append($("<option selected='selected'></option>").attr("value",value[0]).text(value[1]));
+        } else {
+          $(".invoice_payer_master_id").append($("<option></option>").attr("value",value[0]).text(value[1]));
+        }
+      });
+
+      $(".invoice_payer_master_id").trigger('change.select2');
+      toggleInsurer()
+    })
+  } else {
+    $(".invoice_payer_master_id").children().remove();
+    $(".invoice_payer_master_id").append($("<option></option>").attr("value", "").text("Select Contact"))
+
+    $(".invoice_payer_master_id").trigger('change.select2');
+    toggleInsurer()
+  }
+  if(triggered == false){ reset_payer_dropdown() }
+}).trigger('change', true);
+
+
+  $('.invoice_insurer_group_id').on('change', function(e, triggered=false){
+    let insurer_group_id = $(this).val();
+
+    if(insurer_group_id != ""){
+      fetch(`/payer_masters/set_payers_list?contact_group_id=${insurer_group_id}&facility_id=<%= current_facility.id.to_s %>`)
+      .then(response => response.json())
+      .then(function(data){
+        $(".invoice_insurer_id").children().remove();
+        $(".invoice_insurer_id").append($("<option></option>").attr("value", "").text("Select Insurer"))
+        $.each(data.payer_fields, function(key, value) {
+          if(value[0] == '<%= @inventory_invoice.insurer_id %>'){
+            $(".invoice_insurer_id").append($("<option selected='selected'></option>").attr("value",value[0]).text(value[1]));
+          } else {
+            $(".invoice_insurer_id").append($("<option></option>").attr("value",value[0]).text(value[1]));
+          }
+        });
+        $(".invoice_insurer_id").trigger('change.select2');
+      })
+    } else {
+      $(".invoice_insurer_id").children().remove();
+      $(".invoice_insurer_id").append($("<option></option>").attr("value", "").text("Select Insurer"))
+      $(".invoice_insurer_id").trigger('change.select2');
+    }
+  })
+
+
+function reset_payer_dropdown(){
+  $('.invoice_service_item_row:first').siblings().remove()
+  let payer_dropdowns = $('#select2-invoice_inventory_invoice_payer_master_id-results li')
+  for (let i = payer_dropdowns.length - 1; i >= 0; i--) {
+    $(payer_dropdowns[i]).html("").append(`${payerOptions("servicePanel")}`).trigger("change")
+  }
+
+  let patient_id = '<%= @patient.id.to_s %>'
+  let patient_name = '<%= @patient.fullname&.titleize %>'
+  let payer_master_id = $('.invoice_payer_master_id').val()
+  let payer_name = $('.invoice_payer_master_id').find('option:selected').html()
+  let payer_option = payer_master_id ? `<option value="${payer_master_id}">${payer_name}</option>` : ``
+  let payer_option_selected = payer_master_id ? `<option value="${payer_master_id}" selected="selected">${payer_name}</option>` : ``
+
+  let received_payer_dropdowns = $(".payment_received_breakups_received_from")
+  for (let j = received_payer_dropdowns.length - 1; j >= 0; j--) {
+    $(received_payer_dropdowns[j]).html("").append(`
+      <option value="${patient_id}" selected="selected">${patient_name}</option>
+      ${payer_option}`
+    ).trigger("change")
+  }
+
+  let pending_payer_dropdowns = $(".payment_pending_breakups_received_from")
+  for (let k = pending_payer_dropdowns.length - 1; k >= 0; k--) {
+    $(pending_payer_dropdowns[k]).html("").append(`
+      ${payer_option_selected}
+      <option value="${patient_id}">${patient_name}</option>`
+    ).trigger("change")
+
+    console.log($(pending_payer_dropdowns[k]).html())
+  }
+}
+
+
+$("#add_payment_pending").on("click", function(e){
+  e.preventDefault();
+  let counter = $(".payment_pending_row").length
+  let counter_visible = $(".payment_pending_row:visible").length
+  let currency_fields = `
+    <input type="hidden" name="invoice_${invoiceUType}[payment_pending_breakups_attributes][${counter}][currency_symbol]" class="form-control payment_pending_breakups_currency_symbol p3_10" value="<%= @currency.symbol %>">
+    <input type="hidden" name="invoice_${invoiceUType}[payment_pending_breakups_attributes][${counter}][currency_id]" class="form-control payment_pending_breakups_currency_id p3_10" value="<%= @currency.id.to_s %>">`
+
+  let sno = `
+    <div class="col-md-1">
+      <span class="payment_pending_breakups_sno">${counter_visible + 1}.</span>
+    </div>`
+
+  let payer_master_id = $('.invoice_payer_master_id').val()
+  let payer_name = $('.invoice_payer_master_id').find('option:selected').html()
+  let payer_option_selected = payer_master_id ? `<option value="${payer_master_id}" selected="selected">${payer_name}</option>` : ``
+
+  let payee = `
+    <div class="col-md-2">
+      <select class="form-control payment_pending_breakups_received_from" name="invoice_${invoiceUType}[payment_pending_breakups_attributes][${counter}][received_from]" style="height: 25px;padding:3px;">
+        ${payer_option_selected}
+        <option value="<%= @patient.id %>"><%= @patient.fullname&.titleize %></option>
+      </select>
+    </div>`
+
+  let mode_of_payment = `<div class="col-md-2">-</div>`
+
+  let date = `<div class="col-md-2"><input type="hidden" name="invoice_${invoiceUType}[payment_pending_breakups_attributes][${counter}][date]" class="form-control payment_pending_breakups_date p3_10" value="<%= Date.current %>">-</div>`
+
+  let time = `<div class="col-md-2"><input type="hidden" name="invoice_${invoiceUType}[payment_pending_breakups_attributes][${counter}][time]" class="form-control payment_pending_breakups_time p3_10" value="<%= DateTime.current.utc %>">-</div>`
+
+  let amount = `
+    <div class="col-md-2">
+      <div class="input-group">
+        <span class="input-group-addon" style="padding: 5px 10px;font-size:10px;"><%= current_facility.currency_symbol %></span>
+        <input type="number" name="invoice_${invoiceUType}[payment_pending_breakups_attributes][${counter}][amount]" class="form-control payment_pending_breakups_amount p3_10" min="0" value="0">
+      </div>
+    </div>`
+
+  let remove_button = `
+    <div class="col-md-1">
+      <button class="btn btn-link btn-xs remove_payment_pending">&times;</button>
+    </div>`
+
+  $("#payment_pending_details").append(`
+    <div class="row payment_pending_row mb10">
+      ${currency_fields}
+      ${sno}
+      ${payee}
+      ${mode_of_payment}
+      ${date}
+      ${time}
+      ${amount}
+      ${remove_button}
+    </div>`)
+})
+
+  $(".invoice_payer_master_id").on('change', function(){
+    toggleInsurer()
+    for (var i = $('#select2-invoice_inventory_invoice_payer_master_id-results li').length - 1; i >= 0; i--) {
+      reset_payer_dropdown()
+    }
+  })
+
+$(document).click(function(e){
+  var target = e.target.getAttribute('tooltip_target')
+  var id = e.target.id
+  if ((id != 'claim_pocessor_info') && (target != 'claim_pocessor_info')) {
+    $('span[tooltip_target=claim_pocessor_info]').css({visibility: 'hidden'})
+  } 
+  if ((id != 'insurer_info') && (target != 'insurer_info')) {
+    $('span[tooltip_target=insurer_info]').css({visibility: 'hidden'})
+  }  
+})
+
+function toggleInsurer() {
+  if ($(".invoice_payer_master_id").val().length > 0) {
+    $('.insurer-content').show()
+  } else {
+    $('.insurer-content').hide()
+  }
+}
+toggleInsurer()
+
+$('.tooltip-icon')
+  .on( "click", function(){
+    $('span[tooltip_target=' + this.id + ']').css({visibility: 'visible'})
+  })
+  .css({ cursor: "pointer" });

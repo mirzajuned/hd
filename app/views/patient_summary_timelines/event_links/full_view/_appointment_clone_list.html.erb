@@ -1,0 +1,77 @@
+<% old_record_6_weeks = (DateTime.now - 42.days) >= @opd_record.created_at %>
+<% ophthal = @opd_record.specalityid == "309988001" %>
+<% ophthal_and_not_vision = ophthal && @opd_record.templatetype != "vision" %>
+
+<% @appointments.each do |appointment| %>
+  <% if @organisations_setting.disable_opd_templates %>
+    <% @enabled_templates = OpdRecordsHelper.enabled_templates(@organisations_setting, appointment.patient_id, appointment.appointment_date, appointment.specialty_id) %>
+  <% end %>
+  <% if appointment.appointment_start_time && (@enabled_templates.nil? || @enabled_templates&.include?(@opd_record.templatetype)) %>
+    <% options = { appointmentid: appointment.appointment_id.to_s, templatetype: @template_type } %>
+    <% options = options.merge(consultant_id: @opd_record.consultant_id) if @opd_record.consultant_id %>
+    <% @appointment_opd_record = OpdRecord.find_by(options) %>
+    <% if @appointment_opd_record.nil? %>
+      <% if @empty.zero? %>
+        <li class="mini-li-dd">Select Appointment to Clone For</li>
+      <% end %>
+      <% @empty = @empty + 1 %>
+      <% if current_facility.country_id != "KH_039" && @opd_record.specalityid == "309988001" && @opd_record.templatetype != "vision" %>
+        <% @clone_link = "opd_records_view_opd_summary_path(opdrecordid: @opd_record.id, patientid: @patient.id, appointmentid: @opd_record.appointment_id, :specality => @opd_record.specalityid, :templatetype =>  @opd_record.templatetype, showclone: true, current_appointment: appointment.appointment_id)" %>
+      <% else %>
+        <% @clone_link = "new_opd_records_" + @speciality_folder_name + "_note_path(patientid: @patient.id, appointmentid: appointment.appointment_id, templatetype: @template_type, flag: 'clone', opd_record_id: @opd_record.id, :viewmode => @mode)"%>
+      <% end %>
+
+      <% if (!old_record_6_weeks && ophthal_and_not_vision) || !ophthal || @opd_record.templatetype == "vision" %>
+        <li>
+          <%= link_to eval(@clone_link), :title => "Clone OPD Summary", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#templates-modal'}, class: 'clone-btn' do %>
+            <% if appointment.appointment_start_time.strftime("%d/%m/%Y") != Date.current.strftime("%d/%m/%Y") %>
+              <%= appointment.appointment_start_time.strftime("%d %b'%y (%I:%M %p)") %>
+            <% else %>
+              Today <%= appointment.appointment_start_time.strftime("(%I:%M %p)") %>
+            <% end %>
+          <% end %>
+        </li>
+      <% else %>
+        <li>
+          <a class="clone-btn" title="Clone OPD Summary" href="#"data-toggle="modal" data-target="#confirm-modal-clone" data-opdrecordid="<%=@opd_record.id%>" data-patientid="<%=@patient.id%>" data-appointmentid="<%= @opd_record.appointmentid.to_s %>" data-specality="<%=@opd_record.specalityid%>" data-templatetype="<%=@opd_record.templatetype%>" data-current_appointment="<%=appointment.appointment_id%>">
+            <% if appointment.appointment_start_time.strftime("%d/%m/%Y") != Date.current.strftime("%d/%m/%Y") %>
+              <%= appointment.appointment_start_time.strftime("%d %b'%y (%I:%M %p)") %>
+            <% else %>
+              Today <%= appointment.appointment_start_time.strftime("(%I:%M %p)") %>
+            <% end %>
+          </a>
+        </li>
+      <% end %>
+    <% end %>
+  <% end %>
+<% end %>
+
+<% if @empty == 0 %>
+  <li class="text-center">No Appointments Available</li>
+<% end %>
+
+<script>
+
+  $('.clone-btn').click(function(){
+    let url = "/opd_records/view_opd_summary?current_appointment="+$(this).data('current_appointment')+"&patientid="+$(this).data('patientid')+"&opdrecordid="+$(this).data('opdrecordid')+"&appointmentid="+$(this).data('appointmentid')+"&specality="+$(this).data('specality')+"&templatetype="+$(this).data('templatetype')+"&showclone=true";
+    
+    $('#confirm-modal-clone').html(`
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal">&times;</button>
+            <h4 class="modal-title">Are You Sure?</h4>
+          </div>
+          <div class="modal-body" style="font-weight: bold;">
+            <p class="text-danger">This template is more than six month old. Are you sure you want to clone it? </p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default close-clone-confirmation-modal" data-dismiss="modal">Close</button>
+            <a class="btn btn-danger" data-remote="true" data-dismiss="modal" data-target="#templates-modal" href= ${url} >Confirm</a>
+          </div>
+        </div>
+      </div>
+      `)
+  })
+
+</script>

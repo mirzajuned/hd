@@ -1,0 +1,192 @@
+// Window Size
+var window_height = $(window).height() - 50
+$(".sidebar_area").css('height',window_height)
+$(".admission-main-calendar").css('height',window_height)
+
+$(window).resize(function() {
+  var window_height = $(window).height() - 50
+  $(".sidebar_area").css('height',window_height)
+  $(".ot_main_content").css('height',window_height)
+  asp_rat = $(".admission-main-calendar").width() / (($(".admission-main-calendar").height() - 50));
+})
+
+$(".sidebar-summary").html("<%= escape_javascript(render 'inpatients/admission/calendar_sidebar_summary') %>");
+$(".sidebar-doctors").html("<%= escape_javascript(render 'inpatients/admission/calendar_sidebar_doctors') %>");
+$(document).ready(function(){
+  // Everything Related to Full Calender
+  asp_rat = $(".admission-main-calendar").width() / (($(".admission-main-calendar").height() - 50));
+  calendar_options = {
+    header: {
+      left:   'today',
+      center: 'prev title next',
+      right: 'agendaWeek,agendaDay'
+    },
+    scrollTime :  '<%= Time.current.strftime("%H:%M:%S").to_s %>',
+    editable: true,
+    defaultView: "agendaWeek",
+    allDaySlot: false,
+    slotEventOverlap: false,
+    eventLimit: true, // allow "more" link when too many events
+    selectable: true,
+    selectHelper: true,
+    unselectAuto: true,
+    eventDurationEditable: false,
+    aspectRatio: asp_rat,
+    firstDay: "<%= Date.current.strftime("%w").to_i %>",
+    events: {
+      url: '/inpatients/admission_calendar_data',
+      type: 'get',
+      data: function(){
+          return {
+              doctor_id: $(".users_list").find(".active").find('a').attr('data-user-id')
+          }
+      },
+      success: function(res){
+        $("#ipd-calendar").find(".loading_dots").remove()
+        updateSummary(res);
+      },
+      error: function() {
+          alert('there was an error while fetching events!');
+      }
+    },
+    // Select an empty event on Calender
+    select: function( start, end, jsEvent, view ){
+      $.ajax({
+        type: "get",
+        dataType: "script",
+        url: "/patients/search",
+        data: {
+          remote: "true",
+          // current_doctor: $(".users_list").find(".active").find('a').attr('data-user-id'),
+          'toggle': "modal",
+          'target': '#admission-modal',
+          'current_date': start.format('DD-MM-YYYY'),
+          'current_time': start.format('HH:mm'),
+          'url': "/admissions/new",
+          'modal': 'admission-modal'
+        }
+      })
+    },
+    // When Event Is Clicked
+    eventClick: function(calEvent, jsEvent, view) {
+      $('.summary_admission_clickable[data-admission-id="' + calEvent.admission_id + '"]').trigger('click');
+    },
+    // When Event Times are Changed(Resized) - not required
+
+    // When Event is dropped(moved)
+    eventDrop: function(event, delta, revertFunc, jsEvent, ui, view  ) {
+      if(event.current_state == "Scheduled"){
+        $.ajax({
+          type: "GET",
+          url: "/admissions/" + event.admission_id + "/reschedule",
+          data: {
+            id: event.admission_id,
+            new_admission_time: event.start.format()
+          },
+          success: function(res){
+            $("#ipd-calendar").fullCalendar('refetchEvents');
+          },
+          error: function(err){
+          }
+        });
+      } else {
+        $("#ipd-calendar").fullCalendar("refetchEvents");
+        if ($(".ui-pnotify").length > 0) { $(".ui-pnotify").remove() }
+        notice = new PNotify({
+          title: 'Error',
+          text: 'Admitted or Discharged Patient Cant Be Rescheduled',
+          icon: 'fa fa-error',
+          type: 'error'
+        })
+        notice.get().click(function(){ notice.remove() });
+      }
+    },
+  }
+
+  $("#ipd-calendar").fullCalendar(calendar_options);
+  // Update Side Summary
+  function updateSummary(arr){
+    $("#today_admission_list").html("");
+    $("#future_scheduled_list").html("");
+    $("#past_discharge_list").html("");
+    today = moment.tz('<%= current_facility.time_zone %>').format("MM-DD-YYYY")
+    admission_type_count = new Array(0,0,0)
+    scheduled_today = []
+    scheduled_future = []
+    scheduled_past = []
+    for (var i = arr.length - 1; i >= 0; i--) {
+      if(today == moment.tz(arr[i].start, '<%= current_facility.time_zone %>').format("MM-DD-YYYY")){
+        admission_type_count[0]++;
+        scheduled_today.push(arr[i]);
+        createSummaryAdmission(arr[i], '.admissions_calendar_list #today_admission_list');
+      } else if(today < moment.tz(arr[i].start, '<%= current_facility.time_zone %>').format("MM-DD-YYYY")) {
+        admission_type_count[1]++;
+        scheduled_future.push(arr[i]);
+        createSummaryAdmission(arr[i], '.admissions_calendar_list #future_scheduled_list');
+      } else if(today > moment.tz(arr[i].start, '<%= current_facility.time_zone %>').format("MM-DD-YYYY")) {
+        admission_type_count[2]++;
+        scheduled_past.push(arr[i]);
+        createSummaryAdmission(arr[i], '.admissions_calendar_list #past_discharge_list');
+      }
+    }
+    activateSummaryAdmission();
+
+    $(".scheduled_today_list_count").html("").text(admission_type_count[0])
+    $(".scheduled_future_list_count").html("").text(admission_type_count[1])
+    $(".scheduled_past_list_count").html("").text(admission_type_count[2])
+
+    //Update already exisiting modal's content
+    if (($("#modalCalendarAdmissionDetails").data('bs.modal') || {}).isShown){
+      var admission_id = $("#admission_refresher").val();
+
+      $("#modalCalendarAdmissionDetailsBody").html("<div class='loading_dots'><span></span>&nbsp;<span></span>&nbsp;<span></span></div>");
+      // $("#modalCalendarAdmissionDetails").modal('show');
+      $.ajax({
+        url: "/inpatients/admission_details",
+        data: {
+          admission_id: admission_id
+        },
+        dataType: 'html',
+        success: function(res){
+          $("#modalCalendarAdmissionDetails").find("#modalCalendarAdmissionDetailsBody").html(res);
+        },
+        error: function(err){
+        }
+      });
+    }
+  }
+
+  function createSummaryAdmission(admission, container){
+    $(container).append("<div class='row no_margin summary_admission summary_admission_clickable' style='border-color:" + admission.current_state_color +"' data-admission-id='" + admission.admission_id + "'><div class='col-xs-6 no_padding text-left' style='overflow: hidden;white-space: nowrap; text-overflow: ellipsis;'><span>" + admission.title + "</span></div><div class='col-xs-6 no_padding text-right'><span style='font-size: 12px;'>" + moment.tz(admission.start, '<%= current_facility.time_zone%>').format("hh:mm A (DMMM)") + "</span></div><div class='col-xs-8 no_padding text-left' style='overflow: hidden;white-space: nowrap; text-overflow: ellipsis;'>Rsn : <b style='font-size:12px;'>" + admission.reason_for_admission + "</b></div><div class='col-xs-4 no_padding text-right' style='overflow: hidden;white-space: nowrap; text-overflow: ellipsis;'><b style='font-size:12px;'>" + admission.admitting_doctor + "</b></div></div>")
+  }
+
+  function activateSummaryAdmission(){
+    $('#modalCalendarAdmissionDetails').unbind('hidden.bs.modal');
+    $(".summary_admission_clickable").on('click', function(e){
+      $("#modalCalendarAdmissionDetailsBody").html("<div class='loading_dots'><span></span>&nbsp;<span></span>&nbsp;<span></span></div>");
+      $("#modalCalendarAdmissionDetails").modal('show');
+      admission_id = $(this).attr('data-admission-id');
+
+      $.ajax({
+        url: "/inpatients/admission_details",
+        data: {
+          admission_id: admission_id
+        },
+        dataType: 'html',
+        success: function(res){
+          $("#modalCalendarAdmissionDetails").find("#modalCalendarAdmissionDetailsBody").html(res);
+        },
+        error: function(err){
+        }
+      })
+    });
+  }
+
+  $(document).on('show.bs.modal', '.modal', function (event) {
+    var zIndex = 1040 + (10 * $('.modal:visible').length);
+    $(this).css('z-index', zIndex);
+    setTimeout(function() {
+      $('.modal-backdrop').not('.modal-stack').css('z-index', zIndex - 1).addClass('modal-stack');
+    }, 0);
+  });
+});

@@ -1,0 +1,182 @@
+<div class="row mb10">
+  <div class="col-sm-6">
+    <%= hidden_field_tag "appointment[patient_id]", params[:patient_id] %>
+    <%= hidden_field_tag "appointment[user_id]", @current_user.id %>
+    <%= hidden_field_tag "appointment[organisation_id]", @current_user.organisation_id %>
+    <%= hidden_field_tag "appointment[department_id]", "485396012" %> <!-- outpatient department -->
+    <%= hidden_field_tag "appointment[opd_referral_id]", params[:opd_referral_id] %>
+    <%= hidden_field_tag "appointment[created_from]", "Appointment" %>
+    <%= hidden_field_tag "appointment[start_time]", '' %>
+    <%= hidden_field_tag "appointment[case_sheet_id]", @case_sheet.try(:id) %>
+    <% if @past_appointment.present? %>
+      <div class="row mb20">
+        <div class="col-sm-12">
+          <b style="color:#000;">Last Visit :</b>
+        </div>
+        <div class="col-sm-12">
+          <span>
+            <%= past_visit(@past_appointment[0]) %>
+            (<%= @past_appointment[0].appointment_date.strftime("%b %d") %>)
+            <span> Dr.
+              <% if current_facility.clinical_workflow %>
+                <% last_clinical_workflow = OpdClinicalWorkflow.find_by(appointment_id: @past_appointment[0].appointment_id.to_s) %>
+                <%= @last_visit_doctor = User.find_by(id: last_clinical_workflow.try(:consultant_ids).try(:last)).try(:fullname).to_s.split(" ")[0] %>
+              <% else %>
+                <%= @past_appointment[0].consulting_doctor.split(" ")[0] %>
+              <% end %>
+            </span>
+            <label class="label label-primary" style="background: <%= @past_appointment[0][:appointment_type_color] %>"><%= @past_appointment[0][:appointment_type] %></label>
+            <% if @past_appointment[0][:consultancy_type].present? %>
+              <% is_free = (@past_appointment[0][:consultancy_type] == "h1.001") %>
+              <label class="label label-primary" style="background: <%= is_free ? "#d9534f" : "#1CAF9A" %>">
+                <%= is_free ? "Free" : "Paid"  %>
+                <%= " - #{@past_appointment[0][:consultancy_type_reason]}" if @past_appointment[0][:consultancy_type_reason].present? %>
+              </label>
+            <% end %>
+          </span>
+        </div>
+      </div>
+    <% end %>
+
+    <% if @type.present? %>
+      <% display_type_option = "none" %>
+    <% else %>
+      <% display_type_option = "block" %>
+    <% end %>
+
+    <div class="row mb10" style="display: <%= display_type_option %>">
+        <div class="col-sm-12">
+          <b style="color:#000;">Type</b>
+        </div>
+        <div class="col-md-5">
+          <div class="rdio rdio-primary">
+            <input id="appointmenttype_walkin" name="appointment[appointmenttype]" type="radio" value="walkin" <%= 'checked' if (@appointment.appointmenttype == "walkin" || @type == "walkin") %> />
+            <label for="appointmenttype_walkin">Walk-in</label>
+          </div>
+        </div>
+        <div class="col-md-7">
+          <div class="rdio rdio-primary">
+            <input id="appointmenttype_appointment" name="appointment[appointmenttype]" type="radio" value="appointment" <%= 'checked' if (@appointment.appointmenttype == "appointment"|| @type == "appointment") %> />
+            <label for="appointmenttype_appointment">Appointment</label>
+          </div>
+        </div>
+      </div>
+    <%# end %>
+
+
+    <div class="row mb20">
+      <div class="col-sm-12">
+        <b style="color:#000;"><%= @appointment_label %> Date & Time</b>
+      </div>
+      <div class="col-sm-6">
+        <%= text_field_tag "appointment[appointmentdate]", @current_date.strftime("%d/%m/%Y"), class: "form-control p7_10 appointment-datepicker", readonly: 'readonly' %>
+      </div>
+      <div class="col-sm-6">
+        <div class="bootstrap-timepicker timepicker">
+          <%= text_field_tag :appointment_time, @current_time.strftime("%I:%M %p"), class: "form-control p7_10 appointment-timepicker" %>
+        </div>
+      </div>
+    </div>
+    <div class="row mb20">
+      <div class="col-sm-12">
+        <b style="color:#000;">Location</b>
+        <% if @type == "walkin" %>
+          <% facilities = User.find_by(id: current_user.id).facilities.where(is_active: true, id: @selected_facility).order(name: :asc) %>
+        <% else %>
+          <% facilities = User.find_by(id: current_user.id).facilities.where(is_active: true).order(name: :asc) %>
+        <% end %>
+        <%= select_tag("appointment[facility_id]", options_for_select(facilities.map { |facility| [facility.name, facility.id] }, @selected_facility), :class=> "form-control p7_10") %>
+      </div>
+    </div>
+
+    <div class="row specialty_dropdown_div mb20">
+      <div class="col-sm-12"><b style="color:#000;">Specialties Available</b></div>
+      <div class="col-sm-12">
+        <%= select_tag "appointment[specialty_id]", options_for_select(@available_specialties || [], @appointment.try(:specialty_id)), { class: "form-control appointment_specialty" } %>
+      </div>
+    </div>
+
+    <div class="row mb20">
+      <div class="col-sm-12">
+        <b style="color:#000;">Consultant</b>
+        <%#= select_tag "appointment[consultant_id]", options_for_select(@available_consultant, @selected_doctor), { class: "appointment_doctor form-control p7_10" } %>
+        <%= select_tag "appointment[consultant_id]", options_for_select(@available_consultant.map{ |c| [c[0], c[1], {'data-slot-duration'=>c[2]}] } , @selected_doctor), { class: "appointment_doctor form-control p7_10" } %>
+
+        <div class="ckbox ckbox-primary" style="height: 10px;">
+          <% if @organisation_setting.consultant_freeze %>
+            <input type="hidden" name="appointment[consultant_frozen]" value='true'>
+          <% else %>
+            <input type="hidden" name="appointment[consultant_frozen]" value='false'>
+            <%= check_box_tag 'appointment[consultant_frozen]', true, @appointment.consultant_frozen, { id: "appointment_consultant_frozen" } %>
+            <label for="appointment_consultant_frozen" title="Freeze Consultant.">Freeze</label>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <div class="row mb20">
+      <div class="col-sm-12"><b style="color:#000;">Visit Types</b></div>
+      <div class="col-sm-12">
+        <% if params[:action] == 'new' %>
+          <% selected_app_type = @available_appointment_types.where(is_default: true).try(:last).try(:id) %>
+        <% else %>
+          <% selected_app_type = @appointment.try(:appointment_type_id) %>
+        <% end %>
+
+        <input type="hidden" value="<%= selected_app_type %>" id="hidden_appointment_type">
+        <%= select_tag "appointment[appointment_type_id]", options_for_select(@available_appointment_types.pluck(:label, :id), selected_app_type), { class: "appointment_types_dropdown form-control p7_10" } %>
+      </div>
+    </div>
+
+    <% selected_org_app_type_id = @available_appointment_types.find_by(id: selected_app_type.to_s).try(:organisation_appointment_type).try(:id).to_s %>
+    <% @available_sub_appointment_types = @available_sub_appointment_types.where(organisation_appointment_type_ids: selected_org_app_type_id) %>
+    <% if @available_sub_appointment_types.present? %>
+      <div class="row mb20">
+        <div class="col-sm-12">
+          <b style="color:#000;">Visit Category</b>
+          <br>
+          <%= select_tag("appointment[appointment_category_id]", options_for_select(@available_sub_appointment_types.pluck(:label, :id), @appointment.try(:appointment_category_id)), { prompt: 'Select', class: "form-control p7_10 appointment_category_dropdown" }) %>
+        </div>
+      </div>
+    <% end %>
+
+  </div>
+  <div class="col-sm-6" id='available-slots'></div>
+</div>
+<div class="row mb10 past-visit-details">
+  <% if @past_appointment.present? %>
+    <%= render partial: 'appointments/form/past_visit_details.html.erb' %>
+  <% end %>
+</div>
+<script type="text/javascript">
+  // Select2 When More than 5 Facilities
+  // if('<%#= facilities.count > 5 %>' == 'true'){
+  $("#appointment_facility_id").select2()
+  $(".appointment_types_dropdown").select2();
+
+  $("#appointment_appointment_category_id").select2()
+  $("#appointment_specialty_id").select2()
+  // Select2 When More than 5 Doctors
+  // if('<%#= users.count > 5 %>' == 'true'){
+    $("#appointment_consultant_id").select2()
+  // }
+  $('[data-toggle="tooltip"]').tooltip();
+</script>
+<style type="text/css">
+  [data-toggle='tooltip'] + .tooltip > .tooltip-inner {
+    background: black;
+    color:#ffffff;
+    border: 1px solid #000000;
+
+  }
+  .walk_va_apt {
+    font-size:12px;
+  }
+  .appointment_category_dropdown {
+    height: 30px;
+  }
+  .disable_date_time{
+    cursor: pointer;
+    pointer-events: none;
+  }
+</style>

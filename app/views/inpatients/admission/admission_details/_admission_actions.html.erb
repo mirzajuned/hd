@@ -1,0 +1,90 @@
+<% if @admission.dischargedate %>
+  <% @note = '<h4>Discharge this patient ?</h4><p><b>Note:</b> Patient will be discharged on <b>' + @admission.dischargedate.strftime('%d/%m/%Y') + "</b>.</p><p> You can change the <b>'DISCHARGE DATE'</b> from <b>Discharge Note</b> before proceeding.</p>." %>
+<% else %>
+  <% @note = '<h4>Discharge this patient ?</h4>' %>
+<% end %>
+<div class="col-sm-6">
+  <% if @current_user.role_ids.any? { |ele| [158965000, 106292003, 686800945].include?(ele) } %>
+    <div class="dropdown">
+      <button type="button" class="btn btn-xs btn-primary btn-danger" data-toggle="dropdown" id="adverse_event_form">Adverse Event&nbsp;&nbsp;<i class="fa fa-caret-down"></i></button>
+      <ul class="dropdown-menu" role="menu" aria-labelledby="adverse_events-dropdown" style="">
+        <li style="text-align: center;">
+          <%= link_to new_adverse_event_path(patient_id: @patient.id.to_s), id: 'adverse-event-btn', data: { remote: true, toggle: 'modal', target: '#adverse-event-modal' } do %>Report Adverse Event<% end %>
+        </li>
+        <strong style="margin-left: 10px">Previously Reported: <%= @adverse_events.length %></strong>
+      </ul>
+    </div>
+  <% end %>
+</div>
+<div class="col-sm-6 text-right">
+  <% if @admission.admissiondate <= Date.current %>
+    <div class="row no_margin">
+      <% unless @admission.isdischarged? %>
+        <% if @admission.patient_arrived? %>
+          <% if ['pre_discharge', 'post_discharge'].exclude?(@admission.admission_stage) %>
+            <% if @clinical_workflow && !@admission.ready_for_ot %>
+              <%= link_to update_ready_state_admission_path(id: @admission.id.to_s, state: 'ready_for_ot', position: 5, value: true), class: 'btn btn-info btn-xs', data: { remote: true } do %> Ready for OT <% end %>
+            <% elsif @clinical_workflow && @admission.ready_for_ot %>
+              <%= link_to update_ready_state_admission_path(id: @admission.id.to_s, state: 'ready_for_ot', position: 5, value: false), class: 'btn btn-darkblue btn-xs', data: { remote: true } do %> Undo <% end %>
+            <% end %>
+          <% end %>
+          <% if @admission.ot_schedules.where(is_deleted: false).count == @completed_ots.count %>
+            <% if @admission.try(:created_from).to_s == "Integration" %>
+              <% unless @admission.try(:marked_for_discharged) == true %>
+                <%= link_to ipd_patients_mark_for_discharge_path(admission_id: @admission.id, patient_id: @admission.patient.id, current_date: @current_date), class: 'btn btn-danger btn-xs', data: { remote: true, :confirm => 'All the notes will be uneditable once you save, Are you sure?' } do %> Mark For Discharge<% end %>
+              <% end %>
+              <% if @admission.cleared_for_discharge == true %>
+                <%= link_to ipd_patients_confirm_discharge_path(admission_id: @admission.id, patient_id: @admission.patient.id, current_date: @current_date), class: 'btn btn-danger btn-xs', data: { remote: true, toggle: 'modal', target: '#discharge-modal' } do %> Discharge Patient<% end %>
+              <% end %>
+            <% else %>
+              <%= link_to ipd_patients_confirm_discharge_path(admission_id: @admission.id, patient_id: @admission.patient.id, current_date: @current_date), class: 'btn btn-danger btn-xs', data: { remote: true, toggle: 'modal', target: '#discharge-modal' } do %> Discharge Patient<% end %>
+            <% end %>
+          <% else %>
+            <button class="btn btn-danger btn-xs restrict-discharge-btn">Discharge Patient</button>
+          <% end %>
+          <button class="btn btn-darkblue btn-xs mark-not-arrived" style="margin-right: 5px;">NA</button>
+        <% else %>
+          <% if @clinical_workflow && !@admission.ready_for_admission %>
+<!--            below condition is for sankara-->
+            <% unless @admission.try(:created_from).to_s == "Integration" %>
+              <% if @existing_admission %>
+                <span class="label label-danger">Patient has a running admission.</span>
+              <% else %>
+                <%= link_to update_ready_state_admission_path(id: @admission.id.to_s, state: 'ready_for_admission', position: 3, value: true), class: 'btn btn-darkblue btn-xs', data: { remote: true } do %> Ready for Admission <% end %>
+              <% end %>
+            <% end %>
+          <% else %>
+            <% if @existing_admission %>
+              <span class="label label-danger">Patient has a running admission.</span>
+            <% else %>
+              <%= link_to ipd_casesheets_edit_path(templatetype: 'admissionnote', admission_id: @admission.id.to_s), class: 'btn btn-darkblue btn-xs btn-mark-arrived', data: { remote: true, toggle: 'modal', target: '#ipdrecord-modal' } do %> Admit Patient <% end %>
+            <% end %>
+            <% if @clinical_workflow && @admission.ready_for_admission %>
+              <% unless @admission.try(:created_from).to_s == "Integration" %>
+                <%= link_to update_ready_state_admission_path(id: @admission.id.to_s, state: 'ready_for_admission', position: 3, value: false), class: 'btn btn-danger btn-xs', data: { remote: true } do %> Undo <% end %>
+              <% end %>
+            <% end %>
+          <% end %>
+        <% end %>
+      <% else %>
+        <span class="label label-danger">Discharged at <%= @admission.dischargetime.try(:strftime, '%I:%M %p') %></span>
+        <br>
+        <% if (@state_transitions.present? && @state_transitions[-2].try(:user_id) == current_user.id) || current_user.role_ids.include?(158965000) %>
+          <% unless @existing_admission %>
+            <button class="btn btn-link" id="btn-cancel_discharge" style="padding:0px;font-size:10px;color:#f00">Click to Re-Admit</button>
+          <% end %>
+        <% end %>
+      <% end %>
+    </div>
+  <% end %>
+</div>
+
+<script type="text/javascript">
+  $(document).on('show.bs.modal', '.modal', function (event) {
+    var zIndex = 1040 + (10 * $('.modal:visible').length);
+    $(this).css('z-index', zIndex);
+    setTimeout(function() {
+      $('.modal-backdrop').not('.modal-stack').css('z-index', zIndex - 1).addClass('modal-stack');
+    }, 0);
+  });
+</script>

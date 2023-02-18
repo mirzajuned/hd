@@ -1,0 +1,140 @@
+<% active_user = current_user %>
+<% @dropdown_users.each do |role, details| %>
+  <% detail_map = details.map { |d| d[-1] }.uniq - [@user_station&.id.to_s] %>
+  <% detail_map.delete('') %>
+  <% stations_present = (detail_map != []) %>
+  <% if stations_present || !@queue_management_present %>
+    <div class="<%= role %> dropdown" style="display: inline;margin-right:15px;">
+      <button class="btn btn-xs btn-primary dropdown-toggle <%= role %>-button" type="button" data-toggle="dropdown" style="padding: 0 0 0 5px;margin-bottom:5px;"><%= role.to_s.titleize %>&nbsp;&nbsp;<span class="caret"></span>&nbsp;&nbsp;</button>
+      <ul class="dropdown-menu" style="margin-top: 7px;;max-height: 300px;overflow-y: auto">
+        <% if details.count > 0 %>
+          <% if current_facility.consultant_role_ids.include? 28229004 %>
+            <% if @appointment.consultant_frozen && role == 'optometrist' && @state_transition_optometrist.try(:count) == 0 %>
+              <% details = UsersDropdownHelper.consultant_frozen(@appointment, details) %>
+            <% end %>
+          <% else %>
+            <% if @appointment.consultant_frozen && role == 'doctor' && @state_transition_consultant_id.try(:count) == 0 %>
+              <% details = UsersDropdownHelper.consultant_frozen(@appointment, details) %>
+            <% end %>
+          <% end %>
+          <%# consultant_frozen_check = ((@appointment.consultant_frozen && role == 'doctor' && @state_transition_doctor.count == 0) || !@appointment.consultant_frozen) %>
+          <% details.each do |detail| %>
+            <% queue_management_check = ((@queue_management_present && detail[11].present?) || !@queue_management_present) %>
+            <% if detail[0] != active_user.id.to_s && queue_management_check %>
+              <% user_state = { active_state: detail[3], state_color: detail[4], assign_patients_to_offline_user: detail[7], assign_patients_to_ot_user: detail[9] } %>
+              <% offline_style = user_state[:active_state] == 'Offline' ? 'opacity:0.5;text-decoration: line-through;' : '' %>
+              <% ot_assign_patients_style = (user_state[:active_state] == 'OT' && user_state[:assign_patients_to_ot_user] == 'true') ? 'pointer-events: none;' : '' %>
+              <% offline_assign_patients_style = (user_state[:active_state] == 'Offline' && user_state[:assign_patients_to_offline_user] == 'true') ? 'pointer-events: none;' : '' %>
+              <% ot_status_tooltip = user_state[:active_state] == 'OT' ? %Q(data-toggle=tooltip title=OT) : '' %>
+              <% offline_status_tooltip = user_state[:active_state] == 'Offline' ? %Q(data-toggle=tooltip title=Offline) : '' %>
+              <li <%= ot_status_tooltip %><%= offline_status_tooltip %>>
+                <% if @current_user.role_ids.include?(158965000) && role == 'doctor' %>
+                  <a href="#" class="refer-doctor" data-id="<%= detail[0] %>" data-attr-doctor="<%= detail[1] %>" data-attr-station="<%= detail[12] %>" style="<%= offline_style %> <%= ot_assign_patients_style %> <%= offline_assign_patients_style %>">
+                    <% if current_facility.show_user_state && user_state %>
+                      <span><i class="fa fa-circle" style="color: <%= user_state[:state_color] %>">&nbsp;&nbsp;</i></span>
+                    <% end %>
+                    <span><%= ("#{detail[11]} (#{detail[1]}) " if @queue_management_present) || detail[1] %></span>&nbsp;&nbsp;<label class="label label-primary" style="border-radius:25px;font-size:12px;"><%= detail[2].to_i %></label>
+                  </a>
+                <% else %>
+                  <% if role == 'pharmacist' %>
+                    <% department_model = 'PatientPrescription' %>
+                    <% department_id = '284748001' %>
+                  <% elsif role == 'optician' %>
+                    <% department_model = 'PatientOpticalPrescription' %>
+                    <% department_id = '50121007' %>
+                  <% elsif role == 'technician' %>
+                    <% type = 'laboratory' %>
+                    <% department_model = 'Investigation::Queue' %>
+                    <% department_id = '261904005' %>
+                  <% elsif role == 'ophthalmology_technician' %>
+                    <% type = 'ophthal' %>
+                    <% department_model = 'Investigation::Queue' %>
+                    <% department_id = '309935007' %>
+                  <% elsif role == 'radiologist' %>
+                    <% type = 'radiology' %>
+                    <% department_model = 'Investigation::Queue' %>
+                    <% department_id = '309964003' %>
+                  <% elsif role == 'tpa' %>
+                    <% department_id = '450368792' %>
+                  <% end %>
+                  <%= link_to opd_clinical_workflow_checkout_path(to: role, to_user: detail[0], to_station: detail[12], workflow_id: @clinical_workflow.id, patient_id: @clinical_workflow.patient_id, department_model: department_model, type: type, department_id: department_id), data: { remote: true }, style: "#{offline_style} #{ot_assign_patients_style} #{offline_assign_patients_style}" do %>
+                    <% if current_facility.show_user_state && user_state %>
+                      <span><i class="fa fa-circle" style="color: <%= user_state[:state_color] %>">&nbsp;&nbsp;</i></span>
+                    <% end %>
+                    <span><%= ("#{detail[11]} (#{detail[1]}) " if @queue_management_present) || detail[1] %></span>&nbsp;&nbsp;<label class="label label-primary" style="border-radius:25px;font-size:12px;"><%= detail[2].to_i %></label>
+                  <% end %>
+                <% end %>
+              </li>
+            <% end %>
+          <% end %>
+        <% else %>
+          <li class="text-center"><span>No Users Found</span></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+<% end %>
+
+<script>
+  $(".refer-doctor").click(function(e){
+    e.preventDefault();
+    $(".referral-note").remove();
+    var user = $(this).attr("data-id")
+    var to_station = $(this).attr('data-attr-station')
+    var counter = 0;
+    $('#dialog-confirm-create-referral-'+'<%= @clinical_workflow.id %>').removeClass("hidden")
+    var dialog = $('#dialog-confirm-create-referral-'+'<%= @clinical_workflow.id %>').dialog({
+      resizable: false,
+      height: "auto",
+      width: 400,
+      modal: true,
+      buttons: {
+        "Yes": function() {
+          if (counter == 0){
+            counter++;
+            $( "button:contains('No')" ).text( "Not a Refferal" );
+            $( "button:contains('Yes')" ).text( "Send" );
+            dialog.html("Is this a Referral? <br><textarea value='' class='referral-note form-control' placeholder='Write a note' rows='3' cols='50'>")
+          } else if (counter > 0){
+            var referalnote = $(".referral-note").val();
+            $.ajax({
+              data: {referral: true,referralnote: referalnote, to_station: to_station},
+              url: '/opd_clinical_workflow/checkout?to=doctor&to_user='+user+'&workflow_id=<%= @clinical_workflow.id %>'
+            })
+            dialog.dialog('close');
+          }
+        },
+        "Continue without Referral ":  function() {
+          $.ajax({
+            data: { to_station: to_station },
+            url: '/opd_clinical_workflow/checkout?to=doctor&to_user='+user+'&workflow_id=<%= @clinical_workflow.id %>'
+          })
+          dialog.dialog('close');
+        }
+      }
+    });
+    $('.ui-dialog-titlebar-close').addClass("fa fa-close")
+  })
+</script>
+
+<style type="text/css">
+  .ui-dialog {
+    background-color: #FFFFFF;
+    border: solid 1px black;
+    border-radius: 3px;
+    top: 30% !important;
+  }
+
+  .ui-dialog-titlebar {
+    border-bottom: 1px solid #e5e5e5;
+  }
+
+  .ui-dialog .ui-dialog-buttonpane button {
+    background-color: #31b0d5;
+    border: 1px;
+    color: #FFFFFF;
+    padding: 0px 10px;
+    border-radius: 3px;
+    border-color: #46b8da;
+  }
+</style>

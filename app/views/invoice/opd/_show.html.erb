@@ -1,0 +1,225 @@
+<% org = Organisation.find(current_user.organisation_id.to_s) %>
+<div class="modal-dialog modal-lg" style="width: 95%;">
+  <!-- Modal content-->
+  <div class="modal-content">
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal" onclick="refresh_main_list()">&times;</button>
+      <h4 class="modal-title">OPD Bill View<% if @invoice.is_draft == true %> - Draft<% elsif @invoice.is_canceled == true %> - Cancelled<% end %></h4>
+    </div>
+    <div class="modal-body">
+      <div class="row">
+        <div class="col-md-9">
+          <% if @invoice.tax_enabled %>
+            <%= render partial: 'invoice/opd/show_tax_enabled.html.erb' %>
+          <% else %>
+            <%= render partial: 'invoice/opd/show_tax_disabled.html.erb' %>
+          <% end %>
+          <!--show payment cancellation/refund details -->
+          <div class="row toggle-cancellation" style="display: none">
+            <div class="col-md-12">
+              <%= render partial: 'invoice/invoices/invoice_cancellation_form.html.erb' %>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-md-12">
+              <%= render partial: 'invoice/invoices/invoice_refund_form.html.erb' %>
+            </div>
+          </div>
+          <!--show payment cancellation/refund details Ends-->
+        </div>
+        <div class="col-md-3" style="border-left: 1px solid #ddd;">
+          <!-- Show History Logic Starts -->
+          <div class="show-history text-center">
+            <div class="row mb10">
+              <div class="col-md-12">
+                <h4 style="margin:0px;">Invoice History</h4>
+              </div>
+            </div>
+            <div class="row" style="background:#1CAF9A;padding: 6px;">
+              <% @invoice_history_creator = @invoice.record_histories.first %>
+              <div class="col-md-3">
+                <div style="margin-top:7px;"><span style="border-radius: 100%;background-color: #fff;padding: 7px 10px;font-size: 12px;color: #1CAF9A;">C</span>&nbsp;<span style="color:#fff;">reated</span></div>
+              </div>
+              <div class="col-md-9">
+                <p style="margin-bottom:-7px;font-size:16px;color: #fff;"><b><%= User.find_by(id: @invoice_history_creator.try(:user_id).to_s)&.fullname.to_s %></b></p>
+                <span style="font-size:9px;color: #fff;"><%= (@invoice_history_creator.try(:actiontime).present?) ? @invoice_history_creator.actiontime.strftime('%I:%M%P, %d %B') : '' %></span>
+              </div>
+              <div class="col-md-12 text-center">
+                <button class="btn btn-link btn-xs show-history-toggle" style="color:#fff;text-decoration:underline;">Show Details</button>
+              </div>
+            </div>
+            <div class="show-history-details" style="display:none;max-height:300px;overflow:scroll;margin-top:10px;">
+              <%= render partial: 'invoice/opd/invoice_history.html.erb' %>
+            </div>
+          </div>
+          <!-- Show History Logic Ends -->
+          <!-- Show Payment Details -->
+          <div id="show-payment-details">
+            <%= render partial: 'invoice/opd/show_payment_details.html.erb' %>
+          </div>
+          <!-- Show Payment Details Ends -->
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer" style="text-align:left">
+      <div class="col-md-7">
+        <div class="row mb10">
+          <div class="btn-group print-bill-buttons col-md-4">
+            <% if Authorization::PolicyHelper.verification(current_user.id ,"HGP-101-101-100") %>
+              <% if @print_settings.count > 1 %>
+                <div class="btn-group">
+                  <button type="button" class="btn btn-primary btn-sm full_print dropdown-toggle" data-toggle="dropdown"><i class="fa fa-print mr5"></i> Print Bill <i class="fa fa-caret-down"></i></button>
+                  <ul class="dropdown-menu dropdown-left-manual" role="menu" aria-labelledby="summary-print-dropdown" style="">
+                    <% @print_settings.each do |print_setting| %>
+                      <li style="text-align:left" class="multi-print">
+                        <%= link_to invoice_opd_print_full_invoice_path(invoice_id: @invoice.id, page_size: 'A4', print_setting_id: print_setting.id, format: :pdf), class: '', style: 'color: #d9534f;', target: '_blank', data: { method: :get } do %> <i class="fa fa-print mr5"></i> <%= print_setting.name %> <% end %>
+                      </li>
+                    <% end %>
+                  </ul>
+                </div>
+              <% else %>
+                <%= link_to invoice_opd_print_full_invoice_path(invoice_id: @invoice.id, page_size: 'A4', print_setting_id: @print_settings[0].try(:id), format: :pdf), class: 'btn btn-primary btn-sm full_print', target: '_blank', data: { method: :get } do %> <i class="fa fa-print mr5"></i> Print Bill <% end %>
+              <% end %>
+            <% end %>
+            <% if Authorization::PolicyHelper.verification(current_user.id ,"HGP-101-101-101") %>
+              <%= link_to new_mail_record_tracker_path(record_name: 'Opd Invoice', record_id: @invoice.id, record_model: 'Invoice::Opd', appointment_id: @invoice.appointment_id, speciality: @invoice.try(:specalityname), patient_id: @invoice.patient_id.to_s), class: 'btn btn-sm btn-primary', data: { :remote => true, 'disable-with' => 'Please Wait...' } do %> <i class="fa fa-envelope"></i> Email<% end %>
+            <% end %>
+          </div>
+
+
+          <% if @visit_diagnoses.try(:size).to_i > 0 || @visit_ophthal_investigations.try(:size).to_i > 0 || @visit_laboratory_investigations.try(:size).to_i > 0 || @visit_radiology_investigations.try(:size).to_i > 0 %>
+            <div class="col-md-1">
+              Print :
+            </div>
+
+            <% if @visit_diagnoses.try(:size).to_i > 0 %>
+              <div class="col-md-2">
+                <div class="ckbox ckbox-primary">
+                  <input type="checkbox" name="print_diagnosis_flag" id="print-diagnosis" class="print-diagnosis" >
+                  <label for="print-diagnosis"><b style="color:#000">Diagnosis</b></label>
+                </div>
+              </div>
+            <% end %>
+
+            <% if @visit_ophthal_investigations.try(:size).to_i > 0 || @visit_laboratory_investigations.try(:size).to_i > 0 || @visit_radiology_investigations.try(:size).to_i > 0 %>
+              <div class="col-md-2">
+                <div class="ckbox ckbox-primary">
+                  <input type="checkbox" name="print_investigations_flag" id="print-investigation" class="print-investigation" >
+                  <label for="print-investigation"><b style="color:#000">Investigation</b></label>
+                </div>
+              </div>
+            <% end %>
+          <% end %>
+
+          <div class="btn-group print-bill-buttons col-md-3" style="padding-left: 15px;">
+            <span class="badge service">S</span> Service <br>
+            <span class="badge surgery_package">P</span> Package <br>
+          </div>
+
+        </div>
+      </div>
+      <div class="col-md-5 text-right">
+        <!-- params[:reports] == Link clicked from reports -->
+        <% if params[:reports] != 'true' %>
+          <% if org.invoice_accessible == false || current_user.has_role?(:owner) || current_user.has_role?(:admin) %>
+            <% if @invoice.is_draft == true && @invoice.is_deleted == false %>
+              <% if Authorization::PolicyHelper.verification(current_user.id,"HGP-102-112-103") %>
+                <%= link_to invoice_delete_draft_url(invoice_id: @invoice.id, user_id: current_user.id, type: 'OPD', action: 'show'), data: { remote: true, confirm: 'Are you sure you wan to delete the invoice?' }, class: 'btn btn-danger btn-remove-draft' do %>Remove<% end %>
+              <% else %>
+                <a class="btn btn-danger disabled" style="pointer-events: all" title="Not Authorized">Remove</a>
+              <% end %>
+              <% if Authorization::PolicyHelper.verification(current_user.id, "HGP-102-112-102") %>
+                <%= link_to invoice_convert_to_final_url(invoice_id: @invoice.id, user_id: current_user.id, type: 'OPD', action: 'show'), data: { remote: true, confirm: 'Are you sure you want to convert this draft bill to a final bill? You will not be able to remove any services or packages that are already added.', rel: 'nofollow' }, class: 'btn btn-info btn-convert-final', id: 'draft_to_final_invoice' do %> Convert to Final Bill<% end %>
+              <% else %>
+                <a class="btn btn-info disabled" style="pointer-events: all" title="Not Authorized">Convert to Final Bill</a>
+              <% end %>
+            <% else %>
+              <% if Authorization::PolicyHelper.verification(current_user.id, "HGP-102-111-103") %>
+                <%= link_to new_invoice_refund_payment_path(appointment_id: @invoice.appointment_id, type: Global.ehrcommon.opd.abbr, patient_id: @invoice.patient_id.to_s, specialty_id: @invoice.specialty_id, invoice_id: @invoice.id, refund_type: 'Cancellation'), data: { remote: true, 'toggle': 'modal', 'target': '#invoice-detail-modal' }, class: 'btn btn-danger', id: 'cancel_ins_invoice_path' do %> Cancellation<% end %>
+              <% else %>
+                <a class="btn btn-danger disabled" style="pointer-events: all" title="Not Authorized">Cancellation</a>
+              <% end %>
+              <% if Authorization::PolicyHelper.verification(current_user.id, "HGP-102-111-102") %>
+                <%= link_to new_invoice_refund_payment_path(appointment_id: @invoice.appointment_id, type: Global.ehrcommon.opd.abbr, patient_id: @invoice.patient_id.to_s, specialty_id: @invoice.specialty_id, invoice_id: @invoice.id, refund_type: 'Partial'), class: 'btn btn-warning', id: 'refund_ins_invoice_path', data: { :remote => true, 'toggle' => 'modal', 'target' => '#invoice-detail-modal' } do %> Refund<% end %>
+              <% else %>
+                <a class="btn btn-warning disabled" style="pointer-events: all" title="Not Authorized">Refund</a>
+              <% end %>
+            <% end %>
+            <% if @invoice.is_deleted == false %>
+              <% authorization_policy = @invoice.is_draft ? "HGP-102-112-101" : "HGP-102-111-101" %>
+              <% if Authorization::PolicyHelper.verification(current_user.id, authorization_policy) %>
+                <%= link_to edit_invoice_opd_path(id: @invoice.id), data: { remote: true, 'target' => '#invoice-modal', 'disable-with': 'Please Wait...' }, class: 'btn btn-primary', id: 'edit_ins_invoice_path' do %><%=Invoice::InvoicesHelper.edit_caption(@invoice.is_draft)%><% end %>
+              <% else %>
+                <a class="btn btn-primary disabled" style="pointer-events: all" title="Not Authorized"><%=Invoice::InvoicesHelper.edit_caption(@invoice.is_draft)%></a>
+              <% end %>
+            <% end %>
+          <% else %>
+            <input type="password" name="passcode" placeholder="Passcode" id="verify_user_access">
+            <% if @invoice.is_draft == true && @invoice.is_deleted == false %>
+              <%= link_to invoice_delete_draft_url(invoice_id: @invoice.id, user_id: current_user.id, type: 'OPD', action: 'show'), data: { remote: true, confirm: 'Are you sure you wan to delete the invoice?' }, method: :delete, class: 'btn btn-danger btn-remove-draft', disabled: 'disabled', id: 'delete_draft_invoice' do %>Remove<% end %>
+              <%= link_to invoice_convert_to_final_url(invoice_id: @invoice.id, user_id: current_user.id, type: 'OPD', action: 'show'), data: { remote: true, confirm: 'Are you sure you want to convert this draft bill to a final bill? You will not be able to remove any services or packages that are already added.', rel: 'nofollow' }, class: 'btn btn-info', disabled: 'disabled', id: 'convert_to_final' do %> Convert to Final Bill<% end %>
+            <% else %>
+              <%= link_to new_invoice_refund_payment_path(appointment_id: @invoice.appointment_id, type: Global.ehrcommon.opd.abbr, patient_id: @invoice.patient_id.to_s, specialty_id: @invoice.specialty_id, invoice_id: @invoice.id, refund_type: 'Cancellation'), data: { remote: true, 'toggle': 'modal', 'target': '#invoice-detail-modal' }, class: 'btn btn-danger', disabled: 'disabled', id: 'cancel_ins_invoice_path' do %> Cancellation<% end %>
+              <%= link_to new_invoice_refund_payment_path(appointment_id: @invoice.appointment_id, type: Global.ehrcommon.opd.abbr, patient_id: @invoice.patient_id.to_s, specialty_id: @invoice.specialty_id, invoice_id: @invoice.id, refund_type: 'Partial'), class: 'btn btn-warning',  disabled: 'disabled' , id: 'refund_ins_invoice_path', data: { :remote => true, 'toggle' => 'modal', 'target' => '#invoice-detail-modal' } do %> Refund<% end %>
+            <% end %>
+            <% if @invoice.is_deleted == false %>
+              <%= link_to edit_invoice_opd_path(id: @invoice.id), data: { remote: true, 'target' => '#invoice-modal', 'disable-with': 'Please Wait...' }, class: 'btn btn-primary', id: 'edit_ins_invoice_path', disabled: 'disabled' do %><%=Invoice::InvoicesHelper.edit_caption(@invoice.is_draft)%><% end %>
+            <% end %>
+          <% end %>
+        <% end %>
+        <button type="button" class="btn btn-default" data-dismiss="modal" onclick="refresh_main_list()">Close</button>
+      </div>
+    </div>
+  </div>
+  
+</div>
+
+<script type="text/javascript">
+  <% if @invoice.is_canceled %>
+    $('.toggle-cancellation').show()
+    $('#edit_ins_invoice_path').hide()
+    $('#confirm_cancel_ins_invoice_path').hide()
+    $('#cancel_ins_invoice_path').hide()
+    $('.invoice_calculation_list').hide()
+    $('#refund_ins_invoice_path').hide()
+  <% end %>
+  <% if @invoice.is_refunded %>
+    $('#edit_ins_invoice_path').hide()
+  <% end %>
+  <% if @invoice.final_received_amount == 0 || @invoice.final_received_amount == @invoice.refund_amount %>
+    $('#refund_ins_invoice_path').hide()
+  <% end %>
+  $("#verify_user_access").on('keyup',function(){
+    if($("#verify_user_access").val() == "<%= org.invoice_access_code %>"){
+      $("#edit_ins_invoice_path").removeAttr('disabled','disabled')
+      $("#cancel_ins_invoice_path").removeAttr('disabled','disabled')
+      $("#refund_ins_invoice_path").removeAttr('disabled','disabled')
+      $("#delete_draft_invoice").removeAttr('disabled','disabled')
+      $("#convert_to_final").removeAttr('disabled','disabled')
+    } else {
+      $("#edit_ins_invoice_path").attr('disabled','disabled')
+      $("#cancel_ins_invoice_path").attr('disabled','disabled')
+      $("#refund_ins_invoice_path").attr('disabled','disabled')
+      $("#delete_draft_invoice").attr('disabled','disabled')
+      $("#convert_to_final").attr('disabled','disabled')
+    }
+  })
+  // for toggle history
+  $(document).ready(function(){
+    $(".show-history-toggle").on('click', function(){
+      if($(this).html() == "Show Details"){
+        $(this).html("Hide Details")
+      } else {
+        $(this).html("Show Details")
+      }
+      $(".show-history-details").toggle()
+      $(".info-history-abbv").toggle()
+    })
+  })
+</script>
+<style type="text/css">
+  .modal {
+    background: rgba(0, 0, 0, 0.61);
+  }
+</style>

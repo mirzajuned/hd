@@ -1,0 +1,112 @@
+<%= javascript_include_tag "application-loggedin", "data-turbolinks-track" => true %>
+<div class="modal-dialog window-dialog">
+  <div class="modal-content">
+    <div class="modal-header window-header">
+      <% unless remote %>
+        <button type="button" class="close" data-dismiss="window">&times;</button>
+      <% else %>
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+      <% end %>
+      <h4 class="modal-title">New Case</h4>
+    </div>
+    <%= form_for @case_sheet, remote: remote, html: { id: 'new-case-form', class: "case-form" } do |f| %>
+      <%= hidden_field_tag "patient_id", params[:patient_id] %>
+      <%= hidden_field_tag "appointment_id", params[:appointment_id] %>
+      <%= hidden_field_tag "admission_id", params[:admission_id] %>
+      <%= hidden_field_tag "ot_schedule_id", params[:ot_schedule_id] %>
+      <%= hidden_field_tag "old_case_sheet_id", params[:active_case_id] %>
+      <div class="modal-body window-body">
+        <div class="row mb10">
+          <div class="col-md-12">
+            <div class="row">
+              <div class="col-md-2">
+                <span>Select Case :</span>
+              </div>
+              <div class="col-md-5">
+                <select name='case_selected' id='case_selected' class="form-control case_sheet_list p7_10">
+                  <option value="" data-name=""></option>
+                  <% @case_sheets.each do |case_sheet| %>
+                    <% if case_sheet.id.to_s !=  params[:active_case_id] %>
+                      <option value="<%= case_sheet.id %>" data-name="<%= case_sheet.case_name %>" data-date="<%= case_sheet.start_date.strftime('%d/%m/%Y') %>">
+                        <%= case_sheet.case_id %> - <%= case_sheet.case_name %>(<%= case_sheet.start_date.strftime('%d/%m/%Y') %>)
+                      </option>
+                    <% end %>
+                  <% end %>
+                  <option value="new_case" data-name="" data-date="<%= Date.current.strftime('%d/%m/%Y') %>">Add New Case</option>
+                </select>
+              </div>
+              <div class="col-md-5">
+                <b style="color:#f00">The change in case will move all data in the current <% if params[:appointment_id].present? %>Appointment<% elsif params[:admission_id].present? %>Admission<% elsif params[:ot_schedule_id].present? %>OT<% end %> to New Case. Please be sure before you.</b>
+              </div>
+            </div>
+            <hr/>
+            <div id="case_details">
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer window-footer">
+        <%= f.submit "Save", class: "btn btn-success", data: { 'disable-with': 'Please Wait...' } %>
+        <% unless remote %>
+          <button type="button" class="btn btn-default" data-dismiss="window">Close</button>
+        <% else %>
+          <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<style type="text/css">
+  #case_sheet_start_date {
+    cursor: pointer;
+  }
+</style>
+
+<script type="text/javascript">
+  $(".case_sheet_list").on('change', function(){
+    var case_id = $(this).val()
+    if(case_id != ""){
+      $.ajax({
+        dataType: "script",
+        type: 'get',
+        url: '/case_sheets/get_case_sheet_details',
+        data: {
+          id: case_id,
+          patient_id: "<%= @patient.id.to_s %>"
+        },
+        success: function(response){
+        }
+      });
+    } else {
+      $("#case_details").html("")
+    }
+  })
+
+  $(".case_sheet_list").select2()
+
+  // Validate Form
+  function case_sheet_page() {
+    $("#new-case-form").validate({
+      rules: {
+        "case_selected": {
+          required: true,
+        }
+      },
+      messages: {
+        "case_selected": {
+          required: "Please Select Case",
+        }
+      },
+      errorPlacement: function (error, element) {
+        if($(element).hasClass("select2-hidden-accessible")) {
+          element = $("#select2-" + $(element).attr("id") + "-container").parent();
+          error.insertAfter(element);
+        } else {
+          error.insertAfter(element);
+        }
+      }
+    });
+  }
+  case_sheet_page()
+</script>

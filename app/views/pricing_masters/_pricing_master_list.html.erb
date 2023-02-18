@@ -1,0 +1,70 @@
+<%= hidden_field_tag 'facility_id', params[:facility_id], class: 'facility_id' %>
+<div class="row">
+  <div class="col-md-12">
+    <input type="hidden" name="count" class="count" value="0">
+    <table class="table table-bordered pricing-master-table" id="pricing_master_table">
+      <thead>
+        <tr>
+          <th>Service Group <%= link_to pricing_list_pricing_masters_path(@options), data: { remote: true }, class: 'btn btn-link btn-xs btn-refresh-pricing-list', style: 'display: none;' do %><i class="fa fa-refresh"></i><% end %></th>
+          <th>Service Sub Group</th>
+          <th>Department</th>
+          <th>Service Name</th>
+          <th>Pricing Details</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="sub-pricing_master-list">
+        <% if @pricing_masters.count > 0 %>
+          <% @pricing_masters.each do |service_master_group, pricing_masters| %>
+            <tr class="pricing_master_tr pricing_master_<%= service_master_group[0].to_s %>">
+              <td><%= pricing_masters[0].service_group.name %></td>
+              <td><%= pricing_masters[0].try(:service_sub_group).try(:name) || '-' %></td>
+              <td><%= pricing_masters[0].try(:department_name).to_s.upcase %></td>
+              <td><span class="sm_service_name"><%= pricing_masters[0].service_master.service_name %></td>
+              <td>
+                <% pricing_masters.each_with_index do |pricing_master, i| %>
+                  <% style = ('display: block;' if pricing_master.is_active) || 'display: block;text-decoration: line-through;' %>
+                  <% payer_field = @payer_fields.find { |c| c[:id] == pricing_master.try(:payer_master_id).to_s } %>
+                  <span class="pm_service_name" style="<%= style %>"><%= pricing_master.try(:service_name) %> | <%= (payer_field[:display_name] if payer_field.present?) || 'General' %> | <%= pricing_master.try(:amount) %></span>
+                  <% if pricing_master&.has_exceptions %>
+                    <ul>
+                      <% pricing_master.pricing_exceptions.each do |exception| %>
+                        <li>
+                          <% inactive_style = !exception.is_active ? 'text-decoration:line-through;' : '' %>
+                          <span style='<%= inactive_style %>'>
+                            <% exception.sequence.each_with_index do |sequence, i| %>
+                              <%= ' | ' if i > 0 %>
+                              <%= exception.send("#{sequence}_exception_name") %>
+                            <% end %>
+                             | <%= exception.amount %>
+                           </span>
+                        </li>
+                      <% end %>
+                    </ul>
+                  <% end %>
+                <% end %>
+              </td>
+              <td>
+                <%= link_to edit_multiple_pricing_masters_path(service_master_id: service_master_group[0], facility_id: params[:facility_id], department_id: service_master_group[1], department_name: pricing_masters[0].try(:department_name)), data: { remote: true, 'toggle': 'modal', 'target': '#service-master-modal' }, class: 'btn btn-primary btn-xs edit_pricing_master' do %>Edit Pricing Details<% end %>
+              </td>
+            </tr>
+          <% end %>
+        <% else %>
+          <tr class="nothing_to_show">
+            <td class="text-center" colspan="6">Nothing to Show</td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+  var priceMasterTable = $('#pricing_master_table').DataTable({
+    "paging": true,
+    "pageLength": 100
+  });
+  $(".search-pricing-master").on('keyup', function(){
+    priceMasterTable.column([3, 4]).search($(this).val()).draw() ;
+  })
+</script>

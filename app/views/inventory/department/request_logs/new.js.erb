@@ -1,0 +1,200 @@
+jQuery("#inventory-modal").html("<%= escape_javascript(render '/inventory/department/request_logs/form') %>")
+jQuery("#inventory-modal").modal("show")
+
+
+function requestlogProceed_page() {
+console.log("hooohoho")
+  $("#formRequestItems").validate({
+//    rules: {
+//      "request_item": {
+//        required: true,
+//      },
+//      "authorized_by": {
+//        required: true,
+//      },
+//    },
+//    messages: {
+//      "request_item": {
+//        required: "Please Enter Item Name."
+//      },
+//      "authorized_by": {
+//        required: "Please Enter Authorizing Person Name."
+//      },
+//
+//    },
+    errorPlacement: function (error, element) {
+      var iden = $(element).attr("class")
+      console.log(element)
+      var parent = $("."+iden).parents("td")
+      console.log(parent)
+      error.insertAfter(parent);
+
+//      var id = $(element).attr("id");
+//      var parent = $("#"+id).parents(".input-group").length
+//      if(parent == 0){
+//        error.insertAfter(element);
+//      } else {
+//        error.insertAfter($("#"+id).parents(".input-group"));
+//      }
+    }
+  });
+}
+requestlogProceed_page()
+
+$.validator.addMethod("RequestItem", $.validator.methods.required, "Item cannot be blank");
+$.validator.addMethod("RequestItemQuantity", $.validator.methods.number, "Quantity Should be Number");
+$.validator.addMethod("RequestItemQuantityPresence", $.validator.methods.required, "Quantity cannot be blank");
+
+$.validator.addClassRules("request_item", { RequestItem: true});
+$.validator.addClassRules("request_item_quantity", { RequestItemQuantity: true, RequestItemQuantityPresence: true});
+
+
+
+
+$("#btnAddMoreItem").on("click",function(e){
+  var form, serial, tr;
+  e.preventDefault();
+  form = $("#formRequestItems");
+  tr = form.find(".tbody tr:last").clone();
+  tr.find(".request_item").attr('data-item-code', '');
+  serial = parseInt($(tr[0]).find("label").html());
+  form.find(".tbody").append(tr[0]);
+  form.find(".tbody tr:last").find("input").val("");
+  form.find(".tbody tr:last").find("label").html(serial + 1);
+  form.find(".tbody tr:last").find(".request_item_quantity").val(1);
+  afterAdd()
+})
+
+function afterAdd() {
+
+  $(".table-add-item .btnDeleteItem").on("click",function(e){
+    var tr;
+    e.preventDefault();
+    tr = $(this).parents('tr');
+    if ($(tr).find('.counter').html() !== "1") {
+      $(tr).remove();
+      reorderSerialNumbers();
+    }
+  })
+
+  $(".request_item").on("focus",function(e){
+
+    var current_target, x;
+    e.preventDefault();
+    x = [];
+    current_target = e.currentTarget;
+    $(current_target).autocomplete({
+      minLength: 3,
+      source: function(request, response) {
+        return $.ajax({
+          dataType: "json",
+          type: 'get',
+          url: '/icdtree/getitems',
+          data: {
+            q: request.term,
+            remote: "true",
+            area: 'central'
+          },
+          success: function(data) {
+            var i, item, items, len;
+            items = [];
+            for (i = 0, len = data.length; i < len; i++) {
+              item = data[i];
+              if (item.dosage) {
+                x[item.description + " (" + item.dosage + ")"] = item.item_id;
+                items.push(item.description + " (" + item.dosage + ")");
+              } else {
+                items.push(item.description);
+                x[item.description] = item.item_id;
+              }
+            }
+            return response(items);
+          },
+          error: function(err) {}
+        });
+      },
+      select: function(event, ui) {
+        var itemname;
+        itemname = ui.item.value;
+        $(this).val(itemname);
+        $(this).attr('data-item-code', x[itemname]);
+        $(this).closest('div').next().find('textarea').val(itemname);
+        return false;
+      }
+    });
+    $(current_target).autocomplete("option", "appendTo", ".tbody");
+
+  })
+}
+
+
+
+function reorderSerialNumbers(){
+  var $trs, counter, form, i, len, results, tr;
+  form = $("#formRequestItems");
+  $trs = form.find(".tbody tr");
+  counter = 1;
+  results = [];
+  for (i = 0, len = $trs.length; i < len; i++) {
+    tr = $trs[i];
+    results.push($(tr).find('.counter').html(counter++));
+  }
+  return results;
+}
+
+
+$("#btnProceed").on("click",function(e){
+  requestlogProceed_page()
+  var _this, data, form, i, item, item_id, len, note, quantity, row, rows;
+  form = $("#formRequestItems");
+  note = $(form).find('.note').val();
+  rows = form.find(".tbody tr");
+  data = {
+    note: note,
+    department: "<%=@current_inventory%>",
+    items: {}
+  };
+  for (i = 0, len = rows.length; i < len; i++) {
+    row = rows[i];
+    item_id = $(row).find(".request_item").attr("data-item-code");
+    item = $(row).find(".request_item").val() + "<->" + item_id;
+    quantity = $(row).find(".request_item_quantity").val();
+    data.items[item] = quantity;
+  }
+  _this = this;
+  return $.ajax({
+    url: 'request_logs',
+    dataType: 'json',
+    type: 'post',
+    data: data,
+    success: function(res) {
+      var notice;
+      notice = new PNotify({
+        title: 'Success',
+        text: 'Request for items to Central Inventory.',
+        icon: 'fa fa-envelope',
+        type: 'success'
+      });
+      notice.get().click(function() {
+        return notice.remove();
+      });
+      return $("#inventory-modal").modal('hide');
+    },
+    error: function(err) {
+      var notice;
+      notice = new PNotify({
+        title: 'Error',
+        text: 'Cannot Send Empty Request',
+        icon: 'fa fa-envelope',
+        type: 'error'
+      });
+      return notice.get().click(function() {
+        return notice.remove();
+      });
+    }
+  });
+})
+
+
+afterAdd()
+

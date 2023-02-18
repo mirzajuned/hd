@@ -1,0 +1,157 @@
+<div class="col-sm-12 mb5">
+  <span class="col-md-6">Advised By:</span>
+  <strong> <span><% if current_facility.consultant_role_ids.include?(158965000) %> Dr.<% end %> <%= @prescription.try(:consultant_name).titleize %></span> </strong>
+</div>
+<% if @prescription.mark_converted_by.present? && @prescription.converted == 'true' %>
+  <div class="col-sm-12 mb5">
+    <span class="col-md-6">Converted By:</span>
+    <strong> <span> <%= User.find(@prescription.try(:mark_converted_by)).fullname.titleize %></span> </strong>
+  </div>
+<% end %>
+
+<% if @prescription.mark_converted_by.present? && @prescription.converted == 'false' %>
+  <div class="col-sm-12 mb5">
+    <span class="col-md-6">Attended By:</span>
+    <strong> <span> <%= User.find(@prescription.try(:mark_converted_by)).fullname.titleize %></span> </strong>
+  </div>
+<% end %>
+
+<div class="col-sm-12 mb5">
+  <span class="col-md-6">View Template:</span>
+  <% if Authorization::PolicyHelper.verification(current_user.id,"HGP-100-117-103") %>
+    <a class="btn btn-primary btn-xs navnew-btn-pri hg-tooltip" style="padding: 0px 5px" id="latest-viewsummary-html" data-remote="true" data-toggle="tooltip" data-target="#templates-modal" href="/opd_records/view_opd_summary?appointmentid=<%=@prescription.appointment_id%>&amp;opdrecordid=<%= @prescription.record_id%>&amp;patientid=<%=@prescription.patient_id%>&amp;specality=<%=@prescription.specalityid%>&amp;templatetype=<%=@prescription.templatetype%>" original-title="View Template"><i class="fa fa-file-alt"></i> Template</a>
+  <% else %>
+    <a class="btn btn-primary btn-xs navnew-btn-pri hg-tooltip disabled" style="padding: 0px 5px; pointer-events: all" title="Not Authorized"><i class="fa fa-file-alt"></i> Template</a>
+  <% end %>
+</div>
+<div class="col-sm-12 patient-converted-section" style="margin-bottom: 5%">
+  <div class="row no_margin">
+    <% if @prescription.converted.present? %>
+      <hr style="margin: 10px;">
+      <% if @prescription.converted == true %>
+        <% data_confirm = "Are you sure want to change to not converted?" %>
+        <% update_to = 'false' %>
+        <% change = 'Mark as not converted' %>
+        <% color = 'danger'%>
+        <% patient_state = 'CONVERTED' %>
+        <% state = 'not_converted' %>
+        <% not_converted_to_converted = 'false' %>
+      <% else %>
+        <% data_confirm = "Are you sure want to change to converted?" %>
+        <% update_to = 'true' %>
+        <% change = 'Mark as converted' %>
+        <% color = 'info'%>
+        <% patient_state = 'NOT CONVERTED' %>
+        <% state = 'converted' %>
+        <% not_converted_to_converted = 'false' %>
+      <% end %>
+      <div class="row">
+        <span class="col-sm-6">Patient State &emsp;:&emsp;&emsp;</span>
+        <b style="font-size: 11px"><%= patient_state %></b>&emsp;&emsp;<br><br>
+        <% if @inventory_store.try(:billable_transaction) == true && @prescription.converted == true && @inventory_store.try(:enable_stock_management) == true  %>
+          <% if @current_date_last_invoice.present? %>
+            <!-- <%#= link_to print_preview_invoice_inventory_invoices_path(id: @current_date_last_invoice.id.to_s, from: 'current_day_last_invoice'), class: "btn btn-xs btn-success", data: { remote: true} do %><i class="fa fa-file-alt"></i> Invoice<%# end %> -->
+          <% else %>
+            <!-- <%#= link_to print_preview_invoice_inventory_invoices_path(prescription_id: @prescription.id.to_s), class: "btn btn-xs btn-success", data: { remote: true} do %><i class="fa fa-file-alt"></i> Invoice<%# end %> -->
+          <% end %>
+          <button class="btn-xs btn-danger validate-prescription">Validate prescription</button>
+          <%= link_to new_invoice_inventory_order_path(prescription_id: @prescription.id.to_s, department_id:  @inventory_store.try(:department_id) ,state: 'converted', patient_id: @prescription.patient_id, store_id: @inventory_store.id, re_converted: true), class: "btn btn-xs btn-success re-converted", data: { remote: true} do %>Re-Converted<% end %>
+        <% elsif @inventory_store.try(:billable_transaction) == true && @prescription.converted != true && @inventory_store.try(:enable_stock_management) == true %>
+          <%= link_to new_invoice_inventory_order_path(prescription_id: @prescription.id.to_s, department_id:  @inventory_store.try(:department_id) ,state: 'converted', patient_id: @prescription.patient_id, store_id: @inventory_store.id), class: "btn btn-xs btn-success", data: { remote: true} do %>Mark as converted<% end %>
+        <% else %>
+          <a class="btn btn-xs btn-<%=color%> edit_dispatch_medicine" id="edit_dispatch_medicine" data-prescription-id="<%= @prescription.id %>" not_converted_to_converted="<%= not_converted_to_converted %>" state="<%= state %>" update_to="<%=update_to%>" style="margin-left: 2%"> <%= change %> </a>
+        <% end %>
+      </div>
+    <% elsif @prescription.converted == false %>
+      <span class="col-md-6">Status</span>
+      <span class="btn btn-danger btn-xs confirm-convertion" style="padding: 0;" data-toggle='modal' data-target='#confirm-convertion-modal'>Not Converted</span>      
+    <% else %>
+      <div class="col-md-6"> Mark Converted: </div>
+      <% if Authorization::PolicyHelper.verification(current_user.id,"HGP-100-117-100") %>
+        <% if @inventory_store.try(:billable_transaction) == true && @inventory_store.try(:enable_stock_management) == true  %>
+          <%= link_to new_invoice_inventory_order_path(prescription_id: @prescription.id.to_s, department_id:  @inventory_store.try(:department_id) ,state: 'converted', patient_id: @prescription.patient_id, store_id: @inventory_store.id), class: "btn btn-xs btn-success", data: { remote: true} do %>Yes<% end %>
+        <% else %>
+          <%= link_to prescriptions_optical_mark_converted_form_path(prescription_id: @prescription.id.to_s, state: 'converted'), class: "btn btn-xs btn-success", data: { remote: true, 'toggle': 'modal', 'target': '#mark-converted-modal' } do %>Yes<% end %>
+        <% end %>
+        <%= link_to prescriptions_optical_mark_converted_form_path(prescription_id: @prescription.id.to_s, state: 'not_converted'), class: "btn btn-xs btn-danger", data: { remote: true, 'toggle': 'modal', 'target': '#mark-converted-modal' } do %>No<% end %>
+      <% else %>
+          <a class="btn btn-xs btn-success disabled" title="Not Authorized" style="pointer-events: all">Yes</a>
+          <a class="btn btn-xs btn-danger disabled" title="Not Authorized" style="pointer-events: all">No</a>
+      <% end %>
+    <% end %>
+  </div>
+</div>
+
+<% if @prescription.converted.nil? %>
+  <button class="btn-xs btn-primary mark-patient-visited">Mark Patient Visited</button>
+<% end %>
+
+<% if @prescription.converted == false || @prescription.converted == 'false' %>
+  <div class="col-sm-10 row mb5" style="padding: 3px;border-radius: 5px;border: #428bca 2px solid;margin-top: 1%; margin-left: 2%;">
+    <span style="font-weight: 900; font-size: 11px;">REASONS&nbsp;&nbsp;:&nbsp;&nbsp;&nbsp;&nbsp;</span>
+    <% if @prescription.reason_one == 'true'  %>
+      <li style="color: #428bca"> Collection not good </li>
+    <% end %>
+    <% if @prescription.reason_two == 'true'  %>
+      <li style="color: #428bca"> Dilated</li>
+    <% end %>
+    <% if @prescription.reason_three == 'true'  %>
+      <li style="color: #428bca"> Will come later with relatives </li>
+    <% end %>
+    <% if @prescription.reason_four == 'true'  %>
+      <li style="color: #428bca"> Known optical shop </li>
+    <% end %>
+    <% if @prescription.reason_five == 'true'  %>
+      <li style="color: #428bca"> Optical DRT referral </li>
+    <% end %>
+    <% if @prescription.reason_six == 'true'  %>
+      <li style="color: #428bca"> Expensive </li>
+    <% end %>
+    <% if @prescription.reason_seven == 'true'  %>
+      <li style="color: #428bca"> Looking for high discount </li>
+    <% end %>
+    <% if @prescription.reason_eight == 'true'  %>
+      <li style="color: #428bca"> Not interested in wearing glasses </li>
+    <% end %>
+    <% if @prescription.optical_comment.present? %>
+      <li style="color: #428bca"> <%= @prescription.optical_comment %> </li>
+    <% end %>
+  </div>
+  <%= link_to prescriptions_optical_mark_converted_form_path(prescription_id: @prescription.id.to_s, state: 'not_converted'), class: "btn btn-link col-sm-2", data: { remote: true, 'toggle': 'modal', 'target': '#mark-converted-modal' } do %>Edit<% end %>
+<%end%>
+
+<script type="text/javascript">
+
+  function validate_reorder() {
+    $('.re-converted').attr('disabled', true)
+  }
+
+  $('.validate-prescription').on('click', function() {
+    $(this).text('Validated')
+    $(this).css('background-color', 'green')
+    $('.re-converted').attr('disabled', false)
+  })
+
+  validate_reorder()
+
+  function check_patient_visited() {
+    let mark_visited = '<%= @prescription.mark_patient_visited  %>'
+    if (mark_visited == '' || mark_visited == 'false') {
+      $('.patient-converted-section').hide()
+    } else {
+      $('.patient-converted-section').show()
+    }
+  }
+
+  $('.mark-patient-visited').on('click', function() {
+    let text = $(this).text()
+    if (text == "Mark Patient Visited") {
+      $(this).text('Mark Patient Not Visited')
+      $('.patient-converted-section').show()
+    } else {
+      $(this).text('Mark Patient Visited')
+      $('.patient-converted-section').hide()
+    }
+  })
+  check_patient_visited()
+</script>

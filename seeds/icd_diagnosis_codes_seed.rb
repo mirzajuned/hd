@@ -1,0 +1,1 @@
+IcdDiagnosisCode.delete_all

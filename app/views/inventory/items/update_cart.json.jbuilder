@@ -1,0 +1,1 @@
+json.cart_count @inventory_item_cart_count

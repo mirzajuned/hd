@@ -1,0 +1,198 @@
+$('.items-variants-list .inventory-list-row').unbind()
+$('.items-variants-list .inventory-list-row').on('click', function(e){
+  e.preventDefault();
+  var variant_name =  $(this).find('.description').text();
+  var vendor_id = $("#inventory_transaction_purchase_vendor_id").val()
+  var _id =  $(this).attr('id');
+
+  $.ajax({
+    type: 'GET',
+    data: {
+      variant_name: variant_name,
+      variant_id: _id,
+      vendor_id: vendor_id,
+      remote: true
+    },
+    url: '/inventory/transaction/purchases/new_lot',
+    success: function(){
+    }
+  })
+})
+
+function calTotalPrice() {
+  var each_item_totals = 0;
+  $('.price_including_tax').each(function(){
+    each_item_totals += parseFloat($(this).val());
+  });
+  $("#inventory_transaction_purchase_total_cost").val(each_item_totals.toFixed(2))
+}
+
+$('.delete_empty_item').on('click', function(){
+  if ($('.purchase-transaction-log-item').length > 1){
+    $(this).closest('.purchase-transaction-log-item').remove()
+  }
+  calTotalPrice()
+})
+
+
+$(window).resize(function() {
+  adjust_height()
+})
+
+adjust_height()
+function adjust_height(){
+  modalContentHeigth = $(window).height() - 160
+  $(".items-lots").height(modalContentHeigth)
+  itemsVariants = modalContentHeigth - $('.transaction-header').height()
+  $('.items-variants-body').height(itemsVariants)
+  transactionListHeight = modalContentHeigth - $('.transaction-title').height() - $('.transaction-common-fields').height() - 70
+  $('.transaction-table-body').height(transactionListHeight - $('.transaction-table-head').height())
+}
+
+function filter_index(query) {
+  if (query.length > 0){
+    $(".items-variants-search").find(".fa").show()
+  }
+  else {
+    $(".items-variants-search").find(".fa").hide()
+  }
+  $('#show_more_variants').show();
+  $.ajax({
+    type : 'get',
+    url: '/inventory/transaction/purchases/filter_variants',
+    data: {q: query, store_id: "<%=@store_id %>",item_type: "<%=@category %>", remote: "true" },
+  })
+}
+
+$(".items-variants-search").find(".fa").on('click',function(){
+  $("#variants_search").val("")
+  filter_index("")
+})
+
+$("#variants_search").on("keyup", function () {
+  query = $(this).val()
+  filter_index(query)
+})
+
+
+
+function isScrolledIntoLastRow(last_row_elem, scrollable_container) {
+  if (last_row_elem.length == 1) {
+    var top_of_element = $(last_row_elem).offset().top - $(scrollable_container).offset().top ;
+    var table_height = $(scrollable_container).innerHeight()
+    return top_of_element <= table_height
+  }
+}
+
+scrollinventory()
+function scrollinventory(){
+  $(".items-variants-body").scroll(function() {
+    last_row_elem = $('.items-variants-body').find('tr:nth-last-child(1)')
+    scrollable_container = $(".items-variants-body")
+    if (isScrolledIntoLastRow(last_row_elem, scrollable_container)) {
+      $("#show_more_variants").trigger("click")
+      $(".items-variants-body").off('scroll');
+      setTimeout(function() {   //calls click event after a certain time
+        scrollinventory()
+      }, 500);
+    }
+  })
+}
+$("#show_more_variants:visible").on('click', function(e){
+  e.preventDefault();
+  var total_count_row =  $('.items-variants-body tr').length;
+  var query =  $("#variants_search").val()
+  $.ajax({
+    type: "GET",
+    dataType: "script",
+    data: {
+      total_count_row: total_count_row,
+      item_type: "<%=  @category %>",
+      store_id: "<%= @store_id %>",
+      q:query
+    },
+    url: "/inventory/transaction/purchases/append_variants",
+  })
+})
+
+
+$('.transaction-datepicker').datepicker({
+    dateFormat: "dd/mm/yy",
+    maxDate: -0
+});
+
+$('#inventory_transaction_purchase_vendor_id').select2()
+
+add_vendor_name()
+
+$('#inventory_transaction_purchase_vendor_id').on('change', function () {
+  add_vendor_name()
+})
+
+function add_vendor_name() {
+  var vendor_name = $('#inventory_transaction_purchase_vendor_id').find(":selected").html()
+  $('#inventory_transaction_purchase_vendor_name').val(vendor_name)
+}
+
+
+function validate_inventory_purchase_transactions_form() {
+
+  $("#inventory_purchase_transactions_form").validate({
+    rules: {
+      "inventory_transaction_purchase[vendor_id]": {
+        required: true,
+      },
+      "inventory_transaction_purchase[total_cost]": {
+        required: true,
+      },
+    },
+    messages: {
+      "inventory_transaction_purchase[total_cost]": {
+        required: "No Item Added"
+      },
+
+    },
+    errorPlacement: function (error, element) {
+      var id = $(element).attr("id");
+      var parent = $("#"+id).parents(".input-group").length
+      if(parent == 0){
+        error.insertAfter(element);
+      } else {
+        error.insertAfter($("#"+id).parents(".input-group"));
+      }
+    }
+  });
+}
+validate_inventory_purchase_transactions_form()
+
+$.validator.addClassRules("item_description", { required: true});
+$.validator.addClassRules("item_quantity", { required: true, number: true});
+$.validator.addClassRules("price_including_tax", { required: true, number: true});
+
+jQuery.extend(jQuery.validator.messages, {
+  required: "Required",
+  remote: "Please fix this field.",
+  email: "Please enter a valid email address.",
+  url: "Please enter a valid URL.",
+  date: "Please enter a valid date.",
+  dateISO: "Invalid date.",
+  number: "Invalid No.",
+  digits: "Please enter only digits.",
+  creditcard: "Please enter a valid credit card number.",
+  equalTo: "Please enter the same value again.",
+  accept: "Please enter a value with a valid extension.",
+  maxlength: jQuery.validator.format("Please enter no more than {0} characters."),
+  minlength: jQuery.validator.format("Please enter at least {0} characters."),
+  rangelength: jQuery.validator.format("Please enter a value between {0} and {1} characters long."),
+  range: jQuery.validator.format("Please enter a value between {0} and {1}."),
+  max: jQuery.validator.format("Please enter a value less than or equal to {0}."),
+  min: jQuery.validator.format("Please enter a value greater than or equal to {0}.")
+});
+
+
+
+
+
+
+
+

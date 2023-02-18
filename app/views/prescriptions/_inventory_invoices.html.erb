@@ -1,0 +1,108 @@
+<div class="row no_margin">
+  <div class="col-md-6">
+  </div>
+  <div class="col-md-6">
+    <div class="btn-group pull-right" style="margin-bottom: 0; margin-left: 10px;">
+      <div class="btn-group">
+        <button type="button" class="btn btn-xs btn-success dropdown-toggle opd-invoice" data-toggle="dropdown">
+          <%= current_facility.currency_symbol %> Bills
+        </button>
+        <ul class="dropdown-menu dropdown-menu-right" role="menu" aria-labelledby="invoice-print-dropdown">
+          <% if @inventory_store.try(:billable_transaction) == true && @prescription&.converted == true && @inventory_store.try(:enable_stock_management) == true  %>
+            <li style="text-align:center;">
+              <% from = @inventory_store.department_id == '50121007' ? 'optical_patient_queue' : 'pharmacy_patient_queue' %>
+              <!-- <%#= link_to new_invoice_inventory_invoice_path(from: from, department_id: @inventory_store.try(:department_id) ,state: 'converted', patient_id: @patientid, store_id: @inventory_store.id), class: "", data: { remote: true} do %>New Bill<%# end %> -->
+            </li>
+          <% elsif @inventory_store.try(:billable_transaction) == true && @from =='show' && @inventory_store.try(:enable_stock_management) == true %>
+            <li style="text-align:center;">
+              <% from = @inventory_store.department_id == '50121007' ? 'optical_patient_queue' : 'pharmacy_patient_queue' %>
+              <!-- <%#= link_to new_invoice_inventory_invoice_path(from: from, department_id: @inventory_store.try(:department_id) ,state: 'converted', patient_id: @patientid, store_id: @inventory_store.id), class: "", data: { remote: true} do %>New Bill<%# end %> -->
+            </li>
+          <% end %>
+          <% if Authorization::PolicyHelper.verification(current_user.id,"HGP-100-117-101") %>
+            <li style="text-align:center;">
+              <%= link_to new_invoice_advance_payment_path(appointment_id: @appointment&.id, type: @inventory_store.department_name, patient_id: @patientid, specialty_id: @appointment&.specialty_id, department_id: @inventory_store.department_id, store_id: @inventory_store.id), data: { :remote => true, 'toggle' => 'modal', 'target' => '#invoice-modal' } do %> Advance Receipt<% end %>
+            </li>
+          <% end %>
+          <% if @inventory_invoices.size > 0 || @return_transactions.size > 0 %>
+            <li class="old_invoice_ss"><span>Previous Bills</span></li>
+            <% @inventory_invoices.each do |inventory_invoice| %>
+              <li style="text-align:center;">
+                <% label = inventory_invoice.department_id == '50121007' ? 'Opt' : 'Rx' %>
+                <%= link_to show_modal_invoice_inventory_invoices_path(id: inventory_invoice.id, from: 'patient_queue'), data: { remote: true } do %><%= inventory_invoice.created_at.strftime("%d %b'%y at %I:%M %p") %> <label class='label label-info'><%= "#{label}" %></label><% end %>
+              </li>
+            <% end %>
+            <% if @return_transactions.size > 0 %>
+              <% @return_transactions.each do |return_transaction| %>
+                <li style="text-align:center;">
+                  <% label = return_transaction.department_id == '50121007' ? 'Opt Ref' : 'Rx Ref' %>
+                  <%= link_to show_modal_refund_invoice_inventory_invoices_path(id: return_transaction.id), data: { remote: true } do %><%= return_transaction.created_at.strftime("%d %b'%y at %I:%M %p") %> <label class='label label-danger'><%= "#{label}" %></label><% end %>
+                </li>
+              <% end %>
+            <% end %>
+          <% end %>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<% if @advance_payments.count > 0 %>
+  <div class="row no_margin">
+    <div class="col-sm-12 mb10">
+      <% advance_payment_total = @advance_payments.group_by(&:currency_symbol) %>
+      <span>Advance Payment (Remaining Adv. Amt.):
+          <label class="label label-warning">
+            <% counter = 0 %>
+            <% advance_payment_total.each do |currency_symbol, advance_payments| %>
+              <% if counter > 0 %>&nbsp;|&nbsp;<% end %> <%= currency_symbol %><%= (advance_payments.map { |va| va[:amount].to_f.try(:round, 3) }.sum).try(:round, 3) %> (<%= (advance_payments.map { |va| va[:amount_remaining].to_f }.sum).to_f.try(:round, 3) - (advance_payments.map { |va| va[:refund_amount].to_f }.sum).to_f.try(:round, 3) %> )
+              <% counter += 1 %>
+            <% end %>
+          </label>
+        </span>
+    </div>
+    <% @advance_payments.each do |advance_payment| %>
+      <div class="col-sm-4 mb3">
+        <% if advance_payment.is_refunded %>
+          <%= link_to invoice_advance_payment_path(id: advance_payment.id), class: 'btn btn-xs btn-default', data: { :remote => true, 'toggle' => 'modal', 'target' => '#invoice-modal' } do %><%= advance_payment.currency_symbol %><%= advance_payment.amount.try(:round, 3) %>(<strike> <%= advance_payment.currency_symbol %><%= advance_payment.amount_remaining.try(:round, 3) %> </strike>) on <%= advance_payment.created_at.strftime("%d %b'%y") %><% end %>
+        <% else %>
+          <%= link_to invoice_advance_payment_path(id: advance_payment.id), class: 'btn btn-xs btn-default', data: { :remote => true, 'toggle' => 'modal', 'target' => '#invoice-modal' } do %><%= advance_payment.currency_symbol %><%= advance_payment.amount.try(:round, 3) %> (<%= advance_payment.currency_symbol %><%= advance_payment.amount_remaining.try(:round, 3) %>) on <%= advance_payment.created_at.strftime("%d %b'%y") %><% end %>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+<% end %>
+
+<hr>
+<% if @refund_payments.count > 0 %>
+  <div class="row no_margin">
+    <div class="col-sm-12 mb10">
+      <% refund_payment_total = @refund_payments.group_by(&:currency_symbol) %>
+      <span>Refund Payment :
+          <label class="label label-warning">
+            <% counter = 0 %>
+            <% refund_payment_total.each do |currency_symbol, refund_payments| %>
+              <% if counter > 0 %>&nbsp;|&nbsp;<% end %> <%= currency_symbol %><%= (refund_payments.map { |va| va[:amount].to_f }.sum).try(:round, 3) %>
+              <% counter += 1 %>
+            <% end %>
+          </label>
+        </span>
+    </div>
+    <% @refund_payments.each do |refund_payment| %>
+      <div class="col-sm-4 mb3">
+        <%= link_to invoice_refund_payment_path(id: refund_payment.id), class: 'btn btn-xs btn-default', data: { :remote => true, 'toggle' => 'modal', 'target' => '#invoice-modal' } do %><%= refund_payment.currency_symbol %><%= refund_payment.amount.try(:round, 3) %> on <%= refund_payment&.payment_date&.strftime("%d %b'%y") %><% end %>
+      </div>
+    <% end %>
+  </div>
+<% end %>
+<hr>
+
+
+<style type="text/css">
+  .old_invoice_ss {
+    text-align:center;
+    font-size:10px;
+    border-top: 1px solid #ccc;
+    border-bottom: 1px solid #ccc;
+  }
+</style>

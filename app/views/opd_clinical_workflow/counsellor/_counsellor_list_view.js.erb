@@ -1,0 +1,54 @@
+$(".sidebar-summary-appointment").html("<%= escape_javascript(render 'opd_appointments/list/sidebar_summary') %>");
+
+$(".summary_appointment").on('click', function (e) {
+    $(".summary_appointment").removeClass('active');
+    $(this).addClass("active");
+    var detailsArea = $("#appointment-details .appointment-details");
+    $(detailsArea).closest("#appointment-details").css('background-color', '#fff')
+    $(detailsArea).html("<div class='loading_dots'><span></span>&nbsp;<span></span>&nbsp;<span></span></div>");
+
+    appointment_id = $(this).attr('data-appointment-id');
+    var current_date = "<%= @datepicker_date %>";
+    $.ajax({
+        url: "/opd_appointments/showday_appointment_details",
+        data: {
+            appointment_id: appointment_id,
+            current_date: current_date
+        },
+        dataType: 'html',
+        success: function (res) {
+            $(detailsArea).html(res);
+//                    console.log(appointment_id)
+        },
+        error: function (err) {
+            console.log("Error.", err);
+        }
+    });
+});
+
+<% if @refresh_appointment_id.present?%>
+    $(".appointments_today").find('.active').find('*[data-appointment-id='+'<%= @refresh_appointment_id%>' +']').click()
+<%else%>
+    select_first_appointment()
+<%end%>
+
+function select_first_appointment(){
+    var open_tab = $("#appointment_summary_tabs li.active a").attr("href");
+    summary_presence = $(open_tab).find(".summary_appointment").length
+    if(summary_presence){
+        $(open_tab).find(".summary_appointment").first().addClass('active').click();
+    } else {
+        $("#appointment-details").css("background-color","grey")
+        $("#appointment-details .appointment-details").html($("#empty_appointment_details_template").html())
+    }
+}
+
+$(".full-width").find('a').on('click', function(){
+    var href = $(this).attr("href")
+    var app_list = $(href).find(".summary_appointment")
+    if(app_list.length > 0){
+        app_list.first().trigger('click')
+    } else {
+        // do something
+    }
+})

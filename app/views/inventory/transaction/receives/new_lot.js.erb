@@ -1,0 +1,187 @@
+$("#add_lot_modal").html("<%= escape_javascript(render 'new_lot.html.erb') %>")
+$("#add_lot_modal").modal("show")
+
+calculate_total_units()
+
+function calculate_total_units() {
+  stock_package = parseInt($("#stock_package").val()) || 0
+  stock_subpackage = parseInt($("#stock_subpackage").val()) || 0
+  stock_unit = parseInt($("#stock_unit").val()) || 0
+  stock_free_unit = parseInt($("#stock_free_unit").val()) || 0
+  sub_package_units = parseInt(<%= @item.sub_package_units %>)
+  item_units = parseInt(<%= @item.item_units %>)
+  stock_val = (stock_package * sub_package_units * item_units) + (stock_subpackage * item_units) + (stock_unit) + (stock_free_unit)
+  $("#stock").val(stock_val)
+}
+
+$(".calculate-total-stock").on("change keyup", function () {
+  calculate_total_units()
+  calculate_unit_cost_price()
+})
+
+calculate_unit_cost_price()
+
+function calculate_unit_cost_price(){
+  stock = parseInt($("#stock").val()) || 0
+  total_cost_price = $("#total_cost").val()
+
+  unit_cost = total_cost_price/stock
+
+  if (unit_cost == 'Infinity') {
+    unit_cost = "No Stock"
+  }
+  $("#unit_cost").val(unit_cost)
+}
+
+$("#total_cost").on("change keyup", function () {
+  calculate_unit_cost_price()
+})
+
+function calculate_price(price_type) {
+  price_pack_denomination = $("#"+price_type+"_pack_denomination").val()
+  if (price_pack_denomination == "Package"){
+    price_pack_multiplier = parseInt(<%= @item.sub_package_units %>) * parseInt(<%= @item.item_units %>)
+  }
+  else if (price_pack_denomination == "Subpackage"){
+    price_pack_multiplier = parseInt(<%= @item.item_units %>)
+  }
+  else if (price_pack_denomination == "Unit"){
+    price_pack_multiplier = 1
+  }
+  price_pack = $("#"+price_type+"_pack").val()
+  price_per_unit = price_pack / price_pack_multiplier
+  $("#"+price_type).val(price_per_unit)
+}
+
+<!--$("#mrp_pack").on("change keyup", function () {-->
+<!--  calculate_price("mrp")-->
+<!--})-->
+<!--$("#mrp_pack_denomination").on("change keyup", function () {-->
+<!--  calculate_price("mrp")-->
+<!--})-->
+
+$("#list_price_pack").on("change keyup", function () {
+  calculate_price("list_price")
+  calculate_tax()
+})
+$("#list_price_pack_denomination").on("change keyup", function () {
+  calculate_price("list_price")
+  calculate_tax()
+})
+
+function calculate_tax(){
+  var tax_inclusive = $("#tax_inclusive").val()
+  var selling_price = parseFloat($("#list_price").val())
+  var tax_rate = parseFloat($("#tax_rate").val()) || 0
+
+  if(tax_inclusive == 'true'){
+    var taxable_amount = (selling_price * tax_rate)/(100 + tax_rate)
+    var non_taxable_amount = selling_price - taxable_amount
+    var total_amount = selling_price
+  } else {
+    var taxable_amount = (selling_price * tax_rate)/100
+    var non_taxable_amount = selling_price
+    var total_amount = selling_price + taxable_amount
+  }
+
+  $("#non_taxable_amount").val(non_taxable_amount.toFixed(2))
+  $("#taxable_amount").val(taxable_amount.toFixed(2))
+
+}
+
+
+variant_identifier()
+function variant_identifier(){
+  var variant_skew = $(".variant-skew")
+  var text_variant = ""
+  var sorted_text_variant = ""
+  for (i = 0; i < variant_skew.length; i++) {
+    skew = variant_skew[i].value
+    if (skew.length > 0) {
+      if (text_variant) {
+        prepend_value = ","
+      }
+      else{
+        prepend_value = ""
+      }
+      text_variant += prepend_value + skew ;
+      sorted_text_variant = text_variant.split(',').sort()
+    }
+  }
+  $(".variant-identifier").val(sorted_text_variant)
+}
+
+$(".variant-skew").on("change", function () {
+  $(this).siblings("input").val($(this).val())
+  variant_identifier()
+})
+
+$('.expiry-datepicker').datepicker({
+  dateFormat: "dd/mm/yy",
+  minDate: -0
+});
+
+
+function validate_purchase_add_lot_form(e) {
+  $("#purchase_add_lot_form").validate({
+    rules: {
+      "item[total_cost]": {
+        required: true,
+        number: true
+      },
+      "item[unit_cost]": {
+        required: true,
+        number: true
+      },
+      "item[stock]": {
+        required: true,
+        number: true
+      },
+      "item[list_price]": {
+        required: true,
+        number: true
+      },
+      "item[expiry]": {
+        required: true,
+      },
+    },
+    messages: {
+//        "inventory_item[description]": {
+//          required: "Please enter Description."
+//        },
+
+    },
+    errorPlacement: function (error, element) {
+      var id = $(element).attr("id");
+      var parent = $("#"+id).parents(".input-group").length
+      if(parent == 0){
+        error.insertAfter(element);
+      } else {
+        error.insertAfter($("#"+id).parents(".input-group"));
+      }
+    }
+  });
+}
+validate_purchase_add_lot_form()
+
+jQuery.extend(jQuery.validator.messages, {
+  required: "Required",
+  remote: "Please fix this field.",
+  email: "Please enter a valid email address.",
+  url: "Please enter a valid URL.",
+  date: "Please enter a valid date.",
+  dateISO: "Invalid date.",
+  number: "Invalid No.",
+  digits: "Please enter only digits.",
+  creditcard: "Please enter a valid credit card number.",
+  equalTo: "Please enter the same value again.",
+  accept: "Please enter a value with a valid extension.",
+  maxlength: jQuery.validator.format("Please enter no more than {0} characters."),
+  minlength: jQuery.validator.format("Please enter at least {0} characters."),
+  rangelength: jQuery.validator.format("Please enter a value between {0} and {1} characters long."),
+  range: jQuery.validator.format("Please enter a value between {0} and {1}."),
+  max: jQuery.validator.format("Please enter a value less than or equal to {0}."),
+  min: jQuery.validator.format("Please enter a value greater than or equal to {0}.")
+});
+
+

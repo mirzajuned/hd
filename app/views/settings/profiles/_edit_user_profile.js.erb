@@ -1,0 +1,228 @@
+// <!-- In Use -->
+
+// Asset Image View Refresh
+function readURL(input) {
+  $("#remove_user_profile_pic").attr('value', 'false')
+  if (input.files && input.files[0]) {
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      $(input).parent().find(".thumb").attr('src', e.target.result);
+    }
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+
+// Clear Asset
+$(".clear-user-asset").on('click', function(e){
+  e.preventDefault()
+  $("#remove_user_profile_pic").attr('value', 'true')
+  $("#upload-user-picture").attr('value', '')
+  $(".btn-user-asset").html('<img class="thumb this-image" style="max-width: 100px; min-height: 100px; max-height: 100px; line-height: 20px;" src="/assets/placeholder.png" alt="User Profile Pic">')
+  $(".this-image").on('click', function(){
+    $('#upload-user-picture').trigger('click');
+  })
+  $(this).hide()
+})
+
+// User DOB Datepicker
+var datepicker_options = {
+  maxDate: -((18*365) + 5), // For Age >= 18
+  dateFormat: "dd/mm/yy",
+  changeMonth: true,
+  changeYear: true,
+  yearRange: "-100:+0",
+}
+$("#user_dob").datepicker(datepicker_options)
+
+// Set Age on DOB Change
+$("#user_dob").on('change', function(){
+  var patientdobday, patientdobmonth, patientdobyear
+  if ($("#user_dob").val().length > 9) {
+    patientdobday = "0" + moment($("#user_dob").val(), "DD/MM/YYYY").date()
+    patientdobmonth = "0" + moment($("#user_dob").val(), "DD/MM/YYYY").month()
+    patientdobyear = moment($("#user_dob").val(), "DD/MM/YYYY").year()
+    var todaydate = new Date()
+    var birthdate = new Date(patientdobyear, patientdobmonth, patientdobday)
+    var age = (todaydate - birthdate) / (365.25 * 24 * 60 * 60 * 1000)
+    var computed_age = Math.floor(age)
+    $("#user_age").val(computed_age)
+  }
+}).trigger('change')
+
+
+function edit_user_profile(){
+  $("#edit_user_<%= @user.id.to_s %>").validate({
+    rules: {
+      "user[salutation]": {
+        required: true,
+      },
+      "user[fullname]": {
+        required: true,
+      },
+      "user[gender]": {
+        required: true,
+      },
+      "user[employee_id]": {
+        remote: "/users/validate_user?organisation_id=<%= @user.try(:organisation_id) %>&existing_employee_id=<%= @user.try(:employee_id) %>"
+      }
+    },
+    messages: {
+      "user[salutation]": {
+        required: "*Required."
+      },
+      "user[fullname]": {
+        required: "*Required.",
+      },
+      "user[gender]": {
+        required: "*Required.",
+      },
+      "user[employee_id]": {
+        remote: "Employee ID already exists"
+      }
+    },
+    errorPlacement: function (error, element) {
+      error.insertAfter(element);
+    }
+  })
+}
+edit_user_profile()
+
+//user_state
+jQuery('#user_state_name').autocomplete({
+      minLength: 3,
+      source: function(request, response) {
+          jQuery.ajax({
+              dataType: "json",
+              type : 'get',
+              url: '/locations/search_state',
+              data: {q: request.term, remote: "true" },
+              success: function(data) {
+                  response(data);
+              },
+              error: function(data) {
+              }
+          });
+      },
+      select: function( event, ui ) {
+        name = ui.item["state"]
+        setTimeout(function() {
+        jQuery("#user_state_name").val(name)
+        jQuery('#user_state_name').blur()
+      }, 20);
+      },
+      create: function () {
+        $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+          return $('<li>')
+              .append('<a style=\"color:#000;text-shadow: 2px\">' + item.state  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+              .appendTo(ul);
+        };
+     }
+  });  
+
+//user_city
+jQuery('#user_city').autocomplete({
+    minLength: 3,
+    source: function(request,response){
+      var state = jQuery('#user_state_name').val();
+      jQuery.ajax({
+        dataType: "json",
+        type : 'get',
+        url: '/locations/search_city',
+        data: {q: request.term, state: state, remote: "true"},
+        success: function(data){
+          response(data);
+        },
+        error: function(data){
+
+        }
+      });
+    },
+    select: function( event, ui ) {
+        city  = ui.item["city"]
+        state = ui.item["state"]
+        setTimeout(function() {
+        jQuery("#user_city").val(city)
+        jQuery("#user_state_name").val(state)
+        jQuery('#user_city').blur()
+      }, 20);
+      },
+    create: function () {
+        $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+          return $('<li>')
+              .append('<a style=\"color:#000;text-shadow: 2px\">' + item.city  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+              .appendTo(ul);
+        };
+    }
+  });    
+
+//user_pincode
+jQuery('#user_pincode').autocomplete({
+    minLength: 3,
+    source: function(request,response){
+      var state = jQuery('#user_state_name').val();
+      var city = jQuery('#user_city').val();
+      jQuery.ajax({
+        dataType: "json",
+        type : 'get',
+        url: '/locations/search_pincode',
+        data: {q: request.term, state: state, city: city, remote: "true"},
+        success: function(data){
+          response(data);
+        },
+        error: function(data){
+
+        }
+      });
+    },
+    select: function( event, ui ) {
+        pincode = ui.item["pincode"]
+        city  = ui.item["city"]
+        state = ui.item["state"]
+        setTimeout(function() {
+        jQuery("#user_pincode").prop('readonly',true).val(pincode)
+        jQuery("#user_state_name").prop('readonly', true).val(state)
+        jQuery("#user_city").prop('readonly', true).val(city)
+        jQuery(".clear-pincode").show()
+        jQuery('#user_pincode').blur()
+      }, 20);
+      },
+    create: function () {
+        $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+          return $('<li>')
+              .append('<a style=\"color:#000;text-shadow: 2px; text-align: center;\">' + item.pincode  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+              .appendTo(ul);
+        };
+    }
+  });
+
+// Clear pincode
+$(".clear-pincode").on('click', function(e){
+  e.preventDefault()
+  $("#user_pincode").prop('readonly',false).val("")
+  $("#user_state_name").prop('readonly', false).val("")
+  $("#user_city").prop('readonly', false).val("")
+  $(".clear-pincode").hide()
+});
+  
+//user country id check_
+function autocomplete_check(country_id){
+  if (country_id == 'IN_108') {
+    $('#user_state_name').autocomplete("enable");
+    $('#user_city').autocomplete("enable");
+    $('#user_pincode').autocomplete("enable");
+  }
+  else{
+    $('#user_state_name').autocomplete("disable");
+    $('#user_city').autocomplete("disable");
+    $('#user_pincode').autocomplete("disable"); 
+  }
+}
+
+// Get autocomplete status
+$("#user_country_id").on('change', function(){
+  var country_id = $('option:selected', this).attr('value');
+  autocomplete_check(country_id)
+})
+
+var country_id = $('#user_country_id option:selected').attr('value');
+autocomplete_check(country_id)

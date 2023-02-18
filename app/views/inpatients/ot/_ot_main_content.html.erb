@@ -1,0 +1,102 @@
+<div id="toolbar">
+  <nav class="navbar navbar-secondary navbar-inverse navbar-fixed-top " style="margin-top: 50px; left: auto; right: auto; width: 50%;z-index:555;">
+    <div class="container-fluid">
+      <div class="col-xs-2">
+        <h4 class="nav_head_section">OT Details</h4>
+      </div>
+      <div class="col-xs-4">
+        <% if @ot_rooms.count > 1 %>
+          <ul class="nav navbar-nav">
+            <li>
+              <button data-toggle="dropdown" class="ot_room btn btn-info navbar-btn navbar-btn-hover" type="button" data-active-filter="Active" name="ot_room" id="ot_rooms_dropdown" style="width: 125%;border-radius: 25px;">
+                <%= @selected_ot_room %>&nbsp;&nbsp;<span class="caret"></span>&nbsp;
+              </button>
+              <ul class="dropdown-menu">
+                <li><a class="ot_rooms_dropdown" <%= 'active' if @selected_ot_room == 'All OTs' %> data-id="All OTs" style=" cursor: pointer; <%= 'background-color: #cfeaeb;' if @selected_ot_room == 'All OTs' %>">All OTs</a></li>
+                <% @ot_rooms.each do |ot_room| %>
+                  <% if params[:ot_rooms_dropdown_id] == ot_room.id.to_s %>
+                    <li><a class="ot_rooms_dropdown <%= 'active' if params[:ot_rooms_dropdown_id] == ot_room.id.to_s %>" data-id="<%= ot_room.id %>" style="cursor: pointer; <%= 'background-color: #cfeaeb;' if params[:ot_rooms_dropdown_id] == ot_room.id.to_s %>"><%= ot_room.name %></a></li>
+                  <% else %>
+                    <li><a class="ot_rooms_dropdown" data-id="<%= ot_room.id %>" style=" cursor: pointer;"><%= ot_room.name %></a></li>
+                  <% end %>
+                <% end %>
+              </ul>
+            </li>
+          </ul>
+        <% end %>
+      </div>
+      <div class="col-xs-6 text-right">
+        <% unless current_user.role_ids.include?(28229004) %><!-- in case of optometrist -->
+          <ul class="nav navbar-nav navbar-right">
+            <li>
+              <%#= link_to ipd_patients_addot_path(ottime: "current_time"), :class => "btn btn-danger navbar-btn",:id=>"add-ot-btn", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#templates-modal'} do %> <!-- <i class="glyphicon glyphicon-plus"></i>&nbsp; Add --><%# end %>
+              <%= link_to patients_search_path(url: '/ots/new', current_date: @current_date.to_s, modal: 'ot-modal'), class: 'btn btn-danger navbar-btn navbar-btn-hover', id: 'add-ot-btn', data: { remote: true, 'toggle': 'modal', 'target': '#ot-modal' } do %> <i class="glyphicon glyphicon-plus"></i>&nbsp; Add<% end %>
+            </li>
+            <li>
+              <button type="button" id="print-ot-dropdown" class="btn btn-info navbar-btn navbar-btn-hover" data-toggle="dropdown">
+                <span class=""><i class="fa fa-print"></i> Print</span>&nbsp;
+                <span class="caret fa-color"></span>
+              </button>
+              <ul class="dropdown-menu children" style="margin-left:30px;">
+                <li>
+                  <%= link_to ots_print_all_list_path(current_date: @current_date, format: :pdf), id: 'print-all-ot-list', class: '', style: 'border-color:#FF8735;', target: '_blank' do %> All OTs on <%= @current_date.strftime("%d %b'%y") %><% end %>
+                </li>
+                <li>
+                  <%= link_to ots_print_scheduled_list_path(current_date: @current_date, format: :pdf), id: 'print-scheduled-ot-list', class: '', style: 'border-color:#FF8735;', target: '_blank' do %> Scheduled on <%= @current_date.strftime("%d %b'%y") %><% end %>
+                </li>
+                <li>
+                  <%= link_to ots_print_admitted_list_path(current_date: @current_date, format: :pdf), id: 'print-admitted-ot-list', class: '', style: 'border-color:#FF8735;', target: '_blank' do %> Admitted on <%= @current_date.strftime("%d %b'%y") %><% end %>
+                </li>
+                <li>
+                  <%= link_to ots_print_engaged_list_path(current_date: @current_date, format: :pdf), id: 'print-engaged-ot-list', class: '', style: 'border-color:#FF8735;', target: '_blank' do %> Engaged on <%= @current_date.strftime("%d %b'%y") %><% end %>
+                </li>
+                <li>
+                  <%= link_to ots_print_completed_list_path(current_date: @current_date, format: :pdf), id: 'print-completed-ot-list', class: '', style: 'border-color:#FF8735;', target: '_blank' do %> Completed on <%= @current_date.strftime("%d %b'%y") %><% end %>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        <% end %>
+      </div>
+    </div>
+  </nav>
+</div>
+<div id="ot_summary" style="height: calc(100% - 50px); margin-top: 50px; overflow-y: scroll;">
+</div>
+<style>
+.nav_head_section{
+  margin:13px 0 0 0;
+  font-size:18px;
+}
+</style>
+<script type="text/javascript">
+  function checkKey(e) {
+    if($('textarea').is(":focus") || $('input').is(":focus")){
+    } else {
+      e = e || window.event;
+      if (e.keyCode == 78){
+        if(!($(".modal").hasClass('in'))){
+          $("#add-ot-btn").trigger('click')
+        }
+      }
+    }
+  }
+  document.onkeydown = checkKey;
+
+  $(".ot_rooms_dropdown").on('click', function(e){
+    e.preventDefault();
+    var ot_rooms_dropdown_id = $(this).attr('data-id');
+    $.ajax({
+      type: 'GET',
+      dataType: 'script',
+      data: { ot_rooms_dropdown_id: ot_rooms_dropdown_id,
+              current_date: "<%= @current_date %>",
+              specialty_id: "<%= @selected_specialty %>",
+              active_tab: $(".tab_active").find(".active").attr("data-tab-id"),
+              doctors_list: $(".toggle-sidebar-doctors").attr('data-toggle-position'),
+              active_doctor: $("#sidebar_doctors_ot .active").find('a').attr('data-doctor-id')
+            },
+      url: '/inpatients/ot_management',
+    })
+  })
+</script>

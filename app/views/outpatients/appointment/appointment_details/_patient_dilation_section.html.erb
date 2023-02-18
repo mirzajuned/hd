@@ -1,0 +1,164 @@
+<div class="col-md-12">
+  <div class="row">
+    <div class="col-sm-2 no_padding text-left">
+      <span>Dilatation</span>
+      <% if @patient_dilation.present? %>
+        <% unless @patient_dilation.start_time == nil && @patient_dilation.end_time == nil %>
+          <%= link_to patient_dilation_reset_dilation_timer_path(id: @patient_dilation.id.to_s, patient_dilation_id: @patient_dilation.id.to_s, appointment_id: @appointment.id.to_s), class: 'btn btn-link btn-xs', :title => "Are you sure?", :data => {:remote => true, :confirm => "<b style='color:#000;'>This Cant be Undone. Are You Sure?</b>".html_safe, :commit => 'Reset' } do %>Reset<% end %>
+        <% end %>
+      <% end %>
+    </div>
+    <div class="col-sm-1 no_padding text-left">:</div>
+    <div class="col-sm-9 no_padding">
+      <% if @patient_dilation.present? %>
+        <% if @patient_dilation.start_time != nil && @patient_dilation.end_time == nil %>
+            <button type="button" class="btn btn-xs btn-danger btn-dilate" style="cursor: pointer;margin-top: -10px;" data-dilation-path="/patient_dilations/<%= @patient_dilation.id %>/stop_dilation?id=<%= @patient_dilation.id %>&appointment_id=<%= @appointment.id %>"><i class="fa fa-ban"></i>  Stop</button>
+        <% elsif @patient_dilation.end_time != nil %>
+          <% if Authorization::PolicyHelper.verification(current_user.id, 'HGP-102-105-103') %>
+            <%= link_to new_patient_dilation_path(appointment_id: @appointment.id.to_s, dilate_again: true), class: 'btn btn-xs btn-warning', data: { remote: true, 'toggle': 'modal', 'target': '#appointment-modal' }, style: "cursor: pointer;margin-top: -10px;" do %>Dilate Again<% end %>
+          <% else %>
+            <a class="btn btn-xs btn-warning disabled" style="pointer-events: all" title="Not Authorized">Dilate Again</a>
+          <% end %>
+        <% else %>
+            <!-- <button type="button" class="btn btn-xs btn-warning btn-dilate" style="cursor: pointer;margin-top: -10px;" data-dilation-path="/opd_appointments/dilate_patient?appointment_id=<%= @patient_dilation.id %>"><i class="fa fa-clock-o"></i>  Dilate</button> -->
+            <%= link_to new_patient_dilation_path(appointment_id: @appointment.id.to_s), class: 'btn btn-xs btn-warning', data: { remote: true, 'toggle': 'modal', 'target': '#appointment-modal' }, style: "cursor: pointer;margin-top: -10px;" do %>Dilate<% end %>
+        <% end %>&emsp;
+        <% if @patient_dilation.start_time != nil && @patient_dilation.end_time == nil %>
+            <% difference =  TimeDifference.between(@patient_dilation.start_time, Time.current).in_seconds %>
+            <span id="dilation-timer" data-dilation-status="dilating" data-dilation-headstart="<%= difference.to_i %>"></span>
+        <% elsif @patient_dilation.end_time != nil %>
+            <span id="dilation-timer" data-dilation-status="dilate">00:00:00</span>
+        <% else %>
+            <span id="dilation-timer" data-dilation-status="dilate">00:00:00</span>
+        <% end %>&nbsp;
+      <% else %>
+        <% if Authorization::PolicyHelper.verification(current_user.id, 'HGP-102-105-103') %>
+          <%= link_to new_patient_dilation_path(appointment_id: @appointment.id.to_s), class: 'btn btn-xs btn-warning', data: { remote: true, 'toggle': 'modal', 'target': '#appointment-modal' }, style: "cursor: pointer;margin-top: -10px;" do %>Dilate<% end %>
+        <% else %>
+          <a class="btn btn-xs btn-warning disabled" style="pointer-events: all" title="Not Authorized">Dilate</a>
+        <% end %>&emsp;  
+        <span id="dilation-timer" data-dilation-status="dilate">00:00:00</span>
+      <% end %>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-sm-3 no_padding mt10">
+      <% @patient_dilation_list.try(:each_with_index) do |dilation, i| %>
+        <% @color = ("#ff8735" if i == 0) || "#636e7b" %>
+        <% if dilation.start_time.present? %>
+          <span class="dilation_<%=i%>" style="font-size: 12px;color:<%=@color%>"><b><%= dilation.start_time.strftime('%I:%M %p, %d/%m/%Y') %></b>&emsp;- </span><br><br>
+        <% end %>
+      <% end %>
+      </ul>
+    </div>
+    <div class="col-sm-9 no_padding mt10">
+      <% @patient_dilation_list.try(:each_with_index) do |dilation, i| %>
+        <% @color = ("#ff8735" if i == 0) || "#636e7b" %>
+        <% if dilation.start_time.present? && dilation.drops.present?  && dilation.dilated_by.present? %>
+          <span class="dilation_<%=i%>">
+            <span style="font-size: 12px;color:<%=@color%>">Dilated by <b>'<%= dilation.dilated_by.to_s.upcase %>'</b> with <b>'<%= (dilation.patient.get_label_for_allergy("dilationdrops", dilation.drops )).to_s.upcase %>'</b> <b>(<%= dilation.eye_side_value(dilation.eye_side) %>)</b> <b>(Doctor: <%= User.find_by(id: dilation.advised_by).try(:fullname).try(:upcase) %>)</b></span>
+            <% if dilation.start_time.present? && dilation.end_time.present? %>
+              <br>
+              <span style="font-size: 12px;color:<%=@color%>">Timer :<b style="font-size: 15px;"> <% difference = TimeDifference.between(dilation.start_time, dilation.end_time).in_seconds %><%= Time.at(difference.to_i).utc.strftime("%H:%M:%S") %></b></span>
+            <% else %>
+              <br>
+              <span style="font-size: 12px;color:<%=@color%>">Timer :<b style="font-size: 15px;"> LIVE </b></span>
+            <% end %>
+            <% if dilation.comment.present? %>
+              &emsp;&emsp;<span style="font-size: 12px;color:<%=@color%>">Comment : <b><%= dilation.comment.to_s.titleize %></b></span>
+            <% end %>
+            <br>
+          </span>
+        <% elsif dilation.start_time.present? && dilation.end_time.present? %>
+          <span style="font-size: 12px;color:<%=@color%>">Timer :<b style="font-size: 15px;"> <% difference = TimeDifference.between(dilation.start_time, dilation.end_time).in_seconds %><%= Time.at(difference.to_i).utc.strftime("%H:%M:%S") %></b></span>
+        <% end %>
+      <% end %>
+      </ul>
+    </div>
+  </div>
+</div>
+<style type="text/css">
+  .ui-dialog{
+    background-color: #FFFFFF;
+    border: solid 1px black;
+    border-radius: 3px;
+    top: 30% !important;
+  }
+
+  .ui-dialog-titlebar{
+    border-bottom: 1px solid #e5e5e5;
+  }
+
+  .ui-widget-overlay{
+    background: #333;
+    opacity: 0.6;
+  }
+
+  .ui-dialog .ui-dialog-buttonpane button {
+    background-color: #31b0d5;
+    border: 1px;
+    color: #FFFFFF;
+    padding: 0px 10px;
+    border-radius: 3px;
+    border-color: #46b8da;
+  }
+
+  .ui-dialog-titlebar-close{
+
+  }
+
+  #dilation-timer{
+    font-size: 16px;
+    /*padding: 0.5em 0.7em;*/
+    /*color: #ecf0f1;*/
+    /*margin-bottom: 50px;*/
+    -webkit-transition: background 0.5s ease-out;
+    transition: background 0.5s ease-out;
+    text-align: center;
+    /*text-shadow: 0 3px 2px rgba(0, 0, 0, 0.3);*/
+    text-shadow:
+        0 0 1px #fff,
+        0 1px 2px rgba(0,0,0,0.4);
+
+    transition: opacity 500ms;
+    margin-bottom: 8px;
+  }
+
+  .btn-dilate{
+    cursor: pointer;
+  }
+</style>
+
+<script type="text/javascript">
+  $(".btn-dilate").on('click', function(e) {
+    url = $(this).attr("data-dilation-path");
+    $.ajax({
+      url: url,
+      dataType: 'script',
+      success: function (res) {
+
+      },
+      error: function (err) {
+      }
+    })
+  });
+
+  var timer = $("#dilation-timer")
+  var status = $(timer).attr("data-dilation-status");
+  switch(status){
+    case "dilate":
+      //do nothing
+      break;
+    case "dilating":
+      //Start timer
+      var headstart = parseInt($(timer).attr("data-dilation-headstart"));
+      $("#dilation-timer").timer({
+        seconds: headstart,
+        format: '%H:%M:%S'  //Display time as 00:00:00
+      });
+      break;
+    case "dilated":
+      //do nothing
+      break;
+  }
+</script>

@@ -1,0 +1,217 @@
+<%= javascript_include_tag "application-loggedin", "data-turbolinks-track" => true %>
+<div class="modal-dialog modal-lg" style="width:98%;">
+  <div class="modal-content invoice-content">
+    <div class="modal-header invoice-header">
+      <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+      <% if @patient_prescription.present? %>
+        <h5 class="modal-title"><strong>Sales Order</strong> For <%= @patient.fullname&.titleize %> as prescribed on <%= @patient_prescription.encounterdate.strftime('%d/%m/%Y') %></h5>
+      <% else %>
+        <h5 class="modal-title"><strong>Sales Order</strong> For <%= @patient.fullname&.titleize %></h5>
+      <% end %>
+    </div>
+    <div class="modal-body invoice-body">
+      <%= form_for @inventory_order, remote: true , html: { id: "inventory_orders_form" } do |f| %>
+        <div class="row">
+          <div class="col-md-3 col-sm-5 col-xs-5 items-lots">
+            <% if @inventory_store.department_id == '50121007' %>
+              <div class="items-lots-search">
+                <div class="col-md-4">
+                  <strong style="font-size: 12px;">Item From&nbsp;:</strong>
+                </div>
+                <div class="col-md-8 input-group">
+                  <div class="input row btn-group" target-input-id="stockable_non_stockable">
+                    <button type="button" input-value="Stockable" class="btn btn-xs btn-white itemfrom custom-radio-button stockable btn-brown" name="itemfrom">Stockable</button>
+                    <button type="button" input-value="NonStockable" class="btn btn-xs btn-white itemfrom custom-radio-button non-stockable" name="itemfrom">Non-Stockable</button>
+                    <% if current_facility.description_comment %>
+                      <%= link_to new_inventory_item_path(store_id: @inventory_store.id, action_from: 'sale_order'), class: 'btn btn-primary create-item-sale-order', data: { remote: true, 'toggle': 'modal', 'target': '#inventory-item-modal' } do %><i class="fa fa-plus"></i> Add Item<% end %>
+                    <% end %>
+                  </div>
+                  <div class="input"><input name="" class="hidden" type="hidden" id="stockable_non_stockable" value=""></div>
+                </div>
+              </div>
+            <% end %>
+            <div class="items-lots-search">
+              <div class="col-md-4">
+                <strong style="font-size: 12px;">Search By&nbsp;:</strong>
+              </div>
+              <div class="col-md-8 input-group">
+                <div class="input row btn-group" target-input-id="search_type">
+                  <button type="button" input-value="Barcode" class="btn btn-xs btn-white searchtype custom-radio-button <%= 'btn-brown' if @search_by == 'Barcode'%>" name="searchtype">Barcode Scan</button>
+                  <button type="button" input-value="Description" class="btn btn-xs btn-white searchtype custom-radio-button <%= 'btn-brown' if @search_by == 'Description'%>" name="searchtype">Description</button>
+                  <% unless @inventory_store.department_id == '50121007' %>
+                    <button type="button" input-value="GenericName" class="btn btn-xs btn-white searchtype custom-radio-button <%= 'btn-brown' if @search_by == 'GenericName'%>" name="searchtype">Generic Name</button> 
+                  <% end %>                
+                </div>
+                <div class="input"><input name="invoice_inventory_order[search_type]" class="hidden" type="hidden" id="search_type" value="<%=@search_by%>"></div>
+              </div>
+            </div>
+            <div class="items-lots-list">
+              <div class="row items-lots-search mb5">
+                <div class="col-md-9">
+                  <div class="input-group">
+                    <input type="text" id="lots_search" placeholder="Type Description / Model No. to search..." class="form-control">
+                    <input type="text" id="lots_search_barcode" placeholder="Type Barcode to search..." class="form-control">
+                    <input type="text" id="lots_search_generic_name" placeholder="Type Generic Name to search..." class="form-control">
+                    <span class="input-group-addon"><i class="fa fa-times-circle" style="display: none"></i></span>
+                  </div>
+                </div>
+                <div class="col-md-3 search-barcode">
+                  <button id="search_by_barcode" type="button" style="color: blue; margin: 2px;">Submit</button>
+                </div>
+              </div>
+              <table class="table items-lots-table">
+                <tbody class="items-lots-body">
+                  <%= render partial: 'inventory/item/lots/index_body' %>
+                </tbody>
+              </table>
+              <% if @inventory_store.department_id == '50121007' %>
+                <table class="table items-table">
+                  <tbody class="items-body">
+                    <%= render partial: 'inventory/items/index_body' %>
+                  </tbody>
+                </table>
+              <% end %>
+            </div>
+            <% unless @lots.count < 30 %>
+              <div class="show-more-timeline">
+                <a class="col-sm-12", href="javascript:;", id="show_more_lots", data-count = "0" , style="text-align: right;text-decoration: none;position: fixed;margin-left: 200px;">
+                  <i class="fa fa-spinner fa-spin"></i> Loading...
+                </a>
+              </div>
+            <% end %>
+          </div>
+          <div class="col-md-9 col-sm-7 col-xs-7 invoice-lots">
+            <% if @inventory_store.department_id == '284748001' %>
+              <div class="invoice_types" >
+                <%= render partial: 'invoice_types.html.erb', locals: { inventory_order: @inventory_order, type: 'inventory_order', f: f } %>
+              </div>
+            <% else %>
+              <div class="patient-information">
+                <%= render partial: 'invoice/inventory_orders/patient_information', locals: {f:f} %>
+              </div>
+            <%end%>
+            
+            <% if @patient_prescription.present? %>
+              <div class="prescription-information">
+                <% if @patient_prescription.class == PatientPrescription %>
+                  <%= render partial: 'invoice/inventory_orders/patient_prescription' %>
+                <% elsif @patient_prescription.class == PatientOpticalPrescription %>
+                  <%= render partial: 'invoice/inventory_orders/patient_optical_prescription' %>
+                <% end %>
+              </div>
+            <% elsif @inventory_store.department_id == '50121007' %>
+              <%= render partial: 'invoice/inventory_orders/create_patient_optical_prescription.html.erb', locals: { f: f } %>
+            <% end %>
+            <div>
+              <%= render partial: 'invoice/inventory_orders/form.html', locals: {f:f} %>
+            </div>
+
+            <%= f.submit "Save Changes", { class: 'btn btn-success validate-create-button', onclick: 'save_changes()', data: { disable_with: "Please Wait..."} } %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<style>
+  .inventory-list-row {
+    cursor: pointer;
+  }
+
+  .inventory-list-row-expired {
+    background: #d3d3d3;
+  }
+
+  .items-lots-search .fa {
+    cursor: pointer;
+  }
+  .items-lots-search input {
+    border-radius: 3px 0px 0px 3px !important;
+    border-right: none;
+    padding-left: 43px;
+    padding-right: 43px;
+    padding: 6px 12px;
+    background: #FFFFFF;
+    line-height: 1.42857;
+    box-shadow: none;
+    transition: none;
+  }
+
+  .items-lots-search input:focus {
+    border-color: #ccc;
+    box-shadow: none;
+  }
+
+  .items-lots-search .input-group-addon {
+    box-shadow: none;
+    transition: none;
+    color: #636e7b;
+    background: #FFFFFF;
+    border-radius: 0px 3px 3px 0px;
+  }
+
+
+  /*.items-lots-list {
+    background: #eef1f7;
+  }*/
+  .items-lots-list .table-striped > tbody > tr:nth-child(2n+1) > td, .items-lots-list .table-striped > tbody > tr:nth-child(2n+1) > th {
+    background-color: #fcfdfe;
+  }
+  .items-lots-list .table {
+    font-size: 12px;
+    line-height: 18px;
+    margin-bottom: 0px;
+    /* even columns width , fix width of table too*/
+  }
+  .items-lots-list .table thead {
+    font-weight: bold;
+    background: #8c95b3;
+    color: white;
+  }
+  .items-lots-list .table thead, .items-lots-list .table tbody tr {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+  }
+  .items-lots-list .table tbody {
+    display: block;
+    overflow-y: scroll;
+  }
+  .items-lots-list .table tbody tr td {
+    vertical-align: middle;
+  }
+
+
+
+
+  .invoice-lots-list {
+    background: #eef1f7;
+  }
+  .invoice-lots-list .table-striped > tbody > tr:nth-child(2n+1) > td, .invoice-lots-list .table-striped > tbody > tr:nth-child(2n+1) > th {
+    background-color: #fcfdfe;
+  }
+  .invoice-lots-list .table {
+    font-size: 12px;
+    line-height: 18px;
+    margin-bottom: 0px;
+    /* even columns width , fix width of table too*/
+  }
+  .invoice-lots-list .table thead {
+    font-weight: bold;
+    background: #8c95b3;
+    color: white;
+  }
+  .invoice-lots-list .table thead, .invoice-lots-list .table tbody tr {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+  }
+  .invoice-lots-list .table tbody {
+    display: block;
+    overflow-y: scroll;
+  }
+  .invoice-lots-list .table tbody tr td {
+    vertical-align: middle;
+  }
+</style>

@@ -1,0 +1,403 @@
+$('.items-variants-list .inventory-list-row').unbind()
+$('.items-variants-list .inventory-list-row').on('click', function(e){
+  e.preventDefault();
+  var id =  $(this).attr('id');
+  var receive_store_id = $('#inventory_tax_invoice_created_against_store_id').val()
+  $('#'+id).addClass('disabled_row')
+  var type = $('#inventory_tax_invoice_type').val()
+  $.ajax({
+    type: 'GET',
+    data: {
+      transfer_id: id,
+      receive_store_id: receive_store_id,
+      type: type,
+      remote: true
+    },
+    url: '/inventory/tax_invoices/add_transfer_data',
+    success: function(){
+      $('#'+id).css('background-color', '#cfe8d2')
+      $('#'+id).addClass('disabled_row')
+    }
+  })
+})
+
+$(window).resize(function() {
+  adjust_height()
+})
+adjust_height()
+
+function adjust_height(){
+  modalContentHeigth = $(window).height() - 130
+  itemsVariants = modalContentHeigth - $('.transaction-header').height() - 100
+  $('.items-variants-body').height(itemsVariants)
+  purchaseInvoiceInfoHeight = $('.invoice-information').height()
+  orderListHeight = modalContentHeigth - $('.order-title').height() - $('.order-common-fields').height() - purchaseInvoiceInfoHeight - 100
+  $('.medication_tab_row').height(orderListHeight - $('.order-table-head').height())
+}
+
+$('#inventory_tax_invoice_created_against_store_id').select2()
+$('#inventory_tax_invoice_transportation_mode').select2()
+
+function check_serial_number() {
+  var s_no = 1
+  $('.serial-number').each(function(){
+    $(this).text(s_no)
+    s_no += 1
+  });
+}
+
+check_serial_number()
+
+$('.delete_empty_item').on('click', function() {
+  let id = this.id
+  let class_val = id + '-treatmentmedications'
+  $('.'+ class_val).each(function(){
+    if ($(this).attr('data') != undefined ){
+     delete tax_breakup[$(this).attr('data')]
+    }
+  })
+  $('.'+ class_val).remove()
+  calTotalPrice("new")
+  check_serial_number()
+  $('#'+id).removeClass('disabled_row')
+  $('#'+id).css('background-color', '')
+  checkTransferIds()
+})
+
+$('#inventory_tax_invoice_created_against_store_id').on('change', function() {
+  let receive_store_id = $('#inventory_tax_invoice_created_against_store_id').val()
+  let store_id = '<%= @inventory_store.id %>'
+  let type = $('#inventory_tax_invoice_type').val()
+  let start_date = '<%= params[:start_date] %>' || '<%= Date.current %>'
+  let end_date = '<%= params[:end_date] %>' || '<%= Date.current %>'
+  let time_period = '<%= params[:time_period] %>' || 'This Month'
+  let data = $(this).attr('data')
+  var id = "<%= params["action"] == "edit" ? params[:id] : '' %>"
+  if (data == "new"){
+    $.ajax({
+      type : 'get',
+      url: '/inventory/tax_invoices/new',
+      data: {
+        store_id: store_id,
+        receive_store_id: receive_store_id,
+        type: type,
+        start_date: start_date,
+        end_date: end_date,
+        time_period: time_period,
+        remote: "true"
+      },
+    })
+  }else{
+    $.ajax({
+      type : 'get',
+      url: '/inventory/tax_invoices/'+id+'/edit',
+      data: {
+        store_id: store_id,
+        receive_store_id: receive_store_id,
+        type: type,
+        start_date: start_date,
+        end_date: end_date,
+        time_period: time_period,
+        remote: "true"
+      },
+    })
+  }
+ 
+})
+
+$(".mis-date-filter").on("click", function(e){
+  e.preventDefault();
+  let start_date = $(this).attr("start-date")
+  let end_date = $(this).attr("end-date")
+  let receive_store_id = $('#inventory_tax_invoice_created_against_store_id').val()
+  let store_id = '<%= @inventory_store.id %>'
+  let time_period = $(this).text()
+  let type = $('#inventory_tax_invoice_type').val()
+
+  $("#mis-modal").modal("hide")
+
+  jQuery.ajax({
+    type: 'get',
+    dataType: 'script',
+    data: {
+      store_id: store_id,
+      receive_store_id: receive_store_id,
+      start_date: start_date,
+      end_date: end_date,
+      data_from: 'filter',
+      time_period: time_period,
+      type: type,
+      remote: true
+    },
+    url: '/inventory/tax_invoices/filter_transfer'
+  });
+})
+
+function setTransactionTime() {
+  let date = $('#inventory_tax_invoice_transaction_date').val().split('/')
+  let new_date = date[2]+ "/" + date[1] + "/" + date[0]
+  date_time = new_date + " " + $("#inventory_tax_invoice_transaction_time_picker").val()
+  date_time = moment(date_time).format('YYYY-MM-DD HH:mm:ssZ')
+  $('#inventory_tax_invoice_transaction_date_time').val(date_time)
+}
+
+$('.delivery-datepicker').datepicker({
+  dateFormat: "dd/mm/yy",
+  minDate: 0
+})
+
+$('.transaction-datepicker').datepicker({
+  dateFormat: "dd/mm/yy",
+  minDate: 0
+}).on('change', function(e) {
+  // validateMaxTime()
+  setTransactionTime()
+});
+
+$('.transaction-timepicker').timepicker({
+  defaultTime: 'current',
+  TimeFormat: 'HH:mm a',
+    minuteStep: 1
+}).on('changeTime.timepicker', function(e) {
+  // validateMaxTime()
+  setTransactionTime()
+});
+
+$('#inventory_tax_invoice_transportation_mode').on('change', function() {
+  let name = $('#inventory_tax_invoice_transportation_mode option:selected').text()
+  $('#inventory_tax_invoice_transportation_mode_name').val(name)
+})
+
+function generate_tax_group(parent, tax_amount, taxable_amount, type , tax_group_id) {
+  var tax_type = $('#inventory_tax_invoice_tax_type').val()
+  var item_id = $(parent).attr('data').trim()
+  var item_tax_group = tax_breakup[item_id]
+  var tax_rate_amount;
+  var tax_group_id
+  var group_rate = parseFloat(item_tax_group['group_rate'])
+  if (tax_type == 'GST'){
+    if (type == "intra_state"){
+    item_tax_group['tax_rates'].forEach(function(item) {
+    if (group_rate != 0.0) {
+      tax_rate_amount = parseFloat(tax_amount) * parseFloat(item.rate) / group_rate
+    } else {
+      tax_rate_amount = 0.0
+    }
+    if (item.type == "SGST"){
+      $(".sgst-tax-name-section").prepend(`
+        <input style="width:150%; background-image: none;" class="fi_input_style text-left ${tax_group_id}-tax-rate" value="${item.rate}%" type="text" name="" readonly="readonly">
+      `)
+
+     $(".sgst-tax-amount-section").prepend(`
+       <input value="${tax_group_id}" type="hidden" name="inventory_tax_invoice[tax_breakup][][id]">
+       <input value="${item.name}" type="hidden" name="inventory_tax_invoice[tax_breakup][][name]">
+       <input value="${item.rate}" type="hidden" name="inventory_tax_invoice[tax_breakup][][tax_rate]">
+       <input value="${taxable_amount.toFixed(2)}" type="hidden" class="${tax_group_id}-taxable-amount" name="inventory_tax_invoice[tax_breakup][][taxable_amount]">
+       <input style="width:180%; background-image: none;" name="inventory_tax_invoice[tax_breakup][][amount]" class="fi_input_style text-right ${tax_group_id}-tax-rate-amount" value="${tax_rate_amount.toFixed(2)}" type="text"  readonly="readonly">
+     `)
+
+    }else if (item.type = "CGST"){
+      $(".cgst-tax-name-section").prepend(`
+        <input style="width:150%; background-image: none;" class="fi_input_style text-left ${tax_group_id}-tax-rate" value="${item.rate}%" type="text" name="" readonly="readonly">
+      `)
+
+     $(".cgst-tax-amount-section").prepend(`
+       <input value="${tax_group_id}" type="hidden" name="inventory_tax_invoice[tax_breakup][][id]">
+       <input value="${item.name}" type="hidden" name="inventory_tax_invoice[tax_breakup][][name]">
+       <input value="${item.rate}" type="hidden" name="inventory_tax_invoice[tax_breakup][][tax_rate]">
+       <input value="${taxable_amount.toFixed(2)}" type="hidden" class="${tax_group_id}-taxable-amount" name="inventory_tax_invoice[tax_breakup][][taxable_amount]">
+       <input style="width:180%; background-image: none;" name="inventory_tax_invoice[tax_breakup][][amount]" class="fi_input_style text-right ${tax_group_id}-tax-rate-amount" value="${tax_rate_amount.toFixed(2)}" type="text" readonly="readonly">
+     `)
+    }
+  });
+  }else{
+    item_tax_group['tax_rates'].forEach(function(item) {
+      if (group_rate != 0.0) {
+        tax_rate_amount = parseFloat(tax_amount)
+      } else {
+        tax_rate_amount = 0.0
+      }
+      if (item.type == "IGST"){
+        $(".igst-tax-name-section").prepend(`
+          <input style="width:150%; background-image: none;" class="fi_input_style text-left ${tax_group_id}-tax-rate" value="${item.rate}%" type="text" name="" readonly="readonly">
+        `)
+
+       $(".igst-tax-amount-section").prepend(`
+         <input value="${tax_group_id}" type="hidden" name="inventory_tax_invoice[tax_breakup][][id]">
+         <input value="${item.name}" type="hidden" name="inventory_tax_invoice[tax_breakup][][name]">
+         <input value="${item.rate}" type="hidden" name="inventory_tax_invoice[tax_breakup][][tax_rate]">
+         <input value="${taxable_amount.toFixed(2)}" class="${tax_group_id}-taxable-amount" type="hidden" name="inventory_tax_invoice[tax_breakup][][taxable_amount]">
+         <input style="width:180%; background-image: none;" name="inventory_tax_invoice[tax_breakup][][amount]" class="fi_input_style text-right ${tax_group_id}-tax-rate-amount" value="${tax_rate_amount.toFixed(2)}" type="text" readonly="readonly">
+       `)
+
+      }
+    });
+  }
+  }else{
+    item_tax_group['tax_rates'].forEach(function(item) {
+      if (group_rate != 0.0) {
+        tax_rate_amount = parseFloat(tax_amount)
+      } else {
+        tax_rate_amount = 0.0
+      }
+      if (item.type == "VAT"){
+        $(".vat-tax-name-section").prepend(`
+          <input style="width:150%; background-image: none;" class="fi_input_style text-left ${tax_group_id}-tax-rate" value="${item.rate}%" type="text" name="" readonly="readonly">
+        `)
+
+       $(".vat-tax-amount-section").prepend(`
+         <input value="${tax_group_id}" type="hidden" name="inventory_tax_invoice[tax_breakup][][id]">
+         <input value="${item.name}" type="hidden" name="inventory_tax_invoice[tax_breakup][][name]">
+         <input value="${item.rate}" type="hidden" name="inventory_tax_invoice[tax_breakup][][tax_rate]">
+         <input value="${taxable_amount.toFixed(2)}" class="${tax_group_id}-taxable-amount" type="hidden" name="inventory_tax_invoice[tax_breakup][][taxable_amount]">
+         <input style="width:180%; background-image: none;" name="inventory_tax_invoice[tax_breakup][][amount]" class="fi_input_style text-right ${tax_group_id}-tax-rate-amount" value="${tax_rate_amount.toFixed(2)}" type="text" readonly="readonly">
+       `)
+
+      }
+    });
+  }
+  
+}
+
+function adjust_generate_tax_group(parent, tax_amount, taxable_amount, type, tax_group_id, existing_total, action) {
+  var tax_type = $('#inventory_tax_invoice_tax_type').val();
+  if (action == "new"){
+    if (tax_type == 'GST'){
+      if (type == "intra_state"){
+        var new_value = parseFloat(existing_total) + parseFloat(tax_amount/2)
+        var old_taxable_amount = $('.cgst-tax-amount-section').find('.'+tax_group_id+'-taxable-amount').val()
+        var new_taxable_amount = parseFloat(old_taxable_amount) + taxable_amount
+        $('.cgst-tax-amount-section').find('.'+tax_group_id+'-tax-rate-amount').val(new_value.toFixed(2))
+        $('.cgst-tax-amount-section').find('.'+tax_group_id+'-taxable-amount').val(new_taxable_amount.toFixed(2))
+        $('.sgst-tax-amount-section').find('.'+tax_group_id+'-tax-rate-amount').val(new_value.toFixed(2))
+        $('.sgst-tax-amount-section').find('.'+tax_group_id+'-taxable-amount').val(new_taxable_amount.toFixed(2))
+      }else {
+        var new_value = parseFloat(existing_total) + parseFloat(tax_amount)
+        var old_taxable_amount = $('.igst-tax-amount-section').find('.'+tax_group_id+'-taxable-amount').val()
+        var new_taxable_amount = parseFloat(old_taxable_amount) + taxable_amount
+        $('.igst-tax-amount-section').find('.'+tax_group_id+'-tax-rate-amount').val(new_value.toFixed(2))
+        $('.igst-tax-amount-section').find('.'+tax_group_id+'-taxable-amount').val(new_taxable_amount.toFixed(2))
+      }
+    }else{
+      var new_value = parseFloat(existing_total) + parseFloat(tax_amount)
+      var old_taxable_amount = $('.vat-tax-amount-section').find('.'+tax_group_id+'-taxable-amount').val()
+      var new_taxable_amount = parseFloat(old_taxable_amount) + taxable_amount
+      $('.vat-tax-amount-section').find('.'+tax_group_id+'-tax-rate-amount').val(new_value.toFixed(2))
+      $('.vat-tax-amount-section').find('.'+tax_group_id+'-taxable-amount').val(new_taxable_amount.toFixed(2))
+    }   
+  }
+}
+
+function adjust_generate_no_tax_group(parent, tax_amount, taxable_amount, type, tax_group_id, existing_total, action) {
+  var tax_type = $('#inventory_tax_invoice_tax_type').val();
+  if (tax_type == 'GST'){
+    if (gst_type == "intra_state"){
+      gst_zero = parseFloat($('.cgst-tax-amount-section').find('.'+tax_group_id+'-tax-rate-amount').val())
+    } else{
+      gst_zero = parseFloat($('.igst-tax-amount-section').find('.'+tax_group_id+'-tax-rate-amount').val())
+    }
+  }else{
+    gst_zero = parseFloat($('.vat-tax-amount-section').find('.'+tax_group_id+'-tax-rate-amount').val())
+  }
+  
+  if (isNaN(gst_zero)){
+    generate_tax_group(parent, (tax_amount || 0), taxable_amount, type,tax_group_id)  
+  }else{
+    adjust_generate_tax_group(parent, (tax_amount || 0), taxable_amount, type, tax_group_id, existing_total, action)
+  } 
+}
+function find_gst_type() {
+  var store_gst = $('#inventory_tax_invoice_store_gst').val()
+  var receive_store_gst = $('#inventory_tax_invoice_receive_store_gst').val()
+  var store_gst_first_two = store_gst.slice(0, 2)
+  var receive_store_gst_first_two = receive_store_gst.slice(0, 2)
+  if (store_gst_first_two == receive_store_gst_first_two) {
+    type = 'intra_state'
+  } else if ((store_gst_first_two.length == 2 && receive_store_gst_first_two.length == 2) && store_gst_first_two != receive_store_gst_first_two) {
+    type = 'inter_state'
+  } else {
+    type = 'intra_state'
+  }
+  $('#inventory_tax_invoice_gst_type').val(type)
+  return type
+}
+
+function calTotalPrice(action) {
+  let type = $('#inventory_tax_invoice_type').val()
+  var total_net_amount = 0
+  var total_tax_amount = 0
+  var total_taxable_amount = 0
+  if (type == 'tax_invoice') {
+    gst_type = find_gst_type()
+    $('.cgst-tax-name-section').html('')
+    $('.cgst-tax-amount-section').html('')
+    $('.sgst-tax-name-section').html('')
+    $('.sgst-tax-amount-section').html('')
+    $('.igst-tax-name-section').html('')
+    $('.igst-tax-amount-section').html('')
+    $('.vat-tax-name-section').html('')
+    $('.vat-tax-amount-section').html('')
+    $('.tax-invoice-row').each(function() {
+      var this_parent = $(this)
+      net_amount = parseFloat($(this).closest('.tax-invoice-row').find('.net-amount').val()) || 0
+      tax_amount = parseFloat($(this).closest('.tax-invoice-row').find('.tax-amount').val()) || 0
+      taxable_amount = parseFloat($(this).closest('.tax-invoice-row').find('.taxable-amount').val()) || 0
+      tax_rate = parseFloat($(this).closest('.tax-invoice-row').find('.tax-rate').val()) || 0
+      tax_name = parseFloat($(this).closest('.tax-invoice-row').find('.tax-name').val())
+      tax_group_id = $(this).closest('.tax-invoice-row').find('.tax-group-id').val()
+      total_net_amount += net_amount
+      total_tax_amount += tax_amount
+      total_taxable_amount += taxable_amount
+      
+      let existing_total
+      tax_type = $('#inventory_tax_invoice_tax_type').val()
+      if (tax_type == 'GST'){
+        if (gst_type == 'inter_state') {
+          existing_total = parseFloat($('.igst-tax-amount-section').find('.'+tax_group_id+'-tax-rate-amount').val()) || 0  
+        } else {
+          existing_total = parseFloat($('.cgst-tax-amount-section').find('.'+tax_group_id+'-tax-rate-amount').val()) || 0
+        }
+      }else{
+        existing_total = parseFloat($('.vat-tax-amount-section').find('.'+tax_group_id+'-tax-rate-amount').val()) || 0
+      }
+      
+      if (existing_total > 0) {
+        adjust_generate_tax_group(this_parent, (tax_amount || 0), taxable_amount, gst_type, tax_group_id, existing_total, action)
+      }else if(existing_total >= 0 && tax_amount == 0){
+        adjust_generate_no_tax_group(this_parent, (tax_amount || 0), taxable_amount, gst_type, tax_group_id, existing_total, action)
+      }else {
+        generate_tax_group(this_parent, (tax_amount || 0), taxable_amount, gst_type,tax_group_id)
+      }
+    })
+  }else{
+    $('.tax-invoice-row').each(function() {
+      net_amount = parseFloat($(this).closest('.tax-invoice-row').find('.net-amount').val()) || 0
+      total_net_amount += net_amount
+    });
+  }
+  $("#inventory_tax_invoice_total_amount").val(total_net_amount.toFixed(2))
+  $("#inventory_tax_invoice_tax_amount").val(total_tax_amount.toFixed(2))
+  $("#inventory_tax_invoice_taxable_amount").val(total_taxable_amount.toFixed(2))
+}
+
+calTotalPrice('new')
+
+function checkTransferIds() {
+  ids_arr = []
+  $('.delete_empty_item').each(function() {
+    id = this.id
+    ids_arr.push(id)
+  })
+  $("#inventory_tax_invoice_transfer_ids").val(ids_arr)
+}
+
+checkTransferIds()
+
+check_tax()
+function check_tax(){
+  <% if @receive_store.nil? %>
+    $("#tax-cage").hide();
+  <% else %>
+    $("#tax-cage").show();
+  <% end %>
+}

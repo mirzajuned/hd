@@ -1,0 +1,146 @@
+<% counter_advised = 0 %>
+<% counter_performed = 0 %>
+<div class="col-md-12 other-procedure-list">
+  <strong style="color:#428bca;text-decoration:underline;font-size:15px;">Other Procedure within this Case</strong>
+  <table class="table table-bordered">
+    <tbody id='procedure-present' class='procedure-present'>
+      <input type="hidden" name="opdrecord[disabled_procedure_codes]" class="disabled_procedure_codes" value="<%= @opdrecord.try(:disabled_procedure_codes).to_s %>">
+      <% counter = 0 %>
+      <% @case_sheet.procedures.where(:record_id.nin => [@opdrecord.id], is_performed: false, is_disabled: false).group_by{ |p| [p.procedurefullcode] }.each do |procedure_args, procedures| %>
+        <% proceduresides = procedures.map{ |ps| ps[:procedureside] }.uniq %>
+        <% right_eye_present, left_eye_present = proceduresides.include?('18944008'), proceduresides.include?('8966001') %>
+        <% if right_eye_present && left_eye_present %>
+          <% side_name = 'BE' %>
+          <% procedureside = "40638003" %>
+        <% elsif right_eye_present %>
+          <% side_name = 'RE' %>
+          <% procedureside = "18944008" %>
+        <% elsif left_eye_present %>
+          <% side_name = 'LE' %>
+          <% procedureside = "8966001" %>
+        <% end %>
+        <tr class="case-procedure">
+          <input type="hidden" class="procedure_stage" value="A">
+          <input type="hidden" class="order_item_advised_id" value="<%= procedures[0][:order_item_advised_id].to_s %>">
+          <input type="hidden" class="procedure_name" value="<%= procedures[0][:procedurename] %>">
+          <input type="hidden" class="procedure_side" value="<%= procedureside %>">
+          <input type="hidden" class="procedure_type" value="<%= procedures[0][:procedure_type] %>">
+          <input type="hidden" class="procedure_procedure_comment" value="<%= procedures[0][:procedure_comment] %>">
+          <input type="hidden" class="procedure_users_comment" value="<%= procedures[0][:users_comment] %>">
+          <input type="hidden" class="procedure_code" value="<%= procedures[0][:procedurefullcode] %>">
+          <input type="hidden" class="procedure_entered_by_id" value="<%= current_user.id.to_s %>">
+          <input type="hidden" class="procedure_entered_by" value="<%= current_user.fullname %>">
+          <input type="hidden" class="procedure_entered_at_facility_id" value="<%= current_facility.id.to_s %>">
+          <input type="hidden" class="procedure_entered_at_facility" value="<%= current_facility.name.to_s %>">
+          <input type="hidden" class="procedure_advised_by_id" value="<%= current_user.id.to_s %>">
+          <input type="hidden" class="procedure_advised_by" value="<%= current_user.fullname.to_s %>">
+          <input type="hidden" class="procedure_entered_datetime" value="<%= Time.current %>">
+          <td style="line-height: 1;">
+            <b><span id="procedure_stage_<%= counter %>_p" style='color:#c9302c;'><%= procedures[0][:procedurestage].to_s + " - " %></span> <%= procedures[0][:procedurename] %><span id="procedure_side_<%= counter %>_p"> (<%= side_name %>)</span> - <span><%= procedures[0][:procedurefullcode].to_s.upcase %></span></b><br/>
+            <span style="font-size: 10px;"><%= procedures[0].advised_by %> on <%= procedures[0].advised_datetime.try(:strftime, "%d/%m/%Y") %> </span>
+          </td>
+          <td style="width:30%;">
+            <button class="btn btn-primary btn-re-advice-procedure btn-xs">Re-Advice</button>
+            <!-- <button class="btn btn-danger btn-disable-procedure btn-xs">Disable</button> -->
+          </td>
+        </tr>
+        <% counter += 1 %>
+      <% end %>
+      <% @case_sheet.procedures.where(:record_id.nin => [@opdrecord.id], is_performed: true).each_with_index do |procedure, j| %>
+        <% if procedure.procedureside.to_s == '18944008' %>
+          <% side_name = 'RE' %>
+        <% elsif procedure.procedureside.to_s == '8966001' %>
+          <% side_name = 'LE' %>
+        <% else %>
+          <% side_name = 'BE' %>
+        <% end %>
+        <tr class="case-procedure performed-procedure">
+          <input type="hidden" class="procedure_stage" value="A">
+          <input type="hidden" class="order_item_advised_id" value="<%= procedure.try(:order_item_advised_id).to_s %>">
+          <input type="hidden" class="procedure_name" value="<%= procedure.try(:procedurename) %>">
+          <input type="hidden" class="procedure_side" value="<%= procedure.try(:procedureside) %>">
+          <input type="hidden" class="procedure_type" value="<%= procedure.try(:procedure_type) %>">
+          <input type="hidden" class="procedure_procedure_comment" value="<%= procedure.try(:procedure_comment) %>">
+          <input type="hidden" class="procedure_users_comment" value="<%= procedure.try(:users_comment) %>">
+          <input type="hidden" class="procedure_code" value="<%= procedure.try(:procedurefullcode) %>">
+          <input type="hidden" class="procedure_entered_by_id" value="<%= current_user.id.to_s %>">
+          <input type="hidden" class="procedure_entered_by" value="<%= current_user.fullname %>">
+          <input type="hidden" class="procedure_entered_at_facility_id" value="<%= current_facility.id.to_s %>">
+          <input type="hidden" class="procedure_entered_at_facility" value="<%= current_facility.name.to_s %>">
+          <input type="hidden" class="procedure_advised_by_id" value="<%= current_user.id.to_s %>">
+          <input type="hidden" class="procedure_advised_by" value="<%= current_user.fullname.to_s %>">
+          <input type="hidden" class="procedure_entered_datetime" value="<%= Time.current %>">
+          <td style="line-height: 1;">
+            <b><span id="procedure_stage_<%= j %>_p" style='color:#1caf9a;'><%= procedure.procedurestage.to_s + " - " %></span> <%= procedure.procedurename %><span id="procedure_side_<%= j %>_p"> (<%= side_name %>)</span> - <span><%= procedure.procedurefullcode.to_s.upcase %></span></b></br>
+            <span style="font-size: 10px;">A: <%= procedure.advised_by %> on <%= procedure.advised_datetime.try(:strftime, "%d/%m/%Y") %> </span><br/>
+            <span style="font-size: 10px;">P: <%= procedure.performed_by %> on <%= procedure.performed_datetime.try(:strftime, "%d/%m/%Y") %> </span>
+          </td>
+          <td style="width:30%;">
+            <button class="btn btn-primary btn-re-advice-procedure btn-xs">Re-Advice</button>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>
+
+<script type="text/javascript">
+  $(".btn-re-advice-procedure").on('click', function(e){
+    e.preventDefault()
+    var case_procedure = $(this).closest(".case-procedure")
+    var count = $(".table-row-procedure").length
+    var procedure_type = $(case_procedure).find(".procedure_type").val()
+    var stage = $(case_procedure).find(".procedure_stage").val()
+    var name = $(case_procedure).find(".procedure_name").val()
+    var order_item_advised_id = $(case_procedure).find(".order_item_advised_id").val()
+    var side = $(case_procedure).find(".procedure_side").val()
+    var procedure_comment = $(case_procedure).find(".procedure_procedure_comment").val()
+    var users_comment = $(case_procedure).find(".procedure_users_comment").val()
+    var code = $(case_procedure).find(".procedure_code").val()
+    var entered_by_id = $(case_procedure).find(".procedure_entered_by_id").val()
+    var entered_by = $(case_procedure).find(".procedure_entered_by").val()
+    var entered_at_facility_id = $(case_procedure).find(".procedure_entered_at_facility_id").val()
+    var entered_at_facility = $(case_procedure).find(".procedure_entered_at_facility").val()
+    var advised_by_id = $(case_procedure).find(".procedure_advised_by_id").val()
+    var advised_by = $(case_procedure).find(".procedure_advised_by").val()
+    var entered_datetime = $(case_procedure).find(".procedure_entered_datetime").val()
+
+    var params = {order_item_advised_id: order_item_advised_id, procedure_type: procedure_type, count: count, source: "opdrecord", stage: stage, stage: stage, name: name, side: side, procedure_comment: procedure_comment, users_comment: users_comment, code: code, entered_by_id: entered_by_id, entered_by: entered_by, entered_at_facility_id: entered_at_facility_id, entered_at_facility: entered_at_facility, advised_by_id: advised_by_id, advised_by: advised_by, entered_datetime: entered_datetime};
+    jQuery.ajax({
+      type: "POST",
+      dataType: "script",
+      url: "/common_procedures/append_procedure_details",
+      data: {procedure: params, remote: "true" },
+      success: function(){
+        if($(case_procedure).hasClass("performed-procedure")){
+
+        } else {
+          $(case_procedure).hide()
+          if($(".case-procedure:visible").length <= 0){
+            $(".other-procedure-list").hide()
+          }
+        }
+      }
+    });
+  })
+
+  $(".btn-disable-procedure").on('click', function(e){
+    e.preventDefault()
+    var case_procedure = $(this).closest(".case-procedure")
+    var code = $(case_procedure).find('.procedure_code').val()
+    var disabled_procedure_codes = $(".disabled_procedure_codes").val()
+    if(disabled_procedure_codes == ""){
+      final_disabled_procedure_codes = code
+    } else {
+      final_disabled_procedure_codes = disabled_procedure_codes + "," + code
+    }
+
+    $(".disabled_procedure_codes").val(final_disabled_procedure_codes)
+
+    $(case_procedure).hide()
+
+    if($(".case-procedure:visible").length <= 0){
+      $(".other-procedure-list").hide()
+    }
+  })
+</script>

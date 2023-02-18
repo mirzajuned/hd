@@ -1,0 +1,63 @@
+  <% if @opd_referral.count > 0 %>
+    <% @opd_referral.each do |opd_referral| %>
+      <% referred_patient = Patient.find_by(id: opd_referral.patient_id)%>
+      <li class="new">
+        <%= link_to "/patient_summary/" + referred_patient.id.to_s, class: "ps patient-summary-view", id: "patient-summary-timeline-link", data: {remote: "true"} do %>
+          <% patientassets = referred_patient.patientassets %>
+
+          <% if patientassets.present? && patientassets.last.asset_path_url.present? %>
+            <%= image_tag referred_patient.patientassets.last.asset_path_url, :class => "img-rounded pull-left thumb" %>
+          <% else %>
+            <%= image_tag "photos/no_picture_available.png", :class => "img-rounded pull-left thumb" %>
+          <% end %>
+          
+          <span class="desc">
+            <% if (opd_referral.referral_date == Date.current) %>
+              <span class="name"><%= referred_patient.fullname.upcase %><span style="float: right;">Today</span></span>
+            <%else%>
+              <span class="name"><%= referred_patient.fullname.upcase %><span style="float: right;"><%= opd_referral.referral_date.strftime("%d %b %y") %></span></span>
+            <%end%>
+            <span class="msg" style="color: #666;"><%if opd_referral.referring_note.present? %>Note: <b><%= opd_referral.referring_note %></b><%end%><br><span class="" style="">By: <b>Dr. <%=opd_referral.from_doctor_name %></b> | From: <b><%=opd_referral.from_facility_name %></b><%if current_user.facilities.count > 1 %> | At: <b><%=opd_referral.to_facility_name %></b> <%end%></span></span>
+          </span>
+        <% end %>
+        
+        <div class="" style="font-size: smaller; margin-top: 5px">
+          <%if opd_referral.is_seen == true %>
+            <strong>Acknowledged <i class="fa fa-check-circle-o" style="color: green;"></i></strong>
+          <%else%>
+            <span>
+              <a href="/opd_referrals/doctor_view?referral_id=<%=opd_referral.id%>&type=mark_as_viewed" data-remote="true" , style='display: inline'> Acknowledge </a>
+            </span>
+          <%end%>
+          |
+          <%if opd_referral.converted_to_appointment == true %>
+            <strong>Appointment Created <i class="fa fa-check-circle-o" style="color: green;"></i></strong>
+          <%else%>
+            <span>
+            <%#= link_to opd_referrals_new_appointment_path(:facility_id => opd_referral.to_facility,:doctor_id => opd_referral.to_doctor,patientid: opd_referral.patient_id,opd_referral_id: opd_referral.id),:title => "Create Appointment", :class => "", :style=>'display: inline',:id=>"add-appointment-btn", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#referral-appointment-modal', method: :get } do %><!-- Create Appointment --><%# end %>
+            <%= link_to new_appointment_path(facility_id: opd_referral.to_facility, doctor_id: opd_referral.to_doctor, patient_id: opd_referral.patient_id, opd_referral_id: opd_referral.id, date: Date.current, time: Time.current, direct: true), title: "Create Appointment", style: 'display: inline', id: "add-appointment-btn", data: { :remote => true, 'toggle' =>  "modal", 'target' => '#appointment-modal' } do %>Create Appointment<% end %>
+            </span>
+          <%end%>
+          |
+          <span>
+            <a href="/opd_referrals/doctor_view?referral_id=<%=opd_referral.id%>&type=delete" data-remote="true" , style='display: inline'> Remove </a>
+          </span>
+        </div>
+      </li>
+    <%end%>
+  <%else%>
+    <hr>
+    <div class="row">
+      <div class="col-md-12 text-center">
+        Referrals not found
+      </div>
+    </div>
+  <%end%>
+
+<script type="text/javascript">
+   $('.patient-summary-view').on("click",function() {
+    if ($('.headermenu-referral').hasClass('open')){
+      $('.headermenu-referral').removeClass('open')
+    }
+  })
+</script>

@@ -1,0 +1,123 @@
+<div class="row insurance_details mt10">
+  <%= hidden_field_tag "counsellor_record[patient_insurance_id]", "", class: "insurance_selected_id" %>
+  <%= hidden_field_tag :hidden_insurance_contact_id, "", class: "hidden_insurance_contact_id" %>
+  <%= hidden_field_tag :hidden_insurance_name, "", class: "hidden_insurance_name" %>
+  <%= hidden_field_tag :hidden_insurance_contact_no, "", class: "hidden_insurance_contact_no" %>
+  <%= hidden_field_tag :hidden_insurance_contact_person, "", class: "hidden_insurance_contact_person" %>
+  <%= hidden_field_tag :hidden_insurance_address, "", class: "hidden_insurance_address" %>
+  <%= hidden_field_tag :hidden_insurance_policy_no, "", class: "hidden_insurance_policy_no" %>
+  <%= hidden_field_tag :hidden_insurance_policy_expiry_date, "", class: "hidden_insurance_policy_expiry_date" %>
+  
+  <div class="col-md-8 col-md-offset-2">
+    <div class="row mb10">
+      <div class="col-sm-5">
+        <span style="margin-left: -6px;color:#000;font-weight: 700;font-size: 19px;">Cashless Hospitalisation</span>
+      </div>
+      <div class="col-sm-7">
+        <% is_insured_flag = (true if @counsellor_record.try(:is_insured) == "Yes") || false %>
+        <div class="rdio rdio-primary col-sm-3">
+          <%= radio_button_tag "counsellor_record[is_insured]", "No", !is_insured_flag, {class: 'is_insured_field', id: "is_insured_false"} %>
+          <label for="is_insured_false">No</label>
+        </div>
+        <div class="rdio rdio-primary col-sm-3">
+          <%= radio_button_tag "counsellor_record[is_insured]", "Yes",is_insured_flag, {class: 'is_insured_field', id: "is_insured_true"} %>
+          <label for="is_insured_true">Yes</label>  
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-md-12">
+        <div class="main_insurance_section">
+          <% if @current_insurances.count > 0 %>
+            <div class="row current_insurances_table mb10">
+              <div class="col-md-12">
+                <div class="row mb5">
+                  <div class="col-sm-8">
+                    <b style="color:#000;">Patient Insurances / Policies</b>
+                  </div>
+                  <div class="col-sm-4 text-right">
+                    <button class="btn btn-xs btn-primary add_new_policy"><i class="fa fa-plus-circle"></i> Add New Policy</button>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-sm-12">
+                    <table class="table" style="border-top:1px solid #000;border-bottom:1px solid #000;margin-bottom: 0px;">
+                      <thead>
+                        <tr>
+                          <th><b>Insurance Name</b></th>
+                          <th><b>Policy No.</b></th>
+                          <th><b>Expiry Date</b></th>
+                        </tr>
+                      </thead>
+                      <tbody >
+                        <% @current_insurances.each_with_index do |insurance, i| %>
+                          <% if insurance.insurance_policy_expiry_date.present? %>
+                            <tr>
+                              <td>
+                                <% disable_flag = insurance.insurance_policy_expiry_date.present? && insurance.insurance_policy_expiry_date < Date.current ? true : false %>
+                                <div class="rdio rdio-primary">
+                                  <% insurance_value = (true if @counsellor_record.patient_insurance_id.to_s == insurance.id.to_s) || false %>
+                                  <%= radio_button_tag "current_insurance", insurance.id, insurance_value, {class: 'current_insurance', id: "insurance_#{insurance.id}","insurance_name"=>insurance.insurance_name, "contact"=>insurance.insurance_contact_no,"address"=>insurance.insurance_address, "insurance_email"=>insurance.insurance_email, "insurance_contact_id" => insurance.try(:insurance_contact_id),"policy_no" => insurance.insurance_policy_no , "policy_expiry_date" => insurance.insurance_policy_expiry_date, "contact_person"=> insurance.insurance_contact_person, :disabled => disable_flag  } %>
+                                  <label for="insurance_<%=insurance.id%>"><%= insurance.insurance_name %></label>
+                                </div>
+                              </td>
+                              <td style="padding-top: 12px;<%= "color: #999999;" if insurance.insurance_policy_expiry_date < Date.current %>"><%= insurance.insurance_policy_no %></td>
+                              <td style="padding-top: 12px;<%= "color: red;font-weight: bolder;" if insurance.insurance_policy_expiry_date < Date.current %>"><%= insurance.insurance_policy_expiry_date.strftime("%d/%m/%Y") %></td>
+                            </tr>
+                          <% end %>
+                        <% end %>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div class="col-sm-12">
+                    <span style="color: red;font-size: 13px;"><b>Select any Insurance / Policy if using any existing one either new will be created.</b></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          <% end %>
+          <div class="row insurance_details_section">
+            <div class="col-md-12">
+              <div class="row mb10">
+                <div class="col-sm-4">
+                  <b style="color:#000;">Insurance Name</b>
+                  <%= select_tag "counsellor_record[insurance_contact_id]", options_for_select(@insurance_contacts.map { |insurance| [insurance.display_name, insurance.id, {"contact"=>insurance.mobile_number,"address"=>insurance.address_line_1.to_s + " "+ insurance.address_line_2.to_s + " "+ insurance.city.to_s + " "+ insurance.state.to_s,"email"=>insurance.email}]}, @counsellor_record.try(:insurance_contact_id)), {class: "form-control insurance_contact_id disable_field", :include_blank => "Select Insurance"} %>
+                  <%= hidden_field_tag "counsellor_record[insurance_name]", "", {class: "form-control insurance_name"} %>
+                  <%= hidden_field_tag "counsellor_record[insurance_email]", "", {class: "form-control insurance_email"} %>
+                </div>
+                <div class="col-sm-4">
+                  <b style="color:#000;">Insurance Contact Person</b>
+                  <%= f.text_field :insurance_contact_person, class: 'form-control p7_10 insurance_contact_person disable_field', id: "insurance_contact_person", placeholder: "Insurance Contact Person" %>
+                </div>
+                <div class="col-sm-4">
+                  <b style="color:#000;">Insurance Contact Number</b>
+                  <%= f.text_field :insurance_contact_no, class: 'form-control p7_10 insurance_contact_no disable_field', id: "insurance_contact_no", placeholder: "Insurance Contact Number", maxlength: 10, onkeypress: 'return event.charCode >= 48 && event.charCode <= 57' %>
+                </div>
+              </div>
+              <div class="row mb10">
+                <div class="col-sm-4">
+                  <b style="color:#000;">Policy No.</b>
+                  <%= f.text_field :insurance_policy_no, class: 'form-control p7_10 policy_no disable_field', id: "insurance_policy_no", placeholder: "Policy No."%>
+                </div>
+                <div class="col-sm-4">
+                  <b style="color:#000;">Policy Expiry Date</b>
+                  <%= f.text_field :insurance_policy_expiry_date, class: 'form-control p7_10 policy_expiry_date disable_field', id: "policy_expiry_date", readonly: "readonly", style: "background:#fff;cursor:pointer;" %>
+                </div>
+                <div class="col-sm-4">
+                  <b style="color:#000;">Insurance Address</b>
+                  <%= f.text_field :insurance_address, value: "", class: 'form-control p7_10 insurance_address disable_field', id: "insurance_address", placeholder: "Insurance Address" %>
+                </div>
+              </div>
+              <div class="row mb10">
+                <div class="col-sm-4">
+                  <b style="color:#000;">Sum Insured</b>
+                  <%= f.number_field :insurance_sum_insured, class: 'form-control p7_10 insurance_sum_insured', id: "insurance_sum_insured", placeholder: "Sum Insured"%>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

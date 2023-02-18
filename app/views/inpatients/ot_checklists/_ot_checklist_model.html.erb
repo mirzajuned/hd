@@ -1,0 +1,699 @@
+<% if params[:action] == "new" %>
+  <% action = (params[:action] == 'new') %>
+<% end %>
+
+<div class="modal-dialog appointment-dialog" style="width:99%;">
+  <div class="modal-content" style="letter-spacing: 0px;">
+    <% if params[:action] == "new" %>
+      <% @url = '/inpatient/ot_checklists/create' %>
+    <% else params[:action] == "edit" %>
+      <% @url = '/inpatient/ot_checklists/update' %>
+    <% end %>
+    <%= simple_form_for @ot_checklist, format: :js, remote: true, class: 'form-control', url: @url, multipart: true do |f| %>
+      <fieldset>
+        <div class="modal-header">
+          <button type="button" class=" btn btn-default btn-sm close_checklist_modal" data-dismiss="modal">close</button>
+          <% if params[:action] == "edit" %>
+            <%= f.submit 'Update', class: ' btn btn-success btn-sm submit_checklist', onclick: 'setTimeout(summary, 100)' %>
+          <% elsif params[:action] == "new" %>
+            <%= f.submit 'Save', class: 'btn btn-success btn-sm submit_checklist' %>
+          <% end %>
+          <h4 class="modal-title">
+            <%= @speciality_folder_name.split('_').map(&:capitalize).join(' ') %> OT Checklist Form
+          </h4>
+        </div>
+        <div class="modal-body">
+          <div class="row mb20" style="margin-top:20px;">
+            <% if params[:action] == 'edit' %>
+              <%= f.hidden_field :id, value: @ot_checklist.try(:id) %>
+            <% end %>
+            <%= f.hidden_field :patient_id, value: @patient_id %>
+            <%= f.hidden_field :admission_id, value: @admission_id %>
+            <%= f.hidden_field :specalityid, value: @specalityid %>
+            <%= f.hidden_field :specalityname, value: @speciality_folder_name %>
+            <%= f.hidden_field :organisation_id, value: @current_user.organisation_id %>
+            <%= f.hidden_field :facility_id, value: @current_facility.id %>
+            <% if @ipdrecord.present? && @ipdrecord.procedure.count > 0 %>
+              <div class="row mb5">
+                <div class="col-md-12">
+                  <div class="col-md-2 col-sm-2"> <b>Procedures : </b></div>
+                  <div class="col-md-10 col-sm-10">
+                    <% @ipdrecord.procedure.each_with_index do |procedure,i| %>
+                      <% if procedure.ot_checklist_id.nil? || procedure.ot_checklist_id == @ot_checklist.try(:id) %>
+                        <% t = procedure.ot_checklist %>
+                        <%= hidden_field_tag "ipd_record[procedure][#{i}][id]", procedure.id %>
+                        <%= hidden_field_tag "ipd_record[procedure][#{i}][ot_checklist]", false %>
+                        <div class="col-md-3 col-sm-3 ckbox ckbox-primary common-ckbox">
+                          <%= check_box_tag "ipd_record[procedure][#{i}][ot_checklist]", true, procedure.ot_checklist, id: "ot_checklist_#{i}" %>
+                          <label for="ot_checklist_<%= i %>">
+                          <% if procedure.try(:procedureside) == "18944008" %>
+                              <%= procedure.procedurename + ', R' %>
+                          <% elsif procedure.try(:procedureside) == "8966001" %>
+                              <%= procedure.procedurename + ', L' %>
+                          <% elsif  procedure.try(:procedureside) == "40638003" %>
+                              <%= procedure.procedurename + ', B/E' %>
+                          <% else %>
+                              <%= procedure.procedurename %>
+                          <% end %>
+                          </label>
+                        </div>
+                      <% end %>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+
+            <div class="col-md-4 sign_in">
+              <div class="row mb20">
+                <div class="col-md-12 text-center">
+                  <h4>SIGN-IN (Before Induction)</h4>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-md-12 col-md-offset-1">
+                  <div class="ckbox ckbox-primary common-ckbox mb5">
+                    <%= f.check_box :correct_patient, { class: 'correct_patient_check check_box_inside', id: 'correct_patient' }, 'true', 'false' %>
+                    <label for="correct_patient">&emsp;Correct Patient</label>
+                  </div>
+                </div>
+                <div class="hidden_checkbox" style="display:none">
+                  <div class="col-md-12 col-md-offset-2">
+                    <div class="ckbox ckbox-primary common-ckbox mb5">
+                      <%= f.check_box :correct_identity, { class: 'correct_identity ', id: 'correct_identity' }, 'true', 'false' %>
+                      <label for="correct_identity">&emsp;Identity</label>
+                    </div>
+                  </div>
+                  <div class="col-md-12 col-md-offset-2">
+                    <div class="ckbox ckbox-primary common-ckbox mb5">
+                      <%= f.check_box :site, { class: 'site', id: 'site' }, 'true', 'false' %>
+                      <label for="site">&emsp;Site</label>
+                    </div>
+                  </div>
+                  <div class="col-md-12 col-md-offset-2">
+                    <div class="ckbox ckbox-primary common-ckbox mb5">
+                      <%= f.check_box :correct_procedure, { class: 'correct_procedure', id: 'correct_procedure' }, 'true', 'false' %>
+                      <label for="correct_procedure">&emsp;Correct Procedure</label>
+                    </div>
+                  </div>
+                  <div class="col-md-12 col-md-offset-2">
+                    <div class="ckbox ckbox-primary common-ckbox mb5">
+                      <%= f.check_box :before_induction_valid_consent, { class: 'before_induction_valid_consent', id: 'before_induction_valid_consent' }, 'true', 'false' %>
+                      <label for="before_induction_valid_consent">&emsp;Valid Consent</label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-md-12 col-md-offset-1">
+                  <div class="ckbox ckbox-primary common-ckbox mb5">
+                    <%= f.check_box :site_marked, { class: 'site_marked', id: 'site_marked' }, 'true', 'false' %>
+                    <label for="site_marked">&emsp;Site Marked</label>
+                  </div>
+                </div>
+              </div>
+              <div class="row  ">
+                <div class="col-md-12 col-md-offset-1">
+                  <div class="ckbox ckbox-primary common-ckbox mb5">
+                    <%= f.check_box :id_band_by_patient, { class: 'id_band_by_patient', id: 'id_band_by_patient' }, 'true', 'false' %>
+                    <label for="id_band_by_patient">&emsp;Id Band Worn By The Patient</label>
+                  </div>
+                </div>
+              </div>
+              <div class="row  ">
+                <div class="col-md-12 col-md-offset-1">
+                  <div class="ckbox ckbox-primary common-ckbox mb5">
+                    <%= f.check_box :history_physical_condition, { class: 'history_physical_condition', id: 'history_physical_condition' }, 'true', 'false' %>
+                    <label for="history_physical_condition">&emsp;History & Physical Conditions Reviewed</label>
+                  </div>
+                </div>
+              </div>
+              <div class="row  ">
+                <div class="col-md-12 col-md-offset-1">
+                  <div class="ckbox ckbox-primary common-ckbox mb5">
+                    <%= f.check_box :pre_surgical_assessemt, { class: 'pre_surgical_assessemt_check', id: 'pre_surgical_assessemt' }, 'true', 'false' %>
+                    <label for="pre_surgical_assessemt">&emsp;Pre Surgical Assessment</label>
+                  </div>
+                </div>
+                <div class="hidden_checkbox" style="display:none">
+                  <% if @speciality_folder_name == "ophthalmology" %>
+                    <div class="col-md-12 col-md-offset-2">
+                      <div class="ckbox ckbox-primary common-ckbox mb5">
+                        <%= f.check_box :pupils_dilated, { class: 'correct_pupils_dilated ', id: 'pupils_dilated_patient' }, 'true', 'false' %>
+                        <label for="pupils_dilated_patient">&emsp;Pupils Dilated</label>
+                      </div>
+                    </div>
+                  <% end %>
+                  <div class="col-md-12 col-md-offset-2">
+                    <div class="ckbox ckbox-primary common-ckbox mb5">
+                      <%= f.check_box :preoperative_medication, { class: 'correct_ot_checklisterative_medication ', id: 'preoperative_medication_patient' }, 'true', 'false' %>
+                      <label for="preoperative_medication_patient">&emsp;Preoperative Medication Given</label>
+                    </div>
+                  </div>
+                  <div class="col-md-12 col-md-offset-2">
+                    <div class="ckbox ckbox-primary common-ckbox mb5">
+                      <%= f.check_box :vital_monitored, { class: 'correct_vital_monitored ', id: 'vital_monitored_patient' }, 'true', 'false' %>
+                      <label for="vital_monitored_patient">&emsp;Vital Monitored & Recorded</label>
+                    </div>
+                  </div>
+                  <div class="col-md-12 col-md-offset-2">
+                    <div class="ckbox ckbox-primary common-ckbox mb5">
+                      <%= f.check_box :surgical_antibiotic, { class: 'correct_surgical_antibiotic ', id: 'surgical_antibiotic_patient' }, 'true', 'false' %>
+                      <label for="surgical_antibiotic_patient">&emsp;Surgical Antibiotic Prophylaxis Given</label>
+                    </div>
+                  </div>
+                  <% if @speciality_folder_name == "ophthalmology" %>
+                    <div class="col-md-12 col-md-offset-2">
+                      <div class="ckbox ckbox-primary common-ckbox mb5">
+                        <%= f.check_box :iol_power_check, { class: 'correct_iol_power_check ', id: 'iol_power_check_patient' }, 'true', 'false' %>
+                        <label for="iol_power_check_patient">&emsp;Iol Power Checked By Surgeon</label>
+                      </div>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+              <div class="row ">
+                <div class="col-md-12 col-md-offset-1">
+                  <div class="ckbox ckbox-primary common-ckbox mb5">
+                    <%= f.check_box :procedure_explained, { class: 'procedure_explained', id: 'procedure_explained' }, 'true', 'false' %>
+                    <label for="procedure_explained">&emsp;Procedure Explained To Patient & Attended</label>
+                  </div>
+                </div>
+              </div>
+              <div class="row ">
+                <div class="col-md-12 col-md-offset-1">
+                  <div class="ckbox ckbox-primary common-ckbox mb5">
+                    <%= f.check_box :bill_payment, { class: 'bill_payment', id: 'bill_payment' }, 'true', 'false' %>
+                    <label for="bill_payment">&emsp;Bill Payment Done</label>
+                  </div>
+                </div>
+              </div>
+              <div class="row ">
+                <div class="col-md-12 col-md-offset-1">
+                  <div class="ckbox ckbox-primary common-ckbox mb5">
+                    <%= f.check_box :pre_anaesthesia_complete, { class: 'pre_anaesthesia_complete_check', id: 'pre_anaesthesia_complete' }, 'true', 'false' %>
+                    <label for="pre_anaesthesia_complete">&emsp;Pre Anaesthesia Complete</label>
+                  </div>
+                </div>
+                <div class="hidden_checkbox" style="display:none">
+                  <div class="col-md-12 col-md-offset-2">
+                    <div class="ckbox ckbox-primary common-ckbox mb5">
+                      <%= f.check_box :any_significant_systemic_ailments_noted, { class: 'correct_any_significant_systemic_ailments_noted ', id: 'any_significant_systemic_ailments_noted' }, 'true', 'false' %>
+                      <label for="any_significant_systemic_ailments_noted">&emsp;Any Significant Systemic Ailments Noted</label>
+                    </div>
+                  </div>
+                  <div class="col-md-12 col-md-offset-2">
+                    <div class="ckbox ckbox-primary common-ckbox mb5">
+                      <%= f.check_box :any_drug_allergy_noted, { class: 'correct_any_drug_allergy_noted ', id: 'any_drug_allergy_noted' }, 'true', 'false' %>
+                      <label for="any_drug_allergy_noted">&emsp;Any Drug Allergies Noted</label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-md-12 col-md-offset-1">
+                  <div class="ckbox ckbox-primary common-ckbox mb5">
+                    <%= f.check_box :anaesthesia_safety_check, { class: 'anaesthesia_safety_check', id: 'anaesthesia_safety_check' }, 'true', 'false' %>
+                    <label for="anaesthesia_safety_check">&emsp;Anaesthesia Safety Check Done</label>
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-md-12 col-md-offset-1">
+                  <div class="ckbox ckbox-primary common-ckbox mb5">
+                    <%= f.check_box :difficult_airway, { class: 'difficult_airway_check', id: 'difficult_airway' }, 'true', 'false' %>
+                    <label for="difficult_airway">&emsp;Difficult Airway</label>
+                  </div>
+                </div>
+                <div class="hidden_checkbox" style="display:none">
+                  <div class="col-md-12 col-md-offset-2">
+                    <div class="ckbox ckbox-primary common-ckbox mb5">
+                      <%= f.check_box :not_applicable, { class: 'correct_not_applicable ', id: 'not_applicable' }, 'true', 'false' %>
+                      <label for="not_applicable">&emsp;Not Applicable</label>
+                    </div>
+                  </div>
+                  <div class="col-md-12 col-md-offset-2">
+                    <div class="ckbox ckbox-primary common-ckbox mb5">
+                      <%= f.check_box :equipment_assessment_available, { class: 'correct_equipment_assessment_available ', id: 'equipment_assessment_available' }, 'true', 'false' %>
+                      <label for="equipment_assessment_available">&emsp;Equipment/Assessment Available</label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="row ">
+                <div class="col-md-12 col-md-offset-1 ">
+                  <div class="ckbox ckbox-primary common-ckbox mb5">
+                    <%= f.check_box :history_and_anticoagulants, { class: 'history_and_anticoagulants_check', id: 'history_and_anticoagulants' }, 'true', 'false' %>
+                    <label for="history_and_anticoagulants">&emsp;History & Anticoagulants</label>
+                  </div>
+                </div>
+                <div class="hidden_checkbox" style="display:none">
+                  <div class="col-md-12 col-md-offset-2">
+                    <div class="ckbox ckbox-primary common-ckbox mb5">
+                      <%= f.check_box :continued, { class: 'correct_continued ', id: 'continued' }, 'true', 'false' %>
+                      <label for="continued">&emsp;Continued</label>
+                    </div>
+                  </div>
+                  <div class="col-md-12 col-md-offset-2">
+                    <div class="ckbox ckbox-primary common-ckbox mb5">
+                      <%= f.check_box :stopped_as_instructed, { class: 'correct_stopped_as_instructed ', id: 'stopped_as_instructed' }, 'true', 'false' %>
+                      <label for="stopped_as_instructed">&emsp;Stopped As Instructed</label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="row ">
+                <div class="col-md-12 col-md-offset-1">
+                  <div class="ckbox ckbox-primary common-ckbox mb5">
+                    <%= f.check_box :anesthesia_machine, { class: 'anesthesia_machine', id: 'anesthesia_machine' }, 'true', 'false' %>
+                    <label for="anesthesia_machine">&emsp;Anesthesia Machine checked</label>
+                  </div>
+                  <div class="ckbox ckbox-primary common-ckbox mb5">
+                    <%= f.check_box :manitol, { class: 'manitol', id: 'manitol' }, 'true', 'false' %>
+                    <label for="manitol">&emsp;IV manitol</label>
+                  </div>
+                  <div class="ckbox ckbox-primary common-ckbox mb5">
+                    <%= f.check_box :tourniquet_drills_suction, { class: 'tourniquet_drills_suction', id: 'tourniquet_drills_suction' }, 'true', 'false' %>
+                    <label for="tourniquet_drills_suction">&emsp;Tourniquet/Drills/Suction Checked</label>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-md-12 col-md-offset-1">
+                    <div class="col-md-5 col-md-offset-1">
+                      <label>lidocaine test done</label>
+                      <%= f.text_field :lidocaine_test_dose, style: 'padding: 2%;' %>
+                    </div>
+                    <div class="col-md-5 col-md-offset-1" style="margin-left: 2%;">
+                      <label>Dose given by</label>
+                      <%= f.text_field :dose_given_by, style: 'padding: 2%;' %>
+                    </div>
+                    <div class="col-md-6 col-md-offset-1">
+                      <label>Dose checked by</label>
+                      <%= f.text_field :dose_checked_by, style: 'padding: 2%;' %>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-12 col-md-offset-1">
+                  <div class="ckbox ckbox-primary common-ckbox mb5">
+                    <%= f.check_box :implants_checked, { class: 'implants_checked', id: 'implants_checked' }, 'true', 'false' %>
+                    <label for="implants_checked">&emsp;Implants checked</label>
+                  </div>
+                </div>
+              </div>
+              <div class="row mb20">
+                <div class="col-md-5 text-right">
+                  Patient Allergy :
+                </div>
+                <div class="col-md-7">
+                  <div class="rdio rdio-primary col-md-6">
+                    <%= f.radio_button :patient_allergy, 'yes', class: 'patient_allergy', id: 'patient_allergy_yes', value: @ot_checklist.read_attribute(:patient_allergy) == 'yes' %>
+                    <label class="label label-primary" style="margin-left:15px;" for="patient_allergy_yes">Yes</label>
+                  </div>
+                  <div class="rdio rdio-primary col-md-6">
+                    <%= f.radio_button :patient_allergy, 'no', class: 'patient_allergy', id: 'patient_allergy_no', value: @ot_checklist.read_attribute(:patient_allergy) != 'yes' %>
+                    <label class="label label-warning" style="margin-left:15px;" for="patient_allergy_no">No</label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="row mb20">
+                <div class="col-md-5 text-right">
+                  Pre Op Iodine applied
+                </div>
+                <div class="col-md-7">
+                  <div class="rdio rdio-primary col-md-6">
+                    <%= f.radio_button :pre_op_iodine, 'yes', class: 'pre_op_iodine', id: 'pre_op_iodine_yes', value: @ot_checklist.read_attribute(:pre_op_iodine) == 'yes' %>
+                    <label class="label label-primary" style="margin-left:15px;" for="pre_op_iodine_yes">Yes</label>
+                  </div>
+                  <div class="rdio rdio-primary col-md-6">
+                    <%= f.radio_button :pre_op_iodine, 'no', class: 'pre_op_iodine', id: 'pre_op_iodine_no', value: @ot_checklist.read_attribute(:pre_op_iodine) != 'yes' %>
+                    <label class="label label-warning" style="margin-left:15px;" for="pre_op_iodine_no">No</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <%# end %>
+            <div class="col-md-4 time_out">
+              <div class="row col-md-offset-1  mb20">
+                <div class="col-md-12 text-center">
+                  <h4>TIME-OUT (Surgeon-Anesthetist-Nurse Verify)</h4>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-md-10 ">
+                  <div class="ckbox ckbox-primary common-ckbox mb5">
+                    <%= f.check_box :confirm_team_listed, { class: 'patient_confirm_team_listed', id: 'confirm_team_listed' }, 'true', 'false' %>
+                    <label for="confirm_team_listed">&emsp;Confirm All Team Members Listed</label>
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-md-12">
+                  <div class="ckbox ckbox-primary common-ckbox mb5">
+                    <%= f.check_box :surgeon_anaesthesia_provider_and_nurse_orally_confirmed, { class: 'patient_surgeon_anaesthesia_provider_and_nurse_orally_confirmed', id: 'surgeon_anaesthesia_provider_and_nurse_orally_confirmed' }, 'true', 'false' %>
+                    <label for="surgeon_anaesthesia_provider_and_nurse_orally_confirmed">&emsp;Surgeon Anaesthesia Provider And Nurse Orally Confirm</label>
+                  </div>
+                </div>
+                <div class="hidden_checkbox" style="display:none">
+                  <div class="col-md-12 col-md-offset-2">
+                    <div class="ckbox ckbox-primary common-ckbox mb5">
+                      <%= f.check_box :patient_checked, { class: 'patient_patient_checked', id: 'patient_checked' }, 'true', 'false' %>
+                    <label for="patient_checked">&emsp;Patient Checked</label>
+                    </div>
+                  </div>
+                  <div class="col-md-12 col-md-offset-2">
+                    <div class="ckbox ckbox-primary common-ckbox mb5">
+                      <%= f.check_box :site_checked_and_marked, { class: 'patient_site_checked_and_marked', id: 'site_checked_and_marked' }, 'true', 'false' %>
+                    <label for="site_checked_and_marked">&emsp;Site Checked & Marked</label>
+                    </div>
+                  </div>
+                  <div class="col-md-12 col-md-offset-2">
+                    <div class="ckbox ckbox-primary common-ckbox mb5">
+                      <%= f.check_box :procedure_checked, { class: 'patient_procedure_checked', id: 'procedure_checked' }, 'true', 'false' %>
+                    <label for="procedure_checked">&emsp;Procedure Checked</label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-md-12">
+                  <div class="ckbox ckbox-primary common-ckbox mb5">
+                    <%= f.check_box :surgeon_nurse_orally_confirm, { class: 'patient_surgeon_nurse_orally_confirm', id: 'surgeon_nurse_orally_confirm' }, 'true', 'false' %>
+                    <label for="surgeon_nurse_orally_confirm">&emsp;Surgeon Nurse Orally Confirm</label>
+                  </div>
+                </div>
+                <div class="hidden_checkbox" style="display:none">
+                  <div class="col-md-12 col-md-offset-2">
+                    <div class="ckbox ckbox-primary common-ckbox mb5">
+                      <%= f.check_box :antibiotic_prophylaxis_given, { class: 'patient_antibiotic_prophylaxis_given', id: 'antibiotic_prophylaxis_given' }, 'true', 'false' %>
+                      <label for="antibiotic_prophylaxis_given">&emsp;Antibiotic Prophylaxis Given</label>
+                    </div>
+                  </div>
+                  <div class="col-md-12 col-md-offset-2">
+                    <div class="ckbox ckbox-primary common-ckbox mb5">
+                      <%= f.check_box :mitomycin_c_anti_neo_plastic, { class: 'patient_mitomycin_c_anti_neo_plastic', id: 'mitomycin_c_anti_neo_plastic' }, 'true', 'false' %>
+                      <label for="mitomycin_c_anti_neo_plastic">&emsp;Mitomycin-C/Anti Neo Plastic</label>
+                    </div>
+                  </div>
+                  <div class="col-md-12 col-md-offset-2">
+                    <div class="ckbox ckbox-primary common-ckbox mb5">
+                      <%= f.check_box :implant_style_power, { class: 'patient_implant_style_power', id: 'implant_style_power' }, 'true', 'false' %>
+                      <label for="implant_style_power">&emsp;Implant Style Power</label>
+                    </div>
+                  </div>
+                  <div class="col-md-12 col-md-offset-2">
+                    <div class="ckbox ckbox-primary common-ckbox mb5">
+                      <%= f.check_box :devices, { class: 'patient_devices', id: 'devices' }, 'true', 'false' %>
+                      <label for="devices">&emsp;Devices</label>
+                    </div>
+                  </div>
+                  <div class="col-md-12 col-md-offset-2">
+                    <div class="ckbox ckbox-primary common-ckbox mb5">
+                      <%= f.check_box :tissue, { class: 'patient_tissue', id: 'tissue' }, 'true', 'false' %>
+                      <label for="tissue">&emsp;Tissue</label>
+                    </div>
+                  </div>
+                  <div class="col-md-12 col-md-offset-2">
+                    <div class="ckbox ckbox-primary common-ckbox mb5">
+                      <%= f.check_box :dyes, { class: 'patient_dyes', id: 'dyes' }, 'true', 'false' %>
+                      <label for="dyes">&emsp;Dyes</label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-md-12">
+                  <div class="ckbox ckbox-primary common-ckbox mb5">
+                    <%= f.check_box :surgeon_review, { class: 'patient_surgeon_review', id: 'surgeon_review' }, 'true', 'false' %>
+                    <label for="surgeon_review">&emsp;Surgeon Review</label>
+                  </div>
+                </div>
+                <div class="hidden_checkbox" style="display:none">
+                  <div class="col-md-12 col-md-offset-2">
+                    <div class="ckbox ckbox-primary common-ckbox mb5">
+                      <%= f.check_box :critical_and_unexpected, { class: 'patient_critical_and_unexpected', id: 'critical_and_unexpected' }, 'true', 'false' %>
+                      <label for="critical_and_unexpected">&emsp;Critical OR Unexpected Steps</label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-md-12">
+                  <div class="ckbox ckbox-primary common-ckbox mb5">
+                    <%= f.check_box :reviewed, { class: 'patient_reviewed', id: 'reviewed' }, 'true', 'false' %>
+                    <label for="reviewed">&emsp;Reviewed</label>
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-md-12 ">
+                  <div class="ckbox ckbox-primary common-ckbox mb5">
+                    <%= f.check_box :non_anticipated, { class: 'patient_non_anticipated', id: 'non_anticipated' }, 'true', 'false' %>
+                    <label for="non_anticipated">&emsp;Non Anticipated</label>
+                  </div>
+                </div>
+                <div class="hidden_checkbox" style="display:none">
+                  <div class="col-md-12 col-md-offset-2">
+                    <div class="ckbox ckbox-primary common-ckbox mb5">
+                      <%= f.check_box :operative_duration, { class: 'patient_operative_duration', id: 'operative_duration' }, 'true', 'false' %>
+                      <label for="operative_duration">&emsp;Operative Duration</label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-md-12 ">
+                  <div class="ckbox ckbox-primary common-ckbox mb5">
+                    <%= f.check_box :anaesthesia_provided_review, { class: 'patient_anaesthesia_provided_review', id: 'anaesthesia_provided_review' }, 'true', 'false' %>
+                    <label for="anaesthesia_provided_review">&emsp;Anaesthesia Provided Review</label>
+                  </div>
+                </div>
+                <div class="hidden_checkbox" style="display:none">
+                  <div class="col-md-12 col-md-offset-2">
+                    <div class="ckbox ckbox-primary common-ckbox mb5">
+                      <%= f.check_box :any_patient_specific_concerns, { class: 'patient_any_patient_specific_concerns', id: 'any_patient_specific_concerns' }, 'true', 'false' %>
+                      <label for="any_patient_specific_concerns">&emsp;Any Patient Specific Concerns</label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-md-12 ">
+                  <div class="ckbox ckbox-primary common-ckbox mb5">
+                    <%= f.check_box :nursing_team_reviews, { class: 'patient_nursing_team_reviews', id: 'nursing_team_reviews' }, 'true', 'false' %>
+                    <label for="nursing_team_reviews">&emsp;Nursing Team Review</label>
+                  </div>
+                </div>
+                <div class="hidden_checkbox" style="display:none">
+                  <div class="col-md-12 col-md-offset-2">
+                    <div class="ckbox ckbox-primary common-ckbox mb5">
+                      <%= f.check_box :sterility, { class: 'patient_sterility', id: 'sterility' }, 'true', 'false' %>
+                      <label for="sterility">&emsp;Sterility(including indicator results)</label>
+                    </div>
+                  </div>
+                  <div class="col-md-12 col-md-offset-2">
+                    <div class="ckbox ckbox-primary common-ckbox mb5">
+                      <%= f.check_box :equipment_issue, { class: 'patient_equipment_issue', id: 'equipment_issue' }, 'true', 'false' %>
+                      <label for="equipment_issue">&emsp;Equipment Issue</label>
+                    </div>
+                  </div>
+                  <div class="col-md-12 col-md-offset-2">
+                    <div class="ckbox ckbox-primary common-ckbox mb5">
+                      <%= f.check_box :concerns, { class: 'patient_concerns', id: 'concerns' }, 'true', 'false' %>
+                      <label for="concerns">&emsp;Concerns</label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="row mb20">
+                  <div class="col-md-5 text-right">
+                    Valid Consent :
+                  </div>
+                  <div class="col-md-7">
+                    <div class="rdio rdio-primary col-md-6">
+                      <%= f.radio_button :valid_consent, 'yes', class: 'patient_valid_consent', id: 'valid_consent_yes', value: @ot_checklist.read_attribute(:valid_consent) == 'yes' %>
+                      <label class="label label-primary" style="margin-left:15px;" for="valid_consent_yes">Yes</label>
+                    </div>
+                    <div class="rdio rdio-primary col-md-6">
+                      <%= f.radio_button :valid_consent, 'no', class: 'patient_valid_consent', id: 'valid_consent_no', value: @ot_checklist.read_attribute(:valid_consent) != 'yes' %>
+                      <label class="label label-warning" style="margin-left:15px;" for="valid_consent_no">No</label>
+                    </div>
+                  </div>
+                </div>
+                <div class="row mb20">
+                  <div class="col-md-5 text-right">
+                    Imaging Checked :
+                  </div>
+                  <div class="col-md-7">
+                    <div class="rdio rdio-primary col-md-6">
+                      <%= f.radio_button :imaging_checked, 'yes', class: 'patient_imaging_checked', id: 'imaging_checked_yes', value: @ot_checklist.read_attribute(:imaging_checked) == 'yes' %>
+                      <label class="label label-primary" style="margin-left:15px;" for="imaging_checked_yes">Yes</label>
+                    </div>
+                    <div class="rdio rdio-primary col-md-6">
+                      <%= f.radio_button :imaging_checked, 'no', class: 'patient_imaging_checked', id: 'imaging_checked_no', value: @ot_checklist.read_attribute(:imaging_checked) != 'yes' %>
+                      <label class="label label-warning" style="margin-left:15px;" for="imaging_checked_no">No</label>
+                    </div>
+                  </div>
+                </div>
+                <div class="row mb20">
+                  <div class="col-md-5 text-right">
+                    X-ray safety check :
+                  </div>
+                  <div class="col-md-7">
+                    <div class="rdio rdio-primary col-md-6">
+                      <%= f.radio_button :xray_safety_check, 'yes', class: 'patient_xray_safety_check', id: 'xray_safety_check_yes', value: @ot_checklist.read_attribute(:xray_safety_check) == 'yes' %>
+                      <label class="label label-primary" style="margin-left:15px;" for="xray_safety_check_yes">Yes</label>
+                    </div>
+                    <div class="rdio rdio-primary col-md-6">
+                      <%= f.radio_button :xray_safety_check, 'no', class: 'patient_xray_safety_check', id: 'xray_safety_check_no', value: @ot_checklist.read_attribute(:xray_safety_check) != 'yes' %>
+                      <label class="label label-warning" style="margin-left:15px;" for="xray_safety_check_no">No</label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-md-4 sign_out">
+              <div class="row col-md-offset-1  mb20">
+                <div class="col-md-12 text-center">
+                  <h4>SIGN-OUT (Before Leaving Operation Room )</h4>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-md-offset-1">
+                  <div class="ckbox ckbox-primary common-ckbox mb5">
+                    <%= f.check_box :nurse_orally_confirm_with_team, { class: 'nurse_orally_confirm check_box_inside', id: 'nurse_orally_confirm_with_team' }, 'true', 'false' %>
+                    <label for="nurse_orally_confirm_with_team">&emsp;Nurse Orally Confirms With Team</label>
+                  </div>
+                </div>
+                <div class="hidden_checkbox" style="display:none">
+                  <div class="col-md-offset-2">
+                    <div class="ckbox ckbox-primary common-ckbox mb5">
+                      <%= f.check_box :procedure_recorded, { class: 'procedure_recorded ', id: 'procedure_recorded' }, 'true', 'false' %>
+                      <label for="procedure_recorded">&emsp;Name Of Procedure Recorded</label>
+                    </div>
+                  </div>
+                  <div class="col-md-offset-2">
+                    <div class="ckbox ckbox-primary common-ckbox mb5">
+                      <%= f.check_box :equipment_issue_addressed, { class: 'equipment_issue_addressed', id: 'equipment_issue_addressed' }, 'true', 'false' %>
+                      <label for="equipment_issue_addressed">&emsp;Equipment Issues Addressed</label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-md-offset-1">
+                  <div class="ckbox ckbox-primary common-ckbox mb5">
+                    <%= f.check_box :surgeon_anaesthesia_provider_and_nurse, { class: 'surgeon_anaesthesia_provider check_box_inside', id: 'surgeon_anaesthesia_provider_and_nurse' }, 'true', 'false' %>
+                    <label for="surgeon_anaesthesia_provider_and_nurse">&emsp;Surgeon Anaesthesia Provider And Nurse</label>
+                  </div>
+                </div>
+                <div class="hidden_checkbox" style="display:none">
+                  <div class="col-md-offset-2">
+                    <div class="ckbox ckbox-primary common-ckbox mb5">
+                      <%= f.check_box :recovery_management_reviewed, { class: 'recovery_management_reviewed ', id: 'recovery_management_reviewed' }, 'true', 'false' %>
+                      <label for="recovery_management_reviewed">&emsp;Key Concerns for Recovery and Management Reviewed</label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="row personnel_row mb30">
+            <div class="col-md-2 text-right">
+              COMMENT BOX :
+            </div>
+            <div class="col-md-3">
+              <%= f.text_area :otchecklist_comments, style: 'width:125%;', class: 'form-control', value: @ot_checklist.read_attribute(:otchecklist_comments) %>
+            </div>
+          </div>
+          </div>
+      </fieldset>
+    <% end %>
+  </div>
+</div>
+<style type="text/css">
+  .sign_in {
+    border-right: 1px solid #ddd;
+    }
+
+  .sign_in h4, .time_out h4 {
+    text-decoration: underline;
+  }
+  .time_out{
+    border-right: 1px solid #ddd;
+  }
+  .submit_checklist{
+    float: right;
+    margin-right: 10px;
+  }
+  .close_checklist_modal{
+    float: right;
+    letter-spacing: 1px;
+    font-size: 13px;
+  }
+  .common-ckbox{
+    display: flex;
+  }
+</style>
+<script>
+  $( "input" ).on('change', function(){
+    if(($(this).prop('checked'))){
+      $(this).parent().parent().next(".hidden_checkbox").css("display", "block");
+    }else{
+      $(this).parent().parent().next(".hidden_checkbox").css("display", "none");
+      $(this).parent().parent().next(".hidden_checkbox").find('input[type=checkbox]:checked').prop('checked', false);
+    }
+  });
+  $(document).ready(function() {
+    if ($(".correct_patient_check").is(':checked')){
+      $(".correct_patient_check").parent().parent().next(".hidden_checkbox").css("display", "block");
+    }
+     if ($(".pre_surgical_assessemt_check").is(':checked')){
+      $(".pre_surgical_assessemt_check").parent().parent().next(".hidden_checkbox").css("display", "block");
+    }
+    if ($(".pre_anaesthesia_complete_check").is(':checked')){
+      $(".pre_anaesthesia_complete_check").parent().parent().next(".hidden_checkbox").css("display", "block");
+    }
+    if ($(".difficult_airway_check").is(':checked')){
+      $(".difficult_airway_check").parent().parent().next(".hidden_checkbox").css("display", "block");
+    }
+    if ($(".history_and_anticoagulants_check").is(':checked')){
+      $(".history_and_anticoagulants_check").parent().parent().next(".hidden_checkbox").css("display", "block");
+    }
+    if ($(".patient_surgeon_anaesthesia_provider_and_nurse_orally_confirmed").is(':checked')){
+      $(".patient_surgeon_anaesthesia_provider_and_nurse_orally_confirmed").parent().parent().next(".hidden_checkbox").css("display", "block");
+    }
+    if ($(".patient_surgeon_nurse_orally_confirm").is(':checked')){
+      $(".patient_surgeon_nurse_orally_confirm").parent().parent().next(".hidden_checkbox").css("display", "block");
+    }
+    if ($(".patient_surgeon_review").is(':checked')){
+      $(".patient_surgeon_review").parent().parent().next(".hidden_checkbox").css("display", "block");
+    }
+    if ($(".patient_non_anticipated").is(':checked')){
+      $(".patient_non_anticipated").parent().parent().next(".hidden_checkbox").css("display", "block");
+    }
+    if ($(".patient_anaesthesia_provided_review").is(':checked')){
+      $(".patient_anaesthesia_provided_review").parent().parent().next(".hidden_checkbox").css("display", "block");
+    }
+    if ($(".patient_nursing_team_reviews").is(':checked')){
+      $(".patient_nursing_team_reviews").parent().parent().next(".hidden_checkbox").css("display", "block");
+    }
+    if ($(".nurse_orally_confirm").is(':checked')){
+      $(".nurse_orally_confirm").parent().parent().next(".hidden_checkbox").css("display", "block");
+    }
+    if ($(".surgeon_anaesthesia_provider").is(':checked')){
+      $(".surgeon_anaesthesia_provider").parent().parent().next(".hidden_checkbox").css("display", "block");
+    }
+  });
+  function summary(){
+    if($(".patient-timeline-panel").length > 0){
+    $("#btn-timeline-refresh").trigger("click")
+    }
+  }
+</script>

@@ -1,0 +1,160 @@
+<div class="row">
+  <div class="col-sm-12">
+    <div class="col-md-2"></div>
+    <div class="rdio rdio-primary col-md-4">
+      <div id="standard_rad_inv" class="standard_rad_inv" style="margin-bottom:15px;">
+        <%= radio_button_tag "radiology_inv_type", "standard_radiology_investigation", true, {:class => 'radiology_inv_type', :id => "RadiologyRadio1"} %>
+        <label for="RadiologyRadio1">Standard Radiology Investigations</label>
+      </div>
+    </div>
+
+    <div class="rdio rdio-primary col-md-6 custom_oph_inv" id="custom_oph_inv">
+      <%= radio_button_tag "radiology_inv_type", "custom_radiology_investigation", false, {:class => 'radiology_inv_type', :id => "RadiologyRadio2"} %>
+      <label for="RadiologyRadio2">Custom Radiology Investigations</label>
+    </div>
+  </div>
+</div>
+
+<div class="col-md-2">
+  <b>Radiology Sets</b>
+  <%= select_tag  "radiology_set", options_for_select(@radiology_laboratory_set.pluck(:name, :id)) ,{ multiple: true, :style => 'height: 250px; width:100%', :class => 'form-control' } %>
+</div>
+<div class="standard-radiology-investigations">
+  <div class="col-sm-3 col-md-5-shared">
+    <b>X-Rays</b>
+    <%= select_tag "topradiologyinvestigation_xray", options_for_select(@radiology_investigation_xray.map do |radinvestigation| Array["#{radinvestigation.investigation_type.to_s}, #{radinvestigation.investigation_name.to_s}", radinvestigation.investigation_id.to_i] end) ,{ multiple: true, :style => 'height: 250px; width:100%', :class => 'form-control' } %>
+  </div>
+  <div class="col-sm-3 col-md-5-shared">
+    <b>MRI,etc.</b>
+    <%= select_tag "topradiologyinvestigation_mri", options_for_select(@radiology_investigation_mri.map do |radinvestigation| Array["#{radinvestigation.investigation_type.to_s}, #{radinvestigation.investigation_name.to_s}", radinvestigation.investigation_id.to_i] end) ,{ multiple: true, :style => 'height: 250px; width:100%', :class => 'form-control' } %>
+  </div>
+</div>
+
+<div class="custom-radiology-investigations">
+  <div class="col-sm-3 col-md-5-shared">
+    <b>Investigations</b>
+    <%= select_tag "select_custom_radiology_investigation", options_for_select(@custom_radiology_investigations.map{ |inv| [ inv.investigation_name, inv.investigation_id]}),{ multiple: true, :style => 'height: 250px; width:100%', :class => 'form-control' } %>
+  </div>
+  <div class="col-sm-3 col-md-5-shared">
+  </div>
+</div>
+<div class="col-sm-5">
+  <b>Selected Tests</b>
+  <div class="row selected-investigations">
+  </div>
+</div>
+
+<script type="text/javascript">
+
+  jQuery(document).ready(function() {
+    jQuery(".custom-radiology-investigations").hide();
+    jQuery("input[name='radiology_inv_type']").on('click', function () {
+      var radiology_inv_type = jQuery("input[name='radiology_inv_type']:checked").val();
+      if (radiology_inv_type == 'standard_radiology_investigation') {
+        jQuery(".standard-radiology-investigations").show();
+        jQuery(".custom-radiology-investigations").hide();
+      }
+       else if (radiology_inv_type == 'custom_radiology_investigation') {
+        jQuery(".standard-radiology-investigations").hide();
+        jQuery(".custom-radiology-investigations").show();
+      }
+    });
+  });
+
+  $("#radiology_set").on('change', function(){
+    var row_count = $(".selected-investigations").find('.radiology-investigation-row').length
+    var radiology_set_id = $("#radiology_set option:selected").val();
+    $.ajax({
+      dataType: "script",
+      type: "GET",
+      url: "/investigation/investigation_details/append_radiology_set",
+      data: {id: radiology_set_id, row_count: row_count},
+      success: function(response){
+        $('#radiology_set option:selected').removeAttr('selected');
+      }
+    })
+  })
+
+  $("#topradiologyinvestigation_xray").on('change', function(e){
+    e.preventDefault()
+    var params = { investigationid: $("#topradiologyinvestigation_xray option:selected").val() }
+    $.ajax({
+      dataType: "JSON",
+      type: "GET",
+      url: "/icdtree/get_radiology_attributes",
+      data: {ajax: params, remote: "true" },
+      success: function(response){
+        var this_length = $(".selected-investigations").find('.radiology-investigation-row').length
+        $(".selected-investigations").append("<div class='row radiology-investigation-row mb5'><input type='hidden' name='radiology_investigation[" + this_length + "][investigation_id]' class='form-control investigation_id' value='" + $("#topradiologyinvestigation_xray option:selected").val() + "'><input type='hidden' name='radiology_investigation[" + this_length + "][order_item_advised_id]' class='form-control order_item_advised_id' value='" + "<%= BSON::ObjectId.new.to_s %>" + "'><input type='hidden' name='radiology_investigation[" + this_length + "][laterality]' class='form-control laterality' value='" + response[0]['laterality'] + "'><input type='hidden' name='radiology_investigation[" + this_length + "][loinc_code]' class='form-control loinc_code' value='" + response[0]['loinc_code'] + "'><div class='col-sm-5'><input type='text' name='radiology_investigation[" + this_length + "][investigationname]' class='form-control investigationname p5_10' value='" + $("#topradiologyinvestigation_xray option:selected").text() + "'></div><div class='col-sm-5'></div><div class='col-sm-2'><button class='btn btn-danger btn-xs delete-row'>&times;</button></div></div>")
+
+        $(".delete-row").on('click', function(){
+          $(this).closest('.radiology-investigation-row').remove()
+          renumber_investigation_rows()
+        })
+      $('#topradiologyinvestigation_xray option:selected').removeAttr('selected');
+      }
+    })
+  })
+
+  $("#select_custom_radiology_investigation").on('change', function(){
+    var params = { investigation_id: $("#select_custom_radiology_investigation option:selected").val() }
+    $.ajax({
+      dataType: "JSON",
+      type: "GET",
+      url: "/icdtree/get_custom_radiology_attributes",
+      data: {ajax: params, remote: "true" },
+      success: function(response){
+        var this_length = $(".selected-investigations").find('.radiology-investigation-row').length
+        $(".selected-investigations").append("<div class='row radiology-investigation-row mb5'><input type='hidden' name='radiology_investigation[" + this_length + "][investigation_id]' class='form-control investigation_id' value='" + $("#select_custom_radiology_investigation option:selected").val() + "'><input type='hidden' name='radiology_investigation[" + this_length + "][order_item_advised_id]' class='form-control order_item_advised_id' value='" + "<%= BSON::ObjectId.new.to_s %>" + "'><input type='hidden' name='radiology_investigation[" + this_length + "][laterality]' class='form-control laterality' value='N'><input type='hidden' name='radiology_investigation[" + this_length + "][loinc_code]' class='form-control loinc_code' value='" + response['investigation_id'] + "'><div class='col-sm-5'><input type='text' name='radiology_investigation[" + this_length + "][investigationname]' class='form-control investigationname p5_10' value='" + $("#select_custom_radiology_investigation option:selected").text() + "'></div><div class='col-sm-5'></div><div class='col-sm-2'><button class='btn btn-danger btn-xs delete-row'>&times;</button></div></div>")
+
+        $(".delete-row").on('click', function(){
+          $(this).closest('.radiology-investigation-row').remove()
+          renumber_investigation_rows()
+        })
+      $('#select_custom_radiology_investigation option:selected').removeAttr('selected');
+      }
+    })
+  })
+
+  $("#topradiologyinvestigation_mri").on('change', function(){
+    var params = { investigationid: $("#topradiologyinvestigation_mri option:selected").val() }
+    $.ajax({
+      dataType: "JSON",
+      type: "GET",
+      url: "/icdtree/get_radiology_attributes",
+      data: {ajax: params, remote: "true" },
+      success: function(response){
+        var this_length = $(".selected-investigations").find('.radiology-investigation-row').length
+        $(".selected-investigations").append("<div class='row radiology-investigation-row mb5'><input type='hidden' name='radiology_investigation[" + this_length + "][investigation_id]' class='form-control investigation_id' value='" + $("#topradiologyinvestigation_mri option:selected").val() + "'><input type='hidden' name='radiology_investigation[" + this_length + "][order_item_advised_id]' class='form-control order_item_advised_id' value='" + "<%=BSON::ObjectId.new.to_s%>" + "'><input type='hidden' name='radiology_investigation[" + this_length + "][laterality]' class='form-control laterality' value='" + response[0]['laterality'] + "'><input type='hidden' name='radiology_investigation[" + this_length + "][loinc_code]' class='form-control loinc_code' value='" + response[0]['loinc_code'] + "'><div class='col-sm-5'><input type='text' name='radiology_investigation[" + this_length + "][investigationname]' class='form-control investigationname p5_10' value='" + $("#topradiologyinvestigation_mri option:selected").text() + "'></div><div class='col-sm-5'><select class='form-control radiologyoptions' name='radiology_investigation[" +  this_length + "][radiologyoptions]'><option value='90084008'>w/o contrast</option><option value='51619007'>with contrast</option><option value='429859008'>with complete screening</option><option value='431985004'>screening of other region</option><option value='22400007'>3D-reconstruction</option></select></div><div class='col-sm-2'><button class='btn btn-danger btn-xs delete-row'>&times;</button></div></div>")
+        
+        $(".delete-row").on('click', function(){
+          $(this).closest('.radiology-investigation-row').remove()
+          renumber_investigation_rows()
+        })
+        $('#topradiologyinvestigation_mri option:selected').removeAttr('selected');
+      }
+    })
+  })
+
+  function renumber_investigation_rows(){
+    var radiology_investigation_rows = $(".selected-investigations").find('.radiology-investigation-row')
+    for (var i = radiology_investigation_rows.length - 1; i >= 0; i--) {
+      $(radiology_investigation_rows[i]).find('.investigationname').attr('name','radiology_investigation[' + i + '][investigationname]')
+      $(radiology_investigation_rows[i]).find('.investigation_id').attr('name','radiology_investigation[' + i + '][investigation_id]')
+      $(radiology_investigation_rows[i]).find('.laterality').attr('name','radiology_investigation[' + i + '][laterality]')
+      $(radiology_investigation_rows[i]).find('.loinc_code').attr('name','radiology_investigation[' + i + '][loinc_code]')
+      $(radiology_investigation_rows[i]).find('.radiologyoptions').attr('name','radiology_investigation[' + i + '][radiologyoptions]')
+      $(radiology_investigation_rows[i]).find('.entered_by_id').attr('name','radiology_investigation[' + i + '][entered_by_id]')
+      $(radiology_investigation_rows[i]).find('.order_item_advised_id').attr('name','radiology_investigation[' + i + '][order_item_advised_id]')
+      $(radiology_investigation_rows[i]).find('.entered_by').attr('name','radiology_investigation[' + i + '][entered_by]')
+      $(radiology_investigation_rows[i]).find('.entered_at_facility_id').attr('name','radiology_investigation[' + i + '][entered_at_facility_id]')
+      $(radiology_investigation_rows[i]).find('.entered_at_facility').attr('name','radiology_investigation[' + i + '][entered_at_facility]')
+      $(radiology_investigation_rows[i]).find('.entered_datetime').attr('name','radiology_investigation[' + i + '][entered_datetime]')
+      $(radiology_investigation_rows[i]).find('.advised_by_id').attr('name','radiology_investigation[' + i + '][advised_by_id]')
+      $(radiology_investigation_rows[i]).find('.advised_by').attr('name','radiology_investigation[' + i + '][advised_by]')
+      $(radiology_investigation_rows[i]).find('.advised_at_facility_id').attr('name','radiology_investigation[' + i + '][advised_at_facility_id]')
+      $(radiology_investigation_rows[i]).find('.advised_at_facility').attr('name','radiology_investigation[' + i + '][advised_at_facility]')
+      $(radiology_investigation_rows[i]).find('.advised_datetime').attr('name','radiology_investigation[' + i + '][advised_datetime]')
+    }
+  }
+</script>

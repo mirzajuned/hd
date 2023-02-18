@@ -1,0 +1,136 @@
+<div class="modal-dialog" style="width:99%;">
+  <div class="modal-content" style="letter-spacing: 1px;">
+    <div class="modal-header">
+      <div class="pull-right"> <!-- Action Buttons starts -->
+        <button aria-hidden="true" class="btn btn-info" data-dismiss="modal">Close</button>
+      </div>
+      <div class="text-center">
+        <h4 class="nomargin">Assessment </h4>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div class="row">
+        <div class="col-md-9 col-sm-9" style="padding-right: 30px;">
+          <div class="row mb10">
+            <div class="col-md-12 mb5">
+              <div class="ipd-review-actions">
+                <div class="btn-group mr10">
+                  <%= link_to inpatient_path(patient_id: @patient.id.to_s,admission_id: @admission.id.to_s), id: "assessment-note-btn", class: "btn btn-primary btn-primary-transparent edit_assessment_button ", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#assessment-modal'} do %><i class="fa fa-edit"></i> Edit <% end %>
+                  <%#= link_to inpatient_assessmentprint_path(patient_id: @patient.id.to_s,admission_id: @admission.id.to_s, print_setting_id: print_setting.id, format: 'pdf'), :class => "btn btn-primary",  :target => "_blank", :data => {method: :get} do %> <!-- <i class="fa fa-print"></i> Print  --><%# end %>
+                  <% if Authorization::PolicyHelper.verification(current_user.id ,"HGP-101-106-100") %>  
+                    <% if @print_settings.count > 1 %>
+                      <div class="btn-group">
+                        <button type="button" class="btn btn-primary full_print dropdown-toggle" data-toggle="dropdown"><i class="fa fa-print mr5"></i> Print <i class="fa fa-caret-down"></i></button>
+                        <ul class="dropdown-menu dropdown-left-manual" role="menu" aria-labelledby="summary-print-dropdown" style="">
+                          <% @print_settings.each do |print_setting| %>
+                            <li style="text-align:left" class="multi-print">
+                              <%= link_to inpatient_assessmentprint_path(patient_id: @patient.id.to_s,admission_id: @admission.id.to_s, print_setting_id: print_setting.id, format: 'pdf'), :class => "",:style => "color: #d9534f;",:target => "_blank", :data => {method: :get} do %> <i class="fa fa-print mr5"></i> <%= print_setting.name %> <% end %>
+                            </li>
+                          <% end %>
+                        </ul>
+                      </div>
+                    <% else %>
+                      <%= link_to inpatient_assessmentprint_path(patient_id: @patient.id.to_s,admission_id: @admission.id.to_s, print_setting_id: @print_settings[0].id, format: 'pdf'), :class => "btn btn-primary full_print",:target => "_blank", :data => {method: :get} do %> <i class="fa fa-print mr5"></i> Print <% end %>
+                    <% end %>
+                  <% end %>
+                  <% if Authorization::PolicyHelper.verification(current_user.id ,"HGP-101-106-101") %>
+                    <%= link_to new_mail_record_tracker_path(:record_name => 'Assessment', :record_id => @assessment.id, :record_model => 'Inpatient::IpdRecord',admission_id: @admission.id.to_s, speciality_id: @admission.specialty_id),  class: "btn btn-primary", :id => "record-mail-html", :data => {:remote => true, 'disable-with' =>  "Please Wait..."} do %><i class="glyphicon glyphicon-envelope"></i> Email<% end %>
+                  <% end %>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-12 col-sm-12 col-xs-12">
+              <%= render partial: 'inpatient/ipd_record/patient_info.html.erb' %>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-12 col-sm-12 col-xs-12">
+              <%= render partial: 'inpatients/patient_assessments/assessment_details.html.erb', locals: {clinical_note: @assessment} %>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3" style="border-left: 1px solid #ddd;">
+          <!-- Show History Logic Starts -->
+            <div class="show-history text-center">
+              <div class="row mb10">
+                <div class="col-md-12">
+                  <h4 style="margin:0px;">Template History(Assessment)</h4>
+                </div>
+              </div>
+              <div class="row" style="background:#1CAF9A;padding: 6px;">
+                <% @nursing_history_creator = @assessment.record_histories.where(:template_type => "assessment").first %>
+                <div class="col-md-1">
+                  <span style="color:#1CAF9A;">|</span>
+                </div>
+                <div class="col-md-2">
+                  <div style="margin-top:7px;"><span style="border-radius: 100%;background-color: #fff;padding: 7px 10px;font-size: 12px;color: #1CAF9A;">C</span>&nbsp;<span style="color:#fff;">reated</span></div>
+                </div>
+                <div class="col-md-9">
+                  <p style="margin-bottom:-7px;font-size:16px;color: #fff;"><b><%= User.find_by(id: @nursing_history_creator.user_id.to_s).fullname %></b></p>
+                  <span style="font-size:9px;color: #fff;"><%= @nursing_history_creator.actiontime.strftime("%I:%M%P, %d %B") %></span>
+                </div>
+              </div>
+              <div class="show-history-details" style="max-height:300px;overflow:scroll;margin-top:10px;">
+                <div class="col-md-12 mt5 mb5" style="border-bottom:1px solid #ddd;">
+                  <p class="info-history-abbv" style="font-size:10px;">
+                    <span style="border-radius: 100%;background-color: #d9534f;padding: 3px 5px;font-size: 12px;color: #fff;">U</span> = <b>Update</b> ,&nbsp;&nbsp; <span style="border-radius: 100%;background-color: #428bca;padding: 3px 5px;font-size: 12px;color: #fff;">P</span> = <b>Print</b>
+                  </p>
+                </div>
+                <% @nursing_history = @assessment.record_histories.order(actiontime: :desc) %>
+                <% @nursing_history.each do |nursing_history| %>
+                  <% if nursing_history.action != "C" %>
+                    <div class="row" style="border-bottom:1px solid #ddd; padding: 7px 0;">
+                      <div class="col-md-1">
+                        <span style="color:#fff;">|</span>
+                      </div>
+                      <div class="col-md-2">
+                        <div style="margin-top:7px;">
+                          <% if nursing_history.action == "U" %>
+                            <span style="border-radius: 100%;background-color: #d9534f;padding: 7px 10px;font-size: 12px;color: #fff;">U
+                            </span>
+                          <% elsif nursing_history.action == "C" %>
+                            <span style="border-radius: 100%;background-color: #1CAF9A;padding: 7px 10px;font-size: 12px;color: #fff;">C
+                            </span>
+                          <% elsif nursing_history.action == "P" %>
+                            <span style="border-radius: 100%;background-color: #428bca;padding: 7px 10px;font-size: 12px;color: #fff;">P
+                            </span>
+                          <% end %>
+                        </div>
+                      </div>
+                      <div class="col-md-9">
+                        <p style="margin-bottom:-7px;font-size:16px;"><b><%= User.find_by(id: nursing_history.user_id.to_s).fullname %></b></p>
+                        <span style="font-size:9px;"><%= nursing_history.actiontime.strftime("%I:%M%P, %d %B") %></span>
+                      </div>
+                    </div>
+                  <% end %>
+                <% end %>
+              </div>
+            </div>
+          <!-- Show History Logic Ends -->
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<style>
+.print_assessment{
+    padding: 2px;
+    padding-left: 10px;
+    padding-right: 10px;
+    background: none;
+    color: #428bca;
+}
+.print_assessment:hover{
+    background: #428bca;
+    color: #fff;
+}
+.edit_assessment_button{
+    background: #428bca;
+    color: #fff;
+}
+.modal-body{
+  padding: 38px !important
+}
+</style>

@@ -1,0 +1,175 @@
+<!-- Counter Logic -->
+<% admission_note = Inpatient::IpdRecord.find_by(admission_id: ipdrecord.admission_id.to_s, patient_id: ipdrecord.patient_id.to_s, template_type: "admissionnote")%>
+<% diagnosis_from_opd = Inpatient::Diagnosis.where(ipdrecord_id: admission_note.id).order('created_at DESC')%>
+<% surgery_counter = 0 %>
+<% procedure_counter = 0%>
+<% procedure = Inpatient::Procedure.where(patient_id: ipdrecord.patient_id,procedurestatus: "Performed")%>
+<% if procedure.try(:count)>0%>
+    <% procedure_counter = procedure_counter+1%>
+<%end%>
+<% if ipdrecord.surgerydate.present? || ipdrecord.surgerytype.present? || ipdrecord.anesthesia.present? || ipdrecord.diagnosis.present? || ipdrecord.procedure_performed.present? || ipdrecord.implants_used.present? %>
+  <% surgery_counter = surgery_counter + 1 %>
+<% end %>
+<% unless ipdrecord.patient_entry_time.nil? || ipdrecord.patient_exit_time.nil? || ipdrecord.anesthesia_start_time.nil? || ipdrecord.anesthesia_end_time.nil? || ipdrecord.surgery_start_time.nil? || ipdrecord.surgery_end_time.nil? %>
+  <% surgery_counter = surgery_counter + 1 %>
+<% end %>
+
+<% unless ipdrecord.procedure_note.nil? %>
+  <% surgery_counter = surgery_counter + 1 %>
+<% end %>
+
+<% if surgery_counter > 0 %>
+  <div class="row mb10">
+    <div class="col-md-12">
+      <div class="row">
+        <strong>SURGERY :</strong>
+        <div class="summary-line-border"></div>
+      </div>
+      <% if ipdrecord.surgerydate.present? || ipdrecord.surgerytype.present? || ipdrecord.anesthesia.present? %>
+        <div class="row mb5">
+          <% if ipdrecord.surgerydate.present? %>
+            <div class="col-md-4">
+              <b>Date of Surgery :</b> <%= ipdrecord.surgerydate %>
+            </div>
+          <% end %>
+          <% if ipdrecord.surgerytype.present? %>
+            <div class="col-md-4">
+              <b>Surgery Type :</b> <%= ipdrecord.surgerytype %>
+            </div>
+          <% end %>
+          <% if ipdrecord.anesthesia.present? %>
+            <div class="col-md-4">
+              <b>Anesthesia :</b> <%= ipdrecord.anesthesia %>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+      <div class="row mb5">
+        <% if ipdrecord.specialty_id == "309988001"%>
+            <div class="col-md-12">
+              <b>Pre-Operative Diagnosis (OPD/Admission Note):</b>
+              <% if diagnosis_from_opd.try(:length) > 0%>
+                  <%= render partial: 'inpatient/ipd_records/common/diagnosis_output.html.erb',locals: {diagnosis: diagnosis_from_opd}%>
+              <% else%>
+                  No Diagnosis from OPD
+              <%end%>
+            </div>
+        <% end %>
+      </div>
+      <% if ipdrecord.diagnosis.present? %>
+          <div class="row mb5">
+            <div class="col-md-12">
+              <b> Diagnosis Details:</b> <%= ipdrecord.diagnosis %>
+            </div>
+          </div>
+      <% end %>
+      <% if ipdrecord.specialty_id == "309988001" and ipdrecord.procedure_performed.present? || procedure_counter > 0 %>
+        <div class="row mb5">
+          <div class="col-md-12">
+            <b>Procedure Performed :</b>
+            <%procedure.each do |proc|%>
+                <li>
+                    <%if proc.try(:procedureside) == "18944008"%>
+                        <%= proc.procedurename+", R"%>
+                    <%elsif proc.try(:procedureside) == "8966001"%>
+                        <%= proc.procedurename+", L"%>
+                    <%elsif  proc.try(:procedureside) == "40638003"%>
+                        <%= proc.procedurename+", B/E"%>
+                    <%else%>
+                        <%= proc.procedurename%>
+                    <%end%>
+                </li>
+            <%end%>
+          </div>
+        </div>
+      <% end %>
+      <% if ipdrecord.procedure_performed.present? %>
+        <div class="row mb5">
+          <div class="col-md-12">
+            <b>Procedure Performed :</b> <%= ipdrecord.try(:procedure_performed) %>
+          </div>
+        </div>
+      <% end %>
+      <% if ipdrecord.implants_used.present? %>
+        <div class="row mb5">
+          <div class="col-md-12">
+            <b>Implants Used :</b> <%= ipdrecord.implants_used %>
+          </div>
+        </div>
+      <% end %>
+      <% if ipdrecord.post_op_plan.present? %>
+        <div class="row mb5">
+          <div class="col-md-12">
+            <b>Post-Op Plan :</b> <%= ipdrecord.post_op_plan %>
+          </div>
+        </div>
+      <% end %>
+      <% unless ipdrecord.patient_entry_time.nil? || ipdrecord.patient_exit_time.nil? %>
+        <div class="row mb5">
+          <% unless ipdrecord.patient_entry_time.nil? %>
+            <div class="col-md-4">
+              <b>Patient-In Time :</b> <%= ipdrecord.patient_entry_time.strftime("%I:%M %p") %>
+            </div>
+          <% end %>
+          <% unless ipdrecord.patient_exit_time.nil? %>
+            <div class="col-md-4">
+              <b>Patient-Out Time :</b> <%= ipdrecord.patient_exit_time.strftime("%I:%M %p") %>
+            </div>
+          <% end %>
+          <% unless ipdrecord.patient_exit_time.nil? && ipdrecord.patient_entry_time.nil? %>
+            <div class="col-md-4">
+              <b>Total Time :</b> <%= ipdrecord.patient_entry_exit_time %>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+      <% unless ipdrecord.anesthesia_start_time.nil? || ipdrecord.anesthesia_end_time.nil? %>
+        <div class="row mb5">
+          <% unless ipdrecord.anesthesia_start_time.nil? %>
+            <div class="col-md-4">
+              <b>Anesthesia Start Time :</b> <%= ipdrecord.anesthesia_start_time.try(:strftime, '%I:%M %p') %>
+            </div>
+          <% end %>
+          <% unless ipdrecord.anesthesia_end_time.nil? %>
+            <div class="col-md-4">
+              <b>Anesthesia End Time :</b> <%= ipdrecord.anesthesia_end_time.strftime("%I:%M %p") %>
+            </div>
+          <% end %>
+          <% unless ipdrecord.anesthesia_end_time.nil? && ipdrecord.anesthesia_start_time.nil? %>
+            <div class="col-md-4">
+              <b>Total Time :</b> <%= ipdrecord.anesthesia_start_end_time %>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+      <% unless ipdrecord.surgery_start_time.nil? || ipdrecord.surgery_end_time.nil? %>
+        <div class="row mb5">
+          <% unless ipdrecord.surgery_start_time.nil? %>
+            <div class="col-md-4">
+              <b>Surgery Start Time :</b> <%= ipdrecord.surgery_start_time.try(:strftime, '%I:%M %p') %>
+            </div>
+          <% end %>
+          <% unless ipdrecord.surgery_end_time.nil? %>
+            <div class="col-md-4">
+              <b>Surgery End Time :</b> <%= ipdrecord.surgery_end_time.strftime("%I:%M %p") %>
+            </div>
+          <% end %>
+          <% unless ipdrecord.surgery_end_time.nil? && ipdrecord.surgery_start_time.nil? %>
+            <div class="col-md-4">
+              <b>Total Time :</b> <%= ipdrecord.surgery_start_end_time %>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+      <!--procedure note should not be shown in summary - uncommented mohit   -->
+      <% unless ipdrecord.procedure_note == "<br>"%>
+        <div class="row mb5">
+          <div class="col-md-12">
+            <b>Procedure Note:</b>
+            <%= ipdrecord.procedure_note.html_safe()%>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+<% end %>

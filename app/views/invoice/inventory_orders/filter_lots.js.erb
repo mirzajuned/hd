@@ -1,0 +1,134 @@
+$(".items-lots-body").html("<%= escape_javascript(render partial: 'inventory/item/lots/index_body') %>")
+
+$('.btn-group.open').removeClass('open')
+highlight_items()
+
+adjust_height()
+function adjust_height(){
+  modalContentHeigth = $(window).height() - 160
+  itemsLots = modalContentHeigth - $('.invoice-header').height()
+  $('.items-lots-body').height(itemsLots)
+}
+
+if($('.items-lots-body tr').length == <%= @lots.count %>){
+  $('#show_more_lots').hide();
+}
+
+function add_item(id, store_id) {
+  $.ajax({
+    type: 'GET',
+    data: {
+      item_id: id,
+      type: 'non_stockable',
+      store_id: store_id,
+      remote: true
+    },
+    url: '/invoice/inventory_orders/add_item',
+    success: function(){
+      $('#'+id).css('background-color', '#cfe8d2')
+      $('#'+id).addClass('disabled_row')
+    }
+  })
+}
+
+function add_lot(lot_id, store_id) {
+  var id =  lot_id || '<%= @lots[0]&.id %>'
+  var is_lot_unit = '<%= @is_lot_unit %>'
+  if (!checkItem.includes(id)) {
+    checkItem.push(id)
+      $.ajax({
+      type: 'POST',
+      data: {
+        lot_id: id,
+        is_lot_unit: is_lot_unit,
+        remote: true
+      },
+      url: '/invoice/inventory_orders/add_lot',
+      success: function(){
+        $('#'+id).css('background-color', '#cfe8d2')
+        $('#'+id).addClass('disabled_row')
+      }
+    })
+  }
+}
+
+function new_lot(lot_id, store_id) {
+  var id =  lot_id || '<%= @lots[0]&.id %>'
+    $.ajax({
+    type: 'GET',
+    data: {
+      lot_id: id,
+      remote: true
+    },
+    url: '/invoice/inventory_orders/new_lot',
+    success: function(){
+      // $('#'+id).css('background-color', '#cfe8d2')
+      // $('#'+id).addClass('disabled_row')
+    }
+  })
+}
+
+$('.items-lots-list .inventory-list-row').unbind()
+$('.items-lots-list .inventory-list-row').on('click', function(e){
+  e.preventDefault();
+  var id = $(this).attr('id')
+  var lot_unit = $(this).closest('.inventory-list-row').find('.item-lot-unit').val()
+  var department_id = '<%= @inventory_store.department_id %>'
+  var store_id = '<%= @inventory_store.id %>'
+  if (lot_unit == 'true') {
+    new_lot(id, store_id)
+  } else {
+    if (department_id == '50121007' ) {
+      var is_stockable =  $('.itemfrom').prop("classList").contains('btn-brown')
+      if (is_stockable) {
+        add_lot(id, store_id)
+      } else {
+        add_item(id, store_id)
+      }
+    } else {
+      add_lot(id, store_id)
+    }
+  }
+})
+
+if ((<%= @search_type == 'Barcode' %>) && (<%= @lots&.size == 1 %>)) {
+  var expiry_date = '<%= @lots[0]&.expiry %>'
+  var current_date = '<%= Date.current %>'
+  var store_id = '<%= @inventory_store.id %>'
+  var lot_id = '<%= @lots[0]&.id %>'
+  if (expiry_date == '') {
+    add_lot(lot_id, store_id).trigger();
+  } else {
+    if ((new Date(expiry_date)) > (new Date(current_date))) {
+      add_lot(lot_id, store_id).trigger();
+    }
+  }
+}
+
+function highlight_items()
+{
+  var id = ''
+  $('.inventory-invoice-log-item').each(function() {
+    id = $(this).find('.delete_empty_item').val()
+    $('#'+id).css('background-color', '#cfe8d2')
+  });
+}
+
+function get_bill_offer_count() {
+  var department_id = '<%= @inventory_store.department_id %>'
+  var store_id = '<%= @store_id %>'
+  $.ajax({
+    type: "get",
+    dataType: "json",
+    url: "/invoice/invoices/get_offer_count?department_id="+department_id+'&type=bill&store_id='+store_id,
+    success: function(response){
+      offer_count = response['count'];
+      if(offer_count > 0) {
+        $('.add_bill_offer').removeClass('hidden')
+      } else {
+        $('.add_bill_offer').addClass('hidden')
+      }
+    }
+  });
+}
+get_bill_offer_count();

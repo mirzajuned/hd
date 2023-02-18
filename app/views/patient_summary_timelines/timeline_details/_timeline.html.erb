@@ -1,0 +1,207 @@
+<% if @mode == 'tabview' %>
+  <% @timeline_div_width = '100%' %>
+<% else %>
+  <% @timeline_div_width = '70.83%' %>
+<% end %>
+
+<div class="sidebar-panel" style="padding-top:0px;background:#fff;">
+  <div class="row">
+    <div class="col-md-12">
+      <ul class="nav nav-pills nav-justified filter-header" style="background: #fff;position:fixed;width:<%=@timeline_div_width%>;z-index:555;top:100px">
+        <li class="<%= 'active' if @filter == "All" || !@filter.present? %>">
+          <a href="#timeline_filter" class="filter-tab" data-tab-id="All" data-toggle="tab"><strong>All</strong></a>
+        </li>
+        <li class="<%= 'active' if @filter == "Appointment" %>">
+          <a href="#timeline_filter" class="filter-tab" data-tab-id="Appointment" data-toggle="tab"><strong>Appointment</strong></a>
+        </li>
+        <li class="<%= 'active' if @filter == "OpdRecord" %>">
+          <a href="#timeline_filter" class="filter-tab" data-tab-id="OpdRecord" data-toggle="tab"><strong>OPD</strong></a>
+        </li>
+        <li class="<%= 'active' if @filter == "Admission" %>">
+          <a href="#timeline_filter" class="filter-tab" data-tab-id="Admission" data-toggle="tab"><strong>Admission</strong></a>
+        </li>
+        <li class="<%= 'active' if @filter == "Ot" %>">
+          <a href="#timeline_filter" class="filter-tab" data-tab-id="Ot" data-toggle="tab"><strong>OT</strong></a>
+        </li>
+        <li class="<%= 'active' if @filter == "Inpatient::IpdRecord" %>">
+          <a href="#timeline_filter" class="filter-tab" data-tab-id="Inpatient::IpdRecord" data-toggle="tab"><strong>IPD</strong></a>
+        </li>
+        <li class="<%= 'active' if @filter == "Inpatient::NursingRecord" %>">
+          <a href="#timeline_filter" class="filter-tab" data-tab-id="Inpatient::NursingRecord" data-toggle="tab"><strong>Nursing</strong></a>
+        </li>
+        <li class="<%= 'active' if @filter == "Invoice" %>">
+          <a href="#timeline_filter" class="filter-tab" data-tab-id="Invoice" data-toggle="tab"><strong>Bills</strong></a>
+        </li>
+        <li class="<%= 'active' if @filter == "AdvancePayment" %>">
+          <a href="#timeline_filter" class="filter-tab" data-tab-id="AdvancePayment" data-toggle="tab"><strong>Advance</strong></a>
+        </li>
+        <li class="<%= 'active' if @filter == "PatientSummaryAssetUpload" %>">
+          <a href="#timeline_filter" class="filter-tab" data-tab-id="PatientSummaryAssetUpload" data-toggle="tab"><strong>Uploads</strong></a>
+        </li>
+        <li class="<%= 'active' if @filter == "Legacy" %>">
+          <a href="#timeline_filter" class="filter-tab" data-tab-id="Legacy" data-toggle="tab"><strong>Legacy</strong></a>
+        </li>
+      </ul>
+      <div class="tab-content timeline-view-content" id="links" style="box-shadow: none;background:#fff;margin-top: 25px;">
+        <div class="tab-pane active" id="timeline_filter">
+          <%= render partial: "patient_summary_timelines/timeline_details/timeline_section.html.erb" %>
+          <div class="add-more-timeline" style="margin-bottom: 30px;"></div>
+          <% unless @patient_summary_timeline.count < 10 %>
+            <div class="show-more-timeline" style="margin:20px 0px;">
+              <div class="col-sm-offset-1 col-sm-11">
+                <div class="panel panel-success" style="padding:0px;box-shadow:0 0 5px;margin-bottom:10px;">
+                  <div class="panel-body" style="border-left:7px solid #bec3c8;">
+                    <div class="">
+                      <div class="col-sm-12">
+                        <div class="">
+                          <a class="col-sm-12", href="javascript:;", id="show_more_timeline", data-count = "0" , style="text-align: center; padding: 10px; text-decoration: none;">
+                            <i class="fa fa-spinner fa-spin"></i> Click To Load More ...
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          <%end%>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="footer_notice" style="margin-left: 0px;height:auto;">
+  <%= render partial: 'patient_summary_timelines/timeline_details/timeline_footer_note.html.erb' %>
+</div>
+
+<style type="text/css">
+.filter-tab {
+  padding: 5px 5px 5px 0 !important;
+}
+
+.filter-header li {
+  border:1px solid #ccc;
+  border-top: 0;
+  border-left: 0;
+}
+
+.filter-header li:last-child {
+  border-right: 0;
+}
+
+#footer_notice {
+  position: fixed;
+  bottom: 0;
+  width: <%=@timeline_div_width%>;
+  background-color: #fff;
+  height: 35px;
+  color: #EFEFEF;
+  border-top: 1px solid #eee;
+  padding: 5px;
+  box-shadow: 0 0 15px 0 #333;
+}
+</style>
+
+<script type="text/javascript">
+
+  var mode = "<%=@mode%>"
+  scrolltimeline()
+  function scrolltimeline(){
+    $(".sidebar-panel").scroll(function() {
+      if($(".sidebar-panel").scrollTop() > $(".timeline-view-content").height() - $(".sidebar-panel").height()  - 50) {
+        $("#show_more_timeline").trigger("click")
+        $(".sidebar-panel").off('scroll');
+
+        setTimeout(function() {   //calls click event after a certain time
+          scrolltimeline()
+        }, 1000);
+      }
+    })
+  }
+
+  $("#show_more_timeline").on('click',function(e){
+    e.preventDefault();
+    var timeline_data_count = parseInt($(this).attr('data-count'))+1
+    $(this).attr("data-count",timeline_data_count)
+    var past_encounter_date = $(".events-date:last > button").html()
+    var filter = $(".filter-header").find('.active').find('.filter-tab').data("tab-id")
+
+    $.ajax({
+      type: "GET",
+      dataType: "script",
+      data: {
+        timeline_data_count: timeline_data_count,
+        past_encounter_date: past_encounter_date,
+        patient_id: "<%=@patient.id%>",
+        filter: filter,
+        mode: mode
+      },
+      url: "/patient_summary_timelines/show_more_timeline"
+    })
+  })
+
+
+  $(".btn-grouped-timeline").on('click', function(e){
+    e.preventDefault();
+    var query_id = $(this).attr('data-query-id')
+    var id = $(this).attr('data-event-id')
+    // Toggle Condition
+    if($(this).html() == '<i class="fa fa-caret-down"></i>'){
+      $(this).html("<i class='fa fa-caret-up'></i>")
+      $(".grouped-timeline-" + query_id).css('display','inline')
+      // Once loaded no need to send an Ajax Request
+      if($(this).attr('data-ajax-call') == 'true'){
+        $(this).removeAttr('data-ajax-call')
+        $.ajax({
+          type: "GET",
+          dataType: "script",
+          data: {
+            query_id: query_id,
+            id: id,
+            mode: mode
+          },
+          url: "/patient_summary_timelines/query_sub_event_timeline"
+        })
+      }
+    } else {
+      $(this).html("<i class='fa fa-caret-down'></i>")
+      $(".grouped-timeline-" + query_id).css('display','none')
+    }
+    // $(this).closest(".panel-body").find(".grouped-timeline").toggle()
+
+    // if($(this).html() == '<i class="fa fa-caret-down"></i>'){
+    //   $(this).closest(".panel-body").find(".grouped-timeline").addClass('animated fadeInDown')
+    //   $(this).html("<i class='fa fa-caret-up'></i>")
+    // } else {
+    //   $(this).closest(".panel-body").find(".grouped-timeline").removeClass('animated fadeInDown')
+    //   $(this).html("<i class='fa fa-caret-down'></i>")
+    // }
+  })
+
+  $(".filter-tab").on('click', function(){
+    var filter = $(this).data("tab-id")
+    $(".timeline-view-content").html("<div class='loading_dots'><span></span> <span></span> <span></span></div>")
+    $.ajax({
+      type: "GET",
+      dataType: "script",
+      data: {
+        patient_id: '<%= @patient.id.to_s %>',
+        filter: filter,
+        mode: mode
+      },
+      url: "/patient_summary_timelines/filter_timeline"
+    })
+  })
+</script>
+
+
+<% if false %>
+  <% if timeline.has_links %>
+    <% timeline.links.keys.each do |link| %>
+      <% link_params = Patients::Summary::Constants::const_get(link) %>
+      <% link_val = timeline.links["#{link}"].symbolize_keys %>
+      <% complete_link = "#{link_params[0]}(#{link_val})"%>
+      <%= link_to eval(complete_link), :class => "timeline-viewsummary-html #{link_params[1]}", :data => {:remote => true, 'toggle' =>  'modal', 'target' => "#{link_params[8]}"} do %><%= link_params[5] %><% end %>
+    <% end %>
+  <% end %>
+<% end %>

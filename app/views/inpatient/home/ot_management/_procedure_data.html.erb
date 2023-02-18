@@ -1,0 +1,63 @@
+<% if performed_remaining.try(:count) > 0 %>
+  <% performed_remaining.each_with_index do | procedure,i| %>
+    <% ipd_procedure = Inpatient::Procedure.find(procedure.id) %>
+    <% if ipd_procedure.present? %>
+      <div class="row">
+        <div class="col-sm-12">
+          <b style="color:#000;"><%= i+1 %>. <%= procedure.procedurename%></b>
+        </div>
+        <div class="col-sm-1">
+          <div class="ckbox ckbox-primary">
+            <% if procedure.procedurestatus == "Pre-Operative" %>
+              <input type="checkbox" class="procedure-checkbox" name="procedure[<%= i%>][status]" id="procedure_<%= i%>" value="Performed">
+            <% elsif procedure.procedurestatus == "Performed" %>
+              <input type="checkbox" class="procedure-checkbox" name="procedure[<%= i%>][status]" id="procedure_<%= i%>" value="Performed" checked="checked">
+            <% else %>
+              <input type="checkbox" class="procedure-checkbox" name="procedure[<%= i%>][status]" id="procedure_<%= i%>" value="Performed">
+            <% end %>
+            <label for="procedure_<%= i%>"></label>
+          </div>
+        </div>
+        <div class="col-sm-2 text-center">
+          <%= select_tag("procedure[#{i}][side]",options_for_select([["",""],["R","18944008"],["L","8966001"],["B/E","40638003"]],procedure.try(:procedureside)),:class=>" procedureside")%>
+        </div>
+        <div class="col-sm-5 text-center">
+          <input type="text" id="surgerydate_<%= i%>" name="procedure[<%= i%>][surgerydate]" class="surgery-datepicker" value="<%= procedure.surgerydate%>" style="margin-top:-2px;text-align:center;" placeholder="Surgery Date" readonly='readonly'>
+        </div>
+        <div class="col-sm-3" style="padding: 0px;">
+          <% if procedure.iol.present? %>
+            <%  power_inventory = procedure.iol %>
+          <% else %>
+            <%  power_inventory= "" %>
+          <% end %>
+          <button class="btn btn-primary btn-xs subtract_power" style="padding: 0 5px;"><i class="fa fa-minus"></i> </button>
+          <input type="number" name="procedure[<%= i%>][iol]" id="procedure_power_inventory_<%= i%>" value="<%= power_inventory %>" class="power_inventory text-center" placeholder="IOL" style="width: 48px">
+          <input type="hidden" name="procedure[[<%= i%>]][id]" id="procedure_id" value="<%= procedure.id.to_s %>">
+          <button class="btn btn-primary btn-xs add_power" style="padding: 0 5px;"><i class="fa fa-plus"></i> </button>
+        </div>
+      </div>
+    <% else %>
+      <li><%= procedure.procedurename%>,<%= procedure.get_label_for_procedure_side(procedure.procedureside) %></li>
+    <% end %>
+  <% end %>
+<% else %>
+  None
+<% end %>
+
+<script>
+  if(($(".power_inventory").val()) == "") {
+    add_value = 0
+  } else {
+    add_value = parseFloat($(".power_inventory").val())
+  }
+  $(".subtract_power").on('click', function(e){
+    e.preventDefault();
+    add_value = add_value - 0.5
+    $(this).siblings(".power_inventory").attr('value', add_value)
+  })
+  $(".add_power").on('click', function(e){
+    e.preventDefault();
+    add_value = add_value + 0.5
+    $(this).siblings(".power_inventory").attr('value', add_value)
+  })
+</script>

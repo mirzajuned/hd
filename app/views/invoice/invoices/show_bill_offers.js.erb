@@ -1,0 +1,80 @@
+if('<%=@invoice_department_type%>' == 'inventory'){
+  $("#invoice-offer-bill-modal").css('z-index', 1111 );
+}
+$("#invoice-offer-bill-modal").html('<%= escape_javascript(render "show_service_offers.html") %>')
+
+$('.close-offer-listing').on('click', function() {
+  $('#invoice-offer-bill-modal').hide();
+})
+
+function selectOffer() {
+  let selected_offer_id = $('.selected_offer:checked').val();
+  $.ajax({
+    type: "get",
+    dataType: "json",
+    url: "/offer_managers/offer_details?id="+selected_offer_id,
+    success: function(response){
+      let offer_manager = response;
+      let offer_discount_percentage = parseFloat(offer_manager['discount']);
+      $('.offer_manager_id').val(offer_manager['_id']);
+      $('.offer_name').val(offer_manager['name']);
+      $('.offer_code').val(offer_manager['offer_code']);
+      $('.offer_percentage').val(offer_manager['discount']);
+      $('.offer_applied_at').val('<%=current_facility.try(:id)%>');
+      $('.offer_applied_at_name').val('<%=current_facility.try(:name)%>');
+      $('.offer_applied_by').val('<%=current_user.try(:id)%>');
+      $('.offer_applied_by_name').val('<%=current_user.try(:fullname)%>');
+      $('.offer_applied_date').val('<%=Date.current%>');
+      $('.offer_applied_datetime').val('<%=Time.current%>');
+      if(<%=@invoice_department_type == 'inventory'%>){
+        let invoice_gross_total = parseFloat($('#total_wt').val());
+        let total_discount = parseFloat($('#invoice_discount').val());
+        let discounted_amount = invoice_gross_total - total_discount
+        let bill_offer_discount = (discounted_amount * offer_discount_percentage / 100)
+        $('.offer_on_bill').val(bill_offer_discount);
+        var total_discount_on_bill = total_discount + bill_offer_discount
+        applyDiscount(total_discount_on_bill)
+      } else {
+        let invoice_gross_total = parseFloat($('.invoice_gross_total').val());
+        let total_discount = parseFloat($('.total_discount').val());
+        let service_offers = parseFloat($('.offer_on_services').val());
+        let discounted_amount = parseFloat(invoice_gross_total) - (parseFloat(total_discount) + parseFloat(service_offers))
+        let bill_offer_discount = parseFloat(parseFloat(discounted_amount)*parseFloat(offer_discount_percentage)/100).toFixed(2)
+        let final_offer_discount = parseFloat(parseFloat(service_offers) + parseFloat(bill_offer_discount)).toFixed(2);
+        let invoice_net_total = parseFloat(parseFloat(invoice_gross_total) - (parseFloat(total_discount) + parseFloat(final_offer_discount))).toFixed(2);
+        let net_total_rounded = Math.round(invoice_net_total)
+        $('.total_offer').val(final_offer_discount);
+        $('#invoice_net_total').val(net_total_rounded).trigger('change');
+        let rounded_amount = (invoice_net_total - net_total_rounded).toFixed(2)
+        $("#round_amount").val(rounded_amount)
+        $('.offer_on_bill').val(bill_offer_discount).trigger('change');
+        calculate_offer_discount()
+      }
+      $('.add_bill_offer').addClass('hidden');
+      $('.lbl_offer_detail').removeClass('hidden');
+      $('.lbl_offer_detail').html("[" + offer_manager['offer_code'] + "]" + " - " + offer_discount_percentage + '%');
+      $('.remove_bill_offer').removeClass('hidden');
+    }
+  });
+  $('#invoice-offer-bill-modal .close').click();
+}
+<%= render partial: "templates/common/js/popup_modal_hidden.js" %>
+
+if(<%=@invoice_department_type == 'opd'%>) {
+  <%= render partial: "invoice/opd/common_validation.js.erb" %>
+  if(<%=@action == 'new'%>) {
+    opd_invoice_page();
+  } else {
+    opd_invoice_page_edit();
+  }
+} else if(<%=@invoice_department_type == 'ipd'%>) {
+  <%= render partial: "invoice/ipd/common_validation.js.erb" %>
+  if(<%=@action == 'new'%>) {
+    ipd_invoice_page();
+  } else {
+    ipd_invoice_page_edit();
+  }
+} else if(<%=@invoice_department_type == 'inventory'%>) {
+  <%= render partial: "invoice/inventory_orders/inventory_common_validator.js.erb" %>
+  validate_inventory_orders_form();
+}

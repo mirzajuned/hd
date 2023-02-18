@@ -1,0 +1,2 @@
+module TpaInsuranceNotesHelper
+end

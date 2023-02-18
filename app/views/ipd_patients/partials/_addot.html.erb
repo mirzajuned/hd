@@ -1,0 +1,263 @@
+<%= javascript_include_tag "application-loggedin", "data-turbolinks-track" => true %>
+<style type="text/css">
+  .select2-selection:focus {
+    outline: none !important;
+  }
+</style>
+
+<div class="modal-dialog modal-hg-patientreg">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h4 class="nomargin">Schedule OT</h4>
+      <%= stylesheet_link_tag  "bootstrap-timepicker.min", media: "all", "data-turbolinks-track" => true %>
+    </div>
+    <div class="modal-body">
+
+      <div id="signuppatient" class="signuppatient">
+
+        <div id="siguppatientform" class="signuppatientform">
+
+          <%= form_for(@otschedule,:html=>{:id=>'make_ot_form'}, :format => :js, :method => :post, remote: true, :multipart => true, :class => "signuppatientformtag form-horizontal form-bordered", :url => ipd_patients_makeot_path) do |ot_schedule|%>
+
+              <%= ot_schedule.hidden_field :user_id, value: current_user.id.to_s %>
+              <%= ot_schedule.hidden_field "admission_id", value: '', class: "admission_value" %>
+              <%= ot_schedule.hidden_field "patient_id", value: '', class: "patient_value" %>
+
+              <div class="row">
+                <!-- Facility DropDown -->
+                <div class="form-group col-md-6">
+                  <label class="col-sm-4 control-label">Location :</label>
+                  <div class="col-sm-5">
+                    <% if @facilities.count > 1 %>
+                      <% facilities_array = @facilities.map { |facility| [facility.name, facility.id] } %>
+                      <%= ot_schedule.select :facility_id, options_for_select(facilities_array,current_facility.id), {}, {:class => "form-control input-sm mb15"} %>
+                    <% else %>
+                      <%= ot_schedule.hidden_field :facility_id, value: @facilities.first.id.to_s %>
+                      <b><%= @facilities.first.name %></b>
+                    <% end %>
+                  </div>
+                </div>
+
+                <!-- Surgeon Name Dropdown Comes Via Facility Dropdown On Change Ajax Call. Refer Below -->
+                <div class="form-group col-md-6">
+                  <label class="col-sm-4 control-label">Surgeon Name :</label>
+                  <div class="col-sm-6">
+                    <% if current_user.has_role?(:doctor) %>
+                      <%= ot_schedule.hidden_field :surgeonname, :value => current_user.id.to_s %>
+                      <b><%= current_user.fullname %></b>
+                    <% else %>
+                      <%= ot_schedule.select :surgeonname, options_for_select(""), {}, {:class => "form-control input-sm mb15"} %>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <!-- Patient Name Dropdown Comes Via Facility Dropdown On Change Ajax Call. Refer Below -->
+                <div class="form-group col-md-6">
+                  <label class="col-sm-4 control-label">Patient Name</label>
+                  <div class="col-sm-5">
+                    <%= select_tag "huzi", options_for_select(""), { include_blank: true, :class=> "patientlist form-control",:name=> "validate_ot_patient" } %>
+                  </div>
+                </div>
+                <div class="form-group col-md-6">
+                  <label class="col-sm-4 control-label">OT Date</label>
+                  <div class="col-sm-6">
+                    <div class="input-group">
+                      <span class="input-group-addon"><i class="glyphicon glyphicon-calendar"></i></span>
+                      <%= ot_schedule.text_field "otdate", {:class => 'form-control ot_scheduledate', :id => "ot_scheduledate-datepicker", :placeholder => "dd/mm/yyyy", :value => @otdate} %>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <br>
+              <div class="row">
+                <div class="form-group col-md-6">
+                  <label class="col-sm-4 control-label">Theatre No.</label>
+                  <div class="col-sm-6">
+                    <div class="input-group mb15">
+                      <span class="input-group-addon"><i class="fa fa-heartbeat"></i></span>
+                      <div class="bootstrap-timepicker">
+                        <%= ot_schedule.text_field "theatreno", {:class => 'form-control ot_theatreno', :id => "ot_theatreno"} %>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="form-group col-md-6">
+                  <label class="col-sm-4 control-label">OT Start Time</label>
+                  <div class="col-sm-6">
+                    <div class="input-group mb15">
+                      <span class="input-group-addon"><i class="glyphicon glyphicon-time"></i></span>
+                      <div class="bootstrap-timepicker timepicker">
+                        <%= ot_schedule.text_field "ottime", {:class => 'form-control ot_scheduletime', :id => "ot_scheduletime-timepicker"} %>
+                      </div>
+                    </div>
+                  </div>
+                  <label class="col-sm-4 control-label">OT End Time</label>
+                  <div class="col-sm-6">
+                    <div class="input-group mb15">
+                      <span class="input-group-addon"><i class="glyphicon glyphicon-time"></i></span>
+                      <div class="bootstrap-timepicker timepicker">
+                        <%= ot_schedule.text_field "otendtime", {:class => 'form-control ot_scheduleendtime', :id => "ot_scheduleendtime-timepicker"} %>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="form-group col-md-12 data_from_opd">
+
+                </div>
+              </div>
+              <br>
+              <div class="row" style="margin-left:10px;">
+                <%= submit_tag "Schedule OT", class: "btn btn-success", remote: true, 'data-disable-with' => "Please wait.." %>
+                <button aria-hidden="true" class="btn btn-info signup-patient-form-close" data-dismiss="modal">Close</button>
+              </div>
+          <% end %>
+
+        </div>
+
+      </div>
+
+    </div>
+    <%= javascript_include_tag "jquery.seat-charts.min", "data-turbolinks-track" => true %>
+    <%= javascript_include_tag "bootstrap-timepicker.min", "data-turbolinks-track" => true %>
+    <%= javascript_include_tag "bootstrap-wizard.min", "data-turbolinks-track" => true %>
+    <script>
+      jQuery(document).ready(function(){
+        jQuery('#ot_schedule_facility_id').on("change",function(){
+          jQuery.ajax({
+            type: "GET",
+            dataType: "json",
+            url: "/ipd_patients/ot_surgeonname",
+            data: {facility_id: jQuery("#ot_schedule_facility_id").val()},
+            success: function(response){
+              // Response of User Array
+              var user = response.user
+              // Response of Facility Array
+              var admission = response.admission
+              // User Dropdown
+              jQuery('#ot_schedule_surgeonname').children().remove();
+              jQuery.each(user, function(key, value) {
+                jQuery('#ot_schedule_surgeonname').append(jQuery("<option></option>").attr("value",value[1]).text(value[0]));
+              });
+              // Patient Dropdown
+              jQuery('#huzi').children().remove();
+              jQuery('#huzi').append(jQuery("<option></option>").attr("value","").text(""));
+              jQuery.each(admission, function(key, value) {
+                jQuery('#huzi').append(jQuery("<option></option>").attr("value",value[0] + "," + value[1]).text(value[2]));
+              });
+
+            }
+          })
+        });
+        // Trigger OnLoad
+        jQuery('#ot_schedule_facility_id').trigger("change");
+
+        jQuery('#ot_scheduledate-datepicker').datepicker({
+            dateFormat: "dd/mm/yy"
+        });
+        timepicker_options = {defaultTIme: false, minuteStep: 5}
+        <% if @ottime.length > 0 %>
+            <% time = @ottime %>
+            //timepicker_options = {defaultTIme: false, minuteStep: 5}
+            jQuery('#ot_scheduletime-timepicker').timepicker(timepicker_options)
+            jQuery('#ot_scheduletime-timepicker').timepicker('setTime', '<%= time %>')
+        <% else %>
+            //timepicker_options = {defaultTIme: false, minuteStep: 5}
+            jQuery('#ot_scheduletime-timepicker').timepicker(timepicker_options)
+        <% end %>
+        <% if @otendtime.length > 0 %>
+            <% time = Time.zone.parse(@otendtime).strftime("%I:%M %p") %>
+            //timepicker_options = {defaultTIme: false, minuteStep: 5}
+            jQuery('#ot_scheduleendtime-timepicker').timepicker(timepicker_options)
+            jQuery('#ot_scheduleendtime-timepicker').timepicker('setTime', '<%= time %>')
+        <% else %>
+            //timepicker_options = {defaultTIme: false, minuteStep: 5}
+            jQuery('#ot_scheduleendtime-timepicker').timepicker(timepicker_options)
+          $(".ot_scheduleendtime").val("")
+        <% end %>
+
+
+        $('#ward_list').change(function() {
+            $.ajax({
+                url: "/ipd_patients/room_update",
+                data: {
+                    id : $('#ward_list').val()
+                },
+                dataType: "script"
+            });
+        });
+
+        // For Admission_id And Patient_id
+        jQuery('.patientlist').on('change', function() {
+          foobar = this.value
+//          console.log(foobar)
+          x = foobar.split(',')
+          jQuery('.patient_value').val(x[0])
+          jQuery('.admission_value').val(x[1])
+            var ids = $("#huzi").val()
+            var patient_id = ids.split(',')[0]
+            var adm_id = jQuery('.admission_value').val()
+            $.ajax({
+                url: '/inpatient/ipd_records/data_from_opd',
+                data: {patient_id: patient_id,admission_id: adm_id},
+            });
+        });
+      });
+      $("#make_ot_form").validate({
+
+                  rules: {
+          "validate_ot_patient": {
+              required: true,
+          },
+      },
+      messages: {
+          "validate_ot_patient": {
+              required: "Please select a patient to schedule OT"
+          },
+      },
+      })
+
+      // $(".ot_scheduletime").on('change', function(){
+      //   var otendtime = $(".ot_scheduletime").val().split(":")
+      //   var ampm = $(".ot_scheduletime").val().split(" ")
+      //   var mer = ampm[1]
+      //   var hours = parseInt(otendtime[0])
+      //   var minutes = parseInt(otendtime[1]) + 30
+      //   if(minutes > 59) {
+      //     minutes = minutes - 60
+      //     if(minutes == 0) {
+      //       minutes = "00"
+      //     }
+      //     if(hours < 12) {
+      //       hours = hours + 1
+      //     } else {
+      //       hours = hours - 11
+      //       if(mer.split("")[0] == "A") {
+      //         mer = "PM"
+      //       } else {
+      //         mer = "AM"
+      //       }
+      //     }
+      //   };
+      //   $("#ot_schedule_otendtime").attr('value', hours + ":" + minutes + mer )
+      // });
+      // $(".ot_scheduletime").trigger("change")
+
+
+
+    </script>
+
+  </div>
+</div>
+<style type="text/css">
+    input.error, select.error {
+        border-color: #b94a48;
+        background-image: none;
+    }
+    input.valid, select.valid {
+        border-color: #468847;
+        background-image: none;
+    }
+</style>

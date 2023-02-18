@@ -1,0 +1,87 @@
+<% @requisition_received.items.each_with_index do |item, index| %>
+  <% if @var_ref_ids.include? item.variant_reference_id.to_s %>
+    <tr>
+      <script>
+        id = '<%= item.variant_reference_id %>' + ' td'
+        old_qty = parseInt($('#' + id).find('.item_quantity').val()) || 0
+        new_qty = parseInt('<%= item.remaining_stock %>') || 0
+        total = old_qty + new_qty
+        $('#' + id).find('.item_quantity').val(total)
+      </script>
+    </tr>
+  <% else %>
+    <% is_category_included = @category_ids.include? item&.category_id %>
+    <% if is_category_included && item.remaining_stock.to_i > 0 %>
+      <% index = (Time.current.to_f.round(3)*1000).to_i + index %>
+      <% variant = Inventory::Item::Variant.find_by(reference_id: item.variant_reference_id, store_id: params[:store_id]) %>
+      <% if variant.to_a.present? %>
+        <% @item = Inventory::Item.find_by(reference_id: item.item_reference_id, store_id: params[:store_id]) %>
+        <% @item_units = @item&.item_units.to_i %>
+        <tr class="treatmentmedications" id="<%= item.variant_reference_id %>">
+          <%= hidden_field_tag "inventory_order_indent[items_attributes][#{index}][req_item_id]", item.id, class: 'req-item-id' %>
+          <%= hidden_field_tag "inventory_order_indent[items_attributes][#{index}][item_code]", variant.item_code %>
+          <%= hidden_field_tag "inventory_order_indent[items_attributes][#{index}][variant_code]", variant.variant_code %>
+          <%= hidden_field_tag "inventory_order_indent[items_attributes][#{index}][item_id]", (@item&.id || variant.item_id) %>
+          <%= hidden_field_tag "inventory_order_indent[items_attributes][#{index}][variant_id]", variant.id, class: 'variant-id' %>
+          <%= hidden_field_tag "inventory_order_indent[items_attributes][#{index}][category]", variant.category %>
+          <%= hidden_field_tag "inventory_order_indent[items_attributes][#{index}][barcode]", variant.barcode %>
+          <%= hidden_field_tag "inventory_order_indent[items_attributes][#{index}][barcode_present]", variant.barcode_present %>
+          <%= hidden_field_tag "inventory_order_indent[items_attributes][#{index}][variant_reference_id]", variant.reference_id, class: 'variant-reference-id' %>
+          <%= hidden_field_tag "inventory_order_indent[items_attributes][#{index}][item_reference_id]", @item&.reference_id %>
+          <%= hidden_field_tag "inventory_order_indent[items_attributes][#{index}][facility_id]", variant.facility_id %>
+          <%= hidden_field_tag "inventory_order_indent[items_attributes][#{index}][store_id]", @requisition_received.store_id %>
+          <%= hidden_field_tag "inventory_order_indent[items_attributes][#{index}][organisation_id]", variant.organisation_id %>
+          <%= hidden_field_tag "inventory_order_indent[items_attributes][#{index}][variant_identifier]", variant.variant_identifier %>
+          <%= hidden_field_tag "inventory_order_indent[items_attributes][#{index}][requisition_received_id]", @requisition_received.id %>
+          <%= hidden_field_tag "inventory_order_indent[items_attributes][#{index}][requisition_received_item_id]", item.id %>
+          <%= hidden_field_tag "inventory_order_indent[items_attributes][#{index}][tax_rate]", @item&.tax_rate %>
+          <%= hidden_field_tag "inventory_order_indent[items_attributes][#{index}][tax_group_id]", @item&.tax_group_id %>
+          <%= hidden_field_tag "inventory_order_indent[items_attributes][#{index}][tax_name]", @item&.tax_name %>
+          <%= hidden_field_tag "inventory_order_indent[items_attributes][#{index}][default_variant_id]", variant.id %>
+          <td class="set_s_no"></td>
+          <td class="col-md-3 col-sm-3 col-xs-3">
+            <% if variant.custom_field_data.present? %>
+              <% variant.custom_field_data.each do |k,v| %>
+                <%= hidden_field_tag "inventory_order_indent[items_attributes][#{index}][custom_field_data][#{k}]", v %>
+              <% end %>
+            <% end %>
+            <%= select_tag "inventory_order_indent[items_attributes][#{index}][custom_field_tags]", options_for_select(variant.custom_field_tags,variant.custom_field_tags), include_hidden: false, multiple:true, style: "display: none;" %>
+            <strong><%= variant.description %><% if variant.variant_identifier.present? %>, <%= variant.variant_identifier %><% end %></strong>
+            <%= hidden_field_tag "inventory_order_indent[items_attributes][#{index}][description]", variant.description, readonly: true, class: "item_description modalRequest_input_style", :placeholder=>"Description" %>
+            <%= hidden_field_tag "inventory_order_indent[items_attributes][#{index}][_destroy]", 0 , class: 'form-control' %>
+          </td>
+          <td class="col-md-3 col-sm-3 col-xs-3">
+            <label class="label label-info" style="font-size: 10px; padding: 2px"><%= variant.variant_code %></label>
+          </td>
+          <td class="col-md-1 col-sm-1 col-xs-1">
+            <%= number_field_tag "inventory_order_indent[items_attributes][#{index}][stock]", item.remaining_stock.to_f, placeholder: 'Qty', style: 'text-align:left', class: 'item_quantity modalRequest_input_style', min: '0.1' %>
+            <%= hidden_field_tag "", item.remaining_stock.to_i, class: 'item_max_quantity form-control' %>
+            <%= hidden_field_tag "", @item_units, class: 'item_sub_units_value form-control' %>
+            <lable class="new_value" style=" color: red;" ></label>
+          </td>
+          <td class="col-md-1 col-sm-1 col-xs-1" style="text-align:left;width: 30px;">
+            <lable><%= @item_units %></label>
+          </td>
+          <td class="col-md-2 font-size" style="text-align:left;">
+            <% if @item&.dispensing_unit.present? %><%= @item&.dispensing_unit %><% else %>NA<% end %>
+          </td>
+          <td class="col-md-2 font_size item_remark modalRequest_input_style">
+            <%= text_field_tag "inventory_order_indent[items_attributes][#{index}][indent_remarks]", "", class: 'item_remark modalRequest_input_style' %>  
+          </td>
+          <% if  @sub_stores.size > 1 %>
+            <td class="col-md-2 col-sm-2 col-xs-2">
+              <%= select_tag "inventory_order_indent[items_attributes][#{index}][sub_store_id]", options_for_select(@sub_stores, selected: ''), include_blank: 'Select', class: 'form-control sub-store-id', style: 'padding: 5px' %>
+              <%= hidden_field_tag "inventory_order_indent[items_attributes][#{index}][sub_store_name]", "", class: 'sub-store-name' %>
+            </td>
+          <% else %>
+            <%= hidden_field_tag "inventory_order_indent[items_attributes][#{index}][sub_store_name]", @sub_stores[0][0], placeholder: 'Store', style: 'text-align:left', class: 'modalRequest_input_style', readonly: true %>
+            <%= hidden_field_tag "inventory_order_indent[items_attributes][#{index}][sub_store_id]", @sub_stores[0][1], placeholder: 'Store', style: 'text-align:left', class: 'modalRequest_input_style', readonly: true %>
+          <% end %>
+    		  <td class="col-md-2 font-size">
+            <button type="button" class="btn btn-link hg-tooltip delete_empty_item" tabindex="-1" style="padding:0px;" title="Remove From List" value="<%= variant.id %>"><i class="fa fa-trash-alt" style="color:#000;"></i></button>
+    		  </td>
+    	  </tr>
+      <% end %>
+    <% end %>
+  <% end %>
+<% end %>

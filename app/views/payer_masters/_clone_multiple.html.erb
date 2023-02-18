@@ -1,0 +1,95 @@
+<div class="modal-dialog">
+  <div class="modal-content">
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal">&times;</button>
+      <h4 class="modal-title">Clone Payer Master</h4>
+    </div>
+    <%= form_tag create_multiple_payer_masters_path, method: 'post', remote: true, id: 'clone-payer-form', class: 'clone-payer-form' do %>
+      <%= hidden_field_tag 'payer_master_ids', @payer_masters.pluck(:id).map(&:to_s).join(',') %>
+      <%= hidden_field_tag 'facility_ids', '' %>
+      <div class="modal-body">
+        <div class="row mb20">
+          <div class="payer-details text-center">
+            <b style="color:#000;"><%= @payer_masters.pluck(:display_name).join(' | ') %></b>
+          </div>
+        </div>
+        <hr>
+        <div class="row mb10">
+          <div class="col-md-12 mb10">
+            <b>Select Facilities to Clone the Payer</b>
+          </div>
+          <div class="col-md-12">
+            <div class="ckbox ckbox-primary">
+              <input type="hidden" name="clone_all_facility" value='false'>
+              <%= check_box_tag 'clone_all_facility', true, false, id: 'payer_master_all', class: 'payer_master_clone_all' %>
+              <label for="payer_master_all">All Facility</label>
+            </div>
+          </div>
+        </div>
+        <hr style="margin:10px;">
+        <div class="row mb10">
+          <% @facilities.each_with_index do |facility, i| %>
+            <% next if params[:facility_id] == facility.id.to_s %>
+            <div class="col-md-6">
+              <div class="ckbox ckbox-primary">
+                <input type="hidden" name="clone_facility" value='false'>
+                <%= check_box_tag 'clone_facility', true, false, id: "payer_master_#{i}", class: 'payer_master_clone', 'facility-id': facility.id.to_s %>
+                <label for="payer_master_<%= i %>"><%= facility.name %></label>
+              </div>
+            </div>
+          <% end %>
+        </div>
+        <div class="row mb10">
+          <div class="col-md-12">
+            <span style="color:#f00;"><b>Note:</b> Cloning on already cloned data will result in data overwriting.</span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <%= submit_tag 'Clone Contact', class: 'btn btn-success btn-clone-contact', data: { 'disable-with': 'Please Wait...' } %>
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<script type="text/javascript">
+  const toggleCloneBtn = () => {
+    let facilities_check = $('.payer_master_clone:checked')
+    if(facilities_check.length > 0){
+      $(".btn-clone-contact").removeAttr('disabled', 'disabled')
+    } else {
+      $(".btn-clone-contact").attr('disabled', 'disabled')
+    }
+  }
+  toggleCloneBtn()
+
+  $('.payer_master_clone').on('click', function(){
+    let facility_id = $(this).attr('facility-id')
+    let facility_ids = $("#facility_ids").val()
+    if($(this).is(':checked')){
+      if(!facility_ids.includes(facility_id)){
+        $("#facility_ids").val(`${facility_ids},${facility_id}`)
+      }
+    } else {
+      if(facility_ids.includes(facility_id)){
+        $("#facility_ids").val(facility_ids.replace(`,${facility_id}`, ''))
+      }
+    }
+    toggleCloneBtn()
+  })
+
+  $('.payer_master_clone_all').on('click', function(){
+    if($(this).is(':checked')){
+      let facilities_check = $('.payer_master_clone:not(:checked)')
+      for (var i = facilities_check.length - 1; i >= 0; i--) {
+        $(facilities_check[i]).trigger('click')
+      }
+    } else {
+      let facilities_check = $('.payer_master_clone:checked')
+      for (var i = facilities_check.length - 1; i >= 0; i--) {
+        $(facilities_check[i]).trigger('click')
+      }
+    }
+  })
+</script>

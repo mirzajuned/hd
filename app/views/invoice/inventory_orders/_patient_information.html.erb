@@ -1,0 +1,109 @@
+<div class="row">
+  <div id="item_id" style="display: none"><%= @patient_prescription.try(:id) %></div>
+  <div id="patient_id" style="display: none"><%= @patient.id %></div>
+  <%= f.hidden_field :recipient, :class => "fi_input_style readonly", :placeholder => '', :style=>"width:92%", :readonly => true, :value => @patient.try(:fullname) %>
+  <%= f.hidden_field :patient_identifier, :class => "fi_input_style readonly", :placeholder => '', :style=>"width:92%", :readonly => true, :value => @patient_idn.try(:patient_org_id) %>
+  <%= f.hidden_field :recipient_mobile, :class => "fi_input_style readonly",:placeholder => '', :style=>"width:92%", :readonly => true, :value => @patient.try(:mobilenumber) %>
+
+  <div class="col-md-6">
+    <div class="col-md-4 vendor-nonstockable">
+      <div class="pat-label">Vendor:</div>
+     <%#= select_tag "invoice_inventory_order[vendor_id]", options_for_select(@vendors), { name: 'invoice_inventory_order[vendor_id]', include_blank: true, class: 'form-control invoice_inventory_order_vendor', id: 'invoice_inventory_order_vendor_id' } %>
+      <select class="form-control" name="invoice_inventory_order[vendor_id]" id="invoice_inventory_order_vendor_id" value="<%= @inventory_order.id %>">
+        <option value="">Select</option>
+        <% @vendors.each do |vendor| %>
+          <% selected_vendor = params[:vendor_id].present? ? params[:vendor_id] :  @inventory_order.id.to_s %>
+          <option value="<%= vendor.id %>" <%= 'selected' if vendor.id.to_s == selected_vendor %>>
+            <%= po_vendor_format(vendor) %>
+          </option>
+        <% end %>
+      </select>
+    </div> 
+    <div class="col-md-8">
+      <div class="pat-label">Doctor:</div>
+      <% if @patient_prescription.present? && current_facility.consultant_role_ids.include?(158965000) %>
+        <%= f.text_field :consultant_name, :class => "form-control p7_10", :placeholder => '', :readonly => true, :value => @patient_prescription.try(:consultant_name) %>
+      <% else %>
+        <%= f.text_field :consultant_name, :class => "form-control p7_10", :placeholder => 'Doctor Name', :value => "" %>
+      <% end %>
+    </div> 
+  </div>
+  <div class="col-md-2">
+    Order Date: 
+    <% unless Authorization::PolicyHelper.verification(current_user.id,"HGP-100-118-105") %>
+      <%= f.text_field :order_date, { value: Date.current.strftime("%d/%m/%Y"), class: 'form-control p7_10 fullname', placeholder: 'Date of transition', readonly: 'readonly' } %>
+    <% else %>
+      <%= f.text_field :order_date, { value: Date.current.strftime("%d/%m/%Y"), class: 'form-control p7_10 fullname invoice-order-datepicker', placeholder: 'Date of transition' } %>
+    <% end %>
+    <%= f.hidden_field :order_date_time, { value: Time.current, class: 'form-control p7_10 fullname invoice-order-date-time-picker' } %>
+  </div>
+  <div class="col-sm-2">
+    <strong>Order Time</strong><br>
+    <% unless Authorization::PolicyHelper.verification(current_user.id,"HGP-100-118-105") %>
+      <%= f.text_field :order_time, { value: Time.current.strftime("%I:%M %p"), class: 'form-control p7_10', placeholder: "Time of Order", readonly: 'readonly' } %>
+    <% else %>
+      <%= f.text_field :order_time, { value: Time.current.strftime("%I:%M %p"), class: 'form-control p7_10 order-timepicker', placeholder: "Time of Order" } %>
+    <% end %>
+  </div>
+</div><br>
+<!-- <div class="row p7_10">
+  <div class="ckbox ckbox-primary col-md-2">
+    <%#= f.check_box :is_create_gst_bill , { checked: false }, 'true', 'false'  %>
+    <label  for="invoice_inventory_order_is_create_gst_bill">Create GST Bill</label>
+  </div>
+  <div class="check_validation" style="display: none">
+    <div class="col-sm-4">
+     <label for="invoice_inventory_order_gstin" class="col-sm-2 col-form-label" style="margin-top: 7px; "> GSTIN:</label>
+        <div class="col-sm-8">
+          <%#= f.text_field :gstn, :class => "form-control p7_10 read", :placeholder => 'GSTIN', :value => "" %>
+        </div>
+    </div>
+    <div class="col-sm-4">
+     <label for="invoice_inventory_order_gstin" class="col-sm-4 col-form-label" style="margin-top: 7px; "> Legal Name:</label>
+        <div class="col-sm-8">
+          <%#= f.text_field :legal_name, :class => "form-control p7_10 read", :placeholder => 'Legal Name', :value => "" %>
+        </div>
+    </div>
+  </div>
+</div> -->
+
+
+<!-- Mirza Move below code into JS file -->
+<script type="text/javascript">
+ $('#invoice_inventory_order_vendor_id').select2()
+  $('#invoice_inventory_order_vendor_id').on('change', function() {
+   // fetch_variants()
+   if ($('.tbody_medication').length > 0){
+      $('#confirm-filter')
+          .html(confirmationModal('fetch_variants', 'inventory_order'))
+          .modal('show')
+          .css('background-color', 'rgba(0,0,0,0.5)')       
+    } else {
+      fetch_variants()
+    }
+  })
+  function fetch_variants() {
+    let vendor_id = $('#invoice_inventory_order_vendor_id').val()
+    let vendor_name = $('#invoice_inventory_order_vendor_id option:selected').text()    
+    if (vendor_id != '') {
+      $.ajax({
+        type: 'GET',
+        data: {
+          vendor_id: vendor_id,
+          item_type: 'NonStockable',
+          store_id: '<%= @inventory_store&.id %>',
+          patient_id: '<%= @patient.id %>',
+          remote: true
+        },
+        <%# if params[:item_type] != "NonStockable" %>
+         url: '/invoice/inventory_orders/new',
+        <%# end %>
+        success: function(){
+          $(".stockable").removeClass("btn-brown")
+          $(".non-stockable").addClass("btn-brown")
+        }
+      })
+    }
+  }
+ 
+</script>

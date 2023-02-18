@@ -1,0 +1,269 @@
+<% if opdrecord.has_treatmentmedication? || opdrecord.medicationcomments.present? %>
+  <br>
+  <div class="row">
+    <span class="medication_title" style="font-size: 11px;"><strong>ADVICE : </strong></span>
+    <% unless params[:action] == "print_opd_record"  || params[:action] == "print_medication" %>
+      <% if opdrecord.specalityname == "ophthalmology" %>
+
+        <div class="btn-group pull-right" style="margin-top: -8px;">
+          <%= link_to new_mail_record_tracker_path(record_name: 'Medication Prescription', patient_id: patient.id, record_id: opdrecord._id, record_model: 'OpdRecord', appointment_id: appointment.id.to_s, speciality: specalityfoldername), class: 'btn btn-xs btn-primary mail_medication_print', data: { :remote => true, 'disable-with' => 'Please Wait...' } do %> <i class="fa fa-print"></i> Email<% end %>
+          <% if @print_settings.count > 1 %>
+            <div class="btn-group">
+              <button type="button" class="btn btn-primary btn-xs dropdown-toggle" data-toggle="dropdown"><i class="fa fa-print mr5"></i> Print <i class="fa fa-caret-down"></i></button>
+              <ul class="dropdown-menu dropdown-left-manual" role="menu" aria-labelledby="summary-print-dropdown" style="">
+                <% @print_settings.each do |print_setting| %>
+                  <li style="text-align:left" class="multi-print">
+                    <%= link_to opd_records_print_medication_path(opdrecordid: opdrecord._id, patientid: patient.id, appointmentid: appointment.id, templatetype: templatetype, specality: specalityfoldername, print_setting_id: print_setting.id, format: :pdf), class: 'medication_print', style: 'color: #d9534f;', target: '_blank', data: { method: :get } do %> <i class="fa fa-print mr5"></i> <%= print_setting.name %> <% end %>
+                  </li>
+                <% end %>
+              </ul>
+            </div>
+          <% else %>
+            <%= link_to opd_records_print_medication_path(opdrecordid: opdrecord._id, patientid: patient.id, appointmentid: appointment.id, templatetype: templatetype, specality: specalityfoldername, print_setting_id: @print_settings[0].id, format: :pdf), class: 'btn btn-primary btn-xs medication_print', target: '_blank', data: { method: :get } do %> <i class="fa fa-print mr5"></i> Print <% end %>
+          <% end %>
+        </div>
+      <% end %>
+    <% end %>
+    <div class="summary-line-border"></div>
+  </div>
+<% end %>
+<% if opdrecord.has_treatmentmedication? %>
+  <div class="row"><div class="medication_heading"><strong><%= LanguageHelper.translation('medication', @translated_language) %></strong></div></div>
+  <div class="row mb10 check_font">
+    <table class="table table-bordered">
+      <thead>
+        <tr>
+          <th><%= LanguageHelper.translation('sr_no', @translated_language) %></th>
+          <th><%= LanguageHelper.translation('name', @translated_language) %></th>
+          <th><%= LanguageHelper.translation('quantity', @translated_language) %></th>
+          <th class="text-center"><%= LanguageHelper.translation('frequency', @translated_language) %></th>
+          <th><%= LanguageHelper.translation('duration', @translated_language) %></th>
+          <th><%= LanguageHelper.translation('eye', @translated_language) %></th>
+          <th><%= LanguageHelper.translation('instruction', @translated_language) %></th>
+        </tr>
+      </thead>
+      <tbody>
+
+      <% @medication_set_arr = Global.send('medication_instruction_option').send('sets') %>
+      <% opdrecord.treatmentmedication.each.with_index do |medication,i| %>
+        <tr>
+          <td><%= i + 1 %></td>
+          <td><b><%= medication.medicinename.to_s.upcase %><% if medication.medicinetype? %> - <%= medication.medicinetype.to_s.upcase %><% end %></b>
+            <% facility = Facility.find_by(id: @current_facility.id) %>
+            <% if facility.display_generic_name && medication.generic_display_name.present? %>
+              <br>
+              <% unless medication.generic_display_name == 'undefined' %>
+                Generic - <%= medication.generic_display_name %>
+              <% end %>
+            <% end %>
+          </td>
+          <% if medication.taper_id == "0" || medication.taper_id == nil || medication.taper_id == "" %>
+            <td class="text-center"><%= medication.medicinequantity %></td>
+            <td class="text-center">
+              <% unless medication.medicinefrequency == "SOS" %>
+                <%= medication.medicinefrequency %> times a day
+              <% else %>
+                <%= medication.medicinefrequency %>
+              <% end %>
+            </td>
+            <td>
+              <% unless medication.medicinedurationoption == "F" %>
+                <% if medication.medicinedurationoption == "W" %>
+                  <%= pluralize(medication.medicineduration, 'Week') %>
+                <% elsif medication.medicinedurationoption == "M" %>
+                  <%= pluralize(medication.medicineduration, 'Month') %>
+                <% elsif medication.medicinedurationoption == "D" %>
+                  <%= pluralize(medication.medicineduration, 'Day') %>
+                <% end %>
+              <% else %>
+                Next Followup
+              <% end %>
+            </td>
+          <% else %>
+            <td colspan="3" class="text-center">
+              As advised below
+            </td>
+          <% end %>
+          <td>
+            <% if medication['eyeside'].present? %>
+              <% if medication['eyeside'] == "L" %>
+                Left
+              <% elsif medication['eyeside'] == "R" %>
+                Right
+              <% elsif medication['eyeside'] == "BE" %>
+                Both Eyes
+              <% end %>
+            <% else %>
+              -
+            <% end %>
+          </td>
+          <td>
+            <% if medication.medicineinstructions.present? %>
+              <%= medication.medicineinstructions %>
+            <% elsif medication.instruction.present? %>
+              <% @set = @medication_set_arr.select { |medi| medi['id'] == medication.instruction } %>
+              <% if @set[0].present? %>
+                <%= @set[0][advice_language.to_s] %>
+              <% end %>
+            <% end %>
+          </td>
+        </tr>
+        <% unless medication.taper_id == "0" || medication.taper_id == nil || medication.taper_id == "" %>
+          <tr style="background-color:#bbb">
+            <td colspan="7" style="padding:5px 10px 2px;">
+              <% @taper = TaperingKit.find_by(id: medication.try(:taper_id)) %>
+              <% @tapering_set = @taper.tapering_set %>
+              <% if @taper.taper_by == "Dosage" %>
+                <table class="table table-bordered" style="margin: 0 0 5px;">
+                  <thead>
+                    <tr>
+                      <th><%= LanguageHelper.translation('sr_no', @translated_language) %></th>
+                      <th><%= LanguageHelper.translation('no_of_days', @translated_language) %></th>
+                      <th><%= LanguageHelper.translation('start_date', @translated_language) %></th>
+                      <th><%= LanguageHelper.translation('end_date', @translated_language) %></th>
+                      <th><%= LanguageHelper.translation('start_time', @translated_language) %></th>
+                      <th><%= LanguageHelper.translation('end_time', @translated_language) %></th>
+                      <th width="16%"><%= LanguageHelper.translation('dosage', @translated_language) %></th>
+                      <th width="16%"><%= LanguageHelper.translation('interval', @translated_language) %></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% @tapering_set.each.with_index do |taper, i| %>
+                      <tr class="taper_row">
+                        <td>
+                          <%= i.to_i + 1 %>
+                        </td>
+                        <td>
+                          <%= taper.number_of_days %>
+                        </td>
+                        <td>
+                          <%= taper.try(:start_date).try(:strftime, '%d/%m/%Y') %>
+                        </td>
+                        <td>
+                          <%= taper.try(:end_date).try(:strftime, '%d/%m/%Y') %>
+                        </td>
+                        <td>
+                          <%= taper.try(:start_time).try(:strftime, '%I:%M %p') %>
+                        </td>
+                        <td>
+                          <%= taper.try(:end_time).try(:strftime, '%I:%M %p') %>
+                        </td>
+                        <td>
+                          <%= taper.dosage %>
+                        </td>
+                        <td>
+                          <%= taper['interval'].to_i > 0 ? 'Every ' + pluralize(taper['interval'], 'hour') : '-' %>
+                        </td>
+                      </tr>
+                    <% end %>
+                  </tbody>
+                </table>
+              <% else %>
+                <table class="table table-bordered" style="margin: 0 0 5px;">
+                  <thead>
+                    <tr>
+                      <th><%= LanguageHelper.translation('sr_no', @translated_language) %></th>
+                      <th><%= LanguageHelper.translation('day', @translated_language) %></th>
+                      <th><%= LanguageHelper.translation('start_date', @translated_language) %></th>
+                      <th><%= LanguageHelper.translation('end_date', @translated_language) %></th>
+                      <th><%= LanguageHelper.translation('start_time', @translated_language) %></th>
+                      <th><%= LanguageHelper.translation('end_time', @translated_language) %></th>
+                      <th width="16%"><%= LanguageHelper.translation('frequency', @translated_language) %></th>
+                      <th width="16%"><%= LanguageHelper.translation('interval', @translated_language) %></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% @tapering_set.each.with_index do |taper, i| %>
+                      <% unless (taper.frequency).to_i == 0 %>
+                        <tr class="taper_row">
+                          <td>
+                            <%= i.to_i + 1 %>
+                          </td>
+                          <td>
+                            <%= taper.number_of_days %>
+                          </td>
+                          <td>
+                            <%= taper.try(:start_date).try(:strftime, '%d/%m/%Y') %>
+                          </td>
+                          <td>
+                            <%= taper.try(:end_date).try(:strftime, '%d/%m/%Y') %>
+                          </td>
+                          <td>
+                            <%= taper.try(:start_time).try(:strftime, '%I:%M %p') %>
+                          </td>
+                          <td>
+                            <%= taper.try(:end_time).try(:strftime, '%I:%M %p') %>
+                          </td>
+                          <td>
+                            <%= pluralize(taper['frequency'], 'time') %> a day
+                          </td>
+                          <td>
+                            <%= taper['interval'].to_i > 0 ? 'Every ' + pluralize(taper['interval'], 'hour') : '-' %>
+                          </td>
+                        </tr>
+                      <% end %>
+                    <% end %>
+                  </tbody>
+                </table>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+      <% end %>
+      </tbody>
+    </table>
+  </div>
+<% end %>
+<% if opdrecord.medicationcomments.present? %>
+  <span><%= opdrecord.medicationcomments %></span>
+<% end %>
+
+<style type="text/css">
+  <% if params[:action] == "print_opd_record" || params[:action] == "print_medication" %>
+    .check_font * {
+      font-size: 9px;
+    }
+    .medication_title {
+      font-size: 9px;
+    }
+  <% else %>
+    .check_font * {
+      font-size: 12px;
+    }
+    .medication_title {
+      font-size: 14px;
+    }
+  <% end %>
+
+  .check_font table tr th {
+    padding: 2px 5px;
+  }
+
+  .check_font table tr td {
+    padding: 2px 5px;
+  }
+
+  thead { display: table-header-group }
+  tr { page-break-inside: avoid }
+  
+</style>
+
+<script type="text/javascript">
+    var advice_language = "<%= advice_language %>";
+    var current_path = $('.medication_print').attr('href');
+    var modified_path = $('.medication_print').attr('href')+"&language_flag=true&advice_language="+advice_language;
+    var remove_current_path = $('.medication_print').removeAttr('href');
+    var add_modfied_path = $('.medication_print').attr('href',modified_path);
+
+    var current_path = $('.mail_medication_print').attr('href');
+    var modified_path = $('.mail_medication_print').attr('href')+"&language_flag=true&advice_language="+advice_language;
+    var remove_current_path = $('.mail_medication_print').removeAttr('href');
+    var add_modfied_path = $('.mail_medication_print').attr('href',modified_path);
+    console.log($('.multi-print').length)
+    $('.multi-print').each(function(i, obj) {
+      ex_quey = $(this).find('a').attr('href')
+      new_query = ex_quey + "&language_flag=true&advice_language="+advice_language
+      $(this).find('a').attr('href',new_query);
+      console.log(new_query)
+    })
+</script>

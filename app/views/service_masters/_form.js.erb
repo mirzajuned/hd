@@ -1,0 +1,130 @@
+// Show Search Bar
+$("#service_master_service_type").on('change', function(e, triggered){
+  var service_type = $(this).val()
+  var service_type_code = $(".search-procedure-investigation").find(".service_code_name").find("#service_master_service_type_code")
+
+  if(service_type == "Procedure" || service_type.indexOf("Investigation") != -1){
+    $(".search-procedure-investigation").show();
+    $(".search_service_type_code").attr('placeholder', "Search " + service_type)
+    if($(service_type_code).length <= 0){
+      $(".search-procedure-investigation").find(".service_code_name").prepend(`
+        <input type='hidden' value='<%= @service_master.try(:service_type_code) %>' name='service_master[service_type_code]' id='service_master_service_type_code'>
+        <input type='hidden' value='<%= @service_master.try(:service_type_code_type) %>' name='service_master[service_type_code_type]' id='service_master_service_type_code_type'>
+      `)
+    }
+  } else {
+    $(".search-procedure-investigation").hide();
+    $(service_type_code).remove()
+  }
+  if(!triggered){ $(".clear-service-code").trigger('click') }
+}).trigger('change', true)
+
+$(".search_service_type_code").on('keyup', function(){
+  var service_type = $("#service_master_service_type").val()
+  if(service_type == "Procedure"){
+    search_type_code('/common_procedures/search')
+  } else if(service_type.indexOf("Ophthal") != -1){
+    search_type_code('/ophthalmology_investigation_data/search')
+  } else if(service_type.indexOf("Laboratory") != -1){
+    search_type_code('/laboratory_investigation_data/search')
+  } else if(service_type.indexOf("Radiology") != -1){
+    search_type_code('/radiology_investigation_data/search')
+  }
+})
+
+ $(".clear-service-code").on('click', function(e){
+  e.preventDefault();
+  var service_type = $("#service_master_service_type").val()
+  $("#service_master_service_type_code").val("")
+  $(".search_service_type_code").val("").removeAttr('readonly').focus()
+  $(".service_type_code").html("")
+  $(this).hide()
+ })
+
+function search_type_code(url){
+  var speciality_id = $('.specialty_dropdown').val()
+  $('.search_service_type_code').autocomplete({
+    minLength: 2,
+    source: function(request, response) {
+      $.ajax({
+        dataType: "json",
+        type: 'get',
+        url: url,
+        data: {
+          search: request.term,
+          speciality_id: speciality_id,
+          remote: "true" },
+        success: function(data) {
+          response(data);
+        },
+        error: function(data) {
+        }
+      });
+    },
+    select: function( event, ui ) {
+      if(ui.item["code"] != undefined){ // Procedures
+        $("#service_master_service_type_code").val(ui.item["code"])
+        $("#service_master_service_type_code_type").val(ui.item["procedure_type"])
+        $(".service_type_code").html("Code : " + ui.item["code"])
+      } else { // Investigations
+        $("#service_master_service_type_code").val(ui.item["investigation_id"])
+        $("#service_master_service_type_code_type").val(ui.item["investigation_type"])
+        $(".service_type_code").html("Code : " + ui.item["investigation_id"])
+      }
+      $(".search_service_type_code").attr('readonly','readonly').css("background-color", "#fff")
+      $(".clear-service-code").show()
+      $("#service_master_service_type_code-error").hide();
+    },
+    create: function () {
+      $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+        if(item.procedure_type_label != undefined){ // Procedures
+          label = item.procedure_type_label
+        } else { // Investigations
+          label = item.investigation_type_label
+        }
+        return $('<li>')
+            .append('<a>' + item.label  + '&nbsp; &nbsp; &nbsp;' + "<span class=\"badge pull-right\">" + label + "</span>" + '</a>')
+            .appendTo(ul);
+      };
+   },
+  });
+}
+
+var available_specialties = <%= raw @available_specialties %>;
+if (available_specialties.length == 1) { $('.specialty_row').hide() }
+
+$('.specialty_dropdown').on('change', function(e) {
+  var specialty_id = this.value
+
+  $.ajax({
+    dataType: "json",
+    type: 'get',
+    url: '/service_masters/set_service_types',
+    data: { specialty_id: specialty_id, remote: "true" },
+    success: function(response) {
+      $('#service_master_service_type').children().remove();
+      $('#service_master_service_type').append($(`<option value=""></option>`))
+      $.each(response, function(key, value) {
+        $('#service_master_service_type').append($("<option></option>").attr("value", value).text(value));
+      });
+
+      $('#service_master_service_type').trigger('change')
+    }
+  });
+
+  $.ajax({
+    dataType: "json",
+    type: 'get',
+    url: '/sub_specialties',
+    data: { specialty_id: specialty_id },
+    success: function(response) {
+      $('#service_master_sub_specialty_id').html(`<option value="">Please select</option>
+        <option value="">Sub Speciality Not Applicable</option>`)
+      $.each(response, function(key, value) {
+        $('#service_master_sub_specialty_id').append($("<option></option>").attr("value", value[0]).text(value[1]));
+      });
+
+      $('#service_master_sub_specialty_id').trigger('change')
+    }
+  });
+})

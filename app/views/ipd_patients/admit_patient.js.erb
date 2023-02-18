@@ -1,0 +1,91 @@
+
+jQuery("#inpatient-modal").html("<%= escape_javascript(render 'patientadmission') %>")
+jQuery("#inpatient-modal").modal("show")
+//jQuery("#new_admission").enableClientSideValidations()
+jQuery('#admission_process').wizard()
+var seatmap = "seatmap";
+
+<% if @wards.count > 0 %>
+    <% @wards.each_with_index do |ward, index| %>
+        var counter = '<%= index %>';
+        var seatmapid = seatmap + counter;
+        <% bed_list = [] %>
+
+        <% ward.rooms.each_with_index do |room, index | %>
+            <% room.beds.each_with_index do |bed, index | %>
+            <% a = Admission.find_by(:bed_id => bed.id.to_s, :isdischarged => false) %>
+                <% if a.nil? %>
+                    <% bed_list[index] = "a[#{@patient.id}XXXXX#{ward.id}XXXXX#{room.id}XXXXX#{bed.id}, #{bed.code}]" %>
+                <% end %>
+            <% end %>
+        seatmapid = jQuery('#<%= ward.name.gsub(" ", "") %>-<%= room.name.gsub(" ", "") %>').seatCharts({
+                        map: [
+                            "<%= bed_list.join %>" //'aaaaaaaaaaaa'
+                        ],
+                        seats: {
+                            a: {
+                                price   : 99.99,
+                                classes : 'front-seat' //your custom CSS class
+                            }
+                        },
+                        naming: {
+                            top: false,
+                            left: false
+                        },
+                        click: function () {
+                            if (this.status() == 'available') {
+                                if (jQuery('.bedmanagement-schedule-table-td-bed-layout').find('.selected').length > 0) {
+                                    jQuery('.bedmanagement-schedule-table-td-bed-layout').find('.selected').each(function() {
+                                        jQuery(this).removeClass("selected")
+                                        jQuery(this).addClass("available")
+                                    })
+                                }
+                                var params = { id: this.settings.id, label: this.settings.label }
+                                jQuery.ajax({
+                                    type: "GET",
+                                    dataType: "script",
+                                    url: "/ipd_patients/selected_bed_room",
+                                    data: {ajax: params }
+                                });
+                                return 'selected'
+                            } else if (this.status() == 'selected') {
+                                //seat has been vacated
+                                return 'available'
+                            } else if (this.status() == 'unavailable') {
+                                //seat has been already booked
+                                return 'unavailable'
+                            } else {
+                                return this.style()
+                            }
+                        },
+                        focus: function() {
+                            if (this.status() == 'available') {
+                                //if seat's available, it can be focused
+                                return 'focused';
+                            } else  {
+                                //otherwise nothing changes
+                                return this.style();
+                            }
+                        }
+                    });
+        //seatmapid.status('1_5', 'unvailable');
+        <% end %>
+    <% end %>
+<% end %>
+jQuery(".seatCharts-seat").addClass("hg-bed-room-layout")
+jQuery(".remove-selected-bed-room-for-patient-admission").on("click", function(event) {
+    event.preventDefault()
+    jQuery(".selected-bed-room-for-admission").html("")
+});
+// jQuery('#admission_process').on('actionclicked.fu.wizard', function (evt, data) {
+//     if(data.step==2) {
+//         jQuery(".make-admission-step2").removeClass("btn-default")
+//         jQuery(".make-admission-step2").addClass("btn-success")
+//     } else {
+//         jQuery(".make-admission-step2").removeClass("btn-success")
+//         jQuery(".make-admission-step2").addClass("btn-default")
+//     }
+// });
+// jQuery('#admission_process').on('finished.fu.wizard', function (evt, data) {
+//     jQuery("#patient-admission-bed-form").submit();
+// });

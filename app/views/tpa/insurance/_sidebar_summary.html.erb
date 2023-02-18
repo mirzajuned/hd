@@ -1,0 +1,121 @@
+<div class="row no-margin text-center">
+  <div class="row no_margin tpa_tabs" style="width: 98%; margin-top: -15px;margin-left:7px;">
+    <ul class="nav nav-tabs tab_active" role="tablist">
+      <li role="presentation" class="full-width <%= "active" if (@active_tab == 'my_queue' || @active_tab == nil) %>" data-tab-id="my_queue">
+        <a href="#my_queue_list" id="my-queue-list" aria-controls="home" role="tab" data-toggle="tab">
+        <span style="display: block; font-size: 16px;" class="my_queue_list"><%= @my_queue_list.count + @admission_list.count %></span>
+          My Queue
+        </a>
+      </li>
+
+      <li role="presentation" class="full-width <%= "active" if (@active_tab == 'initiation') %>" data-tab-id="initiation">
+        <a href="#initiation_list" id="my-queue-list" aria-controls="home" role="tab" data-toggle="tab">
+        <span style="display: block; font-size: 16px;" class="initiation_list"><%= @initiation_list.count %></span>
+          Pre-Authorization
+        </a>
+      </li>
+
+      <li role="presentation" class="full-width <%= "active" if (@active_tab == 'in_process') %>" data-tab-id="in_process">
+        <a href="#in_process_list" id="my-queue-list" aria-controls="home" role="tab" data-toggle="tab">
+        <span style="display: block; font-size: 16px;" class="in_process_list"><%= @in_process_list.count %></span>
+          In-Process
+        </a>
+      </li>
+
+      <li role="presentation" class="full-width <%= "active" if (@active_tab == 'pending_payment') %>" data-tab-id="pending_payment">
+        <a href="#pending_payment_list" id="my-queue-list" aria-controls="home" role="tab" data-toggle="tab">
+        <span style="display: block; font-size: 16px;" class="pending_payment_list"><%= @pending_payment_list.count %></span>
+          Pending Payments
+        </a>
+      </li>
+
+      <li role="presentation" class="full-width <%= "active" if (@active_tab == 'payment_received') %>" data-tab-id="payment_received">
+        <a href="#payment_received_list" id="my-queue-list" aria-controls="home" role="tab" data-toggle="tab">
+        <span style="display: block; font-size: 16px;" class="payment_received_list"><%= @payment_received_list.count %></span>
+          Payment Received
+        </a>
+      </li>
+
+      <li role="presentation" class="full-width <%= "active" if @active_tab == 'rejected' %>" data-tab-id="rejected">
+        <a href="#rejected_list" id="my-queue-list" aria-controls="home" role="tab" data-toggle="tab">
+        <span style="display: block; font-size: 16px;" class="rejected_list"><%= @rejected_list.count %></span>
+          Rejected
+        </a>
+      </li>
+      
+      <li role="presentation" class="full-width <%= "active" if @active_tab == 'all' %>" data-tab-id="all">
+        <a href="#all_list" id="my-queue-list" aria-controls="home" role="tab" data-toggle="tab">
+        <span style="display: block; font-size: 16px;" class="all_list"><%= @all_list.count %></span>
+          All
+        </a>
+      </li>
+    </ul>
+  </div>
+
+  <div class="row no_margin summary_body collapse in" id="summary_tpa_today">
+    <div class="tpa_today">
+      <div class="tab-content" style="width:95%; margin-left:10px;">        
+        <div role="tabpanel" class="tpa_content tab-pane <%= "active" if (@active_tab == 'my_queue' || @active_tab == nil) %>" id="my_queue_list">
+          <%= render partial: 'tpa/insurance/tpa_data_rows.html.erb', locals: { patient_list: @my_queue_list, tab: 'my_queue' } %>
+        </div>
+        
+        <% tabs_array = ['initiation', 'in_process', 'pending_payment', 'payment_received','rejected','all'] %>        
+        <% tabs_array.each_with_index do |tab| %>
+          <div role="tabpanel" class="tpa_content tab-pane <%= "active" if (@active_tab == tab) %>" id="<%=tab%>_list">
+            <%= render partial: 'tpa/insurance/tpa_data_rows.html.erb', locals: { patient_list:  eval("@"+tab+"_list"), tab: tab } %>
+          </div>
+        <% end %>
+
+      </div>
+    </div>
+  </div><!-- summary_body -->
+</div>
+
+<script type="text/javascript">
+  var tab_count = $('.tab_active').find('li').length
+  $(".full-width").css('width',100/tab_count+"%")
+
+  $(".summary_tpa_clickable").on('click', function(){
+    $("#tpa_summary").html('<div class="loading_dots"> <span></span> <span></span> <span></span></div>').css('background','#fff')
+    $("#summary_tpa_today").find(".active-tpa").removeClass("active-tpa")
+    $(this).addClass("active-tpa")
+    $.ajax({
+      type: "GET",
+      dataType: "script",
+      data: {
+        tpa_id: $(this).attr('data-tpa-id'),
+        patient_class: $(this).attr('data_patient_class'),
+        active_tab: $(".tab_active").find(".active").attr('data-tab-id'),
+        current_date: "<%= @current_date.strftime('%d/%m/%Y') %>"
+      },
+      url: "/tpa/tpa_details",
+      success: function(){
+        
+      }
+    })
+  })
+
+  // Initialize Trigger on Load
+  var params_tpa = $("#summary_tpa_today").find(".active").find("[data-tpa-id='<%= @tpa_id %>']")
+  var js_tpa = $("#summary_tpa_today").find(".active").find(".summary_tpa_clickable")
+  if(params_tpa.length > 0){
+    params_tpa.trigger('click');
+  } else {
+    if(js_tpa.length > 0){
+      js_tpa.first().trigger('click')
+    } else {
+      $("#tpa_summary").html("").css("background-color","transparent")
+    }
+  }
+
+  // Initialize Trigger on Change of Tabs
+  $(".full-width").find('a').on('click', function(){
+    var href = $(this).attr("href")
+    var tpa_list = $(href).find(".summary_tpa_clickable")
+    if(tpa_list.length > 0){
+      tpa_list.first().trigger('click')
+    } else {
+      $("#tpa_summary").html("").css("background-color","transparent")
+    }
+  })
+</script>

@@ -1,0 +1,2 @@
+module SubReferralTypeHelper
+end

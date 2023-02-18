@@ -1,0 +1,150 @@
+<div class="row">
+  <% if mail_job.present? %>
+    <% params_action = 'print_full_invoice' %>
+  <% else %>
+    <% params_action = params[:action] %>
+  <% end %>
+
+
+  <% if ( params_action == 'print_full_invoice' && @invoice.print_diagnosis_flag == true) || ( params_action != 'print_full_invoice' ) %>
+
+    <% if @visit_diagnoses.try(:size).to_i > 0 %>
+      <div class="col-md-6">
+        <b>Diagnosis/Significant Findings :</b>
+        <% if @visit_diagnoses.try(:length) > 0 %>
+          <% @visit_diagnoses.group_by(&:icddiagnosiscode).each do |icddiagnosiscode, diagnoses| %>
+            <% if diagnoses[0][:created_from] == "migration" %>
+              <li style="margin-left: 10px"> <%= diagnoses[0][:diagnosisname].capitalize %></li>
+            <% else %>
+              <% icd_type = diagnoses[0][:icd_type] %>
+              <% icd_code = diagnoses[0][:icddiagnosiscode] %>
+              <% if icd_type == 'IcdDiagnosis' || icd_type == 'TranslatedIcdDiagnosis' %>
+                <% diagnosiscode = '- ' + icd_code.upcase.insert(3, '.') %>
+              <% else %>
+                <% diagnosiscode = '' %>
+              <% end %>
+              <% if icd_type == 'TranslatedIcdDiagnosis' %>
+                <li style="margin-left: 10px"> <%= diagnoses[0][:diagnosisname].capitalize %><strong><%= diagnosiscode %></strong></li>
+              <% else %>
+                <li style="margin-left: 10px"> <%= diagnoses[0][:diagnosisoriginalname].capitalize %><strong><%= diagnosiscode %></strong></li>
+              <% end %>
+            <% end %>
+          <% end %>
+        <% else %>
+          None
+        <% end %>
+      </div>
+    <% end %>
+  <% end %>
+
+  <% if ( params_action == 'print_full_invoice' && @invoice.print_investigations_flag == true) || ( params_action != 'print_full_invoice' ) %>
+    <% if @visit_ophthal_investigations.try(:size).to_i > 0 %>
+      <div class="col-md-6">
+        <div class="row col-md-12 mb10">
+          <b>Ophthal Investigations: </b>
+
+          <% @visit_ophthal_investigations.each do |ophthal_investigation| %>
+            <li style="margin-left: 10px">
+              <span style=""><%= ophthal_investigation.investigationname.to_s + ', ' + ophthal_investigation.get_label_for_ophthal_investigation_side(ophthal_investigation.investigationside) %></span>
+              <% if ( params_action != 'print_full_invoice' ) %>
+                <strong>
+                  - <%= ophthal_investigation[:investigationstage] %>
+                </strong>
+              <% end %>
+            </li>
+          <% end %>
+
+        </div>
+      </div>
+    <% end %>
+
+
+    <% if @visit_laboratory_investigations.try(:size).to_i > 0 %>
+      <div class="col-md-6">
+        <div class="row col-md-12 mb10">
+          <b>Laboratory Investigations: </b>
+          <% @visit_laboratory_investigations.each do |laboratory_investigation| %>
+            <li style="margin-left: 10px">
+              <span style=""><%= laboratory_investigation.investigationname.to_s %></span>
+              <% if ( params_action != 'print_full_invoice' ) %>
+                <strong>
+                  - <%= laboratory_investigation[:investigationstage] %>
+                </strong>
+              <% end %>
+            </li>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+
+
+    <% if @visit_radiology_investigations.try(:size).to_i > 0 %>
+      <div class="col-md-6">
+        <div class="row col-md-12 mb10">
+          <b>Radiology Investigations: </b>
+          <% @visit_radiology_investigations.each do |radiology_investigation| %>
+            <li style="margin-left: 10px">
+              <span style=""><%= radiology_investigation.investigationname.to_s %></span>
+              <% if ( params_action != 'print_full_invoice' ) %>
+                <strong>
+                  - <%= radiology_investigation[:investigationstage] %>
+                </strong>
+              <% end %>
+            </li>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  <% end %>
+
+  <% if ( params_action == 'print_full_invoice' && @invoice.print_procedures_flag == true) || ( params_action != 'print_full_invoice' ) %>
+
+    <% if @visit_procedures.try(:size).to_i > 0 %>
+      <div class="col-md-6">
+        <div class="row col-md-12 mb10">
+          <b>Procedures/Surgery: </b>
+          <% if @visit_procedures.try(:length) > 0 %>
+            <% @visit_procedures.each do |procedure| %>
+              <li style="margin-left: 10px">
+                <%#= procedure.procedurename.capitalize %>
+                <% procedurecode = procedure.try(:procedurefullcode) %>
+                <% display_name = CustomCommonProcedure.find_by(code: procedurecode, organisation_id: @ipdrecord.try(:organisation_id)).try(:display_name) %>
+                <% if display_name.present? %>
+                  <%= display_name.capitalize %>
+                <% else %>
+                  <%= procedure.procedurename.capitalize %>
+                <% end %>
+
+                <% if procedure.procedureside == "8966001" %>
+                  , Left Eye
+                <% elsif procedure.procedureside == "18944008" %>
+                  , Right Eye
+                <% elsif procedure.procedureside == "40638003" %>
+                  , Both Eyes
+                <% end %>
+              </li>
+            <% end %>
+          <% else %>
+            None
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  <% end %>
+</div>
+
+
+<% if @visit_diagnoses.try(:size).to_i == 0 && @visit_procedures.try(:size).to_i == 0 && @visit_ophthal_investigations.try(:size).to_i == 0 && @visit_laboratory_investigations.try(:size).to_i == 0 && @visit_radiology_investigations.try(:size).to_i == 0 && params_action != 'print_full_invoice' %>
+  <div>
+    <span>No Data Found</span>
+  </div>
+<% end %>
+
+
+<script>
+  $('.minimize-patient-assessment-box').on('click', function(e){
+    e.preventDefault();
+    $(".patient-assessment-section").toggle();
+  })
+</script>

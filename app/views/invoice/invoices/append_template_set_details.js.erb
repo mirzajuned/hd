@@ -1,0 +1,152 @@
+var counter = 0
+jQuery(".i_description").each(function(i){
+  if ($(this).val().length > 0){
+    counter = counter+1
+    counter = parseInt(counter)
+  }
+})
+
+if (counter == 0) {
+  jQuery(".service_item_row_count").html("<%= escape_javascript(render 'invoice/invoices/append_template_set_details.html') %>")
+}
+else {
+  jQuery(".service_item_row_count").append("<%= escape_javascript(render 'invoice/invoices/append_template_set_details.html') %>")
+}
+
+
+<%#= render partial: 'invoice/invoices/invoice_calculations.js.erb', locals: { _type: 'opd', doctor: @appointment.try(:doctor), case_sheet_id: @appointment.try(:case_sheet_id) } %>
+<%= render partial: 'invoice/invoices/invoice_calculations.js.erb', locals: { _type: @invoice_type, doctor: @doctor, case_sheet_id: @case_sheet_id } %>
+
+$(".i_quantity").trigger("keyup")
+
+
+<%= render partial: "invoice/#{@invoice_type}/common_validation.js.erb" %>
+
+<% if @invoice_type == 'opd' %>
+  opd_invoice_page()
+<% else %>
+  ipd_invoice_page()
+<% end %>
+
+// get discount/offer buttons
+let i_description = $(".i_description")
+for (let i = i_description.length - 1; i >= 0; i--) {
+  var description_id = $(i_description[i]).val();
+  get_service_offer_count_template(description_id, 'invoice_service_item_row_'+i)
+}
+
+
+
+/* Re-Calculate Invoice Total
+re_calculate_offer_on_bill();
+// Reset Counter Logic
+// add_buttonset_at_last();
+change_invoice_total_payment()
+
+function re_calculate_offer_on_bill() {
+  let offer_discount_percentage = parseFloat($('.offer_percentage').val());
+  if(offer_discount_percentage > 0){
+    let invoice_gross_total = parseFloat($('.invoice_gross_total').val());
+    let total_discount = parseFloat($('.total_discount').val());
+    let service_offers = parseFloat($('.offer_on_services').val());
+    let discounted_amount = invoice_gross_total - (total_discount + service_offers)
+    let bill_offer_discount = parseFloat(parseFloat(discounted_amount)*parseFloat(offer_discount_percentage)/100).toFixed(2)
+    let final_offer_discount = parseFloat(parseFloat(service_offers) + parseFloat(bill_offer_discount)).toFixed(2);
+    let invoice_net_total = parseFloat(parseFloat(invoice_gross_total) - (parseFloat(total_discount) + parseFloat(final_offer_discount))).toFixed(2);
+    $('.total_offer').val(final_offer_discount);
+    $('.offer_on_bill').val(bill_offer_discount).trigger('change');
+    let net_total_rounded = Math.round(invoice_net_total)
+    $("#invoice_net_total").val(net_total_rounded).trigger("change")
+    let rounded_amount = (invoice_net_total - net_total_rounded).toFixed(2)
+    $("#round_amount").val(rounded_amount)
+  }
+}
+
+function remove_reset_logic() {
+  let allServiceRow = $(".invoice_service_item_row")
+  for (let i = 0; i < allServiceRow.length; i++) {
+    $(allServiceRow[i]).attr("id", "invoice_service_item_row_" + i)
+    $(allServiceRow[i]).find(".i_id").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][_id]")
+    $(allServiceRow[i]).find(".i_payer_master_id").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][payer_master_id]")
+    $(allServiceRow[i]).find(".i_description").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][description]")
+    $(allServiceRow[i]).find(".i_description").attr("id", "invoice_" + invoiceUType + "_services_"+ i +"_description")
+    $(allServiceRow[i]).find(".i_quantity").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][quantity]")
+    $(allServiceRow[i]).find(".i_unit_price").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][unit_price]")
+    $(allServiceRow[i]).find(".i_price").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][price]")
+    // adding discount related fields
+    $(allServiceRow[i]).find(".service_discount_amount").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][discount_amount]")
+    $(allServiceRow[i]).find(".service_discount_percentage").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][discount_percentage]")
+    $(allServiceRow[i]).find(".service_discount").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][discount]")
+    $(allServiceRow[i]).find(".service_discount").attr("id", "service_discount_" + i)
+    $(allServiceRow[i]).find(".service_discount_type").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][service_discount_type]")
+    $(allServiceRow[i]).find(".discount_reason").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][discount_reason]")
+    $(allServiceRow[i]).find(".net_item_price").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][net_item_price]")
+    $(allServiceRow[i]).find(".field_for_service_discount_amount").attr("id", "discount_amount_" + i)
+    $(allServiceRow[i]).find(".discount_reason").attr("id", "discount_reason_" + i)
+    // end adding discount related fields
+    // offer related fields
+    $(allServiceRow[i]).find(".service_offer_amount").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][offer_amount]")
+    $(allServiceRow[i]).find(".service_offer_manager_id").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][offer_manager_id]")
+    $(allServiceRow[i]).find(".service_offer_name").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][offer_name]")
+    $(allServiceRow[i]).find(".service_offer_code").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][offer_code]")
+    $(allServiceRow[i]).find(".service_offer_percentage").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][offer_percentage]")
+    $(allServiceRow[i]).find(".service_offer_applied_at").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][offer_applied_at]")
+    $(allServiceRow[i]).find(".service_offer_applied_at_name").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][offer_applied_at_name]")
+    $(allServiceRow[i]).find(".service_offer_applied_by").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][offer_applied_by]")
+    $(allServiceRow[i]).find(".service_offer_applied_by_name").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][offer_applied_by_name]")
+    $(allServiceRow[i]).find(".service_offer_applied_date").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][offer_applied_date]")
+    $(allServiceRow[i]).find(".service_offer_applied_datetime").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][offer_applied_datetime]")
+    $(allServiceRow[i]).find(".service_offer_applied_datetime").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][offer_applied_datetime]")
+    $(allServiceRow[i]).find(".field_for_service_offer").attr("id", "offer_" + i)
+    $(allServiceRow[i]).find(".field_for_service_offer_amount").attr("id", "offer_actions_" + i)
+    $(allServiceRow[i]).find(".add_item_offer").attr("href", offerUrl + 'service_id=' + $(allServiceRow[i]).find(".i_description").val() + '&row_count=' + i)
+    // end offer related fields
+    $(allServiceRow[i]).find(".i_price").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][price]")
+    $(allServiceRow[i]).find(".i_item_entry_date").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][item_entry_date]")
+    $(allServiceRow[i]).find(".i_entry_type").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][entry_type]")
+    $(allServiceRow[i]).find(".i_added_by_id").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][added_by_id]")
+    $(allServiceRow[i]).find(".i_advised_by_id").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][advised_by_id]")
+    $(allServiceRow[i]).find(".i_counselled_by_id").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][counselled_by_id]")
+    $(allServiceRow[i]).find(".i_sub_specialty_id").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][sub_specialty_id]")
+    $(allServiceRow[i]).find(".i_tax_preference").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][tax_preference]")
+    $(allServiceRow[i]).find(".i_taxable_amount").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][taxable_amount]")
+    $(allServiceRow[i]).find(".i_non_taxable_amount").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][non_taxable_amount]")
+    $(allServiceRow[i]).find(".i_exception_id").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][exception_id]")
+    $(allServiceRow[i]).find(".add-new-service-package").attr("id", invoiceUType + "-"+ i +"-add-services")
+    $(allServiceRow[i]).find(".dropdown-menu").attr("aria-labelledby", invoiceUType + "-"+ i +"-add-services-dropdown")
+
+    $(allServiceRow[i]).find(".show_breakup_in_print").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][show_breakup_in_print]")
+    $(allServiceRow[i]).find(".show_breakup_in_print_chk").attr("id", "invoice_" + invoiceUType + "_"+ i +"_show_breakup_in_print")
+    $(allServiceRow[i]).find(".show_breakup_in_print_lbl").attr("for", "invoice_" + invoiceUType + "_"+ i +"_show_breakup_in_print")
+
+    $(allServiceRow[i]).find(".i_service_name").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][name]")
+    $(allServiceRow[i]).find(".i_service_type").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][service_type]")
+  }
+  add_buttonset_at_last();
+}
+
+// Calculate Total Payment(Advance + Received + Pending)
+function change_invoice_total_payment(){
+  let invoice_advance_payment_total = parseFloat($("#invoice_advance_payment_total").val())
+  let invoice_payment_received_total = parseFloat($("#invoice_payment_received_total").val())
+  let invoice_payment_pending_total = parseFloat($("#invoice_payment_pending_total").val())
+  $("#invoice_total_payment").val(invoice_advance_payment_total + invoice_payment_received_total + invoice_payment_pending_total)
+
+  let invoice_total_payment_remaining = parseFloat($("#invoice_net_total").val()) - parseFloat($("#invoice_total_payment").val())
+  $("#invoice_total_payment_remaining").val(invoice_total_payment_remaining)
+}
+
+function add_buttonset_at_last() {
+  $('.service_row_count').find('.add-new-service-package').addClass("hidden")
+  $('.service_row_count').find('.add-new-service-package').last().removeClass("hidden")
+  let services_count = $(".service_item_row_count > div").length;
+  if (services_count == 1) {
+    $('.service_row_count').find('.remove_service').last().addClass("hidden")
+    $('.service_row_count').find('.add-new-service-package').last().removeClass("hidden")
+  } else {
+    $('.service_row_count').find('.remove_service').removeClass("hidden")
+  }
+}
+add_buttonset_at_last();
+
+*/

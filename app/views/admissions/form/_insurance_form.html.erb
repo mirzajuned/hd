@@ -1,0 +1,301 @@
+<%= hidden_field_tag "admission[insurance_status]", "Waiting", { class: 'form-control p7_10 insurance_status', id: "insurance_status" } %>
+<%= hidden_field_tag "admission[tpa_workflow_id]", @tpa_workflow.try(:id), { class: 'form-control p7_10 tpa_workflow_id', id: "tpa_workflow_id" } %>
+
+<div class="row mb5" style="">
+  <div class="col-sm-6"><span style="color:#000;font-weight: 700;font-size: 18px;">Cashless Hospitalisation</span></div>
+  <div class="col-sm-6">
+    <div class="rdio rdio-primary col-sm-6">
+      <%= radio_button_tag "admission[is_insured]", "No", false, { class: 'is_insured_field', id: "is_insured_false" } %>
+      <label for="is_insured_false">No</label>
+    </div>
+    <div class="rdio rdio-primary col-sm-6">
+      <%= radio_button_tag "admission[is_insured]", "Yes", true, { class: 'is_insured_field', id: "is_insured_true" } %>
+      <label for="is_insured_true">Yes</label>
+    </div>
+  </div>
+</div>
+
+<div class="tpa_form_checked">
+  <div class="row mb10">
+    <div class="col-sm-12"><b style="color:#000">Admission Type</b></div>
+    <div class="col-sm-12">
+      <div class="rdio rdio-primary col-sm-4">
+        <%= radio_button_tag "admission[admission_hospitalisation_type]", "planned", true, { class: 'hospitalization_type', id: "planned_hospitalization" } %>
+        <label for="planned_hospitalization">Planned</label>
+      </div>
+      <div class="rdio rdio-primary col-sm-4">
+        <%= radio_button_tag "admission[admission_hospitalisation_type]", "emergency", false, { class: 'hospitalization_type', id: "emergency_hospitalization" } %>
+        <label for="emergency_hospitalization">Emergency</label>
+      </div>
+      <div class="rdio rdio-primary col-sm-4">
+        <%= radio_button_tag "admission[admission_hospitalisation_type]", "same_day", false, { class: 'hospitalization_type', id: "same_day_hospitalization" } %>
+        <label for="same_day_hospitalization">Same Day</label>
+      </div>
+    </div>
+    <div class="col-sm-3">
+      <% if @current_insurances.count > 0 %><button class="btn btn-xs btn-primary add_new_policy"><i class="fa fa-plus-circle"></i> Add New Policy</button> <% end %>
+    </div>
+  </div>
+
+  <% if @current_insurances.count > 0 %>
+    <b style="color:#000;">Patient Insurances / Policies</b>
+    <table class="table" style="border-top:1px solid #000;border-bottom:1px solid #000;">
+      <thead>
+        <tr>
+          <th><b>Insurance Name</b></th>
+          <th><b>Policy No.</b></th>
+          <th><b>Expiry Date</b></th>
+        </tr>
+      </thead>
+      <tbody >
+        <% @current_insurances.each_with_index do |insurance, i| %>
+          <% if insurance.insurance_policy_expiry_date.present? %>
+            <tr>
+              <td>
+                <% disable_flag = if insurance.insurance_policy_expiry_date < Date.current then true else false end %>
+                <div class="rdio rdio-primary">
+                  <%= radio_button_tag "current_insurance", insurance.id, false, { class: 'current_insurance', id: "insurance_#{ insurance.id }", "insurance_name" => insurance.insurance_name, "contact" => insurance.insurance_contact_no, "address" => insurance.insurance_address, "insurance_email" => insurance.insurance_email, "insurance_contact_id" => insurance.try(:insurance_contact_id), "policy_no" => insurance.insurance_policy_no , "policy_expiry_date" => insurance.insurance_policy_expiry_date, "contact_person" => insurance.insurance_contact_person, :disabled => disable_flag  } %>
+                  <label for="insurance_<%=insurance.id%>"><%= insurance.insurance_name.truncate(35, separator: '') %></label>
+                </div>
+              </td>
+              <td style="padding-top: 12px;<%= "color: #999999;" if insurance.insurance_policy_expiry_date < Date.current %>"><%= insurance.insurance_policy_no %></td>
+              <td style="padding-top: 12px;<%= "color: red;font-weight: bolder;" if insurance.insurance_policy_expiry_date < Date.current %>"><%= insurance.insurance_policy_expiry_date.strftime("%d/%m/%Y") %></td>
+            </tr>
+          <% end %>
+        <% end %>
+      </tbody>
+    </table>
+   
+     <div class="col-sm-12" style="margin-bottom: 11px;margin-top: -18px;"><span style="color: red;font-size: 13px;"><b>Select any Insurance / Policy if using any existing one either new will be created.</b></span></div>
+  <% end %>
+  
+  <%= hidden_field_tag "admission[patient_insurance_id]", "", { class: "form-control insurance_selected_id" } %>
+  <%= hidden_field_tag "admission[hidden_insurance_contact_id]", "", { class: "form-control hidden_insurance_contact_id" } %>
+  <%= hidden_field_tag "admission[hidden_insurance_name]", "", { class: "form-control hidden_insurance_name" } %>
+  <%= hidden_field_tag "admission[hidden_insurance_contact_no]", "", { class: "form-control hidden_insurance_contact_no" } %>
+  <%= hidden_field_tag "admission[hidden_insurance_contact_person]", "", { class: "form-control hidden_insurance_contact_person" } %>
+  <%= hidden_field_tag "admission[hidden_insurance_address]", "", { class: "form-control hidden_insurance_address" } %>
+  <%= hidden_field_tag "admission[hidden_insurance_policy_no]", "", { class: "form-control hidden_insurance_policy_no" } %>
+  <%= hidden_field_tag "admission[hidden_insurance_policy_expiry_date]", "", { class: "form-control hidden_insurance_policy_expiry_date" } %>
+
+  <div class="patient_details">
+    <div class="row mb10">
+      <div class="col-sm-6">
+        <b style="color:#000;">Patient Contact Person</b>
+        <%= text_field_tag "admission[patient_contact_person]", @admission.try(:patient_contact_person), { class: 'form-control p7_10 patient_contact_person', id: "patient_contact_person", placeholder: "Patient Contact Person" } %>
+      </div>
+    </div>
+  </div>
+
+  <div class="insurance_details_section">
+    <div class="row mb10">
+      <div class="col-sm-6">
+        <b style="color:#000;">Insurance Name</b>
+        <%= select_tag "admission[insurance_contact_id]", options_for_select(@insurance_contacts.map { |insurance| [insurance.display_name, insurance.id, { "contact" => insurance.mobile_number, "address" => insurance.address_line_1.to_s + " "+ insurance.address_line_2.to_s + " "+ insurance.city.to_s + " "+ insurance.state.to_s, "email" => insurance.email }] }, @admission.try(:insurance_contact_id)), { class: "form-control insurance_contact_id disable_field", include_blank: "Select Insurance provider" } %>
+        <%= hidden_field_tag "admission[insurance_name]", "", { class: "form-control insurance_name" } %>
+        <%= hidden_field_tag "admission[insurance_email]", "", { class: "form-control insurance_email" } %>
+      </div>
+      <div class="col-sm-6">
+        <b style="color:#000;">Insurance Contact Number</b>
+        <%= text_field_tag "admission[insurance_contact_no]", @admission.try(:insurance_contact_no), { class: 'form-control p7_10 insurance_contact_no disable_field', id: "insurance_contact_no", placeholder: "Insurance Contact Number", maxlength: 10,  onkeypress: 'return event.charCode >= 48 && event.charCode <= 57' } %>
+      </div>
+    </div>
+    
+    <div class="row mb10">
+      <div class="col-sm-6">
+        <b style="color:#000;">Insurance Contact Person</b>
+        <%= text_field_tag "admission[insurance_contact_person]", @admission.try(:insurance_contact_person), { class: 'form-control p7_10 insurance_contact_person disable_field', id: "insurance_contact_person", placeholder: "Insurance Contact Person" } %>
+      </div>
+      <div class="col-sm-6">
+        <b style="color:#000;">Insurance Address</b>
+        <%= text_field_tag "admission[insurance_address]", @admission.try(:insurance_address), { class: 'form-control p7_10 insurance_address disable_field', id: "insurance_address", placeholder: "Insurance Address" } %>
+      </div>
+    </div>
+
+    <div class="row mb20">
+      <div class="col-sm-6">
+        <b style="color:#000;">Policy No.</b>
+        <%= text_field_tag "admission[insurance_policy_no]", @admission.try(:insurance_policy_no), { class: 'form-control p7_10 policy_no disable_field', id: "tpa_policy_no", placeholder: "Policy No." } %>
+      </div>
+      <div class="col-sm-6">
+        <b style="color:#000;">Policy Expiry Date</b>
+        <%= text_field_tag "admission[insurance_policy_expiry_date]", @admission.try(:insurance_policy_expiry_date), { class: 'form-control p7_10 policy_expiry_date disable_field', id: "policy_expiry_date" , readonly: true, style: 'cursor: pointer;background-color: #fff;' } %>
+      </div>
+    </div>
+  </div> 
+
+  <% if current_facility.country_id == "IN_108" %>
+    <div class="row mb10">
+      <div class="col-sm-6">
+        <b style="color:#000;">TPA Name</b>
+        <%= select_tag "admission[tpa_contact_id]", options_for_select(@tpa_contacts.map { |tpa| [tpa.display_name, tpa.id, { "contact" => tpa.mobile_number, "address" => tpa.address_line_1.to_s + " "+ tpa.address_line_2.to_s + " "+ tpa.city.to_s + " "+ tpa.state.to_s, "email" => tpa.email }] }, @admission.try(:tpa_contact_id)), { class: "form-control tpa_contact_id" , include_blank: "Select TPA provider" } %>
+        <%= hidden_field_tag "admission[tpa_name]", @admission.try(:tpa_name), { class: "form-control tpa_name" } %>
+        <%= hidden_field_tag "admission[tpa_email]", @admission.try(:tpa_email), { class: "form-control tpa_email" } %>
+      </div>
+      <div class="col-sm-6">
+        <b style="color:#000;">TPA Contact Number</b>
+        <%= text_field_tag "admission[tpa_contact_no]", @admission.try(:tpa_contact_no), { class: 'form-control p7_10 tpa_contact_no', id: "tpa_contact_no", placeholder: "TPA Contact Number", maxlength: 10,  onkeypress: 'return event.charCode >= 48 && event.charCode <= 57' } %>
+      </div>
+    </div>
+
+    <div class="row mb10">
+      <div class="col-sm-6">
+        <b style="color:#000;">TPA Contact Person</b>
+        <%= text_field_tag "admission[tpa_contact_person]", @admission.try(:tpa_contact_person), { class: 'form-control p7_10 tpa_contact_person', id: "tpa_contact_person", placeholder: "TPA Contact Person" } %>
+      </div>
+      <div class="col-sm-6">
+        <b style="color:#000;">TPA Address</b>
+        <%= text_field_tag "admission[tpa_address]", @admission.try(:tpa_address), { class: 'form-control p7_10 tpa_address', id: "tpa_address", placeholder: "TPA Address" } %>
+      </div>
+    </div>
+  <% end %>
+
+  <div class="row mb10">
+    <div class="col-sm-4"><b style="color:#000">Insurance Type</b></div>
+    <div class="col-sm-8">
+      <div class="rdio rdio-primary col-sm-6">
+        <%= radio_button_tag "admission[insurance_type]", "Personal", true, { class: 'insurer_field', id: "insurer_personal" } %>
+        <label for="insurer_personal">Personal</label>
+      </div>
+      <div class="rdio rdio-primary col-sm-6">
+        <%= radio_button_tag "admission[insurance_type]", "Company", false, { class: 'insurer_field', id: "insurer_company" } %>
+        <label for="insurer_company">Company</label>
+      </div>
+    </div>
+  </div>
+  
+  <div class="row mb10 insurer_company_fields">
+    <div class="col-sm-6">
+      <b style="color:#000;">Company Name</b>
+      <%= text_field_tag "admission[company_name]", @admission.try(:company_name), { class: 'form-control p7_10 company_name', id: "company_name", placeholder: "Company Name" } %>
+    </div>
+    <div class="col-sm-6">
+      <b style="color:#000;">Employee ID</b>
+      <%= text_field_tag "admission[employee_id]", @admission.try(:employee_id), { class: 'form-control p7_10 employee_id', id: "employee_id", placeholder: "Employee ID" } %>
+    </div>
+  </div>
+
+  <div class="row mb10">
+    <div class='col-sm-4'>
+      <b style="color:#000;">Sum Insured</b>
+      <%= number_field_tag "admission[sum_insured]", @admission.try(:sum_insured), { class: 'form-control p7_10 sum_insured', id: "sum_insured", placeholder: "Sum Insured" } %>
+    </div>
+    <div class="col-sm-8">
+      <b style="color:#000;">Comments</b>
+      <%= text_field_tag "admission[insurance_comments]", @admission.try(:insurance_comments), { class: 'form-control p7_10 insurance_comments', id: "insurance_comments", placeholder: "Comments (If Any)" } %>
+    </div>
+  </div>
+  
+  <div class="row">
+    <div class="col-sm-12"><b style="color:#000;">Document Recieved</b></div>
+    <% Global.government_document[current_facility.country_id].each do |document| %>
+      <div class="col-sm-6">
+        <div class="ckbox ckbox-primary mb5">
+          <% flag = (true if @admission.try(document[0].to_sym)) || false %>
+          <input type="hidden" name="admission[<%= document[0] %>]" value='false'>
+          <%= check_box_tag "admission[#{ document[0] }]", true, flag, { id: "doc_#{ document[0] }" } %>
+          <label for="doc_<%= document[0] %>"><%= document[1] %></label>
+        </div>
+      </div>
+    <% end %>
+    <% if current_facility.country_id == "IN_108" %>
+      <div class="col-sm-12">
+        <div class="ckbox ckbox-primary mb5">
+          <% flag = (true if @admission.try(:document_patient_cancelled_cheque)) || false %>
+          <input type="hidden" name="admission[document_patient_cancelled_cheque]" value='false'>
+          <%= check_box_tag 'admission[document_patient_cancelled_cheque]', true, flag, { id: "doc_patient_cancelled_cheque" } %>
+          <label for="doc_patient_cancelled_cheque">Cancelled Cheque of the patient's account to process the refund</label>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<script type="text/javascript">
+  $('.insurance_contact_id').select2()
+  $('.tpa_contact_id').select2()
+  $('.policy_expiry_date').datepicker({ 
+    minDate: 0, 
+    yearRange: "c:+20", 
+    dateFormat: "dd/mm/yy", 
+    changeMonth: true, 
+    changeYear: true
+  })
+
+  $('.add_new_policy').on('click', function(e) { 
+    e.preventDefault();
+    $('.current_insurance').removeAttr('checked', 'checked')
+    $(".disable_field").attr("disabled", false);
+    $('.insurance_address').attr("value", "")
+    $('.insurance_contact_no').attr("value", "")
+    $('.insurance_contact_person').attr("value", "")
+    $('.insurance_name').attr("value", "")
+    $('.insurance_email').attr("value", "")
+    $('.insurance_contact_id').attr("value", "")
+    $('.hidden_insurance_contact_id').val("")
+    $('.insurance_selected_id').attr("value", "")
+    $('.insurance_details_section').show()
+    $('.policy_expiry_date').attr("value", "")
+    $('.policy_no').attr("value", "")
+    $('.policy_expiry_date').css('background-color', '#fff')
+  })
+
+  $('.insurance_contact_id').on('change', function(e) { 
+    e.preventDefault();
+    var address = $(".insurance_contact_id option:selected").attr('address')
+    var contact = $(".insurance_contact_id option:selected").attr('contact')
+    var email = $(".insurance_contact_id option:selected").attr('email')
+    var insurance_name = $(".insurance_contact_id option:selected").text()
+    $('.hidden_insurance_contact_id').val($(".insurance_contact_id option:selected").val())
+    $('.insurance_address').val(address)
+    $('.insurance_contact_no').val(contact)
+    $('.insurance_name').val(insurance_name)
+    $('.insurance_email').val(email)
+  })
+
+ $('.tpa_contact_id').on('change', function(e) { 
+    e.preventDefault();
+    var tpa_contact_name = $(".tpa_contact_id option:selected").text()
+    var address = $(".tpa_contact_id option:selected").attr('address')
+    var contact = $(".tpa_contact_id option:selected").attr('contact')
+    var email = $(".tpa_contact_id option:selected").attr('email')
+    $('.tpa_address').val(address)
+    $('.tpa_name').val(tpa_contact_name)
+    $('#tpa_contact_no').val(contact)
+    $('.tpa_email').val(email)
+  })
+
+  $('.current_insurance').on('click', function(){ 
+    var patient_insurance_id = $(this).attr('value')
+    var address = $(this).attr('address')
+    var contact = $(this).attr('contact')
+    var contact_person = $(this).attr('contact_person')
+    var email = $(this).attr('insurance_email')
+    var insurance_contact_id = $(this).attr('insurance_contact_id')
+    var insurance_name = $(this).attr('insurance_name')
+    var policy_no = $(this).attr('policy_no')
+    var policy_expiry_date = $(this).attr('policy_expiry_date')
+    $('.insurance_address').val(address)
+    $('.insurance_contact_no').val(contact)
+    $('.insurance_contact_person').val(contact_person)
+    $('.insurance_name').val(insurance_name)
+    $('.insurance_email').val(email)
+    $('.insurance_contact_id').val(insurance_contact_id).trigger('change.select2');
+    $('.insurance_selected_id').val(patient_insurance_id)
+    $(".disable_field").attr("disabled", true);
+    var date = policy_expiry_date.split("-")
+    var new_date = date[2] + '/' +  date[1] + '/'+  date[0]
+    $('.policy_expiry_date').val(new_date)
+    $('.policy_no').val(policy_no)
+    $('.policy_expiry_date').css('background-color', '#eee')
+
+    // filling values on hidden insurance fields
+    $('.hidden_insurance_contact_id').val(insurance_contact_id)
+    $('.hidden_insurance_name').val(insurance_name)
+    $('.hidden_insurance_contact_no').val(contact)
+    $('.hidden_insurance_contact_person').val(contact_person)
+    $('.hidden_insurance_address').val(address)
+    $('.hidden_insurance_policy_no').val(policy_no)
+    $('.hidden_insurance_policy_expiry_date').val(new_date)
+  })
+</script>

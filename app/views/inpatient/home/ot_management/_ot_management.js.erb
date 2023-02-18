@@ -1,0 +1,233 @@
+// Partials
+$("div.buttonPlaceholder").append("<%= escape_javascript(render 'opd_appointments/calendar_controls') %>")
+$(".facility-filter").html("<%= escape_javascript(render 'opd_appointments/facilities_dropdown') %>")
+$(".department-filter").html("<%= escape_javascript(render 'opd_appointments/departments_dropdown') %>")
+$(".user-filter").html("<%= escape_javascript(render 'opd_appointments/users_dropdown') %>")
+$(".sidebar-summary").html("<%= escape_javascript(render 'inpatient/home/ot_management/sidebar_summary') %>");
+$(".sidebar-doctors").html("<%= escape_javascript(render 'inpatient/home/ot_management/sidebar_doctors') %>");
+$(document).ready(function(){
+  // Everything Related to Full Calender
+  asp_rat = $(".main_calendar").width() / (($(".main_calendar").height() - 50));
+  calendar_options = {
+    header: {
+      left:   'today',
+      center: 'prev title next',
+      right: 'agendaWeek,agendaDay'
+    },
+    //header: false,
+    slotDuration: '<%= Time.at(@user_default_slot_time.minutes).utc.strftime("%H:%M:%S") %>',
+    scrollTime :  '<%= Time.current.strftime("%H:%M:%S").to_s %>',
+    // height: "700",
+    editable: true,
+    defaultView: "agendaWeek",
+    allDaySlot: false,
+    slotEventOverlap: false,
+    eventLimit: true, // allow "more" link when too many events
+    selectable: true,
+    selectHelper: true,
+    unselectAuto: true,
+    aspectRatio: asp_rat,
+    firstDay: <%= Date.current.strftime("%w").to_i %>,
+    events: {
+      url: '/ipd_patients/otcalendar_data',
+      type: 'get',
+      data: function(){
+          return {
+              facility_id: $("#facility-filter").val(),
+              doctor_id: $(".current_doctor_ot > a").attr("data-doctor-id"),
+              department_id: $("#department-filter").val(),
+              user_id: $("#user-filter").val()
+          }
+      },
+      success: function(res){
+        updateSummary(res);
+      },
+      error: function() {
+          alert('there was an error while fetching events!');
+      }
+    },
+    // Select an empty event on Calender
+    select: function( start, end, jsEvent, view ){
+      $.ajax({
+        type: "get",
+        dataType: "script",
+        url: "/ipd_patients/addot",
+        data: {
+          remote: "true",
+          'toggle': "modal",
+          'target': '#appointment-modal',
+          'otdate':start.format('DD/MM/YYYY'),
+          'ottime':start.format('HH:mm'),
+          'otendtime':end.format('HH:mm')
+        }
+      })
+    },
+    // When Event Is Clicked
+    eventClick: function(calEvent, jsEvent, view) {
+      $(".summary_ot[data-ot-id='" + calEvent.ot_id + "']").trigger('click');
+    },
+    // When Event Times are Changed(Resized)
+    eventResize: function(event, delta, revertFunc, jsEvent, ui, view ) {
+      $.ajax({
+        type: "GET",
+        url: "/ipd_patients/edit_otcalendar_event",
+        data: {
+          ot_id: event.ot_id,
+          ot_new_start: event.start.format(),
+          ot_new_end: event.end.format()
+        },
+        success: function(res){
+          $("#ot-calendar").fullCalendar('refetchEvents');
+        },
+        error: function(err){
+        }
+      });
+    },
+    // When Event is dropped(moved)
+    eventDrop: function(event, delta, revertFunc, jsEvent, ui, view  ) {
+      $.ajax({
+        type: "GET",
+        url: "/ipd_patients/edit_otcalendar_event",
+        data: {
+          ot_id: event.ot_id,
+          ot_new_start: event.start.format(),
+          ot_new_end: event.end.format()
+        },
+        success: function(res){
+          $("#ot-calendar").fullCalendar('refetchEvents');
+        },
+        error: function(err){
+        }
+      });
+    },
+  }
+
+  $("#ot_calendar").fullCalendar(calendar_options);
+  // Update Side Summary
+  function updateSummary(arr){
+    $(".ot_type_content").html("");
+    $(".ot_later").html("");
+    $(".ot_past").html("");
+    date = new Date()
+    today = moment(date).format("MM-DD-YYYY");
+    // yesterday = moment(date.setDate(date.getDate() - 1)).format("MM-DD-YYYY");
+    ot_today = []
+    ot_later = []
+    ot_past = []
+    for (var i = arr.length - 1; i >= 0; i--) {
+      if(today == moment(new Date(arr[i].start)).format("MM-DD-YYYY")){
+        ot_today.push(arr[i]);
+        createSummaryOt(arr[i], '.ot_today #ot_scheduled');
+      } else if(today < moment(new Date(arr[i].start)).format("MM-DD-YYYY")) {
+        ot_later.push(arr[i]);
+        createSummaryOt(arr[i], '.ot_later');
+      } else {
+        ot_past.push(arr[i]);
+        createSummaryOt(arr[i], '.ot_past');
+      }
+    }
+    activateSummaryOt();
+
+    //Update already exisiting modal's content
+    if (($("#modalCalendarOtDetails").data('bs.modal') || {}).isShown){
+      var ot_id = $("#modalCalendarOtDetails").find("#modalCalendarOtDetailsId").attr('data-ot-id');
+
+      // $("#modalCalendarOtDetails").modal('hide');
+      // $(".summary_ot[data-ot-id='" + ot_id + "']").trigger('click');
+
+      $("#modalCalendarOtDetailsBody").html("<div class='loading_dots'><span></span>&nbsp;<span></span>&nbsp;<span></span></div>");
+      // $("#modalCalendarOtDetails").modal('show');
+      $.ajax({
+        url: "/ipd_patients/calendar_ot_details",
+        data: {
+          ot_id: ot_id
+        },
+        dataType: 'html',
+        success: function(res){
+          $("#modalCalendarOtDetails").find("#modalCalendarOtDetailsBody").html(res);
+        },
+        error: function(err){
+        }
+      });
+    }
+  }
+
+  function createSummaryOt(ot, container){
+    assigned_time = moment(ot.end).diff(moment(ot.start), 'minutes')
+    var row = $('<div/>', {
+      class: 'row no_margin summary_ot',
+      'data-ot-id': ot.ot_id
+      // 'data-content': 'Popover'
+    }).appendTo(container);
+    $(row).css("border", "1px solid " + ot.backgroundColor).css("border-left", "3px solid " + ot.backgroundColor)
+
+    var name = $('<div/>', {
+      class: 'col-sm-5 no_padding'
+    }).appendTo(row);
+
+    $('<span/>',{
+      text: ot.title
+    }).appendTo(name);
+
+    $('<div/>', {
+      class: 'col-sm-4 no_padding text-right',
+      text: moment(ot.start).format("hh:mm A (DMMM)")
+    }).appendTo(row);
+
+    badge_div = $('<div/>', {
+      class: 'col-sm-3 no_padding text-right',
+    }).appendTo(row);
+
+    $('<span/>', {
+      class: 'badge',
+      text: assigned_time + " M"
+    }).appendTo(badge_div); 
+  }
+
+  function activateSummaryOt(){
+    // $(".summary_ot").on('click', function(e){
+    // e.preventDefault();
+    // $(".summary_ot").popover({
+    //   title: 'Appointment Actions',
+    //   placement: "bottom",
+    //   trigger: 'manual'
+    // });
+    $('#modalCalendarOtDetails').unbind('hidden.bs.modal');
+    $(".summary_ot").on('click', function(e){
+      $("#modalCalendarOtDetailsBody").html("<div class='loading_dots'><span></span>&nbsp;<span></span>&nbsp;<span></span></div>");
+      $("#modalCalendarOtDetails").modal('show');
+      ot_id = $(this).attr('data-ot-id');
+
+      $.ajax({
+        url: "/ipd_patients/calendar_ot_details",
+        data: {
+          ot_id: ot_id
+        },
+        dataType: 'html',
+        success: function(res){
+          $("#modalCalendarOtDetails").find("#modalCalendarOtDetailsBody").html(res);
+        },
+        error: function(err){
+        }
+      })
+    });
+  }
+
+  $("#sidebar_doctors .nav li.sidebar-doctor-filter").on('click', function(e){
+    $(this).siblings('li').removeClass("active current_doctor_ot");
+    $(this).addClass("active current_doctor_ot");
+    $("#ot-calendar").fullCalendar('refetchEvents');
+  });
+
+  $(document).on('show.bs.modal', '.modal', function (event) {
+    var zIndex = 1040 + (10 * $('.modal:visible').length);
+    $(this).css('z-index', zIndex);
+    setTimeout(function() {
+      $('.modal-backdrop').not('.modal-stack').css('z-index', zIndex - 1).addClass('modal-stack');
+    }, 0);
+  });
+
+  // $(".ot-modal-refresh").on("hidden.bs.modal", function(){
+  //   $("#ot-calendar").fullCalendar('refetchEvents');
+  // });
+});

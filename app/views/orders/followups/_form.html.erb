@@ -1,0 +1,130 @@
+<div class="row" style="margin-bottom: 10px;">
+  <div class="col-sm-2" style="margin-top: 10px;">
+    Counselled by:
+  </div>
+  <div class="col-sm-3">
+    <%= f.select :counselled_by_id, options_for_select(@counsellors&.map{|c| [c.fullname, c.id.to_s] }, current_user.id.to_s),{include_blank: false}, {:class => "form-control"} %>
+  </div>
+</div>
+<h5 style="width: 100%;background-color: #31b0d5;padding: 10px;color: #fff;">Procedure Orders and statuses:</h5>
+<!--<ul class="nav nav-pills nav-justified" style="width: 20%">-->
+<!--  <li role="presentation" class="active"><a href="#procedures" data-toggle="tab">Procedures</a></li>-->
+<!--  <li role="presentation"><a href="#investigations" data-toggle="tab">Investigations</a></li>-->
+<!--</ul>-->
+<hr style="margin:0;border: 0.5px solid #e3e3e3;"/>
+<div class="tab-content admission-form-body">
+  <div class="tab-pane active" id="procedures">
+    <div class="row" style="color: #333;">
+      <div class="col-sm-1"></div>
+      <div class="col-sm-3"><strong>Procedure - Order</strong></div>
+      <div class="col-sm-3"><strong>Advised by</strong></div>
+      <div class="col-sm-2"><strong>Current Status</strong></div>
+      <div class="col-sm-3"><strong>Existing Upcoming Followups</strong></div>
+    </div>
+    <% if @order_procedures.length > 0 %>
+      <% @order_procedures.each do |procedure| %>
+        <% followups = @followups.where(order_advised_ids: procedure.id.to_s) %>
+        <% folloupdates = followups.map{|f| "#{f.followup_date.strftime("%d%b'%Y")} at #{f.followup_time}" }.join(" | ") %>
+        <div class="row">
+          <div class="col-sm-1"><input type="checkbox" <%= @order_followup.order_advised_ids.include?(procedure.id.to_s) ? 'checked' : '' %> data-id="<%= procedure.id.to_s %>" class="orders-procedures" /></div>
+          <div class="col-sm-3">
+            <strong><%= procedure.procedurename %> - <%= procedure.get_label_for_side(procedure.procedureside) %></strong>
+          </div>
+            
+          <div class="col-sm-3">
+            <%= procedure.advised_by %>(<%= procedure.advised_datetime.strftime('%I:%M %p, %d %b %y') %>)
+          </div>
+          <div class="col-sm-2" style="text-align: center;"><%= procedure.status %></div>
+          <div class="col-sm-3">
+            <%= folloupdates %>
+          </div>
+        </div>
+      <% end %>
+    <% else %>
+      <div class="row" style="text-align: center">No Data Found</div>
+    <% end %>
+  </div>
+<!--  <div class="tab-pane" id="investigations">-->
+<!--    <div class="row" style="text-align: center">No Data Found</div>-->
+<!--    <table id="followup-investiations-table" class="table table-striped table-bordered"></table>-->
+<!--  </div>-->
+</div>
+<div class="form-container">
+  <div style="text-align: right; margin-top: 10px">
+    <h5 style="width: 100%;background-color: #31b0d5;padding: 10px;color: #fff;">Followup Details:</h5>
+    <div class="row">
+      <div class="col-sm-5" style="margin-top: 10px;">
+        <div class="row orders-count" style="padding: 10px;color: #ff0000;">
+        </div>
+        <div class="row">
+          <%= f.hidden_field :counselling_date, value: Time.current %>
+          <div class="col-sm-6">
+            <%#= f.select :counselling_by_id, options_for_select(@counsellors&.map { |counsellor| [counsellor.fullname, counsellor.id] }, current_user.id.to_s),{include_blank: false}, {:class => "form-control"} %>
+          </div>
+        </div>
+        <div class="row">
+          <%= f.text_area :followup_notes, {:class => "form-control", placeholder: 'Followup Notes', style: "width: 96.5%;margin-left: 10px;margin-top: 10px;"} %>
+        </div>
+      </div>
+      <div class="col-sm-7">
+        <div style="background-color: #eee;padding: 10px;margin-top: 10px; width: 100%;">
+          <div class="row" style="margin-top: 10px">
+            <div class="col-sm-4">
+              Followup Date and Time:
+            </div>
+            <div class="col-sm-4">
+              <%= f.input :followup_date,label: false, input_html: {class: 'form-control', readonly: true, autocomplete: 'off', value: @order_followup.followup_date&.strftime("%d/%m/%Y")}%>
+            </div>
+            <div class="col-sm-4">
+              <%= f.input :followup_time, label: false, input_html: {class: 'form-control', readonly: true}%>
+            </div>
+          </div>
+          <div class="row" style="margin-top: 10px">
+            <div class="col-sm-4">
+              Followup Type:
+            </div>
+            <div class="col-sm-8" style="display: flex; justify-content: space-around">
+              <div class="rdio rdio-primary">
+                <%= f.radio_button :followup_type, 'in_person', {:class => "patient-gender"} %>
+                <label for="order_followup_followup_type_in_person">In-Person</label>
+              </div>
+              <div class="rdio rdio-primary">
+                <%= f.radio_button :followup_type, 'over_phone', {:class => "patient-gender"} %>
+                <label for="order_followup_followup_type_over_phone">Over Phone</label>
+              </div>
+            </div>
+          </div>
+          <div class="row" style="margin-top: 10px; display: none">
+            <div class="col-sm-4">
+              Followup Reasons:
+            </div>
+            <div class="col-sm-8">
+              <%= f.select :followup_reasons, options_for_select(["Reason 1", "Reason 2", "Reason 3"], selected: @order_followup.followup_reasons), {include_blank: ''}, {multiple: true, class: "form-control"} %>
+            </div>
+          </div>
+          <div class="row" style="margin-top: 10px">
+            <div class="col-sm-4">
+              Counsellor:
+            </div>
+            <div class="col-sm-8">
+              <%= f.select :followup_for_id, options_for_select(@counsellors&.map { |counsellor| [counsellor.fullname, counsellor.id] }, current_user.id.to_s),{include_blank: false}, {:class => "form-control"} %>
+            </div>
+          </div>
+          <!-- <div class="row" style="margin-top: 10px">
+            <div class="col-sm-4"></div>
+            <div class="col-sm-1" style="">
+              <%#= f.check_box :create_appointment, {:class => "form-control", :checked => f.object.create_appointment }, true, false %>
+            </div>
+            <div class="col-sm-4">
+              <label for="order_followup_create_appointment" >Create Appointment</label>
+            </div>
+          </div> -->
+        </div>
+      </div>
+    </div>
+    <div style="text-align: right; margin-top: 10px">
+      <%= f.submit submit_btn, class: 'btn btn-md btn-success'%>
+      <button type="button" data-dismiss="modal" class="btn btn-default">Cancel</button>
+    </div>
+  </div>
+</div>

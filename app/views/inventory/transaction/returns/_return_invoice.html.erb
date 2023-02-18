@@ -1,0 +1,280 @@
+<%= javascript_include_tag "application-loggedin", "data-turbolinks-track" => true %>
+<% currency_symbol = (@inventory_return_invoice.currency_symbol || current_facility.currency_symbol) %>
+<% currency_id = (@inventory_return_invoice.currency_id || current_facility.currency_id) %>
+<div class="modal-dialog" style="width: 70%">
+  <%= form_for @return_transaction, remote: true , html: { id: "inventory_return_transactions_form" } do |f| %>
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+        <h4 class="modal-title" style="color: #1E90FF;font-weight: bold;">Invoice for <%= @patient.fullname&.titleize %></h4>
+      </div>
+      <div class="modal-body window-body">
+        <div class="row">
+          <div class="col-sm-8">
+            <strong>Note</strong><br>
+            <%= f.text_field :note, { class: 'form-control p7_10 fullname', placeholder: "Return Note", required: true } %>
+          </div>
+          <div class="col-sm-4">
+            <strong>Return Date</strong><br>
+            <%= f.text_field :return_date, { value: Date.current.strftime("%d/%m/%Y"), class: 'form-control p7_10 fullname transaction-datepicker', placeholder: "Date of transition", readonly: 'readonly' } %>
+          </div>
+          <% pat_identifier = PatientIdentifier.find_by(patient_id: @patient.id)&.patient_org_id %>
+          <%= f.hidden_field :entry_type, { value: "return" } %>
+          <%= f.hidden_field :return_time, { value: Time.now } %>
+          <%= f.hidden_field :currency_symbol, { value: currency_symbol } %>
+          <%= f.hidden_field :currency_id, { value: currency_id } %>
+          <%= f.hidden_field :entered_by, { value: current_user.fullname } %>
+          <%= f.hidden_field :user_id, { value: current_user.id } %>
+          <%= f.hidden_field :store_id, { value: @store_id } %>
+          <%= f.hidden_field :store_name, { value: @inventory_store.name } %>
+          <%= f.hidden_field :facility_id, { value: current_facility.id } %>
+          <%= f.hidden_field :organisation_id, { value: current_user.organisation_id } %>
+          <%= f.hidden_field :patient_id, value: @patient.id %>
+          <%= f.hidden_field :recipient, value: @patient.fullname %>
+          <%= f.hidden_field :recipient_mobile, value: @patient.mobilenumber %>
+          <%= f.hidden_field :department_name, value: @inventory_store.department_name %>
+          <%= f.hidden_field :department_id, value: @inventory_store.department_id %>
+          <%= f.hidden_field :patient_identifier, value: pat_identifier %>
+          <%= f.hidden_field :invoice_id, value: @inventory_return_invoice.id %>
+          <%= f.hidden_field :specialty_id, value: @inventory_return_invoice.specialty_id %>
+          <%= f.hidden_field :return_type, value: "return_against_invoice" %>
+          <%= f.hidden_field :mode_of_payment, value: "Cash" %>
+          <%= f.hidden_field :invoice_received_amount, value: @inventory_return_invoice.payment_received %>
+          <%= f.hidden_field :invoice_total_amount, value: @inventory_return_invoice.net_amount %>
+          <% discount_percentage = @inventory_return_invoice.total_of_all_discount/(@inventory_return_invoice.total) %>
+          <%= f.hidden_field :invoice_discount_percentage, value: discount_percentage %>
+        </div><br>
+        <div class="row">
+          <h4 style="margin-top:0; color: #1E90FF;">Item Details:</h4>    
+        </div>
+        <div class="row">
+          <table class="table table-bordered table-striped transfer-transaction-log-item text-center">
+            <thead>
+              <tr>
+                <th style="text-align: center; background-color: #8c95b3; color: white;">Description</th>
+                <th style="text-align: center; background-color: #8c95b3; color: white;">Billed Qty.</th>
+                <th style="text-align: center; background-color: #8c95b3; color: white;">Return Qty.</th>
+                <th style="text-align: center; background-color: #8c95b3; color: white;">Batch No.</th>
+                <th style="text-align: center; background-color: #8c95b3; color: white;">Model No.</th>
+                <th style="text-align: center; background-color: #8c95b3; color: white;">U.Price With Tax</th>
+                <th style="text-align: center; background-color: #8c95b3; color: white;">Tax</th>
+                <th style="text-align: center; background-color: #8c95b3; color: white;">Discount</th>
+                <th style="text-align: center; background-color: #8c95b3; color: white;">Return Amt.</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @inventory_return_invoice.items.each_with_index do |item, i| %>
+                <tr class="return-medicine tr-receive-<%= item.lot_id.to_s %>">
+                  <% @item = Inventory::Item.find(item.item_id) %>
+                  <% @lot = Inventory::Item::Lot.find(item.lot_id) %>
+                  <% @variant = Inventory::Item::Variant.find(item.variant_id) %>
+                  <!-- hidden fields start -->
+                  <input type="hidden" name="inventory_transaction_return[items_attributes][<%= i%>][item_code]" value="<%= @variant.item_code %>">
+                  <input type="hidden" name="inventory_transaction_return[items_attributes][<%= i%>][variant_code]" value="<%= @variant.variant_code %>">
+                  <input type="hidden" name="inventory_transaction_return[items_attributes][<%= i%>][item_id]" value="<%= @variant.item_id %>">
+                  <input type="hidden" name="inventory_transaction_return[items_attributes][<%= i%>][lot_id]" value="<%= @lot.id %>">
+                  <input type="hidden" name="inventory_transaction_return[items_attributes][<%= i%>][variant_id]" value="<%= @variant.id %>">
+                  <input type="hidden" name="inventory_transaction_return[items_attributes][<%= i%>][category]" value="<%= @variant.category %>">
+                  <input type="hidden" name="inventory_transaction_return[items_attributes][<%= i%>][barcode]" value="<%= @variant.barcode %>">
+                  <input type="hidden" name="inventory_transaction_return[items_attributes][<%= i%>][barcode_present]" value="<%= @variant.barcode_present %>">
+                  <input type="hidden" name="inventory_transaction_return[items_attributes][<%= i%>][variant_reference_id]" value="<%= @variant.reference_id %>">
+                  <input type="hidden" name="inventory_transaction_return[items_attributes][<%= i%>][item_reference_id]" value="<%= @item.reference_id %>">
+                  <input type="hidden" name="inventory_transaction_return[items_attributes][<%= i%>][lot_reference_id]" value="<%= @lot.reference_id %>">
+                  <input type="hidden" name="inventory_transaction_return[items_attributes][<%= i%>][facility_id]" value="<%= item.facility_id %>">
+                  <input type="hidden" name="inventory_transaction_return[items_attributes][<%= i%>][store_id]" value="<%= item.store_id %>">
+                  <input type="hidden" name="inventory_transaction_return[items_attributes][<%= i%>][organisation_id]" value="<%= item.organisation_id %>">
+                  <input type="hidden" name="inventory_transaction_return[items_attributes][<%= i%>][search]" value="<%= @lot.search %>">
+                  <input type="hidden" name="inventory_transaction_return[items_attributes][<%= i%>][variant_identifier]" value="<%= @lot.variant_identifier %>">
+                  <input type="hidden" name="inventory_transaction_return[items_attributes][<%= i%>][mark_up]" value="<%= @lot.mark_up %>">
+                  <input type="hidden" name="inventory_transaction_return[items_attributes][<%= i%>][mrp]" value="<%= @lot.mrp %>">
+                  <input type="hidden" name="inventory_transaction_return[items_attributes][<%= i%>][unit_taxable_amount]" value="<%= item.unit_taxable_amount %>">
+                  <input type="hidden" name="inventory_transaction_return[items_attributes][<%= i%>][tax_rate]" value="<%= @lot.tax_rate %>">
+                  <input type="hidden" name="inventory_transaction_return[items_attributes][<%= i%>][tax_name]" value="<%= @lot.tax_name %>">
+                  <input type="hidden" name="inventory_transaction_return[items_attributes][<%= i%>][tax_group_id]" value="<%= item.tax_group_id %>">
+                  <input type="hidden" name="inventory_transaction_return[items_attributes][<%= i%>][tax_inclusive]" value="<%= item.tax_inclusive %>" class='item-tax-inclusive'>
+                  <input type="hidden" name="inventory_transaction_return[items_attributes][<%= i%>][vendor_name]" value="<%= @lot.vendor_name %>">
+                  <input type="hidden" name="inventory_transaction_return[items_attributes][<%= i%>][vendor_id]" value="<%= @lot.vendor_id %>">
+                  <input type="hidden" name="inventory_transaction_return[items_attributes][<%= i%>][description]" value="<%= item.description %>">
+                  <input type="hidden" name="inventory_transaction_return[items_attributes][<%= i%>][_destroy]" value="0">
+                  <input type="hidden" name="inventory_transaction_return[items_attributes][<%= i%>][batch_no]" value="<%= item.batch_no %>">
+                  <input type="hidden" name="inventory_transaction_return[items_attributes][<%= i%>][self_batched]" value="<%= item.self_batched %>">
+                  <input type="hidden" name="inventory_transaction_return[items_attributes][<%= i%>][expiry_present]" value="<%= @lot.expiry_present %>">
+                  <input type="hidden" name="inventory_transaction_return[items_attributes][<%= i%>][is_verified]" value="true">
+                  <input type="hidden" name="inventory_transaction_return[items_attributes][<%= i%>][model_no]" value="<%= @lot.model_no %>">
+                  <input type="hidden" name="inventory_transaction_return[items_attributes][<%= i%>][expiry]" value="<%= @lot.expiry %>">
+                  <input type="hidden" name="inventory_transaction_return[items_attributes][<%= i%>][sub_store_id]" value="<%= @lot.sub_store_id %>">
+                  <input type="hidden" name="inventory_transaction_return[items_attributes][<%= i%>][sub_store_name]" value="<%= @lot.sub_store_name %>">
+                  <!-- hidden fields end -->
+                  <td>
+                    <%= item.description&.capitalize %>
+                    <p style="font-size: 10px;font-style: italic;"><%= item.expiry.try(:strftime, "%d/%m/%Y") %></p>
+                  </td>
+                  <td>
+                    <input type="number" name="" readonly="readonly" class="quantity form-control" value="<%= item.quantity.to_f %>" style='margin: auto;'>
+                  </td>
+                  <% unless Inventory::Item.find(item.item_id).nil? %>
+                    <td>
+                      <% readonly = item.lot_unit_ids.present? ? true : false %>
+                      <div class="col-xs-6">
+                        <% if readonly %>
+                          <input type="number" maxlength="10" name="inventory_transaction_return[items_attributes][<%= i%>][stock]" class="form-control item_quantity" id="inventory_transaction_return_items_attributes_<%= i %>_stock" onkeypress= 'return event.charCode >= 48 && event.charCode <= 57' style="width: 80px;height: 30px;margin: auto;" readonly="readonly">
+                        <% else %>
+                          <input type="number" maxlength="10" name="inventory_transaction_return[items_attributes][<%= i%>][stock]" class="form-control item_quantity" id="inventory_transaction_return_items_attributes_<%= i %>_stock" style="width: 80px;height: 30px;margin: auto;">
+                        <% end %>
+                        <input type="hidden" value="<%= item.quantity.to_f %>" class="item_max_quantity">
+                      </div>
+                      <div class="col-xs-6">
+                        <% if readonly %>
+                          <input type="hidden" name="" class="index-val" value="<%= i %>">
+                          <select multiple="multiple" style="display: none;" class="selected-lot-units" name="inventory_transaction_return[items_attributes][<%= i %>][lot_unit_ids][]" id="inventory_transaction_transfer_items_attributes_<%= i %>_lot_unit_ids"><option></option></select>
+                          <% lot_unit_ids = item.lot_unit_ids %>
+                          <%= link_to filter_item_inventory_transaction_returns_path(selected_lot_unit_ids:[], lot_unit_ids: lot_unit_ids, tr_class_val: "tr-receive-#{item.lot_id.to_s}"), id: '', data: { remote: true, toggle: 'modal', target: '#add-unit-lot-modal' }, class: "btn btn-xs tr-receive-#{item.lot_id.to_s}" do %><i class="fa fa-edit"></i><% end %>
+                        <% end %>
+                      </div>
+                    </td>
+                  <% else %>
+                    <td><input type="number" name="" readonly="readonly" class="form-control" id="return_quantity_<%= i %>" title="Item not in our system"></td>
+                  <% end %>
+                  <td><%= item.batch_no %></td>
+                  <td><%= item.model_no %></td>
+                  <td>
+                    <% item_without_tax = item.unit_non_taxable_amount - (discount_percentage*item.unit_non_taxable_amount) %>
+                    <% list_price = item.list_price || 0.0 %>
+                    <div><%= number_with_precision list_price, precision: 2 %></div>
+                    <div class="item_unit_taxable_amount_label" style="display: none;"><%= item_without_tax.round(2) %></div>
+                    <input type="hidden" name="inventory_transaction_return[items_attributes][<%= i%>][unit_non_taxable_amount]" value="<%= item_without_tax %>" class="item_unit_taxable_amount">
+                    <input type="hidden" name="inventory_transaction_return[items_attributes][<%= i%>][total_tax_amount]" value="0" class="item_total_tax_amount">
+                    <div class="tax-groups">
+                      <% item.tax_group.each_with_index do |group, count| %>
+                        <div class="tax_group" group-index="<%=count%>" data-amount="<%=group[:amount]%>">
+                          <input type="hidden" class="item-tax-group-id" name="inventory_transaction_return[items_attributes][<%= i%>][tax_group][][_id]" value="<%=group[:_id]%>" >
+                          <input type="hidden" class="item-tax-group-name" name="inventory_transaction_return[items_attributes][<%= i%>][tax_group][][name]" value="<%=group[:name]%>" >
+                          <input type="hidden" class="item-tax-group-amount" name="inventory_transaction_return[items_attributes][<%= i%>][tax_group][][amount]" value="0" >
+                          <input type="hidden" class="actual-tax-amount" value="0">
+                        </div> 
+                      <% end %>
+                    </div>
+                  </td>
+                  <td style="text-align: center;">
+                    <div class="item-tax-amount">0</div>
+                    <input class="discount_amount" type="hidden" name="inventory_transaction_return[items_attributes][<%= i %>][discount_amount]" value="0" >
+                    <div style="font-size: 10px;font-style: italic;">(<%= item.tax_rate %>% - <%= item.tax_inclusive? ? 'Inc.' : 'Exc.' %>)</div>
+                  </td>
+                  <td style="text-align: center;">
+                    <div class="item-discount">0</div>
+                    <input type="hidden" class="item-discount-input" name="inventory_transaction_return[items_attributes][<%= i %>][discount_display_amount]">
+                    <div style="font-size: 10px;font-style: italic;">(<%= (discount_percentage*100).round(2)%>%)</div>
+                  </td>
+                  
+                  <td>
+                    <div class="price_including_tax_label" style="text-align: center;"></div>
+                    <input readonly="readonly" class="price_including_tax form-control" size="5" style="width:100%;text-align:left; height: 30px" type="hidden" name="inventory_transaction_return[items_attributes][<%= i %>][total_cost]" id="inventory_transaction_return_items_attributes_<%= i %>_total_cost" value="0" aria-invalid="false">
+                    <input type="hidden" name="inventory_transaction_return[items_attributes][<%= i%>][list_price]" value="<%= list_price %>" class="item_unit_cost">
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="tax_breakups" >
+          <% @inventory_return_invoice.tax_breakup.each_with_index do |breakup, index| %>
+            <div class="tax-breakup-<%=index%>">
+              <input class="tax_group_id_<%= breakup[:_id]%>" value="<%= breakup[:_id]%>" type="hidden" name="inventory_transaction_return[tax_breakup][][_id]">
+              <input  class="tax_group_id_<%= breakup[:_id]%>" value="<%= breakup[:name]%>" type="hidden" name="inventory_transaction_return[tax_breakup][][name]">
+              <input class="tax_group_amount_<%= breakup[:_id]%> tax-breakup-amount" value="0" type="hidden" name="inventory_transaction_return[tax_breakup][][amount]">
+              <input value="<%= breakup[:tax_rate]%>" type="hidden" name="inventory_transaction_return[tax_breakup][][tax_rate]">
+              <input value="<%= breakup[:tax_type]%>" type="hidden" name="inventory_transaction_return[tax_breakup][][tax_type]">
+              <input value="0" type="hidden" name="inventory_transaction_return[tax_breakup][][taxable_amount]" class="tax-breakup-taxable taxable_amount_<%= breakup[:_id]%>">
+            </div>
+          <% end %>
+          <input value="0" type="hidden" name="inventory_transaction_return[taxable_amount]" id ="total_taxable_amount">
+        </div>
+
+        <div class="row">
+          <div class="col-sm-6">
+            <%# @mop_list = ["", "Cash", "Others"] %>
+            <% @mop_list = Invoice::InvoicesHelper.mop_list(current_facility.country_id) %>
+            <div class="col-sm-4"> <b>Mode of Payment </b></div>
+            <div class="col-sm-2 text-center">:</div>
+            <div class="col-sm-6">
+              <%= f.select :mode_of_payment, options_for_select(@mop_list), { include_blank: "Please Select" }, { class: "form-control p7_10 mode_of_payment", style: "height:34px;" } %>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="col-sm-6">
+              <b>Gross Return Amt.</b>
+            </div>
+            <div class="col-sm-2 text-center">
+              :
+            </div>
+            <div class="col-sm-4">
+              <span><%= text_field_tag :total_cost, @inventory_return_invoice.total, class: 'form-control p7_10 return-total-cost', readonly: true, name: 'inventory_transaction_return[total_cost]', id: 'inventory_transaction_return_total_cost', placeholder: "Total Cost" %></span>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-sm-6"></div>
+          <div class="col-sm-6">
+            <div class="col-sm-6">
+              <b>Return charges</b>
+            </div>
+            <div class="col-sm-2 text-center">
+              :
+            </div>
+            <div class="col-sm-4">
+              <span><%= text_field_tag :return_charges, '', class: 'form-control p7_10 return-changes', id: 'inventory_transaction_return_return_charges', name: 'inventory_transaction_return[return_charges]', placeholder: "Return Charges", onkeypress: 'return isNumberKey(this, event)' %></span>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-sm-6">
+            <div class="mode_of_payment_details mb10">
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="col-sm-6">
+              <b>Net Return Value</b>
+            </div>
+            <div class="col-sm-2 text-center">
+              :
+            </div>
+            <div class="col-sm-4">
+              <span><%= text_field_tag :return_amount, '', class: 'form-control p7_10 return-amount', id: 'inventory_transaction_return_return_amount', name: 'inventory_transaction_return[return_amount]', readonly: true, placeholder: "Return Amount" %></span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer window-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+        <%= f.submit "Save Changes", { class: 'btn btn-primary', onclick: 'validate_inventory_return_transactions_form()' } %>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<style type="text/css">
+  input[type=number]{
+    width: 80px;
+    height: 30px;
+  }
+</style>
+
+<script type="text/javascript">
+  function isNumberKey(txt, evt) {
+    var charCode = (evt.which) ? evt.which : evt.keyCode;
+    if (charCode == 46) {
+      //Check if the text already contains the . character
+      if (txt.value.indexOf('.') === -1) {
+        return true;
+      } else {
+        return false;
+      }
+    } else {
+      if (charCode > 31 &&
+        (charCode < 48 || charCode > 57))
+        return false;
+    }
+    return true;
+  }
+</script>

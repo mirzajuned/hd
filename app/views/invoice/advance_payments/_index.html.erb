@@ -1,0 +1,114 @@
+<%= javascript_include_tag "application-loggedin", "data-turbolinks-track" => true %>
+<div class="modal-dialog modal-md">
+  <!-- Modal content-->
+  <div class="modal-content">
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal">&times;</button>
+      <h4 class="modal-title">Add Advance</h4>
+    </div>
+    <div class="modal-body">
+      <table class="table table-bordered">
+        <thead>
+          <tr>
+            <th colspan="5" class="text-right">Net Amount: <%= params[:net_amount] %></th>
+          </tr>
+          <tr>
+            <th style="width:20px;">S No.</th>
+            <th style="width:50px;">Reason</th>
+            <th style="width:20px;">Receipt Date</th>
+            <th style="width:10px;">Amount</th>
+            <th style="width:10px;">Add</th>
+          </tr>
+        </thead>
+        <tbody class="all_advances">
+          <% @advance_payments.each_with_index do |advance_payment, i| %>
+            <tr>
+              <td style="width:20px;"><%= i+1 %></td>
+              <td style="width:50px;"><%= advance_payment.reason %></td>
+              <td style="width:20px;"><%= advance_payment.payment_date.try(:strftime, "%d %b'%y") %></td>
+              <% amount_with_precision = number_with_precision(advance_payment.amount, precision: 2) %>
+              <% display_amount = Common::Finance::NumberFormatService.call(@number_format, amount_with_precision) %>
+              <td style="width:10px;"><%= display_amount %></td>
+              <td style="width:10px;"><input class="advance_amount form-control p3_10" id="advance_amount" data-id='<%= advance_payment.id.to_s %>' data-max-amount='<%= advance_payment.amount %>' placeholder="Advance Amount" value='0' type="text" name="advance[<%= i %>][amount]"></td>
+            </tr>
+          <% end %>
+        </tbody>
+        <tfoot>
+          <tr>
+            <th colspan="4" class="text-right">Total Advance Adjusted :</th>
+            <th><input class="advance_amount_total form-control p3_10" id="advance_amount_total" placeholder="Advance Amount Total" value='0' type="text" name="advance[amount_total]" readonly="readonly"></th>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-success btn-set-advance-values">Save</button>
+      <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+    </div>
+  </div>
+</div>
+
+<script type="text/javascript">
+  $(".advance_amount").on('keyup', function(){
+    if($(this).val() == '00'){ $(this).val("0") }
+
+    var active_advance_amount = parseFloat($(this).val());
+    var max_amount = parseFloat($(this).attr('data-max-amount'));
+
+    // Check Whether Value Enter is More than Amount in AdvanceReceipt
+    if(active_advance_amount > max_amount){
+      $(this).val(max_amount);
+      active_advance_amount = parseFloat($(this).val());
+    }
+
+    // Calculate Final Amount and Set/Reset Relative Fields
+    final_advance_amount(this, active_advance_amount)
+  })
+
+  $(".advance_amount").on('focusout', function(){
+    if($(this).val() == ''){ $(this).val("0") }
+    var active_advance_amount = parseFloat($(this).val());
+    // Calculate Final Amount and Set/Reset Relative Fields
+    final_advance_amount(this, active_advance_amount)
+  })
+
+
+  function final_advance_amount(_this, active_advance_amount){
+    var total_advance = 0.00
+    var advance_amounts = $('.all_advances').find(".advance_amount")
+
+    for (var i = advance_amounts.length - 1; i >= 0; i--) {
+      total_advance = total_advance + parseFloat($(advance_amounts[i]).val())
+    }
+
+    if(total_advance > parseFloat("<%= params[:net_amount] %>")){
+      new_total_advance = parseFloat("<%= params[:net_amount] %>")
+      $(".advance_amount_total").val(new_total_advance)
+      $(_this).val(active_advance_amount - (total_advance - parseFloat("<%= params[:net_amount] %>")))
+    } else {
+      $(".advance_amount_total").val(total_advance)
+    }
+  }
+
+  $('.btn-set-advance-values').on('click', function(e){
+    e.preventDefault()
+
+    var advance_amount_total = parseFloat($('#advance_amount_total').val())
+    var net_amount = parseFloat("<%= params[:net_amount] %>")
+    var amount_remaining = net_amount - advance_amount_total
+
+    $(".advance-amount").find("#invoice_advance_payment").val(advance_amount_total)
+    $(".amount-remaining").find("#invoice_amount_remaining").val(amount_remaining)
+    $("#invoice_amount_remaining").trigger('change')
+
+    var advance_amounts = $('.all_advances').find(".advance_amount")
+    $(".render-advance-balance").html("")
+    for (var i = advance_amounts.length - 1; i >= 0; i--) {
+      $(".render-advance-balance").append('<div class="col-md-12 advance_payment_row"><input type="hidden" name="advance_payment[][id]" value="' + $(advance_amounts[i]).attr('data-id') + '"><input type="hidden" name="advance_payment[][amount]" value="' + $(advance_amounts[i]).attr('data-max-amount') + '"><input type="hidden" name="advance_payment[][settled_amount]" value="' + $(advance_amounts[i]).val() + '"></div>')
+    }
+
+    $("#advance-modal").modal('hide')
+  })
+
+  <%= render partial: "templates/common/js/popup_modal_hidden.js" %>
+</script>

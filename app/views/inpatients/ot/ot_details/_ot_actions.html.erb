@@ -1,0 +1,55 @@
+<div class="col-sm-6">
+  <% if @current_user.role_ids.any? { |ele| [158965000, 106292003, 686800945].include?(ele) } %>
+    <div class="dropdown">
+      <button type="button" class="btn btn-xs btn-primary btn-danger" data-toggle="dropdown" id="adverse_event_form">Adverse Event&nbsp;&nbsp;<i class="fa fa-caret-down"></i></button>
+      <ul class="dropdown-menu" role="menu" aria-labelledby="adverse_events-dropdown" style="">
+        <li style="text-align: center;">
+          <%= link_to new_adverse_event_path(patient_id: @patient.id.to_s), id: 'adverse-event-btn', data: { remote: true, toggle: 'modal', target: '#adverse-event-modal' } do %>Report Adverse Event<% end %>
+        </li>
+        <strong style="margin-left: 10px">Previously Reported: <%= @adverse_events.length %></strong>
+      </ul>
+    </div>
+  <% end %>
+</div>
+<div class="col-sm-6">
+  <div class="row no_margin">
+    <div class="col-sm-12 text-right">
+      <% unless @admission.patient_arrived == false %>
+        <% if @ot.admission.patient_arrived && !(@ot.operation_done) && !(@ot.is_engaged) %>
+          <%= link_to ot_unlink_ot_path(id: @ot.id, ot_id: @ot.id), class: 'btn btn-danger btn-xs otschedule_list', method: 'get', data: { remote: true } do %>Unlink OT<% end %>
+          <% if @admission_list_view.admission_milestones.find_by(position: 5, :ot_id.in => [nil, @ot.id]).nil? && @clinical_workflow %>
+            <%= link_to update_ready_state_admission_path(id: @admission.id.to_s, ot_id: @ot.id, state: 'ready_for_ot', position: 5, value: true), class: 'btn btn-info btn-xs', data: { remote: true } do %> Ready for OT <% end %>
+          <% elsif !(@ot.is_engaged) %>
+            <button class="btn btn-info btn-xs btn-engage-ot" data-ot-id="<%= @ot.id %>">Engage OT</button>
+            <% if @clinical_workflow %>
+              <%= link_to update_ready_state_admission_path(id: @admission.id.to_s, ot_id: @ot.id, state: 'ready_for_ot', position: 5, value: false), class: 'btn btn-darkblue btn-xs', data: { remote: true } do %> Undo <% end %>
+            <% end %>
+          <% end %>
+        <% elsif !(@ot.operation_done) && @ot.is_engaged %>
+          <button class="btn btn-danger btn-xs btn-engage-ot" data-ot-id="<%= @ot.id %>">Cancel</button>
+          <button class="btn btn-info btn-xs btn-completed-ot" data-ot-id="<%= @ot.id %>">Mark As Done</button>
+        <% elsif @ot.operation_done && !(@ot.is_engaged) %>
+          <% if @clinical_workflow %>
+            <% if !@ot.send_to_ward %>
+              <%= link_to update_ready_state_ot_path(id: @ot.id.to_s, state: 'send_to_ward', position: 8, value: true), class: 'btn btn-darkblue btn-xs', data: { remote: true } do %> Send to Ward <% end %>
+              <button class="btn btn-success btn-xs btn-completed-ot" data-ot-id="<%= @ot.id %>"><i class='fas fa-check'></i>&nbsp;&nbsp;OT Completed</button>
+            <% else %>
+              <%= link_to update_ready_state_ot_path(id: @ot.id.to_s, state: 'send_to_ward', position: 8, value: false), class: 'btn btn-danger btn-xs', data: { remote: true } do %> Undo <% end %>
+            <% end %>
+          <% else %>
+            <button class="btn btn-success btn-xs btn-completed-ot" data-ot-id="<%= @ot.id %>"><i class='fas fa-check'></i>&nbsp;&nbsp;OT Completed</button>
+          <% end %>
+        <% end %>
+      <% else %>
+        <% if @admission.try(:admissiondate).present? && @admission.admissiondate <= Date.today %>
+          <% if @existing_admission %>
+            <span class="label label-danger">Patient has a running admission.</span>
+          <% else %>
+            <%= link_to ipd_casesheets_edit_path(templatetype: 'admissionnote', admission_id: @admission.id.to_s), class: 'btn btn-darkblue btn-xs btn-mark-arrived', data: { remote: true, toggle: 'modal', target: '#ipdrecord-modal' } do %>Admit Patient<% end %>
+          <% end %>
+        <% end %>
+        <%= link_to ot_unlink_ot_path(id: @ot.id, ot_id: @ot.id), class: 'btn btn-danger btn-xs otschedule_list', method: 'get', data: { remote: true } do %>Unlink OT<% end %>
+      <% end %>
+    </div>
+  </div>
+</div>

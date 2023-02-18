@@ -1,0 +1,106 @@
+$("#search-item-variants").on('keyup', function(){
+  variant_list = $(".main-vendor-rate-list");
+  search = $(this).val().toUpperCase().trim();
+  count = 0
+  for (var i = variant_list.length - 1; i >= 0; i--) {
+    variant_name = $(variant_list[i]).find(".variant_name")
+    if($(variant_name).html().toUpperCase().indexOf(search) > -1) {
+      $(variant_list[i]).css("display", "");
+      count += 1
+    } else {
+      $(variant_list[i]).css("display", "none");
+    }
+  }
+  if (count > 0){
+    $('input[id="save-multiple-vendor-rates"]').show()
+  } else {
+    $('input[id="save-multiple-vendor-rates"]').hide()
+  }
+})
+
+function change_is_update(_this){
+  $(_this).closest(".inventory-vendor-rate-details").find(".is_updated").val("true")
+}
+
+$(".vendor-rate-body").on("keyup", ".vendor_item_rate", function(){
+  change_is_update(this)
+})
+
+$(".vendor-rate-body").on("keyup", ".vendor_item_selling_price", function(){
+  change_is_update(this)
+})
+
+$("#new-vendor-rates-form").css('height', $(window).height() - 100 + "px").css('overflow', 'scroll')
+
+$(window).resize(function() {
+  $("#new-vendor-rates-form").css('height', $(window).height() - 100 + "px").css('overflow', 'scroll')
+})
+
+
+
+function vendor_rate_list(){
+  var vendor_id = $('.vendor_dropdown').val();
+  if (vendor_id == ""){
+    $('.item-variants-rates').html('')
+  }else{
+    $('.item-variants-rates').html('<div class="loader"></div>')
+  }
+  $.ajax({
+    type: "GET",
+    url: '/inventory/vendor_rates/bulk_upload_data',
+    data: { vendor_id: vendor_id,
+      remote: "true" },
+  })
+}
+
+$('.vendor_dropdown').on('change', function() {
+  if ($('.main-vendor-rate-list').length > 0){
+    $('#confirm-filter')
+        .html(confirmationModal('vendor_rate_list', '<%= @selected_vendor %>'))
+        .modal('show')
+        .css('background-color', 'rgba(0,0,0,0.5)')
+  } else {
+    vendor_rate_list()
+  }
+})
+
+
+function confirmationModal(method, prev){
+  return `<div class="modal-dialog modal-sm">
+    <div class="modal-content">
+        <div class="modal-header">
+          <div class="row text-center">
+            <h5><b>Confirmation Requird!</b></h5>
+          </div>
+        </div>
+        <div class="modal-body">
+          <p>You are about to change vendor or vendor group</p>
+          <p><span class='text-danger'> All unsaved changes to the vendor rates will be lost.</span>
+          Would you still want to change vendor/vendor-group ?</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-info cancel-filter" onclick='cancel_filter("${method}_dropdown", "${prev}")' data-dismiss="modal">No don't change</button>
+          <button type="button" class="btn btn-danger" onclick='${method}()' data-dismiss="modal">Yes change</button>
+        </div>
+    </div>
+  </div>`
+}
+
+function upload_excel_vendor_rate_form(){
+  $("#upload-excel-vendor-rates-form").validate({
+    ignore: [],
+    rules: {
+      "vendor_rates_bulk_data[document]": {
+        required: true,
+      },
+    },
+    messages: {
+      "vendor_rates_bulk_data[document]": {
+        required: "*Required",
+      }
+    },
+    errorPlacement: function (error, element) {
+      error.insertAfter(element);
+    }
+  });
+}

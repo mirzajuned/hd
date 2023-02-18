@@ -1,0 +1,185 @@
+<div class="col-sm-3 text-center no_padding">
+  <% if @patient.patientassets.count > 0 && ( @patient.patientassets[0].asset_path_url.present?) %>
+    <% if @patient.patientassets[0].asset_path_url.present? %>
+      <%= image_tag(@patient.patientassets.last.asset_path_url, class: "patient_profile_pic") %>
+    <% end %>
+  <% else %>
+    <%= image_tag('placeholder.png', class: "patient_profile_pic") %>
+  <% end %>
+  <% if @patient.one_eyed == "Yes" %>
+    <div style="margin-top:4px;"><b style="background:#ff8735;color:#fff;padding:2px 5px;">One Eyed</b></div>
+  <% end %>
+</div>
+<div class="col-sm-9">
+  <div class="row no_margin">
+    <h4 class="" style="display: inline">
+      <span>Patient Details</span>
+      <%= link_to patient_cards_print_path(patient_id: @patient.id, format: :pdf), class: 'btn btn-link btn-xs print_patient_card', style: 'padding: 2px;', target: '_blank' do %><i class="fa fa-print"></i><% end %>
+      <%= link_to edit_patient_path(id: @patient.id), class: "btn btn-link btn-xs edit_patient_info", data: { remote: true, 'toggle': "modal", 'target': '#patient-modal' },  style: "padding: 2px;" do %><i class="fa fa-edit"></i><% end %>
+    </h4>
+    <% if @patient.reg_status %>
+      <button class="pull-right btn btn-default btn-xs" id="patient-summary-timeline-link" title="Patient Summary">Summary</button>
+    <% end %>
+  </div>
+  <div class="row no_margin">
+    <div class="col-sm-4 no_padding text-left">Full Name</div>
+    <div class="col-sm-1 no_padding text-left">:</div>
+    <div class="col-sm-7 no_padding"><b><%= @patient.fullname.to_s.upcase %></b><% if @patient.gender.present? %> (<%= @patient.gender %>)<% end %></div>
+  </div>
+  <% if @patient.patient_type.present? %>
+    <div class="row no_margin">
+      <div class="col-sm-4 no_padding text-left">Patient Type</div>
+      <div class="col-sm-1 no_padding text-left">:</div>
+      <div class="col-sm-7 no_padding">
+        <label class="label label-default" style="margin-left:0px;background:<%= @patient.patient_type.color %>"><%= @patient.patient_type.label.to_s.upcase %> <% if @patient.patient_type_comment? %>- <%= @patient.patient_type_comment %><% end %></label>
+      </div>
+    </div>
+  <% end %>
+  <% if @patient.patient_mrn.present? %>
+    <div class="row no_margin">
+      <div class="col-sm-4 no_padding text-left">MR No.</div>
+      <div class="col-sm-1 no_padding text-left">:</div>
+      <div class="col-sm-7 no_padding"><b style="color:#000;background: #fed136;"><%= @patient.patient_mrn %></b></div>
+    </div>
+  <% end %>
+  <div class="row no_margin">
+    <div class="col-sm-4 no_padding text-left">Patient ID</div>
+    <div class="col-sm-1 no_padding text-left">:</div>
+    <div class="col-sm-7 no_padding"><%= PatientIdentifier.find_by(patient_id: @patient.id).try(:patient_org_id) %></div>
+  </div>
+  <div class="row no_margin">
+    <div class="col-sm-4 no_padding text-left">Date of Birth <% if @calculate_age %> | Age<% end %></div>
+    <div class="col-sm-1 no_padding text-left">:</div>
+    <div class="col-sm-6 no_padding">
+      <%= @patient.dob ? @patient.dob.strftime("%d-%m-%Y") : "Unavailable" %>
+      <% if @patient.exact_age.present? %> <strong>|</strong>
+        <% age_year, age_month = @patient.calculate_age(true) %>
+        <% age_in_months = (age_year.to_i * 12) + age_month.to_i %>
+        <% if age_year.present? && (49...960).exclude?(age_in_months) %>
+          <b style="background:#ff8735;color:#fff;padding:2px 5px;"><%= @calculate_age %></b>
+        <% else %>
+          <b><%= @calculate_age %></b>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+  <div class="row no_margin">
+    <div class="col-sm-4 no_padding text-left">Primary Contact</div>
+    <div class="col-sm-1 no_padding text-left">:</div>
+    <div class="col-sm-7 no_padding"><%= @patient.mobilenumber %></div>
+  </div>
+  <% if @patient.address_1.present? || @patient.address_2.present? || @patient.city.present? || @patient.state.present? || @patient.pincode.present? || @patient.commune.present? || @patient.district.present? %>
+    <div class="row">
+      <div class="col-sm-4 text-left">Address</div>
+      <div class="col-sm-1 text-left">:</div>
+      <div class="col-sm-7">
+        <%= "#{@patient.try(:address_1)}" %>
+        <% if @patient.try(:address_1).present? %>, <% end %>
+        <%= "#{ @patient.try(:address_2) }" %>
+        <%= " #{ @patient.try(:area_manager_name) } #{ @patient.try(:city) } #{ @patient.try(:state) } #{ @patient.try(:commune) } #{ @patient.try(:district) }" %>
+        <% if @patient.try(:pincode).present? %>
+          <%= "(#{ @patient.try(:pincode) })" %>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+  <% if @patient.emergency_contact.present? %>
+    <div class="row no_margin">
+      <div class="col-sm-4 no_padding text-left">Emergency Details</div>
+      <div class="col-sm-1 no_padding text-left">:</div>
+      <div class="col-sm-7 no_padding"><%= @patient.emergency_contact %></div>
+    </div>
+  <% end %>
+
+  <% if @patient.blood_group.present? %>
+    <div class="row no_margin">
+      <div class="col-sm-4 no_padding text-left">Blood Group</div>
+      <div class="col-sm-1 no_padding text-left">:</div>
+      <div class="col-sm-7 no_padding"><%= @patient.blood_group %></div>
+    </div>
+  <% else %>
+    <% unless @patient.secondarymobilenumber.blank? %>
+      <div class="row no_margin">
+        <div class="col-sm-4 no_padding text-left">Secondary Contact</div>
+        <div class="col-sm-1 no_padding text-left">:</div>
+        <div class="col-sm-7 no_padding"><%= @patient.secondarymobilenumber %></div>
+      </div>
+    <% end %>
+  <% end %>
+
+  <% if @patient.primary_language.present? || @patient.secondary_language.present? %>
+    <div class="row no_margin">
+      <div class="col-sm-4 no_padding text-left">Language</div>
+      <div class="col-sm-1 no_padding text-left">:</div>
+      <div class="col-sm-7 no_padding"><%= @patient.primary_language %><%= (", " +  @patient.secondary_language.to_s if @patient.secondary_language.present? && @patient.primary_language.present?) || @patient.secondary_language.to_s %></div>
+    </div>
+  <% end %>
+  <% if @patient.occupation.present? || @patient.employee_id.present? %>
+    <% occupation_full_details = (@patient.employee_id.present? && @patient.occupation.present?) %>
+    <div class="row no_margin">
+      <div class="col-sm-4 no_padding text-left"><% if occupation_full_details || @patient.occupation.present? %>Occupation<% else %>Employee ID<% end %></div>
+      <div class="col-sm-1 no_padding text-left">:</div>
+      <% if current_facility.country_id == 'VN_254' %>
+        <div class="col-sm-7 no_padding"><%= @occupation_name %><%= (", " +  @patient.employee_id.to_s if occupation_full_details) || @patient.employee_id.to_s %></div>
+      <% else %>
+        <div class="col-sm-7 no_padding"><%= @patient.occupation %><%= (", " +  @patient.employee_id.to_s if occupation_full_details) || @patient.employee_id.to_s %></div>
+      <% end %>
+    </div>
+  <% end %>
+  <% if @patient.social_security_number.present? %>
+    <div class="row no_margin">
+      <div class="col-sm-4 no_padding text-left">VSS Number</div>
+      <div class="col-sm-1 no_padding text-left">:</div>
+      <div class="col-sm-7 no_padding"><%= @patient.social_security_number %></div>
+    </div>
+  <% end %>
+  <div class="row no_margin">
+    <div class="col-sm-4 no_padding text-left">Registration Date</div>
+    <div class="col-sm-1 no_padding text-left">:</div>
+    <div class="col-sm-7 no_padding"><%= @patient.reg_time.try(:strftime, '%d/%m/%Y') %></div>
+  </div>
+  <% if @initial_referral_type.present? %>
+    <div class="row no_margin">
+      <div class="col-sm-4 no_padding text-left">Referral</div>
+      <div class="col-sm-1 no_padding text-left">:</div>
+      <div class="col-sm-7 no_padding">
+        <% if @initial_referral_type.referral_type_id != "FS-RT-0010" %>
+          <b><%= @initial_referral_type.referral_type.name.to_s.titleize %> - <%= @initial_referral_type.sub_referral_type.name.to_s.titleize %></b>
+          <% if @initial_referral_type.referral_type_id != "FS-RT-0001" %><button class="btn btn-link btn-xs btn-initial-more-detail" style="padding: 0px 5px;">More</button><% end %>
+          <div id="initial-more-detail" style="display: none;"><%= render partial: 'patient_referral_types/views/sub_referral_view.html.erb', locals: { sub_referral_type: @initial_referral_type.sub_referral_type } %></div>
+        <% else %>
+          <b><%= @initial_referral_type.sub_referral_type.name.to_s %></b>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+  <% if @admission.try(:patient_visit_category).present? %>
+    <div class="row no_margin">
+      <div class="col-sm-4 no_padding text-left">
+        Patient Visit Category
+      </div>
+      <div class="col-sm-1 no_padding text-left">:</div>
+      <div class="col-sm-6 no_padding">
+        <label class="label label-warning">
+          <%= @admission.try(:patient_visit_category) %>
+        </label>
+      </div>
+    </div>
+  <% end %>
+  <% if @admission.try(:patient_category).present? %>
+    <div class="row no_margin">
+      <div class="col-sm-4 no_padding text-left">
+        Patient Category
+      </div>
+      <div class="col-sm-1 no_padding text-left">:</div>
+      <div class="col-sm-6 no_padding">
+        <label class="label label-warning">
+          <%= @admission.try(:patient_category) %>
+        </label>
+      </div>
+    </div>
+  <% end %>
+</div>
+<div class="row col-md-12" id="patient_history_allergy">
+  <%= render partial: "outpatients/appointment/appointment_details/patient_history_allergy.html.erb" %>
+</div>

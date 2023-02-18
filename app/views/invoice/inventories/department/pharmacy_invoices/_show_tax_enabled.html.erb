@@ -1,0 +1,182 @@
+<div class="container-fluid" id="freeInvoiceEdit" style="border-bottom:1px solid #eee;">
+  <div class="row mt10 mb5">
+    <div class="col-lg-2 font_size text-right">
+      Patient Name:
+    </div>
+    <div class="col-lg-2 font_size">
+      <%= @pharmacy_log.recipient %>
+    </div>
+    <div class="col-lg-2 font_size text-right">
+      Patient ID:
+    </div>
+    <div class="col-lg-2 font_size">
+      <%= @pharmacy_log.patient_identifier%>
+    </div>
+    <div class="col-lg-2 font_size text-right">
+      Patient Mobile
+    </div>
+    <div class="col-lg-2 font_size">
+      <%= @pharmacy_log.recipient_mobile %>
+    </div>
+  </div>
+  <div class="row mb5">
+    <div class="col-lg-2 font_size text-right">
+      Doctor: 
+    </div>
+    <div class="col-lg-2 font_size">
+      <%= @pharmacy_log.doctor_name %>
+    </div>
+    <div class="col-lg-2 font_size text-right">
+      Additional Note:
+    </div>
+    <div class="col-lg-6 font_size">
+      <%= @pharmacy_log.note %>
+    </div>
+  </div>
+  <!-- row -->
+  <div class="row">
+    <h4>Items</h4>
+  </div>
+  <div class="row mt10 mb5" style="border-bottom:1px solid #eee;border-top:1px solid #eee;">
+    <div class="col-sm-6">
+      <div class="col-sm-5 font_size">
+        <b>Code</b>
+      </div>
+      <div class="col-sm-5 font_size">
+        <b>Description</b>
+      </div>
+      <div class="col-sm-2 font_size">
+        <b>QTY</b>
+      </div>
+    </div>
+    <div class="col-sm-6">
+      <div class="col-sm-4 font_size">
+        <b>Batch</b>
+      </div>
+      <div class="col-sm-3 font_size">
+        <b>Exp.Date</b>
+      </div>
+      <div class="col-sm-2 font_size">
+        <b>U.Price</b>
+      </div>
+      <div class="col-sm-2 col-sm-3-shared font_size">
+        <b>Tax</b>
+      </div>
+      <div class="col-sm-2 col-sm-3-shared font_size">
+        <b>Total(&#8377;)</b>
+      </div>
+    </div>
+  </div>
+  <!--row-->
+  <div class="row" id="fi_items">
+    <% grand_total_price = 0 %>
+    <% grand_total_tax = 0 %>
+    <% if @pharmacy_log.discount %>
+      <% discount = @pharmacy_log.discount %>
+    <% else %>
+      <% discount = 0 %>
+    <% end %>
+    <% @pharmacy_log.items.each do |item|%>
+      <div class="add-pharmacy-item">
+        <div class="col-sm-6">
+          <div class="col-sm-5 font_size">
+            <%= item.item_code %>                       
+          </div>
+          <div class="col-sm-5 font_size">
+            <%= item.description %>
+          </div>
+          <div class='col-sm-2 font-size'>
+            <%=item.quantity.to_i%>
+          </div>
+        </div>
+        <div class="col-sm-6">
+          <div class="col-sm-4 font_size">
+            <%= item.batch_no%>
+          </div>
+          <div class="col-sm-3 font_size">
+            <%= item.expiry%>
+          </div>
+          <div class="col-sm-2 font_size">
+            <%= item.list_price %>
+          </div>
+          <div class="col-sm-2 col-sm-3-shared font_size" >
+            <%= number_with_precision(item.taxable_amount, precision: 2) %>
+          </div>
+          <div class="col-sm-2 col-sm-3-shared font-size">
+            <%if item.tax_group_id.present? %>
+              <%= total_with_tx = (item.taxable_amount.to_f + item.non_taxable_amount.to_f).round(2)%>
+              <% grand_total_price = grand_total_price + total_with_tx%>
+<!--          correction for nil tax group-->
+            <%else%>
+              <%= total_with_tx= (item.list_price.to_f * item.quantity.to_i).round(2)%>
+              <% grand_total_price = grand_total_price + total_with_tx%>
+            <%end%>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  </div>
+  <div class="row mb5" style="margin-top: 30px; border-top: 1px solid #eee">
+    <% if @pharmacy_log.try(:tax_breakup).count > 0 %>
+      <div class="col-sm-5 col-sm-offset-7 text-right">
+        <div class="col-sm-6 font_size">
+          <b>Non-Taxable Amount</b>
+        </div>
+        <div class="col-sm-3 text-center font_size">
+          :
+        </div>
+        <div class="col-sm-2 font_size">
+          <%= number_with_precision(@pharmacy_log.non_taxable_amount, precision: 2) %>
+        </div>
+      </div>
+      <div class="col-sm-5 col-sm-offset-7 text-right">
+        <% @pharmacy_log.tax_breakup.try(:each) do |tax_breakup| %>
+          <div class="col-sm-6 font_size">
+            <b><%= tax_breakup[:name] %></b>
+          </div>
+          <div class="col-sm-3 text-center font_size">
+            :
+          </div>
+          <div class="col-sm-2 font_size">
+            <%= number_with_precision(tax_breakup[:amount], precision: 2) %>
+          </div>
+        <% end %>
+      </div>      
+    <% end %>
+  </div>
+  <hr style="padding: 0px;margin: 0px;">
+  <div class="row mb5" style="border-top: 1px solid #eee">
+    <div class="col-sm-5 col-sm-offset-7 text-right">
+      <div class="col-sm-6 font_size">
+        <b>Total Amt Including Tax</b>
+      </div>
+      <div class="col-sm-3 text-center font_size">
+        :
+      </div>
+      <div class="col-sm-2 font_size" id="total_wt">
+        <%= grand_total_price.round(2) %>
+      </div>
+      <% if @pharmacy_log.discount.present? %>
+      <div class="col-sm-6 font_size">
+        <b>Discount</b>
+      </div>
+      <div class="col-sm-3 text-center font_size">
+        :
+      </div>
+      <div class="col-sm-2 font_size">
+        <%= discount.round(2) || 0 %>
+      </div>
+      <%end%>
+      <div class="col-sm-6 font_size">
+        <b>Net Amount</b>
+      </div>
+      <div class="col-sm-3 text-center font_size">
+        :
+      </div>
+      <div class="col-sm-2 font_size" id="grand_total_inc_discount">
+        <%= (grand_total_price - discount).round(2) %>
+      </div>
+    </div>
+  </div>
+  <!--row-->
+</div>

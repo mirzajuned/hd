@@ -1,0 +1,570 @@
+<!-- OLD -->
+<% if false %>
+  <% if prescription %>
+  <% @patient = Patient.find(prescription.patient_id) %>
+  <% @patient_other_identifier = PatientOtherIdentifier.find_by(patient_id: prescription.patient_id) %>
+  <% @patient_identifier = PatientIdentifier.find_by(patient_id: prescription.patient_id) %>
+  <div class="prescription-details">
+    <div class="row no_margin no_padding" style="padding: 5px;">
+
+      <div class="col-sm-3 text-center no_padding">
+        <% if @patient.patientassets.count > 0 %>
+            <%= image_tag(@patient.patientassets.last.asset_path_url, class: 'patient_profile_pic') %>
+        <% else %>
+            <%= image_tag('placeholder.png', class: 'patient_profile_pic') %>
+        <% end %>
+      </div>
+    <div class="col-sm-9">
+      <div class="row no_margin">
+        <h4 class="" style="display: inline">Patient Details </h4>
+        <!-- <button class="pull-right btn btn-default btn-xs" id="patient-summary-timeline-link" title='Patient Summary'>Summary</button> -->
+      </div>
+      <div class="row no_margin">
+        <div class="col-sm-4 no_padding text-left">Full Name</div>
+        <div class="col-sm-1 no_padding text-left">:</div>
+        <div class="col-sm-7 no_padding">
+          <%= @patient.fullname.split(' ').map(&:capitalize).join(' ') %>
+          <% if @patient.gender? %> <%= '(' + @patient.gender[0] + ')' %><% end %>
+
+        </div>
+      </div>
+      <div class="row no_margin">
+        <div class="col-sm-4 no_padding text-left">Patient ID</div>
+        <div class="col-sm-1 no_padding text-left">:</div>
+        <div class="col-sm-7 no_padding"><%= @patient_identifier.patient_org_id %></div>
+      </div>
+      <div class="row no_margin">
+        <div class="col-sm-4 no_padding text-left">Date of Birth<% if @patient.age.present? %> <strong>|</strong> Age<% end %></div>
+        <div class="col-sm-1 no_padding text-left">:</div>
+        <div class="col-sm-6 no_padding"><%= @patient.dob ? @patient.dob.strftime('%d-%m-%y') : 'Unavailable' %><% if @patient.exact_age.present? %> <strong>|</strong> <%= @patient.exact_age.to_s.split('-').join(' ') %><% end %></div>
+      </div>
+
+      <div class="row no_margin">
+        <div class="col-sm-4 no_padding text-left">Primary Contact</div>
+        <div class="col-sm-1 no_padding text-left">:</div>
+        <div class="col-sm-7 no_padding"><%= @patient.mobilenumber || 'Unavailable' %></div>
+      </div>
+      <% if @patient_other_identifier.try(:mr_no).present? %>
+      <div class="row no_margin">
+        <div class="col-sm-4 no_padding text-left">MR No</div>
+        <div class="col-sm-1 no_padding text-left">:</div>
+        <div class="col-sm-7 no_padding"><%= @patient_other_identifier.try(:mr_no) %></div>
+      </div>
+      <% end %>
+      <% if @initial_referral_type.present? %>
+        <div class="row no_margin">
+          <div class="col-sm-4 no_padding text-left">Referral</div>
+          <div class="col-sm-1 no_padding text-left">:</div>
+          <div class="col-sm-7 no_padding">
+            <b><%= @initial_referral_type.referral_type.name.to_s.titleize %> - <%= @initial_referral_type.sub_referral_type.name.to_s.titleize %></b>
+            <% if @initial_referral_type.referral_type_id != "FS-RT-0001" %><button class="btn btn-link btn-xs btn-initial-more-detail" style="padding: 0px 5px;">More</button><% end %>
+            <div id="initial-more-detail" style="display: none;"><%= render partial: 'patient_referral_types/views/sub_referral_view.html.erb', locals: { sub_referral_type: @initial_referral_type.sub_referral_type } %></div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    </div>
+    <hr style="margin: 10px;">
+
+    <div class="row no_margin" style="padding: 2% 4%; font-size: 12px">
+      <div class="row">
+        <span><b>MEDICATION(Rx)</b>&nbsp;(Advised on <%= prescription.created_at.strftime('%d %b,%Y') %> &nbsp;at <%= prescription.updated_at.strftime('%I:%M %p') %>)</span>
+
+        <% if prescription.encountertype == "OPD" %>
+          <a class="btn btn-xs btn-link pull-right" target="_blank" data-method="get" href="/opd_records/print_medication.pdf?appointmentid=<%= prescription.appointment_id %>&amp;opdrecordid=<%= prescription.record_id.to_s %>&amp;patientid=<%= prescription.patient_id.to_s %>&amp;specality=ophthalmology&amp;templatetype=eye"> <i class="fa fa-print"></i> Print</a>
+        <% else %>
+          <% @print_medication = "inpatient_ipd_record_discharge_note_ophthalmology_note_print_path(id: prescription.record_id, ophthalmology_note_id: prescription.record_id, admission_id: prescription.admission_id.to_s, view: 'Medication', format: 'pdf')" %>
+          <%= link_to eval(@print_medication), class: 'btn btn-xs btn-link pull-right', target: '_blank', data: { method: :get } do %> <i class="fa fa-print"></i><% end %>
+        <% end %>
+        <div class="summary-line-border"></div>
+      </div>
+
+      <div class="row mb10 check_font">
+        <table class="table table-bordered">
+          <thead>
+            <tr>
+              <th>S.No.</th>
+              <th>Name</th>
+              <th>Quantity</th>
+              <th class="text-center">Frequency</th>
+              <th>Duration</th>
+              <th>Eye</th>
+              <th>Instruction</th>
+            </tr>
+          </thead>
+          <tbody>
+          <% prescription.medications.each.with_index do |medication,i| %>
+            <tr>
+              <td><%= i + 1 %></td>
+              <td><%= medication['medicinename'] %><% if medication['medicinetype'].present? %> - <%= medication['medicinetype'] %><% end %></td>
+              <% if medication['taper_id'] == "0" || medication['taper_id'] == nil || medication['taper_id'] == "" %>
+                <td class="text-right"><%= medication['medicinequantity'] %></td>
+                <td class="text-center">
+                  <% if Array["1-1-1", "1-1-0", "1-0-1", "0-1-1", "1-0-0", "0-1-0", "0-0-1", "1-1-1-1", "2-2-2", "2-0-2"].include?(medication['medicinefrequency']) %>
+                    <% frequency = medication['medicinefrequency'].split('-') %>
+                    <% unless frequency[3] == nil %>
+                      <div class="row">
+                        <div class="col-md-2 text-center"><b><%= frequency[0] %></b><br>Mrng</div>
+                        <div class="col-md-1">-</div>
+                        <div class="col-md-2 text-center"><b><%= frequency[1] %></b><br>Noon</div>
+                        <div class="col-md-1">-</div>
+                        <div class="col-md-2 text-center"><b><%= frequency[2] %></b><br>Evng</div>
+                        <div class="col-md-1">-</div>
+                        <div class="col-md-2 text-center"><b><%= frequency[3] %></b><br>Night</div>
+                      </div>
+                    <% else %>
+                      <div class="row">
+                        <div class="col-md-3 text-center"><b><%= frequency[0] %></b><br>Morning</div>
+                        <div class="col-md-1">-</div>
+                        <div class="col-md-3 text-center"><b><%= frequency[1] %></b><br>Afternoon</div>
+                        <div class="col-md-1">-</div>
+                        <div class="col-md-3 text-center"><b><%= frequency[2] %></b><br>Evening</div>
+                      </div>
+                    <% end %>
+                  <% else %>
+                    <%= medication['medicinefrequency'] %>
+                  <% end %>
+                </td>
+                <td>
+                  <% unless medication['medicinedurationoption'] == "F" %>
+                    <% if medication['medicinedurationoption'] == "W" %>
+                      <%= pluralize(medication['medicineduration'], 'Week') %>
+                    <% elsif medication['medicinedurationoption'] == "M" %>
+                      <%= pluralize(medication['medicineduration'], 'Month') %>
+                    <% else medication['medicinedurationoption'] == "D" %>
+                      <%= pluralize(medication['medicineduration'], 'Day') %>
+                    <% end %>
+                  <% else %>
+                    Next Followup
+                  <% end %>
+                </td>
+              <% else %>
+                <td colspan="3" class="text-center">
+                  As advised below
+                </td>
+              <% end %>
+              <td>
+                <% if medication['eyeside'].present? %>
+                  <%= medication['eyeside'] %>
+                <% else %>
+                  -
+                <% end %>
+              </td>
+              <td><%= medication['medicineinstructions'] %></td>
+            </tr>
+               <% unless medication['taper_id'] == "0" || medication['taper_id'] == nil || medication['taper_id'] == "" %>
+              <tr style="background-color:#bbb">
+                <td colspan="7" style="padding:5px 10px 2px;">
+                  <% @taper = TaperingKit.find_by(id: medication['taper_id']) %>
+                  <% @tapering_set = @taper.tapering_set %>
+                  <% if @taper.taper_by == "Dosage" %>
+                    <table class="table table-bordered" style="margin: 0 0 5px;">
+                      <thead>
+                        <tr>
+                          <th>Sr No.</th>
+                          <th>No of Days</th>
+                          <th>Start Date</th>
+                          <th>End Date</th>
+                          <th>Start Time</th>
+                          <th>End Time</th>
+                          <th width="16%">Dosage</th>
+                          <th width="16%">Interval</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <% @tapering_set.each.with_index do |taper, i| %>
+                          <tr class="taper_row">
+                            <td>
+                              <%= i.to_i + 1 %>
+                            </td>
+                            <td>
+                              <%= taper.number_of_days %>
+                            </td>
+                            <td>
+                              <%= taper.try(:start_date).try(:strftime, '%d/%m/%Y') %>
+                            </td>
+                            <td>
+                              <%= taper.try(:end_date).try(:strftime, '%d/%m/%Y') %>
+                            </td>
+                            <td>
+                              <%= taper.try(:start_time).try(:strftime, '%I:%M %p') %>
+                            </td>
+                            <td>
+                              <%= taper.try(:end_time).try(:strftime, '%I:%M %p') %>
+                            </td>
+                            <td>
+                              <%= taper.dosage %>
+                            </td>
+                            <td>
+                              <%= taper['interval'].to_i > 0 ? 'Every ' + pluralize(taper['interval'], 'hour') : '-' %>
+                            </td>
+                          </tr>
+                        <% end %>
+                      </tbody>
+                    </table>
+                  <% else %>
+                    <table class="table table-bordered" style="margin: 0 0 5px;">
+                      <thead>
+                        <tr>
+                          <th>Sr No.</th>
+                          <th>Day</th>
+                          <th>Start Date</th>
+                          <th>End Date</th>
+                          <th>Start Time</th>
+                          <th>End Time</th>
+                          <th width="16%">Frequency</th>
+                          <th width="16%">Interval</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <% @tapering_set.each.with_index do |taper, i| %>
+                          <% unless (taper.frequency).to_i == 0 %>
+                            <tr class="taper_row">
+                              <td>
+                                <%= i.to_i + 1 %>
+                              </td>
+                              <td>
+                                <%= taper.number_of_days %>
+                              </td>
+                              <td>
+                                <%= taper.try(:start_date).try(:strftime, '%d/%m/%Y') %>
+                              </td>
+                              <td>
+                                <%= taper.try(:end_date).try(:strftime, '%d/%m/%Y') %>
+                              </td>
+                              <td>
+                                <%= taper.try(:start_time).try(:strftime, '%I:%M %p') %>
+                              </td>
+                              <td>
+                                <%= taper.try(:end_time).try(:strftime, '%I:%M %p') %>
+                              </td>
+                              <td>
+                                <%= pluralize(taper['frequency'], 'time') %> a day
+                              </td>
+                              <td>
+                                <%= taper['interval'].to_i > 0 ? 'Every ' + pluralize(taper['interval'], 'hour') : '-' %>
+                              </td>
+                            </tr>
+                          <% end %>
+                        <% end %>
+                      </tbody>
+                    </table>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          <% end %>
+          </tbody>
+        </table>
+      </div>
+
+      <% if prescription.medication_comment.present? %>
+        <li><%= prescription.medication_comment %></li>
+      <% end %>
+
+    </div>
+    <hr style="margin: 10px;">
+
+  <div class="row">
+
+    <div class="col-md-6 no_margin" style="padding: 0 5px;">
+        <div class="col-sm-12 mb5">
+            <span class="col-md-6">Advised By:</span>
+            <strong> <span> Dr. <%= prescription.doctor_name.capitalize %></span> </strong>
+        </div>
+        <div class="col-sm-12 mb5">
+            <span class="col-md-6">View Template:</span>
+            <% if prescription.encountertype == "OPD" %>
+              <a class="btn btn-primary btn-xs navnew-btn-pri hg-tooltip" style="padding: 0px 5px" id="latest-viewsummary-html" data-remote="true" data-toggle="tooltip" data-target="#templates-modal" href="/opd_records/view_opd_summary?appointmentid=<%= prescription.appointment_id %>&amp;opdrecordid=<%= prescription.record_id %>&amp;patientid=<%= prescription.patient_id %>&amp;specality=<%= prescription.specalityid %>&amp;templatetype=<%= prescription.templatetype %>" original-title="View Template"><i class="fa fa-file-alt"></i> Template</a>
+            <% else %>
+              <% department = ('ophthalmology' if current_facility.specialty_ids.include?('309988001')) || 'orthopedics' %>
+              <% @show = 'inpatient_ipd_record_discharge_note_' + department + '_note_path(id: prescription.record_id, admission_id: prescription.admission_id.to_s)' %>
+                <%= link_to eval(@show), class: 'btn btn-primary btn-xs navnew-btn-pri hg-tooltip', style: 'padding: 0px 5px', data: { :remote => true, 'toggle' => 'modal', 'target' => '#ipdrecord-modal', method: :get } do %><i class="fa fa-file-alt"></i> Template<% end %>
+            <% end %>
+
+        </div>
+        <div class="col-sm-12">
+          <div class="row no_margin">
+            <%# if prescription.converted.present? %>
+            <% unless prescription.converted.nil? %>
+              <hr style="margin: 10px;">
+              <% if prescription.converted == true %>
+                <% data_confirm = 'Are you sure want to change to not converted?' %>
+                <% update_to = 'false' %>
+                <% change = 'Mark as not converted' %>
+                <% color = 'danger' %>
+
+              <% else %>
+                <% data_confirm = 'Are you sure want to change to converted?' %>
+                <% update_to = 'true' %>
+                <% change = 'Mark as converted' %>
+                <% color = 'info' %>
+              <% end %>
+              <div class="col-sm-12">
+                <a class="btn btn-xs btn-<%= color %> edit_dispatch_medicine" id="edit_dispatch_medicine" data-prescription-id="<%= prescription.id %>" update_to="<%= update_to %>"> <%= change %>  </a>
+                <textarea class="form-control edit_pharmacy_comment" placeholder="Enter reason.." style="width: 85%;margin-top: 5%;display: none"></textarea>
+                <small class="edit_comment_unavailable" style="color: red; display: none">** Reason field required </small><br>
+                <button class="btn btn-xs btn-primary pull-right edit_comment_submit" style="margin-right: 12%; display: none">Submit</button>
+              </div>
+            <% else %>
+              <div class="col-md-6"> Mark Converted: </div>
+                <button class="btn btn-xs btn-success dispatch_medicine" id="dispatch_medicine" data-prescription-id="<%= prescription.id %>" data-converted="true"> YES</button>
+                <button class="btn btn-xs btn-danger dispatch_medicine" id="not_converted" data-converted="false" data-prescription-id="<%= prescription.id %>"> NO</button>
+            <% end %>
+          </div>
+          <div class="row" style="margin: 4%">
+            <textarea class="form-control pharmacy_comment" placeholder="Enter reason.." style="width: 85%; display: none"></textarea>
+            <small class="comment_unavailable" style="color: red; display: none">** Reason field required </small><br>
+            <button class="btn btn-xs btn-primary pull-right comment_submit" style="margin-right: 12%; display: none">Submit</button>
+          </div>
+        </div>
+
+        <% if prescription.pharmacy_comment.present? %>
+
+            <div class="col-md-12 row mb5" style="padding: 3px;border-radius: 5px;border: #428bca 2px solid;margin-top: 1%; margin-left: 2%;">
+            <span style="font-weight: 900;font-size: 11px;">PHARMACIST COMMENT&nbsp;&nbsp;:&nbsp;&nbsp;&nbsp;&nbsp;</span><span style="color: #428bca"> <%= prescription.pharmacy_comment %></span>
+            </div>
+
+        <% end %>
+      </div>
+
+  <% @showpatientnote = PatientNote.where(organisation_id: current_user.organisation_id).order(created_at: :desc) %>
+    <div class="col-md-6 patient_note_appointment">
+    <%= render partial: 'outpatients/appointment/appointment_details/patient_notes_details.html.erb', locals: { :@patientid => prescription.patient_id, :@showpatientnote => @showpatientnote } %>
+
+    </div>
+
+  </div>
+
+  </div>
+
+  </div>
+
+  <% end %>
+
+
+
+  <style type="text/css">
+    .btn{
+      padding: 0px 5px
+    }
+    .yes_padding {
+      padding: 5px;
+    }
+
+    .patient_profile_pic{
+      border: 3px solid white;
+      border-radius: 3px;
+      box-shadow: 0px 0px 5px rgba(0,0,0,0.4);
+      width: 75%;
+      height: 75%;
+    }
+
+    .appointment-control{
+      margin-bottom: 3px;
+    }
+
+    .navnew-btn-pri {
+      background: transparent;
+      color: #337ab7;
+      padding: 2px 5px;
+    }
+
+    .navnew-btn-info {
+      background: transparent;
+      color: #5bc0de;
+      padding: 2px 5px;
+    }
+
+    .navnew-btn-dan {
+      background: transparent;
+      color: #d9534f;
+      padding: 2px 5px;
+    }
+
+    .navnew-btn-def {
+      background: transparent;
+      color: #333;
+      padding: 2px 5px;
+    }
+
+    /*.doc_reminder_text{
+      border: 0px;
+      width: 90%;
+      color: white;
+      background: #3071A9;
+      border-radius: 3px;
+      padding: 3px;
+      overflow-y: hidden;
+    }
+
+    .doc_reminder_text:focus {
+      background-color: #FFF;
+      color: #000;
+    }
+
+    .doc_reminder_text:hover {
+
+    }
+*/
+    .numberCircle {
+      border-radius: 50%;
+      /*behavior: url(PIE.htc); !* remove if you don't care about IE8 *!*/
+
+      width: 40px;
+      height: 40px;
+      padding: 0px;
+
+      background: #354670;
+      border: 2px solid #354670;
+      color: #FFF;
+      text-align: center;
+
+      margin: auto;
+      margin-top: 5px;
+
+      cursor: pointer;
+
+      font: 32px Arial, sans-serif;
+    }
+
+    .appointment-control .btn-group{
+      margin-bottom: 0px;
+    }
+
+    .appointment-control{
+
+    }
+
+    .btn-engage-patient{
+      margin-left: 10px;
+    }
+
+    #dilation-timer{
+      font-size: 16px;
+      /*padding: 0.5em 0.7em;*/
+      /*color: #ecf0f1;*/
+      /*margin-bottom: 50px;*/
+      -webkit-transition: background 0.5s ease-out;
+      transition: background 0.5s ease-out;
+      text-align: center;
+      /*text-shadow: 0 3px 2px rgba(0, 0, 0, 0.3);*/
+      text-shadow:
+      0 0 1px #fff,
+      0 1px 2px rgba(0,0,0,0.4);
+
+      transition: opacity 500ms;
+      margin-bottom: 8px;
+    }
+
+    .btn-dilate{
+      cursor: pointer;
+    }
+
+    .edit_patient_info {
+        color: #636e7b;
+    }
+    .edit_patient_info:hover {
+      text-decoration: none;
+      color: #636e7b;
+    }
+
+    .check_font * {
+      font-size: 7px;
+    }
+    .medication_title {
+      font-size: 14px;
+    }
+
+
+    .check_font table tr th {
+      padding: 2px 5px;
+    }
+
+    .check_font table tr td {
+      padding: 2px 5px;
+    }
+
+  </style>
+
+  <script type="text/javascript">
+    $('.dispatch_medicine').on('click', function(){
+
+      if ($(this).attr('data-converted') == 'false'){
+        $('.pharmacy_comment').show()
+        $('.comment_submit').show()
+      }
+      else {
+        $.ajax({
+          type: "GET",
+          data: {
+            prescription_id:  $(this).attr('data-prescription-id'),
+            pharmacy_patient_converted: $(this).attr('data-converted')
+          },
+          url: "/prescriptions/pharmacy_patient_converted",
+        })
+      }
+
+    })
+
+    $('.comment_submit').on('click', function(){
+      console.log($('.pharmacy_comment').val(), 'lll')
+
+      if ($('.pharmacy_comment').val() == '' || $('.pharmacy_comment').val() == undefined) {
+        $('.comment_unavailable').show()
+        return
+      }
+      $.ajax({
+        type: "GET",
+        data: {
+          prescription_id:  $('.dispatch_medicine').attr('data-prescription-id'),
+          pharmacy_patient_converted: 'false',
+          pharmacy_comment: $('.pharmacy_comment').val()
+        },
+        url: "/prescriptions/pharmacy_patient_converted",
+      })
+
+    })
+
+
+    $('.edit_dispatch_medicine').on('click', function(){
+
+      $('.edit_pharmacy_comment').show();
+      $('.edit_comment_submit').show();
+
+    })
+
+    $('.edit_comment_submit').on('click', function(){
+      if ($('.edit_pharmacy_comment').val() == '' || $('.edit_pharmacy_comment').val() == undefined) {
+        $('.edit_comment_unavailable').show()
+        return
+      }
+      $.ajax({
+        type: "GET",
+        data: {
+          prescription_id:  $('.edit_dispatch_medicine').attr('data-prescription-id'),
+          pharmacy_patient_converted: $('.edit_dispatch_medicine').attr('update_to'),
+          pharmacy_comment: $('.edit_pharmacy_comment').val()
+          not_converted_to_converted: $('.not_converted_to_converted').val()
+        },
+        url: "/prescriptions/edit_pharmacy_patient_converted",
+      })
+
+    })
+
+    // $("#patient-summary-timeline-link").on('click', function(){
+    //   $.ajax({
+    //     type: "GET",
+    //     dataType: "script",
+    //     url: "/patient_summary/<%#= @patient.try(:id).to_s %>",
+    //     data: {
+    //       current_date: "<%= @current_date %>",
+    //       url: "/prescriptions/pharmacy/<%= @current_date %>"
+    //     }
+    //   });
+    //   history.pushState('', '', '/patient_summary/<%#= @patient.try(:id).to_s %>'); // history.pushState([data], [title], [url]);
+    // })
+  </script>
+
+<% end %>

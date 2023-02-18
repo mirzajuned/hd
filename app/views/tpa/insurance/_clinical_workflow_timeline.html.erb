@@ -1,0 +1,110 @@
+<% if @clinical_workflow_present %>
+  <% unless @clinical_workflow.try(:state) == "not_arrived" %>
+    <div class="row no_margin no_padding clinical-workflow-timeline">
+      <div class="col-xs-12" style="line-height: 2;">
+        <% unless @clinical_workflow_timeline_count >= 6 %>
+          <label style="font-size:12px;border-radius: 12px;" class="label label-danger">Arrived</label>
+        <% else %>
+          <%= link_to outpatients_load_prev_states_path(workflow_id: @clinical_workflow.try(:id)), class: "btn btn-orange btn-xs",:data => {:remote => true} do %> Show All<% end %>
+        <% end %>
+
+        <% @clinical_workflow_timeline.each do |transition| %>
+          <% start_time = transition.transition_start %>
+          <% end_time = (transition.transition_end if transition.try(:transition_end).present?) || Time.current %>
+          <% time_difference = TimeDifference.between(start_time,end_time).in_minutes %>
+          
+          <% if time_difference > 60 %>
+            <%time_difference = (time_difference/60).floor.to_s + " hr " + (time_difference.round % 60).to_s + " mins" %>
+          <% else %>
+            <%time_difference = time_difference.round.to_s + " mins" %>
+          <% end %>
+
+          <% if transition.department_id != nil %>
+            <% if transition.department_id == '309988001' %>
+              <% state_name = "Ophthalmology Investigation" %>
+            <% elsif transition.department_id == '309964003' %>
+              <% state_name = "Radiology Investigation" %>
+            <% elsif transition.department_id == '261904005' %>
+              <% state_name = "Laboratory Investigation" %>
+            <% elsif transition.department_id == '50121007' %>
+              <% state_name = "Optical Shop" %>
+            <% elsif transition.department_id == '284748001' %>
+              <% state_name = "Pharmacy Shop" %>
+            <% elsif transition.department_id == '450368792' %>
+              <% state_name = "TPA Department" %>
+            <%end%>
+
+          <% elsif transition.user_id != nil %>
+            <% state_name = User.find_by(id: transition.user_id).fullname %>
+          <% end %>
+    
+          <i class="fa fa-long-arrow-right fa-xs"></i>
+          
+          <% if transition.to == "check_out" %>
+            <label title="<%= time_difference %>" style="font-size:12px;border-radius: 12px;margin:0px;" class="label label-default">CO: <%= state_name %></label>
+          <% else %>
+            <% if transition.to == "complete" || transition.to == "away" || transition.to == "incomplete" %>
+              <%if transition.to == "complete" %>
+                <label title="" style="font-size:12px;border-radius: 12px;" class="label label-success away">Complete</label>
+              <%elsif transition.to == "incomplete" %>
+                <label title="" style="font-size:12px;border-radius: 12px;" class="label label-danger away">InCompleted</label>  
+              <% elsif transition.to == "away" %>
+                <label title="<%= time_difference%>" style="font-size:12px;border-radius: 12px;" class="label label-warning"><%= transition.to.capitalize%></label>
+              <% end %>
+            <% elsif transition.department_id != nil && transition.user_id == nil %>
+              <label title="<%= time_difference %>" style="font-size:12px;border-radius: 12px;" class="label label-primary"><%= state_name %></label>
+            <% elsif transition.user_id != nil && transition.department_id == nil %>
+              <% if transition.to == "away" %>
+                <label title="<%= time_difference %>" style="font-size:12px;border-radius: 12px;" class="label label-warning">Away</label>
+              <%elsif transition.to == "doctor" %>
+                <label title="<%= time_difference %>" style="font-size:12px;border-radius: 12px;" class="label label-primary">Dr.<%= state_name %></label>
+              <%elsif transition.to == "complete" %>
+                <label title="" style="font-size:12px;border-radius: 12px;" class="label label-success away">Complete</label>
+              <% elsif transition.to == "receptionist" %>
+                <label  title="<%= time_difference %>" style="font-size:12px;border-radius: 12px;margin:0px;" class="label label-default">Rcpt.<%= state_name %></label>
+              <% elsif transition.to == "counsellor" %>
+                <label  title="<%= time_difference %>" style="font-size:12px;border-radius: 12px;margin:0px;" class="label label-default">Cr.<%= state_name %></label>
+              <% elsif transition.to == "optometrist" %>
+                <label  title="<%= time_difference %>" style="font-size:12px;border-radius: 12px;margin:0px;" class="label label-default">Opt.<%= state_name %></label>
+              <% elsif transition.to == "tpa" %>
+                <label  title="<%= time_difference %>" style="font-size:12px;border-radius: 12px;margin:0px;" class="label label-default"><%= state_name %></label>
+              <%end%>
+            <% end %>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+  <%#else%>
+    <!-- <label class="label label-danger "style="margin-left: 10px">Not Arrived</label> -->
+  <% end %>
+<% else %>
+  <% unless @clinical_workflow.try(:state) == "not_arrived" %>
+    <div class="row no_margin no_padding clinical-workflow-timeline" style="margin: 0 auto;">
+      <div class="col-xs-12 text-center" style="line-height: 2;">
+        <label style="font-size:12px;border-radius: 12px;" class="label label-danger">Arrived</label>
+        <% @clinical_workflow_timeline.each do |transition| %>
+          <% start_time = transition.transition_start %>
+          <% end_time = (transition.transition_end if transition.try(:transition_end).present?) || Time.current %>
+          <% time_difference = TimeDifference.between(start_time,end_time).in_minutes %>          
+          <% if time_difference > 60 %>
+            <%time_difference = (time_difference/60).floor.to_s + " hr " + (time_difference.round % 60).to_s + " mins" %>
+          <% else %>
+            <%time_difference = time_difference.round.to_s + " mins" %>
+          <% end %>
+          <i class="fa fa-long-arrow-right fa-xs"></i>
+          <% if transition.to == "waiting" %>
+            <label style="font-size:12px;border-radius: 12px;" class="label label-warning" title="<%= time_difference %>">Waiting</label>
+          <% elsif transition.to == "engaged" %>
+            <label style="font-size:12px;border-radius: 12px;background: #ff8735;" class="label label-warning" title="<%= time_difference %>">Engaged</label>
+          <% else %> 
+            <% if transition.to == "complete" %>
+              <label style="font-size:12px;border-radius: 12px;" class="label label-success">Completed</label> 
+            <% else %>
+              <label style="font-size:12px;border-radius: 12px;" class="label label-danger">InCompleted</label>
+            <% end %>  
+          <% end %> 
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+<% end %>

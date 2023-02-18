@@ -1,0 +1,198 @@
+<%= javascript_include_tag "application-loggedin", "data-turbolinks-track" => true %>
+<%= form_tag("/settings/print_settings", method: 'post', remote: true, id: 'print_customisations', class: 'form form-bordered') do  %>
+  <%= hidden_field_tag "print_setting[organisation_id]", current_user.organisation_id %>
+  <%= hidden_field_tag "print_setting[type]", "custom" %>
+  <%= hidden_field_tag "print_setting[is_editable]", true %>
+  <div class="row" id="header_notice">
+    <div class="col-md-6">
+      <%= text_field_tag "print_setting[name]", @print_setting.try(:name), { class: 'form-control p5_10', placeholder: 'Print Setting Name' } %>
+    </div>
+    <div class="col-md-6 col-sm-6"></div>
+  </div>
+  <div id="footer_notice" style="z-index: 1000;">
+    <div class="row mt10" style="margin-left: 0px">
+      <div class="col-md-12" style="max-height: 100%">
+        <%= submit_tag "Save", class: "btn btn-xs btn-success", data: { 'disable-with': 'Please Wait...' }, onclick: "print_new_form()" %>
+      </div>
+    </div>
+  </div>
+  <div style="margin-top: 55px; margin-bottom: 60px;">
+    <div class="row">
+      <div class="col-md-6">
+        Select Facility :
+        <%= select_tag "print_setting[facility_ids]", options_for_select(@facilities_array, @print_setting.facility_ids.map(&:to_s)), { class: 'form-control facility_ids', multiple: true } %>
+        <button class="btn btn-link btn-xs" id='select_all_facility'>Select All</button><button class="btn btn-link btn-xs pull-right" id='deselect_all_facility'>Deselect All</button>
+      </div>
+      <div class="col-md-6">
+        Select Department :
+        <%= select_tag "print_setting[department_ids]", options_for_select(@departments_array, @print_setting.department_ids.map(&:to_s)), { class: 'form-control department_ids', multiple: true } %>
+        <button class="btn btn-link btn-xs" id='select_all_department'>Select All</button><button class="btn btn-link btn-xs pull-right" id='deselect_all_department'>Deselect All</button>
+      </div>
+    </div>
+
+
+    <div class="row mb20" id="header_height" style="<%= @print_setting ? 'display:block' : '' %>">
+      <div class="col-md-12" style="margin-top: 0px;">
+        <label class="control-label" >
+          Margins (in cms)
+        </label>
+      </div>
+      <div class="col-md-3">
+        <div class="input-group input-group-sm select-refresh">
+          <%= number_field_tag "print_setting[header_height]", @print_setting.try(:header_height), class: "form-control", style: "width: 60px;", min: 0 %>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="input-group input-group-sm select-refresh">
+          <%= number_field_tag "print_setting[footer_height]", @print_setting.try(:footer_height), class: "form-control", style: "width: 60px;", min: 2 %>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="input-group input-group-sm select-refresh">
+          <%= number_field_tag "print_setting[left_margin]", @print_setting.try(:left_margin), class: "form-control", style: "width: 60px;", min: 0 %>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="input-group input-group-sm select-refresh">
+          <%= number_field_tag "print_setting[right_margin]", @print_setting.try(:right_margin), class: "form-control", style: "width: 60px;", min: 0 %>
+        </div>
+      </div>
+      <div class="col-md-3">Top</div>
+      <div class="col-md-3">Bottom</div>
+      <div class="col-md-3">Left </div>
+      <div class="col-md-3">Right</div>
+    </div>
+    <div class="row mb20">
+      <div class="col-md-5">
+        <label class="control-label">Create Letterhead?</label>
+      </div>
+      <div class="col-md-7">
+        <%= radio_button_tag "print_setting[customised_letter_head]", true, @print_setting.try(:customised_letter_head) ? true :false %> Yes
+        <%= radio_button_tag "print_setting[customised_letter_head]", false, @print_setting.try(:customised_letter_head) ? false :true %> No
+      </div>
+    </div>
+
+    <% header_location = @print_setting.try(:customised_letter_head) ? @print_setting.try(:header_location) : 'left' %>
+
+    <div class="row mb20" id="header_loc"style="display:none;">
+      <div class="col-md-5">Header Position :</div>
+      <div class="col-md-7">
+        <%= radio_button_tag "print_setting[header_location]", 'left', header_location == 'left' ? true : false %>&nbsp; Left&nbsp;&nbsp;
+        <%= radio_button_tag "print_setting[header_location]", 'center', header_location == 'center' ? true : false %>&nbsp; Center&nbsp;&nbsp;
+        <%= radio_button_tag "print_setting[header_location]", 'right', header_location == 'right' ? true : false %>&nbsp; Right
+      </div>
+    </div>
+    <div class="row mb10" id="header-master" style="display: none;">
+      <div class="col-md-5">Header Text : </div>
+      <div class="col-md-7 header-text-title"><a href="#">Customize header text</a> </div>
+      <div class="col-md-12 header-text-body" style="display: none">
+        <%= text_area_tag "print_setting[header]", @print_setting.try(:customised_letter_head) ? @print_setting.try(:header) : '', {class: 'summernote', data: 'abc', placeholder:'abcs'} %>
+      </div>
+      <div class="col-md-12">
+        <hr>
+      </div>
+    </div>
+    <% header_logo_location = @print_setting.try(:customised_letter_head) ? @print_setting.try(:header_logo_location) : 'left' %>
+    <div class="row mb10" id="logo_loc" style="<%= @print_setting.try(:customised_letter_head) ? '' :'display:none' %>" >
+      <div class="col-md-5">Logo Position :</div>
+      <div class="col-md-7">
+        <%= radio_button_tag "print_setting[header_logo_location]", 'left', header_logo_location == 'left' ? true : false %>&nbsp; Left&nbsp;&nbsp;
+        <%= radio_button_tag "print_setting[header_logo_location]", 'right', header_logo_location == 'right' ? true : false %>&nbsp; Right&nbsp;&nbsp;
+        <%= radio_button_tag "print_setting[header_logo_location]", 'none', header_logo_location == 'none' ? true : false %>&nbsp; No Logo
+      </div>
+      <div class="" id="organisation_logo">
+        <div class="col-md-5"style="margin-top:25px;">Upload Logo :</div>
+        <%= image_tag(@organisation.try(:logo).to_s, width: "200", height: "60", style: "cursor: pointer", class: "thumb", onclick: "$(this).parent().find('.profile_pic').click();")%>
+        <%= file_field_tag "print_setting[logo]", {style: "visibility:hidden", class: "profile_pic", onchange:"readURL(this)"} %>
+      </div>
+    </div>
+
+    <div class="row mb10">
+      <div class="col-md-12">
+        <div class="add-remove-class" id="left_header" style="<%= (@print_setting.try(:customised_letter_head) && (@print_setting.try(:header_logo_location) == 'right' || @print_setting.try(:header_logo_location) == 'none')) ? '':'display:none' %>">
+          <div class="row mb10">
+            <div class="col-md-5">Text Position-Left: </div>
+            <div class="col-md-7"><a href="#" class="left-text">Customize text</a></div>
+
+            <div class="col-md-12 left-text-body" style="display: none">
+              <%= text_area_tag "print_setting[left]", @print_setting.try(:customised_letter_head) ? @print_setting.try(:left) : '', {class: 'summernote', rows: 5} %>
+            </div>
+          </div>
+        </div>
+        <div class="add-remove-class" id="right_header" style="<%= (@print_setting.try(:customised_letter_head) && (@print_setting.try(:header_logo_location) == 'left' || @print_setting.try(:header_logo_location) == 'none')) ? '':'display:none' %>">
+          <div class="row mb10">
+            <div class="col-md-5">Text Position-Right: </div>
+            <div class="col-md-7"><a href="#" class="right-text">Customize text</a></div>
+
+            <div class="col-md-12 right-text-body" style="display: none">
+              <%= text_area_tag "print_setting[right]", @print_setting.try(:customised_letter_head) ? @print_setting.try(:right) : '', {class: 'summernote', data: 'abc', placeholder:'abcs'} %>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <hr>
+
+    <div class="row mb10">
+      <div class="col-md-5">
+        <label class="control-label">Create Footer?</label>
+      </div>
+      <div class="col-md-7">
+        <%= radio_button_tag "print_setting[customised_footer]", true, @print_setting.try(:customised_footer) ? true :false %> Yes
+        <%= radio_button_tag "print_setting[customised_footer]", false, @print_setting.try(:customised_footer) ? false :true %> No
+      </div>
+    </div>
+
+    <div class="row" id="footer-div" style="display: none;">
+      <div class="col-md-5">
+        Footer Text :
+      </div>
+      <div class="col-md-7">
+        <a href="#" class="footer-text-title">Customize footer Text</a>
+      </div>
+
+      <div class="col-md-12 footer-text-body" style="display: none">
+        <%= text_area_tag "print_setting[footer_text]", @print_setting.try(:footer_text), class: 'summernote' %>
+      </div>
+    </div>
+  </div>
+
+
+<% end %>
+<script type="text/javascript">
+  function readURL(input) {
+    if (input.files && input.files[0]) {
+      var reader = new FileReader();
+      reader.onload = function (e) {
+          $(input).parent().find(".thumb").attr('src', e.target.result);
+      }
+      reader.readAsDataURL(input.files[0]);
+    }
+  }
+  function print_new_form() {
+    $("#print_customisations").validate({
+      rules: {
+        "print_setting[name]": {
+          required: true,
+        },
+        "print_setting[facility_ids][]": {
+          required: true,
+        },
+        "print_setting[department_ids][]": {
+          required: true,
+        }
+      },
+      messages: {
+        "print_setting[name]": {
+          required: "*Required",
+        },
+        "print_setting[facility_ids][]": {
+          required: "Please select Atleast 1 Facility.",
+        },
+        "print_setting[department_ids][]": {
+          required: "Please select Atleast 1 Department.",
+        },
+      }
+    });
+  }
+</script>

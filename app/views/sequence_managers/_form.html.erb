@@ -1,0 +1,282 @@
+<div class="modal-body">
+  <%= f.hidden_field :organisation_id, value: @current_facility.organisation_id %>
+  <%= f.hidden_field :display_name, value: @sequence_manager.display_name %>
+  <%= f.hidden_field :has_entity, value: @module_has_entity %>
+  <div class="col-12">
+    <div class="row mb20">
+      <div class="col-md-2 col-sm-2 col-xs-2"><strong>Counter Level: </strong></div>
+      <div class="col-md-4">
+        <%= f.select :counter_level, options_for_select(@counter_levels.collect{|counter_level| [counter_level.titleize, counter_level]}, @sequence_manager.counter_level), { include_blank: "Select Counter Level" }, { class: 'form-control country', style:'max-height:34px;' } %>
+      </div>
+      <div class="col-md-2"><strong>Module Name: </strong></div>
+      <div class="col-md-4">
+        <%= f.select :module_name, options_for_select(@module_names.collect{|module_name| [module_name.titleize, module_name]}, @sequence_manager.module_name), {include_blank: "Select Module"}, {class: 'form-control module_name', style:'max-height:34px;', disabled: true} %>
+      </div>
+    </div>
+    <div class="row mb20">
+      <div class="col-md-2"><strong>Prefix Level: </strong></div>
+      <div class="col-md-4">
+        <%= f.select :prefix_level, options_for_select(@prefix_levels.collect{|prefix_level| [prefix_level.titleize, prefix_level]}, @sequence_manager.prefix_level), {include_blank: "Select Prefix Level"}, {class: 'form-control country', style:'max-height:34px;'} %>
+      </div>
+      <div class="col-md-2"><strong><%= @sequence_manager.alias_fields('counter_length') %>: </strong></div>
+      <div class="col-md-4">
+        <%= text_field_tag "sequence_manager[counter_length]", @sequence_manager.counter_length, class: "form-control sequence_add_rule", placeholder: "Enter Counter Length", value: @sequence_manager.counter_length %>
+      </div>
+    </div>
+    <div class="row mb20">
+      <div class="col-md-2"><strong>Department: </strong></div>
+      <div class="col-md-4">
+        <%= f.select :department_id, options_for_select(@departments.collect{|department| [department.try(:display_name), department.id]}, @sequence_manager.try(:department_id)), {include_blank: "Select Department"}, {class: 'form-control department', style:'max-height:34px;'} %>
+      </div>
+    </div>
+    <div class="row mb20">
+      <div class="col-md-1"></div>
+      <div class="col-md-11 col-sm-11 col-xs-11">
+        <%= hidden_field_tag 'latest_display_format' %>
+        <%= f.hidden_field :display_format, value: @sequence_manager.try(:display_format) %>
+        <%= f.input :display_entities, wrapper_html: { class: "col-md-9 display_entities" }, collection: @display_entities, as: :hg_checkbox, label: false, required: false, class: 'btn btn-sm btn-white checkuptype display_entities_button',  :input_html => { :name => "display_entities" }, :checked => @sequence_manager.checkboxes_checked(@sequence_manager.display_format) %>
+        <div class="col-md-3">
+          <%= select_tag :separators, options_for_select(@separators), class: 'form-control', name: 'separators', prompt: 'Add Separator' %>
+        </div>
+      </div>
+    </div>
+    <div class="row mb20 display_field_details">
+      <div class="col-md-12 col-sm-12 col-xs-12 display_entities_field" style="">
+        <div class="col-md-1 col-sm-1 col-xs-1">
+          <div class="title">
+            <h5 class="f_complaint"><strong>Sr. No.</strong></h5>
+          </div>
+        </div>
+        <div class="col-md-3 col-sm-3 col-xs-3">
+          <div class="title">
+            <h5 class="f_complaint"><strong>Name</strong></h5>
+          </div>
+        </div>
+        <div class="col-md-6 col-sm-6 col-xs-6">
+          <div class="title">
+            <h5 class="f_complaint"><strong>Value/Rules</strong></h5>
+          </div>
+        </div>
+        <div class="col-md-2 col-sm-2 col-xs-2">
+          <div class="title">
+            <h5 class="f_complaint"><strong>Action</strong></h5>
+          </div>
+        </div>
+      </div>
+      <!-- upsert rules -->
+      <div class="col-md-12 col-sm-12 col-xs-12" id="display_entities_fields_add">
+        <% if @sequence_manager.try(:display_format).present? %>
+          <% counter = 1 %>
+          <% @sequence_manager.display_format.split(',').each_with_index do |display_field, i| %>
+            <% div_class_name = (@separator.exclude?(display_field.to_nil)) ? "#{display_field}_fields" : 'separator_fields' %>
+            <div class="col-md-12 col-sm-12 col-xs-12 complaint_name counter_rows <%=div_class_name%>">
+              <div class="col-md-1 display_section">
+                <b><span class="sr_no"><%= counter %></span></b>
+              </div>
+              <div class="col-md-3 col-sm-3 col-xs-3">
+                <div class="title">
+                  <% if @separator.include?(display_field.to_nil) %>
+                    Separator
+                  <% else %>
+                    <%= @sequence_manager.alias_fields(display_field) %>
+                  <% end %>
+                </div>
+              </div>
+              <% if @separator.include?(display_field.to_nil) %>
+                <div class="col-md-6 col-sm-6 col-xs-6 separator_val"><%=display_field%></div>
+              <% else %>
+                <div class="col-md-6 col-sm-6 col-xs-6">
+                  <div class="val">
+                    <% is_readonly = (display_field.include?('abbreviation')) ? 'readonly' : '' %>
+                    <% if display_field == 'has_date' %>
+                      <%= f.select :date_format, options_for_select(@date_formats, @sequence_manager.date_format), {include_blank: "Select Date Format"}, {class: 'form-control has_date', style:'max-height:34px;'} %>
+                    <% elsif display_field == 'year_format' %>
+                      <%= f.select :year_format, options_for_select(@year_formats, @sequence_manager.year_format), {include_blank: "Select Year Format"}, {class: 'form-control year_format', style:'max-height:34px;'} %>
+                      <div class="col-md-12 col-sm-12 col-xs-12">
+                        <div class="ckbox ckbox-primary">
+                          <%= f.hidden_field :reset_on_newyear, value: false %>
+                          <%= check_box_tag 'sequence_manager[reset_on_newyear]', true, @sequence_manager.try(:reset_on_newyear), id: 'sequence_manager_reset_on_newyear_box', class: 'chk_reset_on_newyear' %>
+                          <label for="sequence_manager_reset_on_newyear_box">Reset On New Year</label>
+                        </div>
+                      </div><br>
+                      <div class="col-md-12 col-sm-12 col-xs-12 div_reset_month">
+                        <div class="col-md-4 col-sm-4 col-xs-4"><strong><%= @sequence_manager.alias_fields('reset_month') %></strong></div>
+                        <div class="col-md-8 col-sm-8 col-xs-8">
+                          <%= f.select :reset_month, options_for_select(@reset_months, @sequence_manager.reset_month), {include_blank: "Reset Month"}, {class: 'form-control country', style:'max-height:34px;'} %>
+                        </div>
+                      </div>
+                    <% elsif display_field == 'organisation_abbreviation' %>
+                      <%= text_field_tag "sequence_manager[organisation_abbreviation]", @current_organisation.identifier_prefix, class: "form-control sequence_add_rule", value: @current_organisation.identifier_prefix, readonly: is_readonly %>
+                    <% elsif display_field == 'facility_abbreviation' %>
+                      <%= text_field_tag "sequence_manager[facility_abbreviation]", @current_facility.abbreviation, class: "form-control sequence_add_rule", value: @current_facility.abbreviation, readonly: is_readonly %>
+                    <% elsif display_field == 'region_abbreviation' %>
+                      <%= text_field_tag "sequence_manager[region_abbreviation]", @current_region.try(:abbreviation), class: "form-control sequence_add_rule", value: @current_region.try(:abbreviation), readonly: is_readonly %>
+                    <% elsif display_field == 'entity_group_abbreviation' %>
+                      <%= text_field_tag "sequence_manager[entity_group_abbreviation]", @current_entity_group.try(:abbreviation), class: "form-control sequence_add_rule", value: @current_entity_group.try(:abbreviation), readonly: is_readonly %>
+                    <% else %>
+                      <% if display_field.include?('_counter') %>
+                        <strong><%= @sequence_manager.send("#{@sequence_manager.counter_level}_abbreviation") %> : </strong><%= text_field_tag "sequence_manager[original_counter]", @sequence_manager.try(:original_counter).to_i, class: "form-control original_counter", value: @sequence_manager.try(:original_counter).to_i, type: 'number', min: 1 %>
+                        <%= hidden_field_tag "sequence_manager[current_counter]", @sequence_manager.try(:current_counter).to_i, class: "form-control current_counter", value: @sequence_manager.try(:current_counter).to_i %>
+                        <% unless @sequence_manager.counter_level == 'organisation' %>
+                          <% counter_level = @sequence_manager.counter_level %>
+                          <% if counter_level == 'facility' %>
+                            <% details = @facility_details %>
+                          <% elsif counter_level == 'region' %>
+                            <% details = @region_details %>
+                          <% elsif counter_level == 'entity_group' %>
+                            <% details = @entity_group_details %>
+                          <% end %>
+                          <% details&.each do |key, val| %>
+                            <strong><%= val[:prefix] %> : </strong><%= text_field_tag "sequence_manager[#{counter_level}_details][#{key}][#{'original_counter'.to_sym}]", val[:original_counter], class: "form-control original_counter", value: val[:original_counter], type: 'number', min: 1 %>
+                            <%= hidden_field_tag "sequence_manager[#{counter_level}_details][#{key}][#{'current_counter'.to_sym}]", val[:current_counter], class: "form-control current_counter", value: val[:current_counter].to_i %>
+                            <%= hidden_field_tag "sequence_manager[#{counter_level}_details][#{key}][#{'name'.to_sym}]", val[:name], value: val[:name] %>
+                            <%= hidden_field_tag "sequence_manager[#{counter_level}_details][#{key}][#{'abbreviation'.to_sym}]", val[:abbreviation], value: val[:abbreviation] %>
+                            <%= hidden_field_tag "sequence_manager[#{counter_level}_details][#{key}][#{'prefix'.to_sym}]", val[:prefix], value: val[:prefix] %>
+                          <% end %>
+                        <% end %>
+                      <% else %>
+                        <%= text_field_tag "sequence_manager[#{display_field}]", @sequence_manager.send(display_field), class: "form-control sequence_add_rule", placeholder: "Enter the Rule...", value: @sequence_manager.send(display_field) %>
+                      <% end %>
+                    <% end %>
+                  </div>
+                </div>
+              <% end %>
+              <div class="col-md-2 col-sm-2 col-xs-2">
+                <div class="action">
+                  <button class="btn btn-primary btn-xs move_row_up_btn" title="Move Up"><i class="fa fa-arrow-circle-up" aria-hidden="true"></i></button>&nbsp;
+                  <button class="btn btn-primary btn-xs move_row_down_btn" title="Move Down"><i class="fa fa-arrow-circle-down" aria-hidden="true"></i></button>&nbsp;
+                  <button class="btn btn-danger btn-xs remove_entity"><i class="fa fa-trash-alt" aria-hidden="true"></i></button>
+                </div>
+              </div>
+            </div>
+            <% counter = counter + 1 %>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+    <div class="row mb20 div_preview"></div>
+  </div>
+</div>
+
+<style type="text/css">
+  .div_preview {
+    margin: auto;
+    width: 50%;
+    padding: 10px;
+    text-align: center;
+  }
+</style>
+
+<script type="text/javascript">
+  <%= render "common_sequence_manager.js" %>
+  var previous;
+  move_position();
+  reset_month_div(<%= @sequence_manager.reset_on_newyear%>);
+  // update_preview();
+  remove_rule_div();
+  $('.year_format').on('change', function(){
+    reset_month_div($('.chk_reset_on_newyear').prop('checked'));
+  });
+
+  $('#sequence_manager_department_id').attr('disabled', true);
+
+  $(".display_entities_button").on('click', function(e){
+    let name_field = $(this).attr('data-value');
+    let div_name = (name_field + '_fields');
+    let counter = $(".counter_rows").length;
+    let entity_is_checked = !($(this).hasClass('btn-darkblue'));
+    let counter_level = $('#sequence_manager_counter_level').val();
+    let new_div = '';
+    if(entity_is_checked == true) {
+      if(name_field == 'organisation_counter' || name_field == 'facility_counter' || name_field == 'region_counter' || name_field == 'entity_group_counter') {
+        $('#sequence_manager_counter_level').attr('disabled', true);
+        $('.btn-submit').attr('disabled', false);
+      }
+      if(name_field == 'module_prefix' || name_field == 'entity_group_abbreviation') {
+        $('#sequence_manager_prefix_level').attr('disabled', true);
+      }
+      if($('.' + div_name).length) {
+        $('.' + div_name).show();
+      } else {
+        var new_row = $('.counter_rows').length + 1;
+        new_div = `
+          <div class="col-md-12 col-sm-12 col-xs-12 complaint_name counter_rows ${div_name}">
+          </div>
+        `
+        $("#display_entities_fields_add").append(new_div);
+        let option = '';
+        if(name_field == 'organisation_counter') {
+          option = "<%= escape_javascript(render partial: 'display_fields.html.erb', locals: {f: f, name: 'original_counter', counter_level: 'organisation', sequence_manager: @sequence_manager }) %>"
+        } else if(name_field == 'facility_counter') {
+          option = "<%= escape_javascript(render partial: 'display_fields.html.erb', locals: {f: f, name: 'original_counter', counter_level: 'facility', sequence_manager: @sequence_manager }) %>"
+        } else if(name_field == 'region_counter') {
+          option = "<%= escape_javascript(render partial: 'display_fields.html.erb', locals: {f: f, name: 'original_counter', counter_level: 'region', sequence_manager: @sequence_manager }) %>"
+        } else if(name_field == 'entity_group_counter') {
+          option = "<%= escape_javascript(render partial: 'display_fields.html.erb', locals: {f: f, name: 'original_counter', counter_level: 'entity_group', sequence_manager: @sequence_manager }) %>"
+        } else if(name_field == 'organisation_abbreviation') {
+          option = "<%= escape_javascript(render partial: 'display_fields.html.erb', locals: {f: f, name: 'abbreviation', sub_field: 'organisation', sequence_manager: @sequence_manager }) %>"
+        } else if(name_field == 'facility_abbreviation') {
+          option = "<%= escape_javascript(render partial: 'display_fields.html.erb', locals: {f: f, name: 'abbreviation', sub_field: 'facility', sequence_manager: @sequence_manager }) %>"
+        } else if(name_field == 'module_prefix') {
+          option = "<%= escape_javascript(render partial: 'display_fields.html.erb', locals: {f: f, name: 'module_prefix', sequence_manager: @sequence_manager }) %>"
+        } else if(name_field == 'region_abbreviation') {
+          option = "<%= escape_javascript(render partial: 'display_fields.html.erb', locals: {f: f, name: 'abbreviation', sub_field: 'region', sequence_manager: @sequence_manager }) %>"
+        } else if(name_field == 'entity_group_abbreviation') {
+          option = "<%= escape_javascript(render partial: 'display_fields.html.erb', locals: {f: f, name: 'abbreviation', sub_field: 'entity_group', sequence_manager: @sequence_manager }) %>"
+        } else if(name_field == 'has_date') {
+          option = "<%= escape_javascript(render partial: 'display_fields.html.erb', locals: {f: f, name: 'has_date', sequence_manager: @sequence_manager }) %>"
+        } else if(name_field == 'year_format') {
+          option = "<%= escape_javascript(render partial: 'display_fields.html.erb', locals: {f: f, name: 'year_format', sequence_manager: @sequence_manager }) %>"
+        }
+        $('.'+div_name).html('<div class="col-md-1 display_section"><b><span class="sr_no">'
+          + new_row + '</span></b></div>' + option);
+      }
+    } else {
+      if(name_field == 'organisation_counter' || name_field == 'facility_counter' || name_field == 'region_counter' || name_field == 'entity_group_counter') {
+        $('#sequence_manager_counter_level').attr('disabled', false);
+        $('.btn-submit').attr('disabled', true);
+      }
+      if(name_field == 'module_prefix' || name_field == 'entity_group_abbreviation') {
+        $('#sequence_manager_prefix_level').attr('disabled', false);
+      }
+      $('.' + div_name).hide();
+      var display_entities_val = $('#sequence_manager_display_entities').val();
+      if(display_entities_val.indexOf(name_field) > 0) {
+        $('#sequence_manager_display_entities').val(display_entities_val.replace(name_field, ''));
+      }
+    }
+    if (name_field == 'has_date'){
+      $('#sequence_manager_date_format-error').hide()
+      $('#sequence_manager_date_format').unbind().on('change', function(){
+        if ($(this).val() == ''){
+          $(this).addClass('error')
+          if ($('#sequence_manager_date_format-error').text() == ''){
+            $('#sequence_manager_date_format-error').text('Date Format Required')
+          }
+          $('#sequence_manager_date_format-error').show()
+        } else {
+          $(this).removeClass('error')
+          $('#sequence_manager_date_format-error').hide()
+        }
+      })
+    }
+    if (name_field == 'year_format'){
+      $('#sequence_manager_year_format-error').hide()
+      $('#sequence_manager_year_format').unbind().on('change', function(){
+        if ($(this).val() == ''){
+          $(this).addClass('error')
+          if ($('#sequence_manager_year_format-error').text() == ''){
+            $('#sequence_manager_year_format-error').text('Year Format Required')
+          }
+          $('#sequence_manager_year_format-error').show()
+        } else {
+          $(this).removeClass('error')
+          $('#sequence_manager_year_format-error').hide()
+        }
+      })
+    }
+    move_position();
+    renumbering();
+    update_preview();
+  });
+</script>

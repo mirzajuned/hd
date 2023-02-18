@@ -1,0 +1,51 @@
+<% if @clinical_workflow_timeline_count > 0 && @clinical_workflow.state != 'check_out' %>
+  <% if @clinical_workflow.try(:department_id) == current_user.department_ids[0] && @current_date == Date.current.strftime('%d/%m/%Y') %>
+    <div class="row no_margin no_padding" style="padding: 5px;">
+      <div class="row no_margin no_padding" style="padding: 0 15px;margin-top: 3px;">
+        <div class="col-xs-2 no_padding">Send To :</div>
+        <div class="col-xs-10 no_padding" style="margin-left: -30px;">
+
+          <% specialty_users = Global.send('specialties_users_dropdowns')["#{@appointment.specialty_id}"][0]["workflow_dropdowns_list"] %>
+          <% specialty_users.each do |dropdown_list| %>
+
+            <div class="<%= dropdown_list['section_class'] %> dropdown" style="display: inline;margin-right:15px;">
+              <button class="btn btn-xs btn-primary dropdown-toggle <%= dropdown_list['section_class'] %>-button user_button" type="button" data-toggle="dropdown" style="padding: 0 0 0 5px;">
+                <%= dropdown_list['role'] %>
+                &nbsp;&nbsp;<span class="caret"></span>&nbsp;&nbsp;
+              </button>
+              <input class='dropdown_url' type="hidden" value="<%= dropdown_list['dropdown_url'] %>">
+            </div>
+          <% end %>
+
+        </div>
+      </div>
+    </div>
+  <% end %>
+<% end %>
+
+<script>
+  $('.process').on('click',function(e){
+    e.preventDefault();
+    $(this).html("Processing...").css({
+      "cursor": "wait",
+      "pointer-events": "not-allowed"
+    });
+  })
+
+  $('.user_button').on('click',function(e){
+    $(this).parent().find('.dropdown-menu').remove()
+    e.preventDefault();
+    var dropdown_url = $(this).next('.dropdown_url').val()
+
+    if(!$(this).closest('div').hasClass('open')){
+      $.ajax({
+        data: { id: '<%= @clinical_workflow.id.to_s %>',
+                frozen_doctor_id: '<%= @appointment.doctor_frozen ? @appointment.doctor.to_s : '' %>',
+                specialty_id: '<%= @appointment.specialty_id %>',
+                remote: true },
+        url: dropdown_url
+      });
+    }
+  })
+
+</script>

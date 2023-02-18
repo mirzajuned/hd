@@ -1,0 +1,185 @@
+<!--<%# current_inventory = current_inventory %>-->
+<div class="sidebar-main col-lg-2 col-md-2">
+<div class="">
+  <div class="title">
+    <h4 class="sidebar-heading">Filters</h4>
+    <hr />
+  </div>
+    <div class="inventory-filters">
+    <ul class="<%= current_inventory %>">
+      <li id="filter-outstocked" class="li-sidebar-filter">
+        <div class="row">
+          <div class="col-lg-8 col-md-8">
+            Out of Stock(<%= @out_stock_count %>)
+          </div>
+          <div class="col-lg-4 col-md-4 text-right">
+            <button class="btn btn-link filter_type" filter="out_stock" style="padding: 0">
+              <i class="fa fa-toggle-off"></i>
+            </button>
+          </div>
+        </div>
+      </li>
+      <hr />
+      <li id="filter-none" class="li-sidebar-filter">
+        <div class="row">
+          <div class="col-lg-8 col-md-8">
+            All (<%= @allCount %>)
+          </div>
+          <div class="col-lg-4 col-md-4 text-right">
+            <button class="btn btn-link filter_type" filter="all_item" style="padding: 0">
+              <i class="fa fa-toggle-on"></i>
+            </button>
+          </div>
+        </div>
+      </li>
+      <hr />
+      <li id="filter-medications" class="li-sidebar-filter">
+        <div class="row">
+          <div class="col-lg-8 col-md-8">
+            Medication
+          </div>
+          <div class="col-lg-4 col-md-4 text-right">
+            <button class="btn btn-link filter_type" filter="medication" style="padding: 0">
+              <i class="fa fa-toggle-off"></i>
+            </button>
+          </div>
+        </div>     
+      </li>
+      <li id="filter-consumables" class="li-sidebar-filter">
+        <div class="row">
+          <div class="col-lg-8 col-md-8">
+            Consumables
+          </div>
+          <div class="col-lg-4 col-md-4 text-right">
+            <button class="btn btn-link filter_type" filter="consumable" style="padding: 0">
+              <i class="fa fa-toggle-off"></i>
+            </button>
+          </div>
+        </div>     
+      </li>
+      <li id="filter-miscellaneous" class="li-sidebar-filter">
+        <div class="row">
+          <div class="col-lg-8 col-md-8">
+            Miscellaneous
+          </div>
+          <div class="col-lg-4 col-md-4 text-right">
+            <button class="btn btn-link filter_type" filter="miscellaneous" style="padding: 0">
+              <i class="fa fa-toggle-off"></i>
+            </button>
+          </div>
+        </div>     
+      </li>
+      <li id="filter-implants" class="li-sidebar-filter">
+        <div class="row">
+          <div class="col-lg-8 col-md-8">
+            Implants
+          </div>
+          <div class="col-lg-4 col-md-4 text-right">
+            <button class="btn btn-link filter_type" filter="implant" style="padding: 0">
+            <i class="fa fa-toggle-off"></i>
+            </button>
+          </div>
+        </div>
+      </li>
+    </ul>
+  </div>
+</div>
+<div class="">
+  <div class="btn-group" role="group" id="btn_free_invoice">
+    <button type="button" class="btn btn-xs btn-primary">Free Receipt</button>
+    <button type="button" class="btn btn-xs btn-primary" id="free_invoice_item_count" style="display: none;"><%= @inventory_item_cart_count%></button>
+  </div>
+    
+</div>
+<div class="" style="">
+  <div class="title">
+    <h4 class="sidebar-heading" style="display: inline;">Orders/Requests</h4>
+    <span id="btn-fetch-requests" class="pull-right mr10" style="cursor: pointer"><i class="fa fa-refresh"></i></span>
+    <hr />
+    <input type="text" id="search_pharmacy_orders" style="border-radius: 0 18px 18px 0;width: 100%;font-size: 12px;padding-left: 5%" placeholder="Type to search..." />
+    <hr />
+  </div>
+  <div class="">
+    <ul id="items_request" style="overflow-y: scroll; height: 200px;">
+      <%= render partial: "inventory/refresh_pharmacy_request_log", locals: {request_logs: @request_logs} %>
+    </ul>
+  </div>
+  <div>
+    <hr />
+    <button type="button" class="btn btn-xs btn-danger hg-tooltip" tabindex="-1" style="padding:2px 1px; margin-bottom: 5%;" title="Remove Old Requests" id="delete_old_item"><i class="fa fa-trash-alt" style="margin: 0px 6px"></i>Remove Old Requests&nbsp</button>
+  </div>
+</div>
+
+<script type="text/javascript">
+
+  $("#search_pharmacy_orders").on("keyup", function () {
+    query = $(this).val()
+//  if (query.length > 2) {
+    $.ajax({
+      type : 'get',
+      url: '/inventory/search_pharmacy_request_log',
+      data: {q: query, remote: "true" },
+    })
+//  }
+  })
+
+  $("#btn-fetch-requests").on('click',function(){
+    $(this).find("i").addClass("fa-spin")
+    $("#search_pharmacy_orders").val("")
+    $.ajax({
+      url: '/inventory/refresh_pharmacy_request_log',
+      type: 'get',
+      data: {
+        department: '284748001'
+      },
+      success: function(){
+        $("#btn-fetch-requests").find("i").removeClass("fa-spin")
+      }
+    });
+  });
+
+  $("#delete_old_item").on('click',function(){
+    $.ajax({
+      url: '/invoice/inventories/department/pharmacy/delete_old_request',
+      dataType: 'json',
+      type: 'get',
+      data: {
+        department: '284748001'
+      },
+      success: function(res) {
+        return $('#btn-fetch-requests').trigger('click');
+      }
+    });
+  })
+
+  $('#btn_free_invoice').on('click',function(){
+    $.ajax({
+      type: "GET",
+      data: {
+        department_id:  '284748001'
+      },
+//      url: "/invoice/inventories/department/pharmacy_invoices/new",
+      url: "/invoice/inventories/department/pharmacy/free_invoice",
+    }) 
+  })
+  $('.log-request').on('click', function(){
+    prescription_id = $(this).attr('data-requestid')
+    invoice_id = $(this).find('.invoice_true').text().trim()
+    if (invoice_id.length == 0){
+      url = '/invoice/inventories/department/pharmacy/patient_prescription'
+      data = {
+        department_id:  '284748001',
+        prescription_id: prescription_id,
+      }
+    } else {
+      url = '/invoice/inventories/department/pharmacy_invoices/'+invoice_id
+      data = ''
+    }
+    $.ajax({
+      type: "get",
+      data: data,
+      url: url,
+    })
+  })
+</script>
+</div>

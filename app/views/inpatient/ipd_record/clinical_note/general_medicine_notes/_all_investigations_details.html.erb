@@ -1,0 +1,144 @@
+<% if @ipdrecord.has_laboratory_investigations_list? %>
+  <div class="row col-md-12 mb10">
+    <b>Laboratory Investigations: </b>
+    <% laboratory_advised = [] %>
+    <% @ipdrecord.laboratory_investigations_list.where(is_performed: false, has_declined: false, is_removed: false).group_by{ |li| [li.loinc_code] }.each do |laboratory_investigation_args, laboratory_investigations| %>
+      <% laboratory_advised << (laboratory_investigations[0].investigationname.to_s) %>
+    <% end %>
+    <% if laboratory_advised.count > 0 %>
+      <div class="row">
+        <div class="col-md-12">
+          <b>Advised:</b>&emsp;
+          <span><%= laboratory_advised.join(" | ") %></span>
+        </div>
+      </div>
+    <% end %>
+    <% if @ipdrecord.laboratory_investigations_list.where(is_performed: true).count > 0 %>
+      <table class="table table-bordered" style="margin-bottom:0px;">
+        <thead>
+          <tr>
+            <td><b>Investigation Name</b></td>
+            <td class="text-center"><b>Investigation Value </b></td>
+            <td class="text-center"><b>Normal Range</b></td>
+            <td class="text-center"><b>Investigation Remark</b></td>
+            <td class="text-center"><b>Doctor Remark</b></td>
+          </tr>
+        </thead>
+        <tbody>
+          <% @ipdrecord.laboratory_investigations_list.where(is_performed: true).each_with_index do |elem, i| %>
+            <tr>
+              <td><%= elem.investigationname.to_s %></td>
+              <% if elem.laboratory_panel_records.count > 0 %>
+                <td colspan="2" class="text-center">
+                  <b>Sub - investigations present</b>
+                </td>
+              <%else%>
+                <td class="text-center"><%= (elem.investigation_val if elem.investigation_val.present? )|| '-'  %></td>
+                <td class="text-center"><%= (elem.normal_range if elem.normal_range.present? )|| '-'  %></td>
+              <%end%>
+              <td class="text-center"><%= (elem.investigation_comment if elem.investigation_comment.present? )|| '-'  %></td>
+              <td class="text-center"><%= (elem.doctors_remark if elem.doctors_remark.present? )|| '-'  %></td>
+            </tr>
+
+            <% if elem.laboratory_panel_records.count > 0 %> 
+              <tr style="background-color:#bbb;">
+                <td colspan="6">
+                  <table class="table table-bordered" style="margin: 0 0 5px;" >
+                    <thead>
+                      <tr>
+                        <th>Investigation Name</th>
+                        <th class="text-center">Investigation Value</th>
+                        <th class="text-center">Normal range</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <% elem.laboratory_panel_records.each_with_index do |panel_record, j| %>
+                        <tr>
+                          <td><%= (panel_record.investigation_name if panel_record.investigation_name.present? )|| '-' %></td>
+                          <td class="text-center"><%= (panel_record.investigation_val if panel_record.investigation_val.present? )|| '-' %></td>
+                          <td class="text-center"><%= (panel_record.normal_range if panel_record.normal_range.present? )|| '-' %></td>
+                        </tr>
+                      <% end %>
+                    </tbody>
+                  </table>
+                </td>
+              </tr>
+            <% end %>
+
+          <% end %>
+        </tbody>
+      </table>
+    <% end %>
+  </div>
+<% end %>
+
+<% if @ipdrecord.has_radiology_investigations_list? %>
+  <div class="row col-md-12 mb10">
+    <b>Radiology Investigations: </b>
+    <% radiology_advised = [] %>
+    <% @ipdrecord.radiology_investigations_list.where(is_performed: false, has_declined: false, is_removed: false).group_by{ |ri| [ri.investigation_id] }.each do |radiology_investigation_args, radiology_investigations| %>
+      <% radiology_advised << (radiology_investigations[0].investigationname.to_s + ', ' + radiology_investigations[0].get_label_for_radiology_option(radiology_investigations[0].radiologyoptions)) %>
+    <% end %>
+    <% if radiology_advised.count > 0 %>
+      <div class="row">
+        <div class="col-md-12">
+          <b>Advised:</b>&emsp;
+          <span><%= radiology_advised.join(" | ") %></span>
+        </div>
+      </div>
+    <% end %>
+    <% if @ipdrecord.radiology_investigations_list.where(is_performed: true).count > 0 %>
+      <table class="table table-bordered" style="margin-bottom:0px;">
+        <thead>
+          <tr>
+            <td><b>Investigation Name</b></td>
+            <td class="text-center"><b>Investigation Value </b></td>
+            <td class="text-center"><b>Investigation Remark</b></td>
+            <td class="text-center"><b>Doctor Remark</b></td>
+          </tr>
+        </thead>
+        <tbody>
+          <% @ipdrecord.radiology_investigations_list.where(is_performed: true).each_with_index do |elem, i| %>
+            <tr>
+              <td><%= elem.investigationname.to_s + ' '+ elem.investigation_side_name.to_s  %></td>
+              <td class="text-center"><%= (elem.investigation_val if elem.investigation_val.present? )|| '-'  %></td>
+              <td class="text-center"><%= (elem.investigation_comment if elem.investigation_comment.present? )|| '-'  %></td>
+              <td class="text-center"><%= (elem.doctors_remark if elem.doctors_remark.present? )|| '-'  %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% end %>
+  </div>
+<% end %>
+
+<% if @case_sheet.free_form_investigations.try(:count) > 0 %>
+  <div class="row mb20">
+    <div class="col-md-12">
+      <b>Investigation:</b>
+      <% uniq_array = [] %>
+      <% @case_sheet.free_form_investigations.each do |key, investigation| %>
+        <% if investigation[:content].present? && investigation[:content] != "<br>" %>
+          <% unless uniq_array.include?(investigation[:content].to_s.html_safe()) %>
+            <li style="margin-left: 10px"><%= investigation[:content].to_s.html_safe() %></li>
+            <% uniq_array << investigation[:content].to_s.html_safe() %>
+          <% end %>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+<% end %>
+
+<style type="text/css">
+  .check_font * {
+    font-size: 12px;
+  }
+
+  .check_font table tr th {
+    padding: 2px 5px;
+  }
+
+  .check_font table tr td {
+    padding: 2px 5px;
+  }
+</style>

@@ -1,0 +1,181 @@
+<% @servicecardsenabled.order(created_at: :desc).each do |servicecard| %>
+  <hr style="margin: 5px 0">
+  <div class="all-service-row">
+    <div class="row all-service-view">
+      <div class="col-md-3">
+        <% if servicecard.created_from == "Migration" %>
+          <h5 style="color:#f00"  class="services-name"><b><%= servicecard.service_name %></b></h5>
+        <% else %>
+          <h5 class="services-name"><b><%= servicecard.service_name %></b></h5>
+        <% end %>
+      </div>
+      <div class="col-md-2"></div>
+      <div class="col-md-7 text-right">
+        <%= link_to new_invoice_item_card_path(service_card_id: servicecard.id.to_s), method: :get, data: {remote: true, toggle: 'modal', target: "#invoice-modal"}, class: "btn btn-default btn-xs invoice-card-btn create-items-btn" do %>Add Items<% end %>
+        <button class="btn btn-primary btn-xs invoice-card-btn view-items-btn view-items-btn_<%=servicecard.id.to_s %>">View Items</button>
+        <button class="btn btn-primary btn-xs invoice-card-btn hide-items-btn" style="display:none;">Hide Items</button>
+        <button class="btn btn-info btn-xs invoice-card-btn edit-btn-service">Edit</button>
+        <%= link_to invoice_service_card_path(id: servicecard.id.to_s), method: :delete, data: {confirm: "<b style='color:#000'>This Will Disable Service - <b style='color:#ff0000'>'" + servicecard.service_name.to_s + "'</b> & all ITEMS related to it.</b>", :remote => true}, class: "btn btn-danger btn-xs invoice-card-btn delete-btn-service" do %>Disable<% end %>
+      </div>
+    </div>
+    <div class="row edit-service-view" style="display:none;">
+      <div class="col-md-3">
+        <input type="text" name="" class="form-control edit-service-name" id="edit-service-name" data-service-id="<%= servicecard.id.to_s %>" data-value="<%= servicecard.service_name %>" value="<%= servicecard.service_name %>">
+      </div>
+      <div class="col-md-2 edit-error-placement"></div>
+      <div class="col-md-7 text-right">
+        <button class="btn btn-success btn-xs invoice-card-btn update-service">Save</button>
+        <button class="btn btn-danger btn-xs invoice-card-btn close-update-form">Close</button>
+      </div>
+    </div>
+    <div class="row all-items-row" style="display:none;">
+      <% @service_items = @itemcardsenabled.where(invoice_service_card_id: servicecard.id) %>
+      <% if @service_items.count > 0 %>
+        <table class="table">
+          <thead>
+            <th>Item Name</th>
+            <th class="text-center">Quantity</th>
+            <% if @invoice_setting.tax_enabled_opd && false %>
+              <th class="text-right">Tax Amount</th>
+            <% end %>
+            <th class="text-right">Amount</th>
+            <th class="text-right">Actions</th>
+          </thead>
+          <% @service_items.each do |itemcard| %>
+            <tbody>
+              <tr class="each-item-table-row">
+                <% if itemcard.created_from == "Migration" %>
+                  <td style="color:#f00;"><%= itemcard.item_name.to_s %><% if itemcard.user_name %><%= " - " + itemcard.user_name %><% end %></td>
+                <% else %>
+                  <td><%= itemcard.item_name.to_s %><% if itemcard.user_name %><%= " - " + itemcard.user_name %><% end %></td>
+                <% end %>
+                <td class="text-center"><%=itemcard.quantity %></td>
+                <% if @invoice_setting.tax_enabled_opd && false %>
+                  <td class="text-right"><%= itemcard.taxable_amount %></td>
+                <% end %>
+                <td class="text-right"><%= itemcard.item_price %></td>
+                <td class="text-right">
+                  <!-- <button class="btn btn-default btn-xs move-item-btn">Copy</button> -->
+                  <!-- <button class="btn btn-default btn-xs copy-item-btn">Move</button> -->
+                  <%= link_to edit_invoice_item_card_path(id: itemcard.id.to_s), method: :get, data: {remote: true, toggle: 'modal', target: "#invoice-modal"}, class: "btn btn-info btn-xs edit-btn-item" do %>Edit<% end %>
+                  <%= link_to invoice_item_card_path(id: itemcard.id.to_s), method: :delete, data: {confirm: "<b style='color:#000'>This Will Disable Item - <b style='color:#ff0000'>'" + itemcard.item_name.to_s + "'</b></b>", :remote => true}, class: "btn btn-danger btn-xs delete-btn-item" do %>Disable<% end %>
+                </td>
+              </tr>
+            </tbody>
+          <% end %>
+        </table>
+      <% else %>
+        <div class="col-md-12 text-center">
+          No Items to Show.
+        </div>
+      <% end %>
+    </div>
+  </div>
+<% end %>
+<% if @servicecardsenabled.count == 0 %>
+  <hr>
+  <div class="row">
+    <div class="col-md-12 text-center">
+      No Services to Show.
+    </div>
+  </div>
+<% end %>
+
+<% if @servicecardsdisabled.count > 0 || @itemcardsdisabled.count > 0 %>
+  <div class="row" style="margin-top:30px;">
+    <div class="col-md-12 text-right">
+      <button class="btn btn-info show-disabled-card-btn">Show Disabled Items</button>
+      <button class="btn btn-info hide-disabled-card-btn" style="display:none;">Hide Disabled Items</button>
+    </div>
+  </div>
+  <div class="show-disabled-cards" style="display:none;">
+    <% if @servicecardsdisabled.count > 0 %>
+      <div class="row" style="background:#354670;color:#fff;margin-top:20px;">
+        <div class="col-md-6">
+          <h4>Disabled Service Cards List</h4>
+        </div>
+        <div class="col-md-6 text-right">
+        </div>
+      </div>
+      <div id="new-service-row" class="row">
+      </div>
+      <% @servicecardsdisabled.order(created_at: :desc).each do |servicecard| %>
+        <hr style="margin: 5px 0">
+        <div class="all-service-row">
+          <div class="row all-service-view">
+            <div class="col-md-3">
+              <% if servicecard.created_from == "Migration" %>
+                <h5 style="color:#f00"  class="services-name"><b><%= servicecard.service_name %></b></h5>
+              <% else %>
+                <h5 class="services-name"><b><%= servicecard.service_name %></b></h5>
+              <% end %>
+            </div>
+            <div class="col-md-2"></div>
+            <div class="col-md-7 text-right">
+              <%= link_to invoice_service_cards_enable_path(id: servicecard.id.to_s), method: :get, data: {confirm: "<b style='color:#000'>This Will Enable Service - <b style='color:#ff0000'>'" + servicecard.service_name + "'</b> & all ITEMS related to it.</b>", :remote => true}, class: "btn btn-info btn-xs invoice-card-btn enable-btn-service" do %>Enable<% end %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    <% end %>
+    <% if @search.nil? %>
+      <% @service_items = @itemcardsdisabled %>
+      <% if @service_items.count > 0 %>
+      <div class="row" style="background:#354670;color:#fff;margin-top:50px;">
+        <div class="col-md-6">
+          <h4>Disabled Item Cards List</h4>
+        </div>
+        <div class="col-md-6 text-right">
+        </div>
+      </div>
+      <div class="row all-items-row">
+        <% if @service_items.count > 0 %>
+          <table class="table">
+            <% @counter = 0 %>
+            <% @service_items.each do |itemcard| %>
+              <% if @counter == 0 %>
+                <thead>
+                  <tr>
+                    <th>Item Name</th>
+                    <th class="text-center">Quantity</th>
+                    <% if @invoice_setting.tax_enabled_opd && false %>
+                      <th class="text-right">Tax Amount</th>
+                    <% end %>
+                    <th class="text-right">Amount</th>
+                    <th class="text-right">Actions</th>
+                  </tr>
+                </thead>
+                <% @counter = @counter + 1 %>
+              <% end %>
+              <tbody>
+                <tr class="each-item-table-row">
+                  <% if itemcard.created_from == "Migration" %>
+                    <td style="color:#f00;"><%= itemcard.item_name.to_s %><% if itemcard.user_name %><%= " - " + itemcard.user_name %><% end %></td>
+                  <% else %>
+                    <td><%= itemcard.item_name.to_s %><% if itemcard.user_name %><%= " - " + itemcard.user_name %><% end %></td>
+                  <% end %>
+                  <td class="text-center"><%=itemcard.quantity %></td>
+                  <% if @invoice_setting.tax_enabled_opd && false %>
+                    <td class="text-right"><%= itemcard.taxable_amount %></td>
+                  <% end %>
+                  <td class="text-right"><%= itemcard.item_price %></td>
+                  <td class="text-right">
+                    <!-- <button class="btn btn-default btn-xs move-item-btn">Copy</button> -->
+                    <!-- <button class="btn btn-default btn-xs copy-item-btn">Move</button> -->
+                    <%= link_to invoice_item_cards_enable_path(id: itemcard.id.to_s), method: :get, data: {confirm: "<b style='color:#000'>This Will Enable Item - <b style='color:#ff0000'>'" + itemcard.item_name.to_s + "'</b></b>", :remote => true}, class: "btn btn-info btn-xs enable-btn-item" do %>Enable<% end %>
+                  </td>
+                </tr>
+              </tbody>
+            <% end %>
+          </table>
+        <% end %>
+      </div>
+      <% end %>
+    <% end %>
+  </div>
+<% end %>
+
+<script type="text/javascript">
+  // JS Logic
+  <%= render "invoice_service_cards/view.js.erb" %>
+</script>

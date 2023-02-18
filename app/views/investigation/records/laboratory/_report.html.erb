@@ -1,0 +1,127 @@
+<div class="col-md-12 text-center">
+  <div class="pcs-entity-title">
+    <% unless request.format.pdf? %>
+      <span>Investigation Summary</span>
+    <%else%>
+      <% heading = { 'lab' => 'Laboratory Report', 'oph' => 'Ophthalmic Report', 'rad' => 'Radiology Report' } %>
+      <span style="font-size: 12px;"><strong><%= heading[report] %></strong></span>
+    <% end %>
+  </div>
+</div>
+
+
+<div class="row">
+  <div class="col-md-12">
+    <div class="row">
+      <% unless request.format.pdf? %>
+        <div class="summary-line-border"></div>
+      <% end %>
+      <% if report == 'lab' %>
+        <div class="col-md-6 text-left"><strong>INVESTIGATION </strong></div>
+        <div class="col-md-3 text-center"><strong>RESULT</strong> </div>
+        <div class="col-md-3 text-center"><strong>NORMAL RANGE </strong></div>
+      <% else %>
+        <div class="col-md-6 text-center"><strong>INVESTIGATION </strong></div>
+        <div class="col-md-6 text-center"><strong>FINDINGS</strong> </div>
+      <% end %>
+      <div class="summary-line-border" style="margin-top: <%=request.format.pdf? ? 1 : 2 %>0px;"></div>
+    </div>
+  </div>
+</div>
+<% investigation_record.each do |key, records|%>
+  <div class="row" style="border: 1px solid #e5e5e5;border-left: 0; border-right: 0;">
+    <div class="col-md-12 group-head" style="background: #e5e5e5;padding-bottom: 2px;">
+      <div class="col-sm-5">
+        <% advised_by = User.find_by(id: key[1]) %>
+        Advised By : <%= "#{advised_by.salutation} #{advised_by.fullname}" %> on <%= key[0] %>
+      </div>
+      <div class="col-sm-7">
+        <% performed_by = User.find_by(id: key[3]) %>
+        Performed By : <%= "#{performed_by.salutation} #{performed_by.fullname}" %> <%= " on "+key[2] if key[2].present? %>
+      </div>
+    </div>
+    <% records.each do |record| %>
+      <div class="row">
+        <div class="col-md-12" style="padding-top: 5px;">
+          
+          <%if record.specimen_type.present? || record.specimen_date.present? %>
+            <div class="col-md-6"></div>
+          <% end %>
+          <%if record.specimen_type.present? %>
+              <div class="col-md-3 text-right">
+                Specimen Type:
+                <%= record.specimen_type %>
+              </div>
+              <%if record.specimen_date.blank? %>
+                <br>
+              <% end %>
+          <% end %>
+          <% if record.specimen_date.present? %>
+              <%if record.specimen_type.blank? %>
+                <div class="col-md-3"></div>
+              <% end %>
+              <div class="col-md-3 text-right">
+                Specimen Date:
+                <% specimen_date = record.specimen_date.split("/") %>
+                <%= "#{specimen_date[1]}/#{specimen_date[0]}/#{specimen_date[2]}" %>
+              </div>
+          <% end %>
+
+          
+          <div class="col-md-6 text-left inv-name"><b><u><%= record.investigation_name %></u></b><span>:</span></div>
+        <% if record.panel_records.try(:size) > 0 %>
+            <div class="col-md-12" style="border-bottom: 1px solid #e5e5e5;padding-bottom: 5px;"></div>
+          </div>
+          <%record.panel_records.each_with_index do |panel, p_index| %>
+              <% if !panel.investigation_val.blank? %>
+                <div class="col-md-12" >
+                  <%if p_index > 0 %>
+                    <div style="border-bottom: 1px solid #f0f0f0;width: 80%;margin-left: 10%;"></div>
+                  <% end %>
+                  <div class="col-md-6 text-left inv-name"><%= panel.investigation_name %><span>:</span></div>
+                  <% if report == 'lab' %>
+                    <div class="col-md-3 text-center"><strong><%= panel.investigation_val %></strong></div>
+                    <div class="col-md-3 text-right"><%= panel.normal_range %> </div>
+                  <% else %>
+                    <div class="col-md-6 text-center"><strong><%= panel.investigation_val %></strong></div>
+                  <% end %>
+                </div>
+              <% end %>
+          <% end %>
+        <%else%>
+          <% if report == 'lab' %>
+            <div class="col-md-3 text-center"><strong><%= record.investigation_val %></strong></div>
+            <div class="col-md-3 text-right"><%= record.normal_range %> </div>
+          <% else %>
+            <div class="col-md-6 text-center"><strong><%= record.investigation_val %></strong> </div>
+          <% end %>
+            <div class="col-md-12" style="border-bottom: 1px solid #e5e5e5;padding-bottom: 5px;"></div>
+          </div>
+        <% end %>
+        <% if !record.try(:investigation_comment).blank? %>
+          <div class="col-sm-12"> 
+            <div class='col-md-12' >Investigation Remark : &nbsp;&nbsp;&nbsp;  <%= record.investigation_comment %></div>
+          </div>
+        <% end %>
+        <% unless request.format.pdf? %>
+          <% @lab_tech = (User.find_by(id: record.template_created_by).role_ids.include?(159282002) if record.try(:template_created_by).present?) || false %>
+          <%if record.try(:state) == "reviewed"%>
+            <div class="col-md-12 pull-right" style="margin-top: 1%;">
+              <%= render partial: 'common/user_signature.html.erb',locals: {user_id: record.reviewed_by} %>
+            </div>
+          <%elsif @lab_tech == true%>
+            <div class="col-md-12 pull-right" style="margin-top: 1%;">
+              <%= render partial: 'common/user_signature.html.erb',locals: {user_id: record.template_created_by} %>
+            </div>
+          <%end%>
+        <% end %>
+
+      </div>
+    <% end %>
+  </div>
+<% end %>
+<style type="text/css">
+  .inv-name  span{
+    float: right;
+  }
+</style>

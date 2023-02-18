@@ -1,0 +1,198 @@
+<div class="row mb10">
+  <div class="col-sm-12">
+    <%= hidden_field_tag 'admission[patient_id]', params[:patient_id] %>
+    <%= hidden_field_tag 'admission[user_id]', current_user.id %>
+    <%= hidden_field_tag 'admission[organisation_id]', current_user.organisation_id %>
+    <%= hidden_field_tag 'admission[department_id]', '486546481' %><!--  set to inpatient department -->
+    <%= hidden_field_tag 'admission[admissiontime]', '' %>
+    <%= hidden_field_tag 'admission[dischargetime]', '' %>
+    <%= hidden_field_tag 'admission[reporting_time]', '' %>
+    <!-- Milestones -->
+    <% unless @admission.admission_milestones.find_by(position: 1).present? %>
+      <%= hidden_field_tag 'admission[admission_milestones_attributes][0][label]', 'admission_scheduled' %>
+      <%= hidden_field_tag 'admission[admission_milestones_attributes][0][position]', 1 %>
+      <%= hidden_field_tag 'admission[admission_milestones_attributes][0][user_id]', current_user.id %>
+    <% end %>
+
+    <% unless params[:action] == "edit" %>
+      <div class="row mb5">
+        <div class="col-sm-6"><span style="color:#000;font-weight: 700;font-size: 18px;">Cashless Hospitalisation</span></div>
+        <div class="col-sm-6">
+          <div class="rdio rdio-primary col-sm-6">
+            <%= radio_button_tag 'is_insured', 'No', true, class: 'is_insured_admission_field', id: 'is_insured_admission_false' %>
+            <label for="is_insured_admission_false">No</label>
+          </div>
+          <div class="rdio rdio-primary col-sm-6">
+            <%= radio_button_tag 'is_insured', 'Yes', false, class: 'is_insured_admission_field', id: 'is_insured_admission_true' %>
+            <label for="is_insured_admission_true">Yes</label>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
+    <div class="admission_section_admission_type">
+      <div class="row">
+        <div class="col-sm-12"><b style="color:#000">Admission Type</b>&emsp;<span class="admission-type-error"></span></div>
+        <div class="col-sm-12">
+          <div class="rdio rdio-primary col-sm-4">
+            <%= radio_button_tag 'admission[admission_type]', 'planned', @admission.admission_type == 'planned', class: 'admission_hospitalization_type', id: 'admission_planned_hospitalization' %>
+            <label for="admission_planned_hospitalization">Planned</label>
+          </div>
+          <div class="rdio rdio-primary col-sm-4">
+            <%= radio_button_tag 'admission[admission_type]', 'emergency', @admission.admission_type == 'emergency', class: 'admission_hospitalization_type', id: 'admission_emergency_hospitalization' %>
+            <label for="admission_emergency_hospitalization">Emergency</label>
+          </div>
+          <div class="rdio rdio-primary col-sm-4">
+            <%= radio_button_tag 'admission[admission_type]', 'same_day', @admission.admission_type == 'same_day', class: 'admission_hospitalization_type', id: 'admission_same_day_hospitalization' %>
+            <label for="admission_same_day_hospitalization">Same Day</label>
+          </div>
+        </div>
+      </div>
+
+      <% unless params[:action] == "edit" %>
+        <div class="row mb10 expected_days_planned_admission">
+          <div class="planned_admission_days" style="display: none;">
+            <div class="col-sm-7"><b style="color:#000">Expected No. of Days for Planned Admission</b></div>
+            <div class="col-sm-3">
+              <%= select_tag('admission[planned_admission_days]', options_for_select([*(1..10)].prepend(['Select Days', '0']), ''), class: 'form-control p7_10') %>
+            </div>
+          </div>
+          <div class="col-sm-12"><span class="expected_planned_admission_notify" style="color: red;font-size: 13px;"><b>If Planned Admission is chosen, Admission Date will be selected next to 4 days automatically.</b></span></div>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="row mb20">
+      <div class="col-sm-6 mb5">
+        <b style="color:#000;">Location</b>
+        <% facilities = Facility.where(organisation_id: current_organisation['_id'], is_active: true).sort(name: :asc) %>
+        <%= select_tag('admission[facility_id]', options_for_select(facilities.map { |facility| [facility.name, facility.id] }, @selected_facility), class: 'form-control p7_10') %>
+      </div>
+
+      <div class="col-sm-6 mb5 specialty_dropdown_div">
+        <b style="color:#000;">Specialty</b>
+        <%= select_tag 'admission[specialty_id]', options_for_select(@available_specialties, @selected_specialty), class: 'form-control admission_specialty' %>
+      </div>
+
+       <div class="col-sm-6">
+        <b style="color:#000;">Doctor</b>
+        <%= select_tag 'admission[doctor]', options_for_select(@available_doctors, @selected_doctor), class: 'admission_doctor distinctdoctors form-control p7_10',unique: "distinctdoctors" %>
+      </div>
+    </div>
+
+    <div class="row mb20">
+      <div class="col-sm-12 ">
+        <b style="color:#000;">Additional Doctors</b>
+      </div>
+      <div class="col-sm-4">
+        <%= select_tag 'admission[doctor_1]', options_for_select(@available_doctors, @admission.doctor_1), {include_blank: 'Select', class: 'additional_admission_doctor distinctdoctors form-control p7_10',unique: "distinctdoctors"} %>
+      </div>
+      <div class="col-sm-4">
+        <%= select_tag 'admission[doctor_2]', options_for_select(@available_doctors, @admission.doctor_2), include_blank: 'Select', class: 'additional_admission_doctor distinctdoctors form-control p7_10',unique: "distinctdoctors" %>
+      </div>
+      <div class="col-sm-4">
+        <%= select_tag 'admission[doctor_3]', options_for_select(@available_doctors, @admission.doctor_3), include_blank: 'Select', class: 'additional_admission_doctor distinctdoctors form-control p7_10',unique: "distinctdoctors" %>
+      </div>
+    </div>
+
+
+
+    <div class="row mb20">
+      <div class="col-sm-12">
+        <b style="color:#000;">Schedule Admission Time</b> &nbsp;&nbsp;<span class="admission_discharge_date_time_tag" style="color: red;font-size: 13px;"><b>(Please Verify it correctly)</b></span>
+      </div>
+      <div class="col-sm-6 admission-date">
+        <%= text_field_tag 'admission[admissiondate]', @current_date.strftime('%d/%m/%Y'), class: 'form-control p7_10 admission-datepicker', readonly: 'readonly' %>
+      </div>
+      <div class="col-sm-6 admission-time">
+        <div class="bootstrap-timepicker timepicker">
+          <%= text_field_tag :admission_time, @current_time.strftime("%I:%M %p"), class: 'form-control p7_10 admission-timepicker' %>
+        </div>
+      </div>
+    </div>
+
+    <div class="row mb20">
+      <div class="col-sm-6 mb5 anesthesia_dropdown_div">
+        <b style="color:#000;">Anesthesia</b>
+        <%= select_tag 'admission[anesthesia]', options_for_select(['GA', 'EA', 'SA', 'LA', 'Sedation', 'Topical', 'Sub-tenon\'s', 'Sub conjunctival'], @admission.try(:anesthesia)), include_blank: 'Select', class: 'form-control admission_anesthesia' %>
+      </div>
+    </div>
+
+    <div class="row mb20">
+      <div class="col-sm-12">
+        <b id="discharge_end_date_time" style="color:#000;">Expected Discharge Time</b>&nbsp;<span style="color: red;font-size: 13px;"><b>(Discharge Time should be greater than Admission Time)</b></span>&nbsp;<button class="btn btn-link btn-xs btn-discharge-clear">Clear</button>
+      </div>
+      <div class="col-sm-6">
+        <%= text_field_tag 'admission[dischargedate]', @discharge_date.present? ? @discharge_date.strftime('%d/%m/%Y') : nil, class: 'form-control p7_10 discharge-datepicker', readonly: 'readonly' %>
+      </div>
+      <div class="col-sm-6">
+        <div class="bootstrap-timepicker timepicker">
+          <%= text_field_tag :dischargetime, @discharge_time.present? ? @discharge_time.strftime('%I:%M %p') : Time.current.strftime("%I:%M %p"), class: 'form-control p7_10 discharge-timepicker' %>
+        </div>
+      </div>
+    </div>
+
+<!--    <div class="row mb20">-->
+<!--      <div class="col-sm-12">-->
+<!--        <b id="reporting_date_time" style="color:#000;">Reporting Date & Time</b>-->
+<!--      </div>-->
+<!--      <div class="col-sm-6">-->
+        <%#= text_field_tag 'admission[reporting_date]', @admission.reporting_date.present? ? @admission.reporting_date.strftime('%d/%m/%Y') : @current_date.strftime('%d/%m/%Y'), class: 'form-control p7_10 reporting-datepicker', readonly: 'readonly' %>
+<!--      </div>-->
+<!--      <div class="col-sm-6">-->
+<!--        <div class="bootstrap-timepicker timepicker">-->
+          <%#= text_field_tag :reporting_time, @admission.reporting_time.present? ? @admission.reporting_time.strftime('%I:%M %p') : Time.current.strftime("%I:%M %p"), class: 'form-control p7_10 reporting-timepicker', readonly: 'readonly' %>
+<!--        </div>-->
+<!--      </div>-->
+<!--    </div>-->
+
+    <div class="row mb20">
+      <div class="col-sm-12 ">
+        <b style="color:#000;">Reason For Admission</b>
+        <%= text_field_tag 'admission[admissionreason]', @admission.admissionreason, class: 'form-control p7_10', placeholder: 'Reason' %>
+      </div>
+    </div>
+
+    <div class="row mb20">
+      <div class="col-sm-12">
+        <b style="color:#000;">Management Plan</b>
+        <%= text_area_tag 'admission[managementplan]', @admission.managementplan, class: 'form-control p7_10' %>
+      </div>
+    </div>
+
+    <% if @scheduled_ots && @scheduled_ots.count > 0 %>
+      <div class="row mb20">
+        <div class="col-md-12">
+          <span>Scheduled OTs :</span>
+        </div>
+        <div class="col-md-12">
+          <% @scheduled_ots.each.with_index do |otschedule,i| %>
+            <input type="hidden" name="otschedule[<%= i %>][id]" value="<%= otschedule.id.to_s %>">
+            <p style="margin-bottom:0;">
+              <b style="font-size:12px;color:#f00"><%= otschedule.ottime.strftime('%d %b %I:%M %p') %></b> <b style="font-size:10px;">by <%= User.find(otschedule.user_id).fullname %>
+              </b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+              <label><input type="radio" value="Link" name="otschedule[<%= i %>][decider]" checked="checked"> &nbsp;Link OT</label>&emsp;
+              <label><input type="radio" value="Delete" name="otschedule[<%= i %>][decider]"> &nbsp;Delete</label>&emsp;
+              <label><input type="radio" value="None" name="otschedule[<%= i %>][decider]"> &nbsp;None</label>
+            </p>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<script type="text/javascript">
+  // Select2 When More than 5 Facilities
+  // if('<%#= facilities.count > 5 %>' == 'true'){
+    $("#admission_facility_id").select2()
+    $("#admission_specialty_id").select2()
+  // }
+
+  // Select2 When More than 5 Doctors
+  // if('<%#= users.count > 5 %>' == 'true'){
+    $("#admission_doctor").select2()
+    $(".additional_admission_doctor").select2()
+  // }
+
+</script>

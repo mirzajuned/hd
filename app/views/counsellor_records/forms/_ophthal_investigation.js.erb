@@ -1,0 +1,109 @@
+$(".laterality").on('change', function(){
+  var laterality = $(this).val()
+  $(this).closest(".patient-ophthal_investigation").find('.ophthal_investigationside').val(laterality)
+})
+
+if($(".removed-ophthal_investigations-name").html() != undefined && $(".removed-ophthal_investigations-name").html().trim() == ""){
+  $(".removed-ophthal_investigations").hide()
+}
+
+$(".patient-ophthal-investigation").on('click', ".btn-remove-ophthal_investigation", function(e){
+  e.preventDefault();
+  if($(this).closest(".patient-ophthal_investigation").hasClass("new-entry")){
+    $(this).closest(".patient-ophthal_investigation").remove()
+  } else {
+    // Update Removed Fields
+    $(this).closest(".patient-ophthal_investigation").find('.is_removed').val("true")
+    $(this).closest(".patient-ophthal_investigation").find('.removed_by_id').val("<%= current_user.id %>")
+    $(this).closest(".patient-ophthal_investigation").find('.removed_by').val("<%= current_user.fullname %>")
+    $(this).closest(".patient-ophthal_investigation").find('.removed_from').val("counsellor_record")
+    $(this).closest(".patient-ophthal_investigation").find('.removed_at_facility_id').val("<%= current_facility.id %>")
+    $(this).closest(".patient-ophthal_investigation").find('.removed_at_facility').val("<%= current_facility.name %>")
+    $(this).closest(".patient-ophthal_investigation").find('.removed_datetime').val("<%= Time.current %>")
+    $(this).closest(".patient-ophthal_investigation").hide()
+
+    // Update Agreed/Declined Fields
+    if($(this).closest(".patient-ophthal_investigation").find('.has_agreed').is(':checked')){
+      $(agreed_declined_row).find('.has_agreed').trigger('click')
+    }
+    if($(this).closest(".patient-ophthal_investigation").find('.has_declined').is(':checked')){
+      $(agreed_declined_row).find('.payment_taken').trigger('click')
+    }
+
+    // Show Removed Procedures
+    var removed_ophthal_investigations = $(".removed-ophthal_investigations-name").html()
+    var ophthal_investigation_name = $(this).closest(".patient-ophthal_investigation").find('.ophthal_investigation-name').html()
+    if($(".removed-ophthal_investigations-name").html().trim() == ""){
+      $(".removed-ophthal_investigations-name").html(ophthal_investigation_name.trim())
+    } else {
+      $(".removed-ophthal_investigations-name").html((removed_ophthal_investigations + " | " + ophthal_investigation_name).trim())
+    }
+    $(".removed-ophthal_investigations").show()
+  }
+
+  if($(".patient-ophthal_investigation").length == 0){
+    $(".no-ophthal_investigation").show()
+  }
+})
+
+
+<% if @counsellor_record.try(:id).present? %>
+  var counsellor_record_id =  "<%= @counsellor_record.try(:id) %>"
+<% end %>
+
+$('.search_ophthal_investigations').autocomplete({
+  minLength: 2,
+  source: function(request, response) {
+    $.ajax({
+      dataType: "json",
+      type: 'get',
+      url: '/ophthalmology_investigation_data/search',
+      data: {
+        search: request.term,
+        speciality_id: "<%=  @counsellor_record.specialty_id %>",
+        remote: "true" },
+      success: function(data) {
+        response(data);
+      },
+      error: function(data) {
+      }
+    });
+  },
+  select: function( event, ui ) {
+    var counter = $(".patient-ophthal_investigation").length
+    var data = { counsellor_record_id: counsellor_record_id, counter: counter, investigation_id: ui.item['investigation_id'], investigation_type: ui.item['investigation_type'], remote: true}
+    get_ophthal_investigation_details(data)
+    setTimeout(function() {
+      $(".search_ophthal_investigations").val("")
+    }, 50);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+      return $('<li>')
+          .append('<a>' + item.label  + '&nbsp; &nbsp; &nbsp;' + "<span class=\"badge pull-right\">" + item.investigation_type_label + "</span>" + '</a>')
+          .appendTo(ul);
+    };
+  },
+});
+
+function get_ophthal_investigation_details(data){
+  $.ajax({
+    dataType: "html",
+    type: 'get',
+    url: '/counsellor_records/get_ophthal_investigation_details',
+    data: data,
+    success: function(response){
+      $("#patient-advised-ophthal_investigations").append(response)
+      $(".no-ophthal_investigation").hide()
+
+      datepicker_options = {
+        maxDate: -0,
+        dateFormat: "dd/mm/yy"
+      }
+
+      $(".agreed_datetime").datepicker(datepicker_options)
+      $(".declined_datetime").datepicker(datepicker_options)
+      $(".payment_taken_datetime").datepicker(datepicker_options)
+    }
+  });
+}

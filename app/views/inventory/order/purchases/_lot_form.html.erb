@@ -1,0 +1,1152 @@
+<% s_no = 1 %>
+<%= f.fields_for :items, :child_index => index do |builder| %>
+<% uniq_var = "#{builder.object.description.parameterize(separator: '_')}#{'_' + builder.object.custom_field_tags.join(', ') if builder.object.custom_field_tags.present?}#{'_'+builder.object.unit_cost_without_tax.to_s.sub!('.','_')}" %>
+  <% unless builder.object.try(:stock).to_f == builder.object.try(:stock_received).to_f %>
+    <tr width="100%" class="purchase-transaction-log-item items-<%= builder.object.id %> <%= uniq_var %>"  data-uniq="<%= uniq_var %>" data-child-index="<%= builder.options[:child_index] %>" data-item="<%= builder.object.id %>" data-parent="<%= builder.object.item_type == "parent" ? 'true' : 'false' %>" id="inventory_transaction_purchase_items_attributes_<%= builder.options[:child_index] %>"  style="padding: 0">
+    <!-- <table width="100%" class="purchase-transaction-log-item" data-child-index=<%#= builder.options[:child_index] %>> -->
+      <!-- <tr style="border-bottom: 1px solid #ccc;"> -->
+      <% item = Inventory::Item.find_by(id: builder.object.item_id) %>
+      <% item_units = item&.item_units.to_i %>
+      <% tax_group = TaxGroup.find_by(id: item.tax_group_id) %>
+      <% tax_rate_details = tax_group.tax_rate_details.collect{|tax_rate| tax_rate.merge(type: TaxRate.find(tax_rate[:_id]).type)} %>
+      <% variant_reference_id = builder.object.variant_reference_id %>
+      <% vendor_rate = Inventory::VendorRate.find_by(variant_reference_id: builder.object.variant_reference_id) %>
+      <script>
+        var tax_group = {}
+        if (tax_breakup == undefined) {
+          var tax_breakup = {}
+        } else {
+        }
+        tax_group['tax_rates'] = <%= raw tax_rate_details.to_json %>
+        tax_group['id'] = '<%= tax_group.id%>'
+        tax_group['group_rate'] = '<%= tax_group.rate%>'
+        tax_breakup['<%= item.id %>'] = tax_group
+      </script>
+      <!-- <td> -->
+        <%= builder.hidden_field :item_code %>
+        <%= builder.hidden_field :default_variant_code %>
+        <%= builder.hidden_field :item_id, class: 'item-id' %>
+        <%= builder.hidden_field :abc, { value: builder.options[:child_index], class: 'itemid', id: "inventory_transaction_purchase_items_attributes_#{builder.options[:child_index]}_abc" } %>
+        <%= builder.hidden_field :default_variant_id %>
+        <%= builder.hidden_field :category %>
+        <%= builder.hidden_field :barcode %>
+        <%= builder.hidden_field :barcode_present %>
+        <%= builder.hidden_field :variant_reference_id %>
+        <%= builder.hidden_field :item_reference_id %>
+        <%= builder.hidden_field :facility_id %>
+        <%= builder.hidden_field :store_id %>
+        <%= builder.hidden_field :organisation_id %>
+        <%= builder.hidden_field :search %>
+        <%= builder.hidden_field :variant_identifier %>
+        <%= builder.hidden_field :mark_up %>
+        <%= builder.hidden_field :mrp %>
+        <%#= builder.hidden_field :list_price %>
+        <%= builder.hidden_field :unit_non_taxable_amount, {class: 'unit-non-taxable-amount' } %>
+        <%= builder.hidden_field :unit_taxable_amount, {class: 'unit-taxable-amount' } %>
+        <%= builder.hidden_field :tax_rate, {class: 'tax-rate' } %>
+        <%= builder.hidden_field :tax_name, {class: 'tax-name'} %>
+        <%= builder.hidden_field :tax_inclusive, {class: 'tax-inclusive' } %>
+        <%= builder.hidden_field :stock_package, {class: 'stock-package' } %>
+        <%= builder.hidden_field :stock_subpackage, {class: 'stock-subpackage' } %>
+        <%= builder.hidden_field :stock_unit, {class: 'stock-unit' } %>
+        <%#= builder.hidden_field :stock_free_unit, {class: 'stock-subpackage' } %>
+        <%= builder.hidden_field :mrp_pack%>
+        <%= builder.hidden_field :mrp_pack_denomination %>
+        <%= builder.hidden_field :list_price_pack, {class: 'list-price-pack' } %>
+        <%= builder.hidden_field :list_price_pack_denomination, {class: 'list-price-pack-denomination' } %>
+        <%= builder.hidden_field :purchase_tax_amount, class: 'item_barcode modalRequest_input_style purchase_tax_amount', style: 'width:100%; text-align:left', readonly: true %>
+        <%= builder.hidden_field :department_id %>
+        <%= builder.hidden_field :department_name %>
+        <%= builder.hidden_field :discount_per_unit %>
+        <%= builder.hidden_field :net_unit_cost_without_tax %>
+        <%= builder.hidden_field :margin %>
+        <%= builder.hidden_field :item_type %>
+        <%= builder.hidden_field :dispensing_unit, {value: item.dispensing_unit} %>
+
+
+        <% builder.object.custom_field_data.each do |k,v| %>
+          <%= builder.hidden_field :custom_field_data, {value: v,name: "inventory_transaction_purchase[items_attributes][#{builder.options[:child_index] }][custom_field_data][#{k}]"} %>
+        <% end %>
+        <%#= builder.hidden_field :custom_field_tags, value: builder.object.custom_field_tags %>
+        <!-- </td> -->
+
+        <td class="font_size set_index" style="width: 30px;padding: 0;" class="inventory_transaction_purchase_items_attributes_<%= builder.options[:child_index] %>">
+          <span class="s_no"><%= s_no %></span>
+          <%= builder.hidden_field :custom_field_tags,value: builder.object.custom_field_tags %>
+          <%= builder.hidden_field :s_no, value: s_no,class: "set_s_no modalRequest_input_style", style: "width:100%;border:none;background-image:none;", id: "inventory_transaction_purchase_items_attributes_#{ builder.options[:child_index] }"%>
+        </td>
+        <td class="font_size" style="width:180px;">
+          <div class="td-input-group">
+            <span style="font-weight: bold;width: 100%;word-break: break-all;text-align: left;"><%= builder.object.description %><%= '- ' + builder.object.custom_field_tags.join(', ') if builder.object.custom_field_tags.present? %></span>
+            <a  data-toggle="tooltip" data-placement="right" title="Description: &nbsp;<%= item.description%>&#013;Code: &nbsp;<%= item.item_code%>&#013;Category: &nbsp;<%= item.category %>&#013;Sub Category: &nbsp;<%= item.sub_category_name %>" class="indent_item_description_info"><i class="fa fa-info-circle" aria-hidden="true"></i></a>
+            <%= builder.hidden_field :_destroy,  {value: 0 ,class: 'form-control destroy' } %>
+            <%= builder.hidden_field :description, readonly: true, :class => "item_description description-#{ builder.object.id}  description-#{uniq_var} modalRequest_input_style", :placeholder=>"Description", :style=>"width:auto;text-align:left; font-weight: bold;background-image:none;border:none;"%>
+          </div>
+          <!-- <label>Barcode:</label> -->
+          <%#= builder.text_field :barcode_id, :class => "form-control form-control-custom", required: false, maxlength: '20', oninput: 'this.value = this.value.toUpperCase()' %>
+          <%#= builder.hidden_field :system_generated_barcode %>
+          <!-- <span style="color: #FF0000; font-style: italic;">Note: If not entered by user then system will generate barcode automatically.</span> -->
+        </td>
+
+        <td class="order-rate font_size" style="width: 65px;">
+          <!-- <label class="col-md-7 col-sm-7 col-xs-7 info-label" style="color: red;"></label> -->
+            <%#= builder.text_field :list_price, :class => "col-md-6 unit_item_list_price modalRequest_input_style", :placeholder=>"Enter Purchase Price", :style=>"text-align:left"%>
+          <span><%= builder.object.try(:unit_cost_without_tax) %></span>
+          <%= builder.hidden_field :unit_cost_without_tax, class: 'unit_cost_without_tax modalRequest_input_style', style: 'width:100%;text-align:center;border:none;background-image:none;', readonly: true %>
+          <%= builder.hidden_field :unit_cost, readonly: true, :class => "unit_price_including_tax modalRequest_input_readonly_style info-text", :placeholder=>"Enter Purchase Price", :style=>"text-align:left;background-image:none;" %>
+        </td>
+        <td class="font_size text-center" style="width: 60px;">
+          <!-- <label class="info-label">Ordered</label> -->
+          <% if @purchase_order.present? && params[:action] == 'edit' %>
+            <span><%= builder.object.try(:po_ordered_quantity).to_f %></span>
+            <%= builder.hidden_field :po_ordered_quantity, value: builder.object.try(:po_ordered_quantity).to_f %>
+            <%= builder.hidden_field :po_original_ordered_quantity, value: builder.object.try(:po_original_ordered_quantity).to_f %>
+            <%= builder.hidden_field :po_item_id, value: builder.object.try(:po_item_id) %>
+          <% else %>
+            <span><%= builder.object.try(:stock).to_f %></span>
+            <%= builder.hidden_field :po_ordered_quantity, value: inventory_stock_receiving(builder.object)&.round(2) %>
+            <%= builder.hidden_field :po_original_ordered_quantity, value: builder.object.try(:stock).to_f %>
+            <%= builder.hidden_field :po_item_id, value: builder.object&.id %>
+          <% end %>
+        </td>
+        <td class="font_size text-center" style="width: 70px;">
+          <!-- <label class="info-label">Pending Qty.</label> -->
+          <div class="td-input-group">
+            <% if @purchase_transaction.purchase_order_ids.present? %>
+              <% paid_blocked = inventory_max_stock(builder.object,@purchase_transaction.purchase_order_ids[0],"paid")%>
+              <% free_blocked = inventory_max_stock(builder.object,@purchase_transaction.purchase_order_ids[0],"free") %>
+              <% stock_blocked = inventory_max_stock(builder.object,@purchase_transaction.purchase_order_ids[0],"stock") %>
+              <% paid_max = inventory_receiving_max_stock(builder.object,@purchase_transaction.purchase_order_ids[0],"paid") %>
+              <% free_max = inventory_receiving_max_stock(builder.object,@purchase_transaction.purchase_order_ids[0],"free") %>
+              <% stock_max = inventory_receiving_max_stock(builder.object,@purchase_transaction.purchase_order_ids[0],"stock") %>
+            <% else %>
+              <% paid_max =  inventory_stock_paid_receiving(builder.object) %>
+              <% free_max =  inventory_stock_free_receiving(builder.object) %>
+              <% stock_max =  inventory_stock_receiving(builder.object) %>
+            <% end %>
+
+            <% if @purchase_order.present? && params[:action] == 'edit' %>
+              <!-- <span class="inventory_transaction_purchase_items_attributes_<%#=builder.options[:child_index]  %>_pending_stock" style="text-align: left;width: 50%;"><%#= builder.object.try(:po_original_ordered_quantity).to_f - inventory_stock_receiving(builder.object) %></span> -->
+              <span class="inventory_transaction_purchase_items_attributes_<%=builder.options[:child_index]  %>_pending_stock" style="text-align: left;"><%= stock_max %></span>
+            <% else %>
+              <!-- <span class="inventory_transaction_purchase_items_attributes_<%#=builder.options[:child_index]  %>_pending_stock" style="text-align: left;width: 50%;"><%#= inventory_stock_receiving(builder.object) %></span> -->
+              <span class="inventory_transaction_purchase_items_attributes_<%=builder.options[:child_index]  %>_pending_stock" style="text-align: left;"><%= stock_max %></span>
+            <% end %>
+            <%= link_to lot_stock_data_inventory_stores_path(store_id: @inventory_store.id, variant_id: builder.object.try(:variant_reference_id)), id: 'show_vendor_purchase_rate', data: { remote: true, toggle: 'modal', target: '#vendor-purchase-rate-modal' }, class: 'btn btn-primary btn-xs',style: 'width: auto;text-align:center;line-height:14px;padding: 0px;' do %><i class=""></i>SA<% end %>
+          </div>
+        </td>
+        <td class="font_size" style="width: 70px;">
+              <!-- <label class="col-md-7 col-sm-7 col-xs-7 info-label">Selling</label> -->
+          <% if vendor_rate.present? && @purchase_order.created_from_optical_order %>
+            <%= builder.text_field :list_price, value: vendor_rate.selling_price, :class => "unit_item_list_price modalRequest_input_style", :style=>"width:100%;text-align:left;background-color: none;border: 1px solid #ccc;background: #ffc;background-image:none;" %>
+          <% else %>
+            <%= builder.text_field :list_price, :class => "unit_item_list_price modalRequest_input_style", :style=>"width:100%;text-align:left;background-color: none;border: 1px solid #ccc;background: #ffc;background-image:none;" %>
+          <% end %>
+        </td>
+
+        <td class="font_size" style="width: 45px;">
+          <%= builder.hidden_field :tax_group_id, readonly: true, :class => "item_tax_group_id modalRequest_input_style", :placeholder=>"Tax", :style=>"width:100%;text-align:left" %>
+          <div class="tax_fields"></div>
+          <span><%= builder.object.try(:tax_rate) %></span>
+          <%= builder.hidden_field :tax_rate, class: 'item_barcode tax_rate_detail modalRequest_input_style', style: 'width:100%; text-align:center;border:none;background-image:none;', readonly: true %>
+          <%= builder.hidden_field :item_cost_without_tax, class: 'item_barcode modalRequest_input_style item_cost_without_tax', style: 'width:100%; text-align:left', readonly: true %>
+          <%= builder.hidden_field :unit_purchase_tax_amount, class: 'item_barcode modalRequest_input_style unit_purchase_tax_amount', style: 'width:100%; text-align:left', readonly: true %>
+          <%#= builder.hidden_field :unit_cost_without_tax, class: 'item_barcode modalRequest_input_style unit_cost_without_tax', style: 'width:100%; text-align:left', readonly: true %>
+          <%= builder.hidden_field :item_taxable_amount_with_disc, :class => "item_taxable_amount_with_disc", :value => '0.0' %>
+        </td>
+
+        <%= builder.hidden_field :model_no, readonly: true, class: 'col-md-6 col-sm-6 col-xs-6 modalRequest_input_style' %>
+
+        <td class="font_size" style="width: 75px;">
+          <% item = Inventory::Item.find_by(id: builder.object.item_id) %>
+          <% if item.expiry_present %>
+            <%= builder.text_field :expiry, value: builder.object.try(:expiry)&.strftime("%d/%m/%Y"), :class => "exp_datepicker item_expiry modalRequest_input_style info-text read", :placeholder=>"Expiry", :style=>"width:100%;text-align:left;border:none;background-image:none;background: #ffc;padding:0;border: 1px solid #ccc;", :data => "#{builder.object.item_id}", autocomplete: "off"%>
+            <%= builder.hidden_field :expiry_present %>
+          <% else %>
+            <%= builder.hidden_field :expiry_present %>
+            NA
+          <% end %>
+          <% if Inventory::Category.find_by(id: item.category_id)&.expiry_days.present? %>
+            <% expiry_days = Date.current + Inventory::Category.find_by(id: item.category_id)&.expiry_days  %>
+          <% else %>
+            <% expiry_days = Date.current %>
+          <% end %>
+          <div id="inventory_transaction_purchase_items_attributes_<%= builder.options[:child_index] %>_expiry_days" class="expiry_days" value="<%= expiry_days&.strftime("%d/%m/%Y") %>"></div>
+        </td>
+        <td class="font_size" style="width: 75px;">
+          <%= builder.text_field :batch_no, :class => "item_batch batch-#{builder.object.id} modalRequest_input_style read batch_space batch-#{uniq_var}", :"data-uniq" => "#{uniq_var}", data: "#{builder.object.id}" , :placeholder=>"Batch", :style=>"width:100%;text-align:left;background-image:none;border:none;background: #ffc;border: 1px solid #ccc;;background-image: none;", required: true %>
+          <%= builder.hidden_field :self_batched %>
+        </td>
+
+        <td class="font_size" style="width: 80px;">
+          <!-- <label class="info-label">Paid Qty.</label> -->
+          <span  style="text-align: left"></span>
+          <% if @purchase_transaction.purchase_order_ids.present? %>
+            <% paid_value = builder.object.try(:paid_stock) %>
+            <% free_value = builder.object.try(:stock_free_unit) %> 
+            <%# paid_max = inventory_max_stock(builder.object,@purchase_transaction.purchase_order_ids[0],"paid") %>
+            <%# free_max = inventory_max_stock(builder.object,@purchase_transaction.purchase_order_ids[0],"free") %>
+          <% else %>
+            <%# paid_max =  inventory_stock_paid_receiving(builder.object) %>
+            <%# free_max =  inventory_stock_free_receiving(builder.object) %>
+            <% paid_value = paid_max %>
+            <% free_value = free_max %>
+          <% end %>
+
+          <% onkeypress = item.unit_level == true ? 'return event.charCode >= 46 && event.charCode <= 57' : 'return event.charCode >= 46 && event.charCode <= 57' %>
+
+          <div>
+            <%= builder.number_field :paid_stock,{ class: "paid-stock check_order_quantity paid_stock_#{builder.object.id} read paid_stock_#{uniq_var}", :"data-uniq" => "#{uniq_var}", data: "#{builder.object.id}", :"child-index" => "#{builder.options[:child_index]}", style: 'background-image: none;background-color: none;border: 1px solid #ccc;width:100%;background: #ffc;text-align:center;background-image:none;',  required: true, value: paid_value, onkeypress: onkeypress, min: 0 }%>
+              
+          </div>
+          <div class="inventory_transaction_purchase_items_attributes_<%=builder.options[:child_index]  %>_paid_stock" value="<%= paid_max %>"></div>
+          <div class="error-msg paid_error_msg_<%= builder.object.id %> paid_error_msg_<%= uniq_var %>"  style="color: #B94A48;text-align: left;width: 143%;"></div>
+
+          <!-- <label class="col-md-7 col-sm-7 col-xs-7 info-label">Received</label>
+            <span class="col-md-5 col-sm-5 col-xs-5 info-text" style="text-align: left"><%#= builder.object.try(:stock_received).to_i %></span> -->
+        </td>
+
+        <td class="font_size" style="width: 70px;">
+          <!-- <label class="info-label">Free Qty.</label> -->
+          <span style="text-align: left"></span>
+          <%= builder.text_field :stock_free_unit, {class: "stock-free-unit free_stock_#{builder.object.id} free-stock read free_stock_#{uniq_var}", :"data-uniq" => "#{uniq_var}", data: "#{builder.object.id}", :"child-index" => "#{builder.options[:child_index]}", style: 'background-image: none;background-color: none;border: 1px solid #ccc;width:75%;background: #ffc;text-align:center;background-image:none;', value: free_value, onkeypress: onkeypress, min: 0 }%>
+          <div class="error-msg free_error_msg_<%= builder.object.id %> free_error_msg_<%= uniq_var %>" style="color: #B94A48;text-align: left;width: 193%;"></div>
+          <div class="inventory_transaction_purchase_items_attributes_<%=builder.options[:child_index]  %>_stock_free_unit" value="<%= free_max %>"></div>
+          <%= builder.hidden_field :stock, value: inventory_stock_receiving(builder.object), :class => "col-md-5 col-sm-5 col-xs-5 stock item_quantity modalRequest_input_style info-text", :placeholder=>"Qty", :style=>"text-align:left; background-color: lightgray;" %>
+          <input type="hidden" value="<%= inventory_stock_receiving(builder.object) %>" id="item_max_quantity_<%= builder.options[:child_index] %>" class="item_max_quantity modalRequest_input_style" placeholder="" style="width:90%;text-align:left" />
+        </td>
+
+        <td class="font_size" style="width: 70px;">
+          <div class="input-group">
+            <%= builder.hidden_field :discount_per_unit,value: builder.object.discount_per_unit.present? ? builder.object.discount_per_unit : 0 , :"data-uniq" => "#{uniq_var}", :class => "discount_per_unit form-control modalRequest_input_style info-text", :placeholder=>"Amount", :style=>"width:103%;text-align:left;height: 50%;border: 1px solid #ccc;background-image:none;",onkeypress: 'return event.charCode >= 46 && event.charCode <= 57', readonly: true %>
+            <%= builder.hidden_field :discount_amount,value: builder.object.item_discount.present? ? builder.object.item_discount&.round(2) : 0 , :"data-uniq" => "#{uniq_var}", :class => "form-control  discount-amount modalRequest_input_style info-text", :placeholder=>"Amount", :style=>"width:103%;text-align:left;height: 50%;border: 1px solid #ccc;background-image:none;",onkeypress: 'return event.charCode >= 46 && event.charCode <= 57', readonly: true %>
+            <!-- <span class="input-group-addon form-control-custom-slash" style="padding: 0px;border: none">|</span> -->
+            <%#= builder.select(:item_discount_type, options_for_select(["#{current_facility.currency_symbol}","%"]), {}, {:class => 'form-control item_discount_type modalRequest_input_style',style: 'width:100%;;text-align:left;background-color: white;height: 34px;border: 1px solid #ccc;background-image:none', disabled: true})  %>
+            <%#= builder.hidden_field :item_discount,value: builder.object.item_discount.present? ? builder.object.item_discount : 0, class: "discount_amount modalRequest_input_style"%>
+            <%= builder.hidden_field :item_discount_type %>
+            <%= builder.hidden_field :currency_id %>
+            <%= builder.hidden_field :discount_show, class: "form-control form-control-custom-input", style: "width: auto;", required: false %>
+            <%= builder.hidden_field :item_discount, class: "form-control item_discount form-control-custom-input", value: builder.object.item_discount.present? ? builder.object.item_discount : 0,style: "width: auto;", required: false %>
+            <%= builder.hidden_field :amt_after_tax, class: "form-control form-control-custom-input amt_after_tax", style: "width: auto;", required: false %>
+          </div>
+          <div class="show-discount-value" id="item_discount_value-<%= uniq_var %>-<%= builder.options[:child_index] %>"></div>
+        </td>
+
+        <td class=" font_size" style="width: 70px;">
+          <%= builder.hidden_field :total_cost, readonly: true ,:data => "#{builder.object.id}" , :class => "price_including_tax modalRequest_input_readonly_style info-text", :placeholder=>"Total Cost Price", :style=>"width:100%;;text-align:left;" %>
+          <%= builder.text_field :amount_after_tax, readonly: true ,:class => "amount_after_tax modalRequest_input_readonly_style info-text readonly", :placeholder=>"Total Cost Price", :style=>"width:100%;text-align:center;background-image:none;border:none;background:transparent;" %>
+        </td>
+
+        <% if @sub_stores.size > 1 %>
+          <td style="width:90px;">
+              <%= select_tag "inventory_transaction_purchase[items_attributes][#{builder.options[:child_index] }][sub_store_id]", options_for_select(@sub_stores, selected: builder.object.sub_store_id), include_blank: true, class: 'form-control read sub_store_id',required: true, style: 'padding: 2px;width:100%;background: #ffc;margin-top: 5px;' %>
+              <%= hidden_field_tag :sub_store_name, "", class: "form-control sub_store_name", name: "inventory_transaction_purchase[items_attributes][#{builder.options[:child_index] }][sub_store_name]" %>
+            <% else %>
+              <%= hidden_field_tag :sub_store_id, @sub_stores[0][1], name: "inventory_transaction_purchase[items_attributes][#{builder.options[:child_index] }][sub_store_id]" %>
+              <%= hidden_field_tag :sub_store_name, @sub_stores[0][0], name: "inventory_transaction_purchase[items_attributes][#{builder.options[:child_index] }][sub_store_name]" %>
+          </td>
+        <% end %>
+        <td class="font_size" style="width:60px;">
+          <%= builder.text_field :remarks, class: 'item_barcode modalRequest_input_style read', style: 'width:170%;; text-align:left;background: #ffc;border: 1px solid #ccc;;background-image: none;'%>
+        </td>
+        <td class="font-size text-center" style="width: 66px;">
+          <button type="button" class="btn btn-link hg-tooltip delete_empty_item" tabindex="-1" style="padding:0px;" title="Remove From List" data-uniq="<%= uniq_var %>" data-item="<%= builder.object.id %>" child-index="<%= builder.options[:child_index] %>" id="inventory_transaction_purchase_items_attributes_<%= builder.options[:child_index] %>"><i class="fa fa-trash-alt" style="color: #B94A48;"></i></button>
+          <button type="button" class="btn btn-link hg-tooltip add_item"  data-index="<%=builder.options[:child_index] %>" data-uniq="<%= uniq_var %>" data-item="<%= builder.object.id %>" data-s_no="<%= s_no %>" tabindex="-1" style="padding:0px;" title="Add List"  child-index="<%= builder.options[:child_index] %>" id="inventory_transaction_purchase_items_attributes_<%= builder.options[:child_index] %>"><i class="fa fa-plus" style="color:green"></i></button>
+          <button type="button" class="btn btn-link hg-tooltip redo_item"  data-index="<%=builder.options[:child_index] %>" data-uniq="<%= uniq_var %>" data-item="<%= builder.object.id %>" data-s_no="<%= s_no %>" tabindex="-1" style="padding:0px;display: none" title="Redo"  child-index="<%= builder.options[:child_index] %>" id="inventory_transaction_purchase_items_attributes_<%= builder.options[:child_index] %>"><i class="fas fa-redo-alt" style="color:black"></i></button>
+        </td>
+      <!-- </tr> -->
+    <!-- </table> -->
+    <% end %>
+    <% s_no += 1 %>
+  </tr>
+  <tr class="purchase-hidden-row purchase-data-<%= uniq_var %> purchase-item-<%= builder.options[:child_index] %> items-<%= builder.object.id %> <%= uniq_var %>" data-uniq="<%= uniq_var %>"  data-child="<%= builder.options[:child_index] %>" item-id="<%= builder.object.id %>" style="display: none;">
+      <td style="width: 30px"></td>
+      <td style="width:180px;"></td>
+      <td style="width: 75px;"></td>
+      <td style="width: 60px;"></td>
+      <td style="width: 70px;"></td>
+      <td style="width: 70px;"></td>
+      <td style="width: 40px;"></td>
+      <td style="width: 75px;"></td>
+      <td style="width: 118px;">
+        <div class="paid_error_msg" style="color: #B94A48;;text-align: left;"></div>
+      </td>
+      <td style="width: 100px;">
+        <span style="width: 100%;" class="paid-qty" id="purchase-transaction-paid-stock_<%= uniq_var %>" data-uniq="<%= uniq_var %>" value="<%= paid_max %>"><%=  inventory_stock_paid_receiving(builder.object) %></span>
+      </td>
+      <td style="width: 70px;">
+        <span style="width: 100%;" class="free-qty" id="purchase-transaction-stock-free-unit_<%= uniq_var %>" data-uniq="<%= uniq_var %>" value="<%= free_max %>"><%= inventory_stock_free_receiving(builder.object) %></span>
+      </td>
+      <td style="width: 100px;">
+        <div class="free_error_msg" style="color: #B94A48;text-align: left;"></div>
+      </td>
+      <td style="width: 70px;"></td>
+      <% if @sub_stores.size > 1 %>
+        <td style="width:90px;"></td>
+      <% end %>
+      <td style="width:60px;"></td>
+      <td style="width: 60px;"></td>
+  </tr>
+<% end %>
+  <tr style="padding: 0;">
+    <td style="width: 30px"></td>
+    <td style="width:180px;"></td>
+    <td style="width: 75px;"></td>
+    <td style="width: 60px;"></td>
+    <td style="width: 70px;"></td>
+    <td style="width: 70px;"></td>
+    <td style="width: 40px;"></td>
+    <td style="width: 75px;"></td>
+    <td style="width: 75px;"></td>
+    <td style="width: 80px;">
+       <b><input type="text" name="", class="col-md-3 fi_input_style input_focus_none" id="total_paid_quantity", readonly: readonly style="background-image: none;width: 100%;text-align: center;"></b>
+    </td>
+    <td style="width: 70px;">
+      <b><input type="text" name="", class="col-md-3 fi_input_style input_focus_none" id="total_free_quantity", readonly: readonly style="background-image: none;width: 100%;text-align: center;"></b>
+    </td>
+    <td style="width: 70px;"></td>
+    <td style="width: 70px;"></td>
+    <% if @sub_stores.size > 1 %>
+      <td style="width:90px;"></td>
+    <% end %>
+    <td style="width:60px;"></td>
+    <td style="width: 60px;"></td>
+  </tr>
+<script>
+  // calculate_purchase_order_tax()
+  updateRowCount();
+  renumberIndex($('.purchase-transaction-log-item'), ['input', 'select','button'])
+  function updateRowCount(){
+    let count = 0;
+    let each_item_totals = 0;
+    let each_item_net_amount_totals = 0;
+    let each_item_tax_totals = 0;
+    let each_item_discount_totals = 0;
+    let each_item_taxable_amount_totals = 0;
+    var total_paid_stock = 0
+    var total_free_stock = 0
+    tax_d = {}
+    paid_stock_hash = {}
+    free_stock_hash = {}
+    $("#tax_details").html("")
+    $(".purchase-transaction-log-item").each(function(){
+      index = count + 1
+      uniq_id = $(this).attr('data-uniq')
+      key_index = $(this).attr('data-child-index')
+      // if (key_index != count){
+      //   $(this).attr('data-child-index',count)
+      //   $(this).find('button').attr('child-index',count)
+      //   $(this).find('.paid-stock').attr('child-index',count)
+      //   $(this).find('.free-stock').attr('child-index',count)
+      //   key_index = $(this).attr('data-child-index')
+      // }
+
+      $(this).attr("id","inventory_transaction_purchase_items_attributes_"+count)
+      $(this).find(".set_s_no").val(index)
+      $(this).find(".s_no").text(index)
+      $(this).attr("data-child-index",count)
+
+      // $.each($(this).find(":input"),function(){
+      //   var thisid = $(this).attr('id');
+      //   var thisname = $(this).attr("name")
+      //   var data = $(this).val();
+      //   thisid = thisid.replace(/\d+/, count);
+      //   if (typeof thisname !== 'undefined'){
+      //     thisname = thisname.replace(/\d+/, count);
+      //   }
+      //   $(this).attr('name', thisname);
+      //   $(this).attr('id', thisid);
+      //   $(this).val(data);
+      //   $(this).css('border-color', '#ccc');
+      // })
+      $(this).find(".add_item").attr("data-s_no",index)
+      $(this).find('label.error').remove();
+      $(this).find(".error-msg").text("")
+      // replace discount item value index
+      $(this).find(".show-discount-value").attr("id","item_discount_value-"+uniq_id+'-'+key_index)
+      let is_disable = $(this).find(".destroy").val();
+      let item_id = $(this).attr("data-item")
+      let id = $(this).find(".price_including_tax").attr("id")
+      this_parent = $(this)
+      if (is_disable == "0"){
+        data = calculate_purchase(this_parent)
+        each_item_totals += data["total_cost"]
+        each_item_net_amount_totals += data["amount_after_tax"]
+        each_item_tax_totals += data["taxable_amount"]
+        each_item_discount_totals += data["discount_amount"]
+        each_item_taxable_amount_totals += data["amt_before_tax"]
+        total_paid_stock += data["paid_stock"]
+        total_free_stock += data["free_stock"]
+        generate_tax(this_parent)
+        $(this_parent).find('.exp_datepicker').removeClass('hasDatepicker').
+        removeClass('hasDatepicker').unbind().
+        datepicker({
+          dateFormat: "dd/mm/yy",
+          minDate: $(this_parent).find(".expiry_days").attr("value"),
+          changeMonth: true,
+          changeYear: true
+        });
+      }else{
+        // $(this).find(".amount_after_tax").css("background-color","#afadad")
+        // $(this).css("background-color","#afadad")
+      }
+      count += 1
+      <% if params[:action] == "edit" %>
+        uniq = $(this).attr('data-uniq')
+        $("#transaction_table").find(".purchase-data-"+uniq+':not(:last)').remove()
+        if ($('.description-'+uniq).length > 1){
+          $(".purchase-data-"+uniq).show();
+        }
+      <% end %>
+    });
+
+
+    for (var key in tax_d) {
+      if (tax_d.hasOwnProperty(key)) {
+        $("#tax_details").prepend(`<div class="col-sm-12">
+            <div class="col-sm-6 font_size">
+              <b>${key}</b>
+            </div>
+            <div class="col-sm-2 text-center font_size">
+              :
+            </div>
+            <div class="col-sm-4">
+              <input class="fi_input_style" style="width:92%; background-image: none;" readonly="readonly" type="text" value="${tax_d[key].toFixed(2)}">
+            </div>
+          </div>`)
+      }
+    }
+    // set_color();
+    var other_charge_cost = parseFloat($("#total_other_charges_amount").val()) || 0
+    var total_net_amount  = (each_item_net_amount_totals + other_charge_cost) || 0
+    $("#inventory_transaction_purchase_net_amount").val(total_net_amount.toFixed(2))
+    $("#inventory_transaction_purchase_total_cost").val(each_item_totals.toFixed(2))
+    $("#inventory_transaction_purchase_amount_remaining").val(total_net_amount.toFixed(2))
+    $("#inventory_transaction_purchase_discount").val(each_item_discount_totals.toFixed(2))
+    $("#inventory_transaction_purchase_tax_amount").val(each_item_tax_totals.toFixed(2))
+    $("#inventory_transaction_purchase_purchase_taxable_amount").val(each_item_taxable_amount_totals.toFixed(2))
+    $('#total_paid_quantity').val(total_paid_stock || 0)
+    $('#total_free_quantity').val(total_free_stock || 0)
+    $("#inventory_transaction_purchase_total_paid_stock").val(total_paid_stock)
+    for (var key in paid_stock_hash) {
+      if (paid_stock_hash.hasOwnProperty(key)) {
+        $("#purchase-transaction-paid-stock_"+key).text(paid_stock_hash[key] || 0)
+      }
+    }
+
+    for (var key in free_stock_hash) {
+      if (free_stock_hash.hasOwnProperty(key)) {
+        $("#purchase-transaction-stock-free-unit_"+key).text(free_stock_hash[key] || 0)
+      }
+    }
+
+    // calculate_purchase_order_tax();
+  }
+
+  function set_color(){
+    $(".purchase-hidden-row").each(function(){
+      uniq_id = $(this).attr('data-uniq')
+      let index = $(this).attr("data-child")
+      // let item_id = $(this).attr("item-id")
+    
+      $('.'+uniq_id).each(function (){
+        let is_disable = $(this).find(".destroy").val()
+        if (index % 2 == 0){
+          if (is_disable == "0"){
+            $(this).css("background","white")
+          }else if(is_disable == undefined){
+            $(this).css("background","white")
+          }else{
+            $(this).css("background","#afadad")
+          }
+        }else{
+          if (is_disable == "0"){
+            $(this).css("background","#ddd")
+          }else if(is_disable == undefined){
+            $(this).css("background","#ddd")
+          }else{
+            $(this).css("background","#afadad")
+          }
+        }
+      })
+    })
+  }
+
+  function calculate_purchase(_this){
+    let paid_stock = parseFloat($(_this).find(".paid-stock").val()) || 0.0
+    let free_stock = parseFloat($(_this).find(".free-stock").val()) || 0.0
+    let unit_cost_without_tax = parseFloat($(_this).find(".unit_cost_without_tax").val()) || 0.0
+    let tax_rate = $(_this).find(".tax_rate_detail").val();
+    let discount_per_unit = parseFloat($(_this).find('.discount_per_unit').val()) || 0
+    let item_discount = discount_per_unit * paid_stock
+    var amt_before_discount = unit_cost_without_tax * paid_stock
+    amt_before_tax = amt_before_discount - item_discount
+    tax_amount =  (((tax_rate * amt_before_tax)/100))
+    amount_after_tax = amt_before_tax + tax_amount
+    $(this_parent).find(".purchase_tax_amount").val(tax_amount || 0)
+    purchase_tax_amount = parseFloat($(this_parent).find(".purchase_tax_amount").val()) || 0
+    $(_this).find(".amount_after_tax").val(amount_after_tax.toFixed(2))
+    calculate_item_discount($(_this).find(".discount-amount"))
+
+    // var get_service_count = $(_this).attr('data-child-index')
+    // $(this_parent).find('.item_taxable_amount_with_disc').val(amt_before_tax.toFixed(2))
+    // generate_tax_group(this_parent, (purchase_tax_amount || 0), get_service_count)
+    // $("#inventory_transaction_purchase_net_amount").trigger('change')
+
+    return {"discount_amount": item_discount,"taxable_amount": tax_amount,"total_cost": amt_before_discount,"amt_before_tax": amt_before_tax, "amount_after_tax":  amount_after_tax, "paid_stock": paid_stock, "free_stock": free_stock}
+  }
+
+  function generate_tax(_this){
+    let tax_name = $(_this).find(".tax-name").val();
+    let purchase_tax_amount = parseFloat($(_this).find(".purchase_tax_amount").val() || 0)
+    let id = $(_this).attr("data-item")
+    let uniq_id = $(_this).attr('data-uniq')
+    let paid_stock = parseFloat($(_this).find(".paid-stock").val()) || 0
+    let free_stock = parseFloat($(_this).find(".free-stock").val()) || 0
+    if (tax_d[tax_name] == undefined){
+      tax_d[tax_name] = parseFloat(purchase_tax_amount)
+    }else{
+      tax_d[tax_name] = parseFloat(tax_d[tax_name]) + parseFloat(purchase_tax_amount)
+    }
+
+    if (paid_stock_hash[uniq_id] == undefined){
+      paid_stock_hash[uniq_id] = paid_stock
+    }
+    else{
+      paid_stock_hash[uniq_id] = paid_stock_hash[uniq_id] + paid_stock
+    }
+
+    if (free_stock_hash[uniq_id] == undefined){
+      free_stock_hash[uniq_id] = free_stock
+    }
+    else{
+      free_stock_hash[uniq_id] = free_stock_hash[uniq_id] + free_stock
+    }
+  }
+
+  $('#transaction_table').on('click','.delete_empty_item', function(){
+    if ($('.purchase-transaction-log-item').length > 1){
+      let parent = $(this).closest('.purchase-transaction-log-item').attr("data-parent")
+      let uniq_id = $(this).attr('data-uniq')
+      var item_id = $(this).attr("data-item")
+      if (parent == "true"){
+        var id = $(this).closest('.purchase-transaction-log-item').find('.item-id').val()
+
+        var object_id = $(this).attr("id")
+        var disable = object_id + "__destroy"
+        $(this).closest(".purchase-transaction-log-item").css("background-color","#afadad");
+        $("#"+disable).val(1)
+        $(this).hide();
+        $(this).closest(".purchase-transaction-log-item").find(".item_batch").attr("required",false)
+        $(this).parent().find(".add_item").hide();
+        $(this).parent().find(".redo_item").show();
+        $(this).closest(".purchase-transaction-log-item").find(".paid-stock").attr('value',0.0)
+        $(this).closest(".purchase-transaction-log-item").find(".stock").attr('value',0.0)
+        $(this).closest(".purchase-transaction-log-item").find(".read").attr("readonly",true)
+        $(this).closest(".purchase-transaction-log-item").find(".read").attr("disabled",true)
+        $(this).closest(".purchase-transaction-log-item").find(".read").attr("required",false)
+        // $(this).closest('.purchase-transaction-log-item').remove()
+        if ($(".paid_stock_"+item_id).length <= 1){
+          $(".purchase-data-"+uniq_id).hide();
+        }
+        $('.purchase-hidden-row').each(function(){
+          hidden_uniq_id = $(this).attr('data-uniq')
+          if (uniq_id == hidden_uniq_id){
+            $(this).attr('_destroy', '1')
+          }
+        })
+      }else{
+        $(this).closest('.purchase-transaction-log-item').remove();
+        if ($(".paid_stock_"+item_id).length <= 1){
+          $(".purchase-data-"+uniq_id).hide();
+        }
+      }
+
+      delete tax_breakup[id];
+    }
+    updateRowCount();
+    // calculate_purchase_order_tax();
+  })
+
+   //undo items
+  $('#transaction_table').on('click','.redo_item', function(e){
+    $(this).closest(".purchase-transaction-log-item").find(".read").attr("readonly",false)
+    var object_id = $(this).attr("id")
+    var disable = object_id + "__destroy"
+    $("#"+disable).val(0)
+    $(this).closest(".purchase-transaction-log-item").css("background-color","transparent");
+    $(this).hide();
+    $(this).parent().find(".add_item").show();
+    $(this).parent().find(".delete_empty_item").show();
+    $(this).closest(".purchase-transaction-log-item").find(".read").attr("disabled",false)
+    updateRowCount();
+    // calculate_purchase_order_tax();
+  });
+
+  // adding same item
+  $('#transaction_table').on('click','.add_item', function(e){
+    e.preventDefault();
+    item_id = $(this).attr("data-item")
+    uniq_id = $(this).attr('data-uniq')
+    paid_stock_length = parseFloat($('.description-'+uniq_id).length)
+    actual_paid_stock = parseFloat($("#purchase-transaction-paid-stock_"+uniq_id).attr("value"))
+    if (actual_paid_stock > paid_stock_length){
+      index_value = $(this)[0].id.split("_")[5]
+      index = $(this).attr("data-s_no")
+
+      var newdiv = $("#inventory_transaction_purchase_items_attributes_"+index_value).clone();
+      var newid = Number(newdiv[0].id.replace(/inventory_transaction_purchase_items_attributes_(\d+)/,index_value)) + 1
+      newdiv.attr('id', "inventory_transaction_purchase_items_attributes_" + newid)
+
+      newdiv.attr("data-parent",false)
+      var date = newdiv.find(".expiry_days").attr("value")
+      $.each(newdiv.find(":input"),function(){
+        var thisid = $(this).attr('id');
+        var thisname = $(this).attr("name")
+        var data = $(this).val();
+         thisid = thisid.replace(/\d+/, newid);
+        if (typeof thisname !== 'undefined'){
+          thisname = thisname.replace(/\d+/, newid);
+        }
+        if (thisid.includes("batch_no")){
+          $(this).val('');
+        }else if (thisid.includes("expiry")){
+         $(this).removeClass('hasDatepicker')
+         .removeData('datepicker')
+         .attr("id",thisid)
+         .unbind()
+         .datepicker({
+            dateFormat: "dd/mm/yy",
+            minDate: date,
+            changeMonth: true,
+            changeYear: true,
+          })
+        }else if (thisid.includes("paid_stock") || thisid.includes("stock_free_unit")){
+          $(this).val(0);
+        }
+        else if (thisid.includes("item_discount")){
+          $(this).val(0);
+        }
+        else if(thisid.includes("item_type")){
+          $(this).val("child")
+        }
+        else{
+          $(this).val(data);
+        }
+       $(this).attr('name', thisname);
+       $(this).attr('id', thisid);
+      })
+      // set discount 0
+      newdiv.find('.show-discount-value').text(0)
+
+      $("#inventory_transaction_purchase_items_attributes_"+index_value).after(newdiv)
+      // $(".transaction-lots-table tbody tr").eq(index_value).after(newdiv);
+      $(".purchase-data-"+uniq_id).show();
+      renumberIndex($('.purchase-transaction-log-item'), ['input', 'select','button'])
+      
+      updateRowCount()
+      // calculate_purchase_order_tax()
+     // reindex_grn()
+    }else{
+      notice = new PNotify({ title: 'Error', text: 'Cannot add more items now', type: 'error' });
+      notice.get().click(function(){ notice.remove() });
+    }
+  });
+
+  $("#transaction_table").on("keyup change",".item_batch",function(){
+    id = $(this).attr("id")
+    variant_id = $("#" + id.replace("batch_no","default_variant_id")).val();
+    facility_id = $("#" + id.replace("batch_no","facility_id")).val();
+    organisation_id = $("#" + id.replace("batch_no","organisation_id")).val();
+    expiry_present = $("#"+id.replace("batch_no","expiry_present")).val();
+    batch_no = $(this).val();
+    batch_len = batch_no.trim().length
+    if (expiry_present == ' true' &&  batch_len >= 5) {
+      $.ajax({
+        type: 'GET',
+        dataType: 'JSON',
+        data: { variant_id: variant_id, batch_no: batch_no, organisation_id: organisation_id, facility_id: facility_id },
+        url: "/inventory/order/purchases/check_batch",
+        success: function (response) {
+          if (response["res"] != null){
+            $("#"+id.replace("batch_no","expiry")).css("border-color","red")
+            $("#" + id.replace("batch_no","expiry")).val(response['res'])
+            date = moment(response["data"]["transaction_date"]).format("DD/MM/YYYY")
+            time = moment(response["data"]["transaction_time"]).format("HH:MM")
+            display= response["data"]["transaction_display_id"]
+            expiry = moment(response["data"]["expiry"]).format("DD/MM/YYYY")
+            notice = new PNotify({ title: 'Error', text: `Expiry as per ${display} on ${date} & ${time} is ${expiry}`, type: 'error'});
+              // notice.get().click( function(){ notice.remove() });
+          }else{
+                   $("#" + id.replace("batch_no","expiry")).val("")
+          }
+        }
+      });
+    }
+  });
+
+  $("#transaction_table").on("change keyup",".stock-free-unit", function () {
+
+    var stock_free_unit = parseFloat($(this).val()) || 0
+    var this_parent = $(this).parents('.purchase-transaction-log-item')
+
+    // var unit_price_including_tax = parseFloat($(this_parent).find('.unit_price_including_tax').val() || 0)
+    // var stock_package = 0
+    // var stock_sub_package = 0
+    // var stock_unit = paid_stock
+    var paid_stock = parseFloat($(this_parent).find('.paid-stock').val()) || 0
+    // var stock_free_unit = 0
+
+    // $(this_parent).find('.stock-package').val(stock_package.toFixed(2))
+    // $(this_parent).find('.stock-sub-package').val(stock_sub_package.toFixed(2))
+    // $(this_parent).find('.stock-unit').val(stock_unit.toFixed(2))
+    // var stock_free_unit = parseFloat($(this_parent).find('.stock-free-unit').val())
+    var stock = stock_free_unit + paid_stock
+    $(this_parent).find('.item_quantity').val(stock)
+
+    var total_free_stock = 0
+    $('.price_including_tax').each(function(){
+      var this_parent = $(this).parents('.purchase-transaction-log-item')
+      var stock_free_unit = parseFloat(this_parent.find('.stock-free-unit').val() || 0)
+      total_free_stock += stock_free_unit
+    })
+    $('#total_free_quantity').val(total_free_stock)
+     // calculate_purchase_order_tax()
+       updateRowCount();
+  })
+
+  $("#transaction_table").on("change keyup",".paid-stock", function () {
+    var paid_stock = parseFloat($(this).val()) || 0
+
+    var this_parent = $(this).parents('.purchase-transaction-log-item')
+
+    var unit_price_including_tax = parseFloat($(this_parent).find('.unit_price_including_tax').val() || 0)
+    var stock_package = 0
+    var stock_sub_package = 0
+    var stock_unit = paid_stock
+    // var stock_free_unit = 0
+
+    $(this_parent).find('.stock-package').val(stock_package.toFixed(2))
+    $(this_parent).find('.stock-sub-package').val(stock_sub_package.toFixed(2))
+    $(this_parent).find('.stock-unit').val(stock_unit.toFixed(2))
+    var stock_free_unit = parseFloat($(this_parent).find('.stock-free-unit').val())
+    var stock = stock_free_unit + paid_stock
+    $(this_parent).find('.item_quantity').val(stock)
+
+    var price_including_tax = paid_stock * unit_price_including_tax
+
+    $(this_parent).find('.price_including_tax').val(price_including_tax.toFixed(2))
+    $(this_parent).find('.amount_after_tax').val(price_including_tax.toFixed(2))
+
+    let discount_per_unit = parseFloat($(this_parent).find('.discount_per_unit').val()) || 0
+    let item_discount = discount_per_unit * paid_stock
+    $(this_parent).find('.item_discount').val(item_discount.toFixed(2))
+
+    // calculate_purchase_order_tax()
+    // calTotalPrice()
+      updateRowCount();
+  })
+
+  function calculate_item_discount(this_parent) {
+    var id = $(this_parent).attr("id")
+    let uniq_id  = $(this_parent).attr('data-uniq')
+    // let item_discount = parseFloat($(this_parent).val()) || 0;
+    let discount_per_unit = parseFloat($("#" + id.replace("discount_amount","discount_per_unit")).val()) || 0;
+    let discount_type = $("#" + id.replace("discount_amount","item_discount_type")).val();
+    let quantity = parseFloat($("#" + id.replace("discount_amount","paid_stock")).val()) || 0;
+    let free_quantity = parseFloat($("#" + id.replace("discount_amount","stock_free_unit")).val()) || 0
+    let item_discount = (discount_per_unit * quantity).toFixed(2)
+    let unit_cost_without_tax = parseFloat($("#" + id.replace("discount_amount","unit_cost_without_tax")).val()) || 0;
+    let cost_before_discount = (quantity * unit_cost_without_tax) || 0
+    let tax_rate = parseFloat($("#" + id.replace("discount_amount","tax_rate")).val());
+    let discount_show =  parseFloat(item_discount) || 0
+    if (discount_show < 0 || discount_show > cost_before_discount){
+      item_discount = 0;
+      discount_show = 0;
+    }
+    cost_before_tax = (cost_before_discount - discount_show) || 0
+    tax_amount = ((tax_rate * cost_before_tax)/100)
+    total_quantity = quantity + free_quantity
+    net_unit_cost_without_tax = cost_before_tax / total_quantity
+    margin = unit_cost_without_tax - net_unit_cost_without_tax
+    cost_after_tax = cost_before_tax + tax_amount
+    $("#" + id.replace("discount_amount","margin")).val(margin.toFixed(2));
+    $("#" + id.replace("discount_amount","net_unit_cost_without_tax")).val(net_unit_cost_without_tax.toFixed(2));
+    $("#" + id.replace("discount_amount","total_cost")).val(cost_after_tax.toFixed(2));
+    $("#" + id.replace("discount_amount","item_discount")).val(discount_show.toFixed(2));
+    $("#" + id.replace("discount_amount","amount_after_tax")).val(cost_after_tax.toFixed(2));
+    $("#" + id.replace("discount_amount","unit_purchase_tax_amount")).val((tax_amount/quantity) || 0);
+    var index_key = parseInt(id.split("_")[5])
+      if (item_discount > 0) {
+        $("#item_discount_value-"+uniq_id+'-'+index_key).text(item_discount);
+      } else {
+         $("#item_discount_value-"+uniq_id+'-'+index_key).text(0);
+      }
+  }
+
+  $(".discount-amount").on("change keyup", function () {
+    calculate_item_discount($(this))
+    // calNetAmount()
+    // calculate_purchase_order_tax()
+  })
+  $(".item_discount_type").on("click",function(){
+    calculate_item_discount($("#"+$(this)[0].id.replace("item_discount_type","discount_amount")))
+    // calNetAmount()
+    // calculate_purchase_order_tax()
+  });
+
+  $(".item_quantity").on("change keyup", function () {
+
+    var item_quantity = parseFloat($(this).val()) || 0
+
+    var this_parent = $(this).parents('.purchase-transaction-log-item')
+
+    var unit_price_including_tax = parseFloat($(this_parent).find('.unit_price_including_tax').val() || 0)
+
+    var stock_package = 0
+    var stock_sub_package = 0
+    var stock_unit = item_quantity
+    var stock_free_unit = 0
+
+    $(this_parent).find('.stock-package').val(stock_package.toFixed(2))
+    $(this_parent).find('.stock-sub-package').val(stock_sub_package.toFixed(2))
+    $(this_parent).find('.stock-unit').val(stock_unit.toFixed(2))
+    $(this_parent).find('.stock-free-unit').val(stock_free_unit.toFixed(2))
+
+    var price_including_tax = item_quantity * unit_price_including_tax
+
+    $(this_parent).find('.price_including_tax').val(price_including_tax.toFixed(2))
+
+    // calculate_purchase_order_tax()
+    // calTotalPrice()
+  })
+
+  $("#transaction_table").on("change keyup",".unit_item_list_price", function () {
+    var unit_item_list_price = parseFloat($(this).val()) || 0
+    var this_parent = $(this).parents('.purchase-transaction-log-item')
+    $(this_parent).find('.list-price-pack').val(unit_item_list_price.toFixed(2))
+    $(this_parent).find('.list-price-pack-denomination').val('Unit')
+    calculate_tax(this)
+  })
+
+  function calculate_tax(_this){
+    var this_parent = $(_this).parents('.purchase-transaction-log-item')
+    console.log("yojhoho",this_parent)
+
+    console.log('$(this_parent).find(".tax-inclusive")', $(this_parent).find(".tax-inclusive"))
+    var tax_inclusive = $(this_parent).find(".tax-inclusive").val()
+    var selling_price = parseFloat($(this_parent).find(".unit_item_list_price").val())
+    var tax_rate = parseFloat($(this_parent).find(".tax-rate").val()) || 0
+
+    console.log(tax_inclusive, selling_price, tax_rate)
+
+    if(tax_inclusive == 'true'){
+      var unit_taxable_amount = (selling_price * tax_rate)/(100 + tax_rate)
+      var unit_non_taxable_amount = selling_price - unit_taxable_amount
+      var total_amount = selling_price
+    } else {
+      var unit_taxable_amount = (selling_price * tax_rate)/100
+      var unit_non_taxable_amount = selling_price
+      var total_amount = selling_price + unit_taxable_amount
+    }
+
+    $(this_parent).find(".unit-non-taxable-amount").val(unit_non_taxable_amount.toFixed(2))
+    $(this_parent).find(".unit-taxable-amount").val(unit_taxable_amount.toFixed(2))
+
+  }
+
+  function calculate_purchase_order_tax() {
+    var total_paid_stock = 0
+    var total_free_stock = 0
+    $('.price_including_tax').each(function(){
+      var this_parent = $(this).parents('.purchase-transaction-log-item')
+      var quantity = parseFloat($(this_parent).find('.item_quantity').val() || 0)
+      var tax_group_id = $(this_parent).find(".item_tax_group_id").val()
+      // var unit_purchase_tax_amount = parseFloat($(this_parent).find(".unit_purchase_tax_amount").val()) || 0
+      // var purchase_tax_amount = unit_purchase_tax_amount * quantity
+
+      var unit_cost_without_tax = parseFloat($(this_parent).find('.unit_cost_without_tax').val() || 0)
+      var tax_rate = parseFloat($(this_parent).find('.tax_rate_detail').val() || 0)
+      var discount = parseFloat($("#"+$(this)[0].id.replace("total_cost","item_discount")).val()) || 0
+      var paid_stock = parseFloat($("#"+$(this)[0].id.replace("total_cost","paid_stock")).val()) || 0
+      var stock_free_unit = parseFloat(this_parent.find('.stock-free-unit').val() || 0)
+      var total_cost = unit_cost_without_tax * paid_stock
+      amt_before_tax = total_cost - discount
+      var is_disable = $("#"+$(this).attr("id").replace("total_cost","_destroy")).val();
+      if (is_disable == '0'){
+        tax_amount =  (((tax_rate * amt_before_tax)/100))
+      }else{
+        tax_amount = 0
+      }
+      amount_after_tax = amt_before_tax + tax_amount
+      $(this_parent).find(".purchase_tax_amount").val(tax_amount || 0)
+      purchase_tax_amount = parseFloat($(this_parent).find(".purchase_tax_amount").val()) || 0
+      $("#"+$(this)[0].id.replace("total_cost","amount_after_tax")).val(amount_after_tax.toFixed(2))
+      total_paid_stock += paid_stock
+      total_free_stock += stock_free_unit
+      $(this_parent).find('.price_including_tax').trigger('change')
+      var gross_amount = 0
+      $('.price_including_tax').each(function() {
+        gross_amount += parseFloat($(this).val());
+      })
+      var total_multiple_paid_stock = 0
+      var total_multiple_free_stock = 0
+      var item = $(this).attr("data")
+      $(".paid_stock_"+item).each(function(){
+        total_multiple_paid_stock += parseFloat($(this).val());
+      })
+      $(".free_stock_"+item).each(function(){
+        total_multiple_free_stock += parseFloat($(this).val());
+      })
+
+      $("#purchase-transaction-paid-stock_"+item).text(total_multiple_paid_stock || 0)
+      $("#purchase-transaction-stock-free-unit_"+item).text(total_multiple_free_stock || 0)
+      // var discount = parseFloat($('#inventory_transaction_purchase_discount').val() || 0)
+      // discount_percent = (discount / gross_amount) * 100
+      // var purchase_tax_amount = purchase_tax_amount - (purchase_tax_amount * discount_percent) / 100
+      var get_service_count = $(this_parent).attr('data-child-index')
+      // var item_cost_without_tax = $(this_parent).find(".item_cost_without_tax").val()
+      // var taxable_amount_with_disc = item_cost_without_tax - (item_cost_without_tax * discount_percent) / 100
+      $(this_parent).find('.item_taxable_amount_with_disc').val(amt_before_tax.toFixed(2))
+      // generate_tax_group(this_parent, (purchase_tax_amount || 0), get_service_count)
+
+      
+      // $.ajax({
+      //   type: 'GET',
+      //   dataType: 'JSON',
+      //   data: { tax_group_id: tax_group_id, taxable_amount: purchase_tax_amount},
+      //   url: '/invoice/invoices/tax_breakup',
+      //   success: function(response) {
+      //     $(this_parent).find('.tax_fields').html("")
+      //     $.each(response.tax, function(key, value) {
+      //       $(this_parent).find('.tax_fields').append('<div class="tax_box"><input type="hidden" name="inventory_transaction_purchase[items_attributes][' + get_service_count + '][tax_group][][amount]" value="' + parseFloat(value[2]).toFixed(2) + '" class="tax_group_id_amount"><input type="hidden" name="inventory_transaction_purchase[items_attributes][' + get_service_count + '][tax_group][][name]" value="' + value[1] + '" class="tax_group_id_name"><input type="hidden" name="inventory_transaction_purchase[items_attributes][' + get_service_count + '][tax_group][][_id]" value="' + value[0] + '" class="tax_group_id_id">'+
+      //       '<input type="hidden" name="inventory_order_purchase[items_attributes][' + get_service_count + '][tax_group][][tax_rate]" value="'+value[3]+'" class="tax_rate">'+
+      //       '<input type="hidden" name="inventory_order_purchase[items_attributes][' + get_service_count + '][tax_group][][tax_type]" value="'+value[4]+'" class="tax_type">'+
+      //         '</div>')
+      //     });
+      //     // calTotalPrice()
+      //     calNetAmount()
+      //     $("#inventory_transaction_purchase_net_amount").trigger('change')
+      //   }
+      // })
+    });
+    calNetAmount()
+    $("#inventory_transaction_purchase_net_amount").trigger('change')
+    $('#total_paid_quantity').val(total_paid_stock || 0)
+    $('#total_free_quantity').val(total_free_stock || 0)
+  }
+
+  function generate_tax_group(parent, taxable_amount, count) {
+    var item_id = $(parent).find('.item-id').val()
+    var item_tax_group = tax_breakup[item_id]
+    var tax_rate_amount;
+    var group_rate = parseFloat(item_tax_group['group_rate'])
+    $(parent).find('.tax_fields').html("")
+    item_tax_group['tax_rates'].forEach(function(item) {
+      if (group_rate != 0.0) {
+        tax_rate_amount = (parseFloat(taxable_amount) * parseFloat(item.rate) / group_rate) || 0
+      } else {
+        tax_rate_amount = 0.0
+      }
+      $(parent).find('.tax_fields').append(`
+        <div class="tax_box">
+        <input type="hidden" id="inventory_transaction_purchase_items_attributes_${count}_tax_group_amount" name="inventory_transaction_purchase[items_attributes][${count}][tax_group][][amount]" value="${tax_rate_amount.toFixed(2)}" class="tax_group_id_amount">
+        <input type="hidden" id="inventory_transaction_purchase_items_attributes_${count}_tax_group_name" name="inventory_transaction_purchase[items_attributes][${count}][tax_group][][name]" value="${item.name}" class="tax_group_id_name">
+        <input type="hidden" id="inventory_transaction_purchase_items_attributes_${count}_tax_group__id" name="inventory_transaction_purchase[items_attributes][${count}][tax_group][][_id]" value="${item._id}" class="tax_group_id_id">
+        <input type="hidden" id="inventory_transaction_purchase_items_attributes_${count}_tax_group_tax_rate" name="inventory_order_purchase[items_attributes][${count}][tax_group][][tax_rate]" value="${item.rate}" class="tax_rate">
+        <input type="hidden" id="inventory_transaction_purchase_items_attributes_${count}_tax_group_tax_type" name="inventory_order_purchase[items_attributes][${count}][tax_group][][tax_type]" value="${item.type}" class="tax_type">
+        </div>
+        `)
+    });
+  }
+
+  $("#inventory_transaction_purchase_net_amount").on('change', function(){
+    $("#tax-cage").html("")
+    var tax_field = $('.tax_fields')
+    var counter = 0
+    for (var j = tax_field.length - 1; j >= 0; j--) {
+
+      var tax_box = $(tax_field[j]).find('.tax_box')
+      for (var i = tax_box.length - 1; i >= 0; i--) {
+        var tax_group_id2 = $(tax_box[i]).find('.tax_group_id_id').val()
+        var tax_group_id = $("#tax-cage").find('.tax_group_' + tax_group_id2)
+        var tax_group_name = $(tax_box[i]).find('.tax_group_id_name').val()
+        var tax_group_amount = $(tax_box[i]).find('.tax_group_id_amount').val()
+        var tax_rate = parseFloat($(tax_box[i]).find('.tax_rate').val()).toFixed(2)
+        var tax_type = $(tax_box[i]).find('.tax_type').val()
+        var taxable_amount = parseFloat($(tax_box[i]).closest('.purchase-transaction-log-item').find('.item_taxable_amount_with_disc').val()) || 0
+        if(tax_group_id.length <= 0){
+          $("#tax-cage").prepend('<div class="row mb5 tax_group_' + tax_group_id2 + '"><div class="col-md-5 text-right"><b>' + tax_group_name + '</b></div><div class="col-md-3 text-center">:</div><div class="col-md-3 text-right"><input style="width:92%;" class="tax_group_id_' + tax_group_id2 + '" value="' + tax_group_id2 + '" type="hidden" name="inventory_transaction_purchase[tax_breakup][][_id]" readonly="readonly"><input style="width:92%;" class="tax_group_id_' + tax_group_id2 + '" value="' + tax_group_name + '" type="text" name="inventory_transaction_purchase[tax_breakup][][name]" readonly="readonly"><input style="width:92%;" class="fi_input_style text-right tax_group_amount_' + tax_group_id2 + '" value="' + parseFloat(tax_group_amount).toFixed(2) + '" type="text" name="inventory_transaction_purchase[tax_breakup][][amount]" readonly="readonly">'+
+            '<input value="' + tax_rate + '" type="hidden" name="inventory_order_purchase[tax_breakup][][tax_rate]" readonly="readonly"><input value="' + tax_type + '" type="hidden" name="inventory_order_purchase[tax_breakup][][tax_type]" readonly="readonly">'+
+            + '<input value="'+ taxable_amount +'" type="hidden" name="inventory_order_purchase[tax_breakup][][taxable_amount]" class="taxable_amount_' + tax_group_id2 + '">' +
+            '</div></div>')
+        } else {
+          var old_value = $(tax_group_id).find('.tax_group_amount_' + tax_group_id2).val()
+          var new_value = (parseFloat(tax_group_amount) + parseFloat(old_value)).toFixed(2)
+          $(tax_group_id).find('.tax_group_amount_' + tax_group_id2).val(new_value)
+          var old_taxable_amount = parseFloat($(tax_group_id).find('.taxable_amount_'+tax_group_id2).val()) || 0
+          $(tax_group_id).find('.taxable_amount_'+tax_group_id2).val(taxable_amount + old_taxable_amount)
+        }
+        if(counter == 0){
+          $("#tax-cage").attr('style', 'background: #eee;padding: 5px;font-size: smaller;')
+        }
+        counter = counter + 1
+      }
+    }
+    purchase_taxable_amount()
+  })
+purchase_taxable_amount()
+  function purchase_taxable_amount(){
+    var purchase_taxable_amount = 0.0
+    $('.price_including_tax').each(function(){
+      var this_parent = $(this).parents('.purchase-transaction-log-item')
+      var quantity = parseFloat($(this_parent).find('.item_quantity').val() || 0)
+      var unit_cost_without_tax = parseFloat($(this_parent).find('.unit_cost_without_tax').val() || 0)
+      var item_cost_without_tax = unit_cost_without_tax * quantity
+      purchase_taxable_amount = purchase_taxable_amount + item_cost_without_tax
+    })
+
+    if(parseFloat(purchase_taxable_amount).toFixed(2) == "NaN"){
+      var purchase_taxable_amount = 0.0
+    }
+    var gross_amount = parseFloat($('#inventory_transaction_purchase_total_cost').val() || 0)
+    var discount = parseFloat($('#inventory_transaction_purchase_discount').val() || 0)
+    discount_percent = (discount / gross_amount) * 100
+    var purchase_taxable_amount = purchase_taxable_amount - (purchase_taxable_amount * discount_percent) / 100
+    // var order_item_discount = parseFloat($('#inventory_order_total_discount').val()) || 0
+    // var purchase_taxable_amount = purchase_taxable_amount - order_item_discount
+    var purchase_taxable_amount = purchase_taxable_amount
+    if(purchase_taxable_amount != 0.0){
+      $("#tax-cage").find('.purchase_taxable_amount').remove()
+      $("#tax-cage").prepend('<div class="row mb5 purchase_taxable_amount"><div class="col-md-5 text-right"><b>Taxable Amount</b></div><div class="col-md-3 text-center">:</div><div class="col-md-3 text-right"><input style="width:92%;" class="fi_input_style text-right purchase_taxable_amount" value="' + parseFloat(purchase_taxable_amount).toFixed(2) + '" type="text" name="inventory_transaction_purchase[purchase_taxable_amount]" readonly="readonly"></div></div>')
+      $("#tax-cage").attr('style', 'background: #eee;padding: 5px;')
+    }
+    $("#tax-cage").hide();
+  }
+
+  $('.sub_store_id').on('click', function() {
+    let sub_store_name = $('.sub_store_id option:Selected').text()
+    $('.sub_store_name').val(sub_store_name)
+  })
+
+
+  function calNetAmount() {
+    var each_item_totals = 0;
+    var each_item_net_amount_totals = 0;
+    var each_item_tax_totals = 0;
+    var each_item_discount_totals = 0;
+    var each_item_taxable_amount_totals = 0;
+    tax_d = {}
+    $("#tax_details").html("")
+    $(".amount_after_tax").each(function(){
+      calculated_data = calculate_overall_total(this)
+      let is_disable = $("#"+$(this)[0].id.replace("amount_after_tax","_destroy")).val()
+      if (is_disable == 0){
+        each_item_net_amount_totals += parseFloat($(this).val());
+      }
+      // each_item_net_amount_totals += parseFloat($(this).val());
+      each_item_totals += calculated_data["total_cost"];
+      each_item_tax_totals += calculated_data["taxable_amount"];
+      each_item_discount_totals += calculated_data["discount_amount"];
+      each_item_taxable_amount_totals += calculated_data["amt_before_tax"];
+      calculate_item_discount($("#"+$(this)[0].id.replace("amount_after_tax","discount_amount")))
+      var tax_name = $("#" + $(this)[0].id.replace("amount_after_tax","tax_name")).val();
+      var purchase_tax_amount  = parseFloat($("#" + $(this)[0].id.replace("amount_after_tax","purchase_tax_amount")).val()).toFixed(2) || 0
+      if (tax_d[tax_name] == undefined){
+        tax_d[tax_name] = parseFloat(purchase_tax_amount)
+      }else{
+        tax_d[tax_name] = parseFloat(tax_d[tax_name]) + parseFloat(purchase_tax_amount)
+      }
+      // $("#tax_details").prepend(`<div class="col-sm-12">
+      //       <div class="col-sm-6 font_size">
+      //         <b>${tax_name}</b>
+      //       </div>
+      //       <div class="col-sm-2 text-center font_size">
+      //         :
+      //       </div>
+      //       <div class="col-sm-4">
+      //         <input class="fi_input_style" style="width:92%; background-image: none;" readonly="readonly" type="text" value="${purchase_tax_amount}">
+      //       </div>
+      //     </div>`)
+    });
+    for (var key in tax_d) {
+      if (tax_d.hasOwnProperty(key)) {
+          $("#tax_details").prepend(`<div class="col-sm-12">
+              <div class="col-sm-6 font_size">
+                <b>${key}</b>
+              </div>
+              <div class="col-sm-2 text-center font_size">
+                :
+              </div>
+              <div class="col-sm-4">
+                <input class="fi_input_style" style="width:92%; background-image: none;" readonly="readonly" type="text" value="${tax_d[key].toFixed(2)}">
+              </div>
+            </div>`)
+      }
+    }
+    var other_charge_cost = parseFloat($("#total_other_charges_amount").val()) || 0
+    var total_net_amount  = (each_item_net_amount_totals + other_charge_cost) || 0
+    $("#inventory_transaction_purchase_net_amount").val(total_net_amount.toFixed(2))
+    $("#inventory_transaction_purchase_amount_remaining").val(total_net_amount.toFixed(2))
+    $("#inventory_transaction_purchase_total_cost").val(each_item_totals.toFixed(2))
+    $("#inventory_transaction_purchase_discount").val(each_item_discount_totals.toFixed(2))
+    $("#inventory_transaction_purchase_tax_amount").val(each_item_tax_totals.toFixed(2))
+    $("#inventory_transaction_purchase_purchase_taxable_amount").val(each_item_taxable_amount_totals.toFixed(2))
+     $("#inventory_transaction_purchase_net_amount").trigger('change')
+  }
+
+  function calculate_overall_total(_this){
+    let is_disable = $("#"+$(_this)[0].id.replace("amount_after_tax","_destroy")).val()
+    if (is_disable == 0){
+    let quantity = parseFloat($("#"+$(_this)[0].id.replace("amount_after_tax","paid_stock")).val()) || 0;
+      let unit_cost_without_tax = parseFloat($("#"+$(_this)[0].id.replace("amount_after_tax","unit_cost_without_tax")).val());
+      let amt_before_discount = (quantity * unit_cost_without_tax) || 0
+      let discount_per_unit = parseFloat($("#"+$(_this)[0].id.replace("amount_after_tax","discount_per_unit")).val()) || 0;
+      let discount_type = $("#"+$(_this)[0].id.replace("amount_after_tax","discount_type")).val();
+      let tax_rate = parseFloat($("#"+$(_this)[0].id.replace("amount_after_tax","tax_rate")).val());
+      let amt_before_tax
+      discount_amount = discount_per_unit * quantity
+      amt_before_tax = (amt_before_discount - discount_amount) || 0
+      taxable_amount = ((tax_rate * amt_before_tax)/100)
+      return {"discount_amount": discount_amount,"taxable_amount": taxable_amount,"total_cost": amt_before_discount,"amt_before_tax": amt_before_tax}
+    }else{
+      return {"discount_amount": 0,"taxable_amount": 0,"total_cost": 0,"amt_before_tax": 0}
+    }
+  }
+</script>
+
+<style>
+  .info-label {
+    padding-right: 0px;
+    padding-left: 3px;
+    font-style: oblique;
+    color: #999999;
+    font-size: 12px;
+  }
+  .info-text {
+    padding-right: 0px;
+    padding-left: 3px;
+    color: #777777;
+    font-size: 12px;
+  }
+  .td-input-group {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+  .transaction-lots-list .table tbody tr td {
+    padding: 2px 10px;
+    text-align: center;
+    width: 80px;
+  }
+  .transaction-lots-list .table tbody tr td:first-child  {
+    /*width: 30px;*/
+  }
+  .transaction-lots-list {
+    background: transparent !important;
+  }
+  .thead-fixable{
+    position: sticky;
+    top: 0;
+  }
+</style>

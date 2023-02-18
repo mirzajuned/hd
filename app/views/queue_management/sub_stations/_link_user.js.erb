@@ -1,0 +1,134 @@
+function linkUserForm(){
+  $("#link-user-form").validate({
+    rules: {},
+    messages: {
+      'area_id': {
+        required: 'Area is required'
+      },
+      'station_id': {
+        required: 'Station is required'
+      },
+      'sub_station_id': {
+        required: 'Sub Station is required'
+      },
+      'snatch_active_station': {
+        required: 'Please confirm'
+      }
+    },
+    errorPlacement: function (error, element) {
+      if($(element).hasClass("select2-hidden-accessible")) {
+        element = $("#select2-" + $(element).attr("id") + "-container").parent();
+        error.insertAfter(element);
+      } else if ($(element).attr('type') == "checkbox"){
+        $(element).closest('.ckbox').append(error);
+      } else {
+        error.insertAfter(element);
+      }
+    }
+  });
+}
+linkUserForm()
+
+$('.qm_area_id').select2();
+$('.qm_station_id').select2();
+$('.qm_sub_station_id').select2();
+
+$('.qm_area_id').on('change', function() {
+  let area_id = $(this).val();
+
+  if (area_id != '') {
+    $.ajax({
+      type: 'GET',
+      dataType: 'json',
+      url: '/queue_management/sub_stations/set_stations',
+      data: { area_id },
+      success: function(response) {
+        $('.qm_station_id').find('option').not('option:first').remove();
+
+        if (response.length > 0) {
+          $.each(response, function(i, station) {
+            let station_id = station._id
+            let station_name = station.name
+            let station_display_code = station.display_code
+
+            $('.qm_station_id').append(`<option value="${station_id}">${station_name} (${station_display_code})</option>`)
+          })
+          if (response.length == 1) {
+            $('.qm_station_id').find('option:first').remove();
+            $('.qm_station_id').find('option:first').attr('selected', true);
+          }
+          $('.qm_station_id').trigger('change');
+        }
+      }
+    });
+  } else {
+    $('.qm_station_id').find('option').not('option:first').remove();
+    $('.qm_station_id').trigger('change');
+  }
+}).trigger('change');
+
+$('.qm_station_id').on('change', function() {
+  let station_id = $(this).val();
+
+  if (station_id != '') {
+    $.ajax({
+      type: 'GET',
+      dataType: 'json',
+      url: '/queue_management/sub_stations/set_sub_stations',
+      data: { station_id },
+      success: function(response) {
+        $('.qm_sub_station_id').find('optgroup').remove();
+
+        if(response.unoccupied.length > 0) {
+          // Show Unoccupied
+          options = ''
+          $.each(response.unoccupied, function(i, sub_station) {
+            let id = sub_station[0]
+            let display_code = sub_station[1]
+            let active_user_name = sub_station[2] || ''
+            let active_user = active_user_name ? ` - ${active_user_name}` : ''
+
+            options += `<option value="${id}" data-active_user_name="${active_user_name}">${display_code}${active_user}</option>`
+          })
+
+          $('.qm_sub_station_id').append(`<optgroup label="Available">${options}</optgroup`);
+        }
+
+        if(response.occupied.length > 0) {
+          // Disable Occupied
+          options = ''
+          $.each(response.occupied, function(i, sub_station) {
+            let id = sub_station[0]
+            let display_code = sub_station[1]
+            let active_user_name = sub_station[2] || ''
+            let active_user = active_user_name ? ` - ${active_user_name}` : ''
+
+            options += `<option value="${id}" disabled>${display_code}${active_user}</option>`
+          })
+
+          $('.qm_sub_station_id').append(`<optgroup label="Occupied">${options}</optgroup`);
+        }
+
+        $('.qm_sub_station_id').trigger('change');
+      }
+    });
+  } else {
+    $('.qm_sub_station_id').find('optgroup').remove();
+    $('.qm_sub_station_id').trigger('change');
+  }
+})
+
+$('.qm_sub_station_id').on('change', function() {
+  let sub_station_id = $(this).val();
+  let active_user_name = $(this).find('option:selected').attr('data-active_user_name');
+
+  if (sub_station_id != '' && active_user_name) {
+    $(".confirm-snatch").show();
+    $(".confirm-snatch").find('.snatch_active_station_label').html(`Station already in use - ${active_user_name}. Are you sure?`)
+  } else {
+    $(".confirm-snatch").hide();
+    $(".confirm-snatch").find('.snatch_active_station_label').html('')
+    $(".confirm-snatch").find('#snatch_active_station').attr('checked', false)
+  }
+});
+$(".confirm-snatch").hide();

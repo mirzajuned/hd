@@ -1,0 +1,91 @@
+<div class="modal-dialog modal-lg" style="width:70%;">
+  <div class="modal-content">
+    <div class="modal-header" style="height:60px;">
+      <div class="row">
+        <div class="col-md-7 col-lg-7 col-sm-12 col-xs-12">
+          <h4 class="modal-title pull-right">Consent</h4>
+        </div>
+        <div class="col-md-5 col-lg-5 col-sm-12 col-xs-12">
+          <div class="text-right">
+            <% if @print_settings.count > 1 %>
+              <div class="btn-group" style="margin-bottom: 0px;">
+                <button type="button" class="btn btn-primary full_print dropdown-toggle" data-toggle="dropdown"><i class="fa fa-print mr5"></i> Print <i class="fa fa-caret-down"></i></button>
+                <ul class="dropdown-menu dropdown-left-manual" role="menu" aria-labelledby="summary-print-dropdown">
+                  <% @print_settings.each do |print_setting| %>
+                    <li class="multi-print">
+                      <% print_consent = "custom_consents_print_ipd_consent_path(print_setting_id: print_setting.id, admission_id: @admission.id, patient_id: @admission.patient_id, format: 'pdf')" %>
+                      <%= link_to eval(print_consent), data: { method: :get }, class: "custom_consent_setting", target: "_blank", style: "color: #d9534f;" do %> <i class="fa fa-print mr5"></i> <%= print_setting.name %> <% end %>
+                    </li>
+                  <% end %>
+                </ul>
+              </div>
+            <% else %>
+              <% print_consent = "custom_consents_print_ipd_consent_path(print_setting_id: @print_settings[0].id, admission_id: @admission.id, patient_id: @admission.patient_id, format: 'pdf')" %>
+              <%= link_to eval(print_consent), class: "print-consent btn btn-primary custom_consent_setting", target: "_blank", data: { method: :get } do %> <i class="fa fa-print mr5"></i> Print <% end %>
+            <% end %>
+            <button type="button" class="btn btn-default" data-dismiss="modal" id="close_custom_consent_btn">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div class="row">
+        <div class="col-md-4">
+          <b>Specialty</b>
+          <%= select_tag("specialty_id", options_for_select(@available_specialties.pluck(:name, :id) || [], @selected_specialty), { class: 'form-control specialty_dropdown' }) %>
+        </div>
+        <div class="col-md-4">
+          <b>Consent Name</b>
+          <select class="form-control custom_consents-dropdown">
+            <% if @custom_consents.count > 0 %>
+              <% @custom_consents.each do |cc| %>
+                <option value='<%= cc[:id] %>' data-languages='<%= cc[:languages].join(",") %>'><%= cc[:name] %></option>
+              <% end %>
+            <% else %>
+              <option value=''>None</option>
+            <% end %>
+          </select>
+        </div>
+        <div class="col-md-4">
+          <b>Language</b>
+          <select class="form-control custom-consent-languages"></select>
+        </div>
+      </div>
+      <div class="custom-consent-body"></div><br>
+      <div class="custom-consent-content"></div>
+    </div>
+    <div class="modal-footer">
+      <button aria-hidden="true" class="btn btn-info consent-form-close" id="close-modal" data-dismiss="modal">Close</button>
+    </div>
+  </div>
+</div>
+
+<style type="text/css">
+  .custom-consent-content {
+    font-family: "Times New Roman", Times, serif;
+    font-size: 10pt;
+    color: #333333;
+    background: #ffffff;
+    box-shadow: 0 0 10px rgba(0, 0, 0, .175);
+    padding: 0.2in;
+  }
+</style>
+<script>
+  $('#specialty_id').on('change', function(){
+    let specialty_id = $(this).val();
+    $.ajax({
+      type: 'get',
+      dataType: 'script',
+      url: '/custom_consents/ipd_preview',
+      data: {
+        specialty_id: specialty_id,
+        patient_id: '<%= @admission.patient_id %>',
+        admission_id: '<%= @admission.id %>',
+        remote: "true"
+      },
+    })
+  });
+  $('.specialty_dropdown').select2();
+  $(".custom-consent-languages").select2();
+  $(".custom_consents-dropdown").select2();
+</script>

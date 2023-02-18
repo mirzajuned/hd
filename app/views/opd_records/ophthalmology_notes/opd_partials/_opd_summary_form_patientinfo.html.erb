@@ -1,0 +1,111 @@
+<% pat_other_identifier = PatientOtherIdentifier.find_by(patient_id: patient.id) %>
+<% patient_identifier = PatientIdentifier.find_by(patient_id: patient.id.to_s).try(:patient_org_id) %>
+<% referral = PatientReferralType.find_by(patient_id: patient.id) %>
+<% sub_referral = SubReferralType.find_by(id: referral.try(:sub_referral_type_id)) %>
+
+<% template_fields = OrganisationsSetting.find_by(organisation_id: current_user.organisation_id).custom_template_header_options[:opd_settings][:templates][0].select{ |key, value| value == true } %>
+<% fields_names = OrganisationSettingsHelper.get_data('opd_templates', template_fields).keys %>
+
+<div class="appointment-patient-details mb10 mt10" style="border: 1px solid #A9A9A9;padding-left: 9px;">
+  <div class="row">
+
+    <% template_fields.each_with_index do |(key, value), i| %>
+      <% field_name = fields_names[i] %>
+
+      <% if key == 'fullname' %>
+        <% field_value = "<b style='#{template_header_font_size}'>#{patient.fullname.to_s.upcase}</b>" %>
+
+      <% elsif key == 'consultant_name' %>
+        <% templatetype = opdrecord.templatetype %>
+        <% field_value = ['optometrist', 'nursing', 'refraction', 'ar_nct', 'vision', 'biometry'].include?(templatetype) ? 'NA' : "<b style='#{template_header_font_size}'>Dr. #{opdrecord.consultant_name.try(:upcase)}</b>" %>
+
+      <% elsif key == 'facility_name' %>
+        <% field_value = appointment.facility.name %>
+
+      <% elsif key == 'calculate_age_gender' %>
+        <% field_value = patient.calculate_age.present? || patient.gender.present? ? patient.calculate_age.to_s + '/' + patient.gender.to_s : 'Unavailable' %>
+
+      <% elsif key == 'display_id' %>
+        <% field_value = appointment.display_id %>
+
+      <% elsif key == 'created_at' %>
+        <% field_value = opdrecord.created_at.strftime("%d %b'%y") %>
+
+      <% elsif key == 'referring_doctor' %>
+        <% field_name = referral.present? && referral.referral_type_id.include?("FS-RT-0002") ? field_name : '' %>
+        <% field_value = sub_referral.try(:name) %>
+
+      <% elsif key == 'mr_no' %>
+        <% field_value = pat_other_identifier.try(:mr_no) %>
+
+      <% elsif key == 'appointment_date' %>
+        <% field_value = appointment.appointmentdate.strftime("%d %b'%y") %>
+
+      <% elsif key == 'mobilenumber' %>
+        <% field_value = patient.mobilenumber %>
+
+      <% elsif key == 'patient_identifier' %>
+        <% field_value = patient_identifier %>
+
+      <% elsif key == 'patient_type' %>
+        <% field_value = patient.patient_type.try(:label) %>
+
+      <% elsif key == 'address' %>
+        <% if patient.address_1.present? || patient.address_2.present? || patient.city.present? || patient.state.present? %>
+          <% field_value = patient.patient_full_address %>
+        <% else %>
+          <% field_value = 'Unavailable' %>
+        <% end %>
+
+      <% end %>
+      <% if field_name.present? && field_value.present? %>
+        <div class="col-xs-2" style="text-overflow: ellipsis; white-space: normal; word-wrap: break-word;padding: 0px 2px;">
+          <b style="<%= template_header_font_size %>"><%= field_name %></b>&nbsp;:
+        </div>
+        <div class="col-xs-4" style="text-overflow: ellipsis; white-space: normal; word-wrap: break-word;padding: 0px 2px;">
+          <span style="<%= template_header_font_size %>"><%= field_value.try(:html_safe) %></span>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+</div>
+
+<% if mail_job == false %>
+  <% if params[:action] == "print_medication" || params[:action] == "print_opd_record" || params[:action] == "print_glass_prescription"  %>
+    <style type="text/css">
+      <% if current_facility.organisation.letter_head_customisations[:left_margin].to_i <= 6 %>
+        .appointment-patient-details * {
+          font-size: 9px;
+        }
+      <% else %>
+        .appointment-patient-details * {
+          font-size: 7px;
+        }
+      <% end %>
+      .appointment-patient-details {
+        border:1px solid #aaa;
+        padding:5px;
+      }
+    </style>
+  <% else %>
+    <style type="text/css">
+      .appointment-patient-details {
+        font-size: 12px;
+      }
+      .appointment-patient-details {
+        border:1px solid #aaa;
+        /*padding:5px;*/
+      }
+    </style>
+  <% end %>
+<% else %>
+  <style type="text/css">
+    .appointment-patient-details {
+      font-size: 12px;
+    }
+    .appointment-patient-details {
+      border:1px solid #aaa;
+      /*padding:5px;*/
+    }
+  </style>
+<% end %>

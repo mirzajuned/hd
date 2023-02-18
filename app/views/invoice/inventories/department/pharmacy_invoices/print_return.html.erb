@@ -1,0 +1,206 @@
+<div style="border:1px solid #ccc;">
+  <div class="row" style="border-bottom:1px solid #ccc;">
+    <div class="col-sm-4">
+      <% if @organisation.logo_url %>
+        <% image_url = @organisation.logo_url %>
+      <% else %>
+        <% image_url = '/assets/medical.png' %>
+      <% end %>
+    </div>
+    <div class="col-sm-4 text-center">
+      <h3 style="margin:0px"><%= @organisation.name %></h3>
+      <p><%= @organisation.tagline %></p>
+    </div>
+    <div class="col-sm-4 font_size">
+      <p style="text-align:right;font-size:11px;"><%= @organisation.address1 %><% if @organisation.address1? && @organisation.address2? %>,<%end%></p>
+      <p style="text-align:right;font-size:11px;"><%= @organisation.address2 %><% if @organisation.address1? && @organisation.address2? %>,<%end%></p>
+      <p style="text-align:right;font-size:11px;"><%= @organisation.city %><% if @organisation.city? && @organisation.state? %>,<%end%><%= @organisation.state %><% if (@organisation.city? || @organisation.state?) && @organisation.pincode? %>-<%end%><%= @organisation.pincode %></p>
+    </div>
+  </div>
+  <div class="row mb5">
+    <div class="col-lg-2 font_size">
+      Patient Name:
+    </div>
+    <div class="col-lg-2 font_size">
+      <%= @pharmacy_log.recipient %>
+    </div>
+    <div class="col-lg-2 font_size">
+      Patient ID:
+    </div>
+    <div class="col-lg-2 font_size">
+      <% if PatientIdentifier.find_by(patient_id: @pharmacy_log.patient_id) %>
+        <%= PatientIdentifier.find_by(patient_id: @pharmacy_log.patient_id).try(:patient_org_id) %>
+      <% else %>
+        <%= @pharmacy_log.patient_identifier %>
+      <% end %>
+    </div>
+    <div class="col-lg-2 font_size">
+      Bill No.
+    </div>
+    <div class="col-lg-2 font_size">
+      <% if @pharmacy_log.bill_number %>
+        <%= @pharmacy_log.bill_number %>
+      <% end %> 
+    </div>
+  </div>
+  <div class="row mb5">
+    <div class="col-lg-2 font_size">
+      Doctor: 
+    </div>
+    <div class="col-lg-2 font_size">
+      <%= @pharmacy_log.doctor_name %>
+    </div>
+    <div class="col-lg-2 font_size">
+      Total Items:
+    </div>
+    <div class="col-lg-2 font_size">
+      <%= @pharmacy_log.items.count %>
+    </div>
+    <div class="col-lg-2 font_size">
+      Date & Time
+    </div>
+    <div class="col-lg-2 font_size">
+      <%= Time.current.strftime("%H:%M %p on %d %b %y") %>
+    </div>
+
+  </div><!-- row -->
+  <div class="row" style="border-bottom:1px solid #ccc;border-top:1px solid #ccc;">
+    <div class="col-sm-1 font_size">
+      <b>S No.</b>
+    </div>
+    <div class="col-sm-2 font_size">
+      <b>Batch No</b>
+    </div>
+    <div class="col-sm-2 font_size">
+      <b>Description </b>
+    </div>
+    <div class="col-sm-2 font_size">
+      <b>Manufacturer</b>
+    </div>
+    <div class="col-sm-1 font_size">
+      <b>Expiry</b>
+    </div>
+    <div class="col-sm-1 font_size text-center" style="color:red;">
+      <b>Qty(R)</b>
+    </div>
+    <div class="col-sm-1 font_size text-center">
+      <b>VAT</b>
+    </div>
+    <div class="col-sm-1 font_size text-right">
+      <b>MRP/unit</b>
+    </div>
+    <div class="col-sm-1 font_size text-right">
+      <b>Total</b>
+    </div>
+  </div><!--row-->
+  <div id="optical_items">
+    <% @item_total_all = 0 %>
+    <% @pharmacy_log.items.each.with_index do |item, i| %>
+      <% unless item.service %>
+        <div class="row">
+          <div class="col-sm-1 font_size">
+            <%= i + 1 %>
+          </div>
+          <div class="col-sm-2 font_size">
+            <%= item.batch_no %>
+          </div>
+          <div class="col-sm-2 font_size">
+            <%= item.description %>
+          </div>
+          <div class="col-sm-2 font_size">
+            <%= item.manufacturer %>
+          </div>
+          <div class="col-sm-1 font_size">
+            <%= item.expiry %>
+          </div>
+          <div class="col-sm-1 font_size text-center" style="color:red;">
+            <%= item.quantity %>
+          </div>
+          <div class="col-sm-1 font_size text-center">
+            5.5
+          </div>
+          <div class="col-sm-1 font_size text-right">
+            <% item_mrp_wt = item.list_price + ((item.list_price) * (5.5) / 100) %>
+            <%= item_mrp_wt %>
+          </div>
+          <div class="col-sm-1 font_size text-right">
+            <% item_total = item_mrp_wt * item.quantity %>
+            <% @item_total_all = @item_total_all + item_total %>
+            <%= item_total %>
+          </div>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+
+  <div class="row mb5" style="border-bottom:1px solid #ccc;">
+  </div>
+  <div class="row mb5">
+    <div class="col-sm-3 col-sm-offset-6 font_size text-right">
+      <b>Total Amount Payable</b>
+    </div>
+    <div class="col-sm-1 text-center font_size">
+      :
+    </div>
+    <div class="col-sm-2 font_size text-right" id="total_wt">
+      <%= @item_total_all %>
+    </div>
+    <div class="col-sm-3 col-sm-offset-6 font_size text-right">
+      <b>Non Refundable Amount</b>
+    </div>
+    <div class="col-sm-1 text-center font_size">
+      :
+    </div>
+    <div class="col-sm-2 font_size text-right" id="total_wt">
+      <%= (@item_total_all - @pharmacy_log.return_amount).round(2) %>
+    </div>
+    <div class="col-sm-3 col-sm-offset-6 font_size text-right">
+      <b>Amount Given(To Customer)</b>
+    </div>
+    <div class="col-sm-1 text-center font_size">
+      :
+    </div>
+    <div class="col-sm-1 col-sm-offset-1 font_size text-right">
+      <%= @pharmacy_log.return_amount %>
+    </div>
+  </div>
+
+  <div class="row" style="">
+    <div class="col-sm-offset col-sm-2 font_size text-center">
+    <b>Optical Shop</b>
+    </div>
+  </div>
+</div>
+<div>
+  <div class="row" style="border-bottom:1px solid #ccc;">
+    <div class="col-md-4 font_size">
+      <p>USERNAME : <b><%= current_user.fullname %></b></p>
+    </div>
+    <div class="col-md-4 font_size text-center">
+      <p>DL NO : <b>__-___-_______,______,______</b></p>
+    </div>
+    <div class="col-md-4 font_size text-center">
+      <p>TIN NO : <b>_________</b></p>
+    </div>
+  </div>
+  <div clas="row">
+    <div class="col-md-12">
+      <ul class="med_rules">
+        <!-- <li>MEDICINES SHOULD BE RETURNED IN PROPER CONDITION AND FULL STRIP WITHIN 15 DAYS FROM THE DATE OF BILL</li> -->
+        <!-- <li>ORIGINAL COPY OF THE BILL SHOULD BE PROVIDED AT THE TIME OF RETURN</li>
+        <li>CONTROLLED TEMPERATURE ITEMS WILL NOT BE TAKEN BACK*SURGICAL AND CONSUMABLE ITEMS WILL NOT BE TAKEN BACK</li>
+        <li>THE SALE COVERS FROM OPTICAL IS SUBJECT TO INDIA JURSIDICTION ONLY</li>
+        <li>ANY EXCESS COLLECTION BY OVERSIGHT WILL BE REFUNDED,AS PER DRUGS(PRICE CONTROL ORDER 1970)</li> -->
+      </ul>
+    </div>
+  </div>
+</div>
+
+<style type="text/css">
+  .font_size {
+    font-size: 10px;
+  }
+  .med_rules {
+    font-size: 7px;
+  }
+</style>

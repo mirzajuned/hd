@@ -1,0 +1,179 @@
+<%= javascript_include_tag 'application-loggedin', 'data-turbolinks-track' => true %>
+<div class="modal-dialog" style="width: 65%;">
+  <!-- Modal content-->
+  <div class="modal-content">
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal">&times;</button>
+      <h4 class="modal-title">Add New Approved Template</h4>
+    </div>
+    <%= form_for @communication_template, url: create_template_communication_settings_path, method: :post, remote: true, html: { id: 'communication_form_template' } do |f|%>
+      <%= f.hidden_field :organisation_id, { value: @current_user.organisation_id } %>
+      <%= f.hidden_field :communication_type, { value: 'whatsapp' } %>
+      <div class="modal-body">
+        <div id="error_msg"></div>
+        <div class="form-group">
+          <div class="row" style="margin-top:15px;">
+            <div class="col-md-3">
+              <strong>Department Type</strong>
+            </div>
+            <div class="col-md-9">
+              <%= f.select :module_names, options_for_select([['OPD', 'opd'],['IPD', 'ipd'],['Optical', 'optical'],['Pharmacy', 'pharmacy']], f.object.module_names), {include_blank: "Select Department"}, {:class => "form-control", :required => true, multiple: 'multiple'}  %>
+            </div>
+          </div>
+        </div>
+        <div class="form-group">
+          <div class="row" style="margin-top:15px;">
+            <div class="col-md-3">
+              <strong>Template Title</strong>
+            </div>
+            <div class="col-md-9">
+              <%= f.text_field :template_title, { class: 'form-control p7_10 name', placeholder: 'template title' , :required => true , maxlength: 40} %>
+            </div>
+          </div>
+        </div>
+        <div class="form-group">
+          <div class="row">
+            <div class="col-sm-3">
+              <strong>Template Content</strong>
+            </div>
+            <div  class="col-md-9">
+              <%= f.text_area :template_content, { class: 'form-control p7_10 template_content', placeholder: 'template content' , :required => true, style: "min-height: 120px;", maxlength: 500} %>
+              <div style="text-align: right;" ><span id="counter" data-maximum-length="500">500</span> /500 characters</div>
+            </div>
+          </div>
+        </div>
+        <div class="form-group">
+          <a href="javascript:void(0)" id="msg-previously" class="btn btn-info">Message Preview</a>
+        </div>
+        <div class="form-group">
+          <strong class="text-danger">*Note:</strong>
+          <ul>
+            <li class="text-danger">Text b/w "{ }", eg:"{PAT_NAME}" in the above body are placeholders for the information like patient name, organization, phone number, etc, so do not edit them and use them accordingly.</li>
+            <li>Place the cursor where you want to put the placeholder and click on the label below</li>
+          </ul>
+        </div>
+        <div class="form-group">
+          <strong>Please see the message preview:</strong>
+          <p class="exampleSms no_margin"></p>
+        </div>
+        <%= render "/communication_settings/approved_templates/template_word_tag" %>
+    	</div>
+      <div class="modal-footer">
+        <%= f.submit 'Save Changes', { class: 'btn btn-success' } %>
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<script type="text/javascript">
+  dynamic_example_message();
+  $(".div_label_wrapper label").on('click',function(){
+    var data_text = $(this).attr("data-add_text");
+    var id_text_area = $('#communication_form_template').find("textarea").attr("id");
+    var text_value = $("#communication_template_template_content").val()
+    if(event.target.dataset.add_text != '')
+      {
+        text_value = text_value.length + event.target.dataset.add_text.length
+      }
+    else{
+      text_value = text_value.length
+    }
+    if(text_value < 501){
+      insertAtCaret(id_text_area,data_text);
+    }
+  })
+
+  $("#msg-previously").on('click',function(){
+    dynamic_example_message();
+  })
+
+  function insertAtCaret(areaId,text) {
+    var txtarea = document.getElementById(areaId);
+    var scrollPos = txtarea.scrollTop;
+    var strPos = 0;
+    // alert()
+    var br = ((txtarea.selectionStart || txtarea.selectionStart == '0') ? 
+      "ff" : (document.selection ? "ie" : false ) );
+    if (br == "ie") { 
+      txtarea.focus();
+      var range = document.selection.createRange();
+      range.moveStart ('character', -txtarea.value.length);
+      strPos = range.text.length;
+    }
+    else if (br == "ff") strPos = txtarea.selectionStart;
+
+    var front = (txtarea.value).substring(0,strPos);  
+    var back = (txtarea.value).substring(strPos,txtarea.value.length); 
+    txtarea.value=front+text+back;
+    strPos = strPos + text.length;
+    if (br == "ie") { 
+      txtarea.focus();
+      var range = document.selection.createRange();
+      range.moveStart ('character', -txtarea.value.length);
+      range.moveStart ('character', strPos);
+      range.moveEnd ('character', 0);
+      range.select();
+    }
+    else if (br == "ff") {
+      txtarea.selectionStart = strPos;
+      txtarea.selectionEnd = strPos;
+      txtarea.focus();
+    }
+    txtarea.scrollTop = scrollPos;
+  }
+
+  function dynamic_example_message(){
+    var selector_id = $('#communication_form_template').find("textarea").attr("id");
+    var text_value = $("#"+selector_id).val();
+    if(text_value.length < 501){
+      $("#"+selector_id).removeAttr('value').attr('value', text_value).focus();
+    }
+    var myDate = (new Date(new Date().getTime()+(5*24*60*60*1000))).toUTCString().split(' ').slice(0, 4).join(' ');;
+    var myTime = (new Date(new Date().getTime()+(5*24*60*60*1000))).toUTCString().split(' ').slice(4, 5).join(' ');
+ 
+    var changed_text = text_value.replace(/{PAT_NAME}/g, "John Doe").replace(/{DOC_NAME}/g, "Gregory House").replace(/{APP_DATE}/g, myDate).replace(/{FAC_SMS_NO}/g, "9789XXXX90").replace(/{ORG_SMS_NUM}/g, "9789XXXX90").replace(/{FAC_NAME}/g, "We Care").replace(/{ORG_NAME}/g, "Princeton Plainsboro").replace(/{APP_TIME}/g, myTime).replace(/{FAC_ADDR}/g, "64595 Berge Estate Bengaluru").replace(/{OPTICAL_STORE_NAME}/g, 'optical store hoss').replace(/{EST_DELIVERY_DATE}/g, myDate).replace(/{ORDER_DATE}/g, myDate).replace(/{EST_READY_DATE}/g, myDate).replace(/{STORE_NUMBER}/g, '9789XXXX90').replace(/{PAT_NUM}/g, '9789XXXX80').replace(/{FITTER_NAME}/g, 'James Andreson').replace(/{BILL_NUMBER}/g, 'B001XXXX').replace(/{EST_READY_DATE}/g, myDate).replace(/{ORDER_ID}/g, 'ORD0001').replace(/{PHARMACY_STORE_NAME}/g, 'pharmacy store hoss');
+  
+    $(".exampleSms").html('').html(changed_text)
+  }
+
+  $(document).ready(function() {
+    var review_text = $("#communication_template_template_content");
+    var counter     = $("#counter");
+    var max_length  = counter.data("maximum-length");
+    counter.text(max_length - $("#communication_template_template_content").val().length);
+
+    review_text.keyup(function() {
+      counter.text(max_length - $(this).val().length);
+    });
+    review_text.focus(function() {
+      counter.text(max_length - $(this).val().length);
+    });
+  });
+  
+  $("#communication_template_module_names").select2({
+    placeholder: "Please select"
+  })
+</script>
+
+<style type="text/css">
+  .holder_label {
+    display: inline-block;
+    border: 2px solid #333;
+    padding: 8px;
+    margin-right: 5px;
+    margin-bottom: 5px;
+  }
+  .holder_label a{
+    color: #333333;
+  }
+  .holder_label a:hover, .holder_label a:focus{
+    text-decoration: none;
+  }
+  .exampleSms{
+    width: 100% !important;
+    max-width: 80em !important;
+    white-space: normal !important;
+    overflow-wrap: break-word !important;
+  }
+</style>

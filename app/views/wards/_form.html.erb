@@ -1,0 +1,138 @@
+<div class="row ward-form-row mb10">
+  <div class="col-md-6 col-md-offset-1">
+    <b style="color:#000;">Ward Name</b>
+    <%= ward_fields.text_field :name, class: 'form-control p5_10 ward-name' %>
+  </div>
+  <div class="col-md-3">
+    <b style="color:#000;">Ward Code</b>
+    <%= ward_fields.text_field :code, class: 'form-control p5_10 ward-code', maxlength: '3', style: 'text-transform: uppercase;' %>
+  </div>
+  <div class="col-md-3">
+    <%= ward_fields.hidden_field :total_rooms, class: 'form-control p5_10 ward-total_rooms' %>
+  </div>
+</div>
+<div id="room-block">
+  <div class="row room-form-row mb10">
+    <!-- In case of new "Add Room" Button is triggered(form.js.erb) -->
+    <% rooms = @ward.rooms %>
+    <% if rooms.count > 0 %>
+      <% rooms.each_with_index do |room, i| %>
+        <div class="col-md-12 room-row">
+          <div class="row room-form">
+            <hr>
+            <input type="hidden" name="ward[rooms_attributes][<%= i %>][id]" id="ward_rooms_attributes_<%= i %>_id" value="<%= room.id %>">
+            <input type="hidden" class="room-_destroy" name="ward[rooms_attributes][<%= i %>][_destroy]" id="ward[rooms_attributes][<%= i %>][id]" id="ward_rooms_attributes_<%= i %>_destroy" value="0">
+            <input type="hidden" class="room-is_deleted" name="ward[rooms_attributes][<%= i %>][is_deleted]" id="ward[rooms_attributes][<%= i %>][id]" id="ward_rooms_attributes_<%= i %>_is_deleted" value="0">
+            <input type="hidden" name="ward[rooms_attributes][<%= i %>][organisation_id]" id="ward_rooms_attributes_<%= i %>_organisation_id" value="<%= room.organisation_id || current_facility.organisation_id %>">
+            <input type="hidden" name="ward[rooms_attributes][<%= i %>][facility_id]" id="ward_rooms_attributes_<%= i %>_facility_id" value="<%= room.facility_id.to_s || current_facility.id %>">
+            <input type="hidden" name="ward[rooms_attributes][<%= i %>][total_beds]" id="ward_rooms_attributes_<%= i %>_total_beds" class="room-total_beds" value="<%= room.total_beds %>">
+            <div class="col-md-5">
+              <b style="color:#000;">Room Name</b>
+              <input type="text" class="form-control p5_10 room-name" name="ward[rooms_attributes][<%= i %>][name]" id="ward_rooms_attributes_<%= i %>_name" value="<%= room.name %>">
+            </div>
+            <div class="col-md-3">
+              <b style="color:#000;">Room Type</b>
+              <select class="form-control room-type" name="ward[rooms_attributes][<%= i %>][type]" id="ward_rooms_attributes_<%= i %>_type" value="<%= room.type %>">
+                <option value=""></option>
+                <% @room_types.each do |room_type| %>
+                  <% if room_type[:abbreviation] == room.type %>
+                    <option value="<%= room_type[:abbreviation] %>" selected="selected"><%= room_type[:name] %></option>
+                  <% else %>
+                    <option value="<%= room_type[:abbreviation] %>"><%= room_type[:name] %></option>
+                  <% end %>
+                <% end %>
+              </select>
+            </div>
+            <div class="col-md-2">
+              <b style="color:#000;">Room Code</b>
+              <input type="text" class="form-control p5_10 room-code" name="ward[rooms_attributes][<%= i %>][code]" id="ward_rooms_attributes_<%= i %>_code" maxlength="3" style="text-transform: uppercase;" value="<%= room.code %>">
+            </div>
+            <div class="col-md-2">
+              <b style="color:#000;">Actions</b><br>
+              <button class="btn btn-primary btn-add-bed btn-xs" id="ward_rooms_attributes_<%= i %>_add"><i class="fa fa-bed"></i></button>
+              <% if !room.in_use %>
+                <button class="btn btn-danger btn-remove-room btn-xs" id="ward_rooms_attributes_<%= i %>_remove"><i class="fa fa-trash-alt"></i></button>
+              <% else %>
+                <button class="btn btn-danger btn-xs" disabled><i class="fa fa-trash-alt"></i></button>
+              <% end %>
+            </div>
+          </div>
+          <div class="row bed-form-row">
+            <% if room.beds.count > 0 %>
+              <div class="col-md-10 col-md-offset-1 bed-header">
+                <div class="row" style="margin:0 10px">
+                  <div class="col-md-4">
+                    <b style="color:#000;">Bed Name</b>
+                    <span style="font-size:12px;color:#3071a9">(Max: 50 Beds)</span>
+                  </div>
+                  <div class="col-md-2">
+                    <b style="color:#000;">Bed Code</b>
+                  </div>
+                  <div class="col-md-2">
+                    <b style="color:#000;">Total Beds</b>
+                  </div>
+                  <div class="col-md-2">
+                    <b style="color:#000;">Bed Price</b>
+                  </div>
+                  <div class="col-md-2">
+                    <b style="color:#000;">Actions</b>
+                  </div>
+                </div>
+              </div>
+              <% bed_counter = 0 %>
+              <% grouped_beds = room.beds.group_by(&:group_id) %>
+              <% grouped_beds.each do |group_id, beds| %>
+                <div class="col-md-10 col-md-offset-1 bed-row">
+                  <% beds_in_use = beds.select { |bed| bed.in_use == true } %>
+                  <div class="row bed-form">
+                    <div class="col-md-4">
+                      <input type="text" class="form-control p5_10 bed-bed_name" name="ward[rooms_attributes][<%= i %>][beds_attributes][<%= bed_counter %>][bed_name]" value="<%= beds.first.name %>">
+                    </div>
+                    <div class="col-md-2">
+                      <input type="text" class="form-control p5_10 bed-bed_code" name="ward[rooms_attributes][<%= i %>][beds_attributes][<%= bed_counter %>][bed_code]" maxlength="3" style="text-transform: uppercase;" value="<%= beds.first.code.to_s[0...-1] %>">
+                    </div>
+                    <div class="col-md-2">
+                      <input type="number" class="form-control p5_10 bed-total_beds" name="ward[rooms_attributes][<%= i %>][beds_attributes][<%= bed_counter %>][total_beds]" value="<%= beds.count %>" data-use-beds="<%= beds_in_use.count %>">
+                      <% if beds_in_use.count > 0 %><span style="font-size:12px;color:#f00">In use: <%= beds_in_use.count %></span><% end %>
+                    </div>
+                    <div class="col-md-2">
+                      <input type="number" class="form-control p5_10 bed-bed_price" name="ward[rooms_attributes][<%= i %>][beds_attributes][<%= bed_counter %>][bed_price]" value="<%= beds.first.price %>">
+                    </div>
+                    <div class="col-md-2">
+                      <% if beds_in_use.count == 0 %>
+                        <button class="btn btn-danger btn-remove-bed btn-xs"><i class="fa fa-trash-alt"></i></button>
+                      <% else %>
+                        <button class="btn btn-danger btn-xs" disabled><i class="fa fa-trash-alt"></i></button>
+                      <% end %>
+                    </div>
+                    <div class="col-md-12 beds_breakup">
+                      <% beds.sort_by { |bed| bed.in_use ? 0 : 1 }.each do |bed| %> <!-- sort_by used to place all beds "in_use" on top  -->
+                        <div class="bed-hidden-fields">
+                          <input type="hidden" class="bed-_id" name="ward[rooms_attributes][<%= i %>][beds_attributes][<%= bed_counter %>][id]" id="ward_rooms_attributes_<%= i %>_beds_attributes_<%= bed_counter %>_id" value="<%= bed.id %>">
+                          <input type="hidden" class="bed-_destroy" name="ward[rooms_attributes][<%= i %>][beds_attributes][<%= bed_counter %>][_destroy]" id="ward_rooms_attributes_<%= i %>_beds_attributes_<%= bed_counter %>_destroy" value="0">
+                          <input type="hidden" class="bed-is_deleted" name="ward[rooms_attributes][<%= i %>][beds_attributes][<%= bed_counter %>][is_deleted]" id="ward_rooms_attributes_<%= i %>_beds_attributes_<%= bed_counter %>_is_deleted" value="0">
+                          <input type="hidden" class="bed-facility_id" name="ward[rooms_attributes][<%= i %>][beds_attributes][<%= bed_counter %>][facility_id]" id="ward_rooms_attributes_<%= i %>_beds_attributes_<%= bed_counter %>_facility_id" value="<%= bed.facility_id %>">
+                          <input type="hidden" class="bed-organisation_id" name="ward[rooms_attributes][<%= i %>][beds_attributes][<%= bed_counter %>][organisation_id]" id="ward_rooms_attributes_<%= i %>_beds_attributes_<%= bed_counter %>_organisation_id" value="<%= bed.organisation_id %>">
+                          <input type="hidden" class="bed-group_id" name="ward[rooms_attributes][<%= i %>][beds_attributes][<%= bed_counter %>][group_id]" id="ward_rooms_attributes_<%= i %>_beds_attributes_<%= bed_counter %>_group_id" value="<%= bed.group_id %>">
+                          <input type="hidden" class="bed-name" name="ward[rooms_attributes][<%= i %>][beds_attributes][<%= bed_counter %>][name]" id="ward_rooms_attributes_<%= i %>_beds_attributes_<%= bed_counter %>_name" value="<%= bed.name %>">
+                          <input type="hidden" class="bed-price" name="ward[rooms_attributes][<%= i %>][beds_attributes][<%= bed_counter %>][price]" id="ward_rooms_attributes_<%= i %>_beds_attributes_<%= bed_counter %>_price" value="<%= bed.price %>">
+                          <input type="hidden" class="bed-code" name="ward[rooms_attributes][<%= i %>][beds_attributes][<%= bed_counter %>][code]" id="ward_rooms_attributes_<%= i %>_beds_attributes_<%= bed_counter %>_code" value="<%= bed.code %>">
+                        </div>
+                        <% bed_counter += 1 %>
+                      <% end %>
+                    </div>
+                  </div>
+                </div>
+              <% end %>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+  <div class="row add-room-row">
+    <div class="col-md-12">
+      <button class="btn btn-primary btn-xs" id="btn-add-room"><i class="fa fa-add"></i> Add Room</button>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,181 @@
+<% currency_symbol = (@inventory_order.try(:currency_symbol) || current_facility.try(:currency_symbol)) %>
+<% if @inventory_store.department_id == '50121007' %>
+  <div id="advance-payment-form">
+    <% adv_against_order = @advance_payments.where(currency_symbol: currency_symbol, advance_type: 'Advance against order', order_id: @inventory_order.id) %>
+    <% if adv_against_order.count > 0 %>
+      <div class="row advance-details">
+        <div class="col-md-10 mb5">
+          <b style="text-decoration: underline; color: red;">ADVANCE COLLECTED AGAINST THE ORDER</b>
+        </div>
+        <div class="col-md-2 mb5 text-right">
+          <div class="input-group">
+            <span class="input-group-addon" style="padding: 5px 10px;font-size:10px;"><%= currency_symbol %></span>
+            <input type="text" name="invoice_inventory_invoice[advance_payment]" class="form-control invoice_advance_payment p3_10" id="invoice_advance_payment_total_bill" value="<%= @inventory_order.advance_payment %>" readonly="readonly">
+          </div>
+        </div>
+        <div class="col-md-12">
+          <div class="row advance-description">
+            <div class="col-md-1">
+              <b>S.No.</b>
+            </div>
+            <div class="col-md-2">
+              <b>Reason</b>
+            </div>
+            <div class="col-md-2">
+              <b>Mode of Payment</b>
+            </div>
+            <div class="col-md-2">
+              <b>Payment Date/Time</b>
+            </div>
+            <div class="col-md-2">
+              <b>Advance Amount</b>
+            </div>
+            <div class="col-md-2">
+              <b>Settle Amount</b>
+            </div>
+          </div>
+          <div id="advance_payment_details">
+            <% adv_against_order.each_with_index do |advance_payment, i| %>
+              <% advance_payment_breakup = @inventory_order.advance_payment_breakups.find_by(advance_payment_id: advance_payment.id.to_s) %>
+              <div class="row advance_payment_row mb10">
+                <div class="col-md-1">
+                  <span class="advance_payment_breakups_sno"><%= i + 1 %>.</span>
+                </div>
+                <div class="col-md-2">
+                  <input type="text" class="form-control p3_10" value="<%= advance_payment.reason %>" readonly="readonly">
+                </div>
+                <div class="col-md-2">
+                  <input type="text" class="form-control p3_10" value="<%= advance_payment.mode_of_payment %>" readonly="readonly">
+                </div>
+                <div class="col-md-2">
+                  <input type="text" class="form-control p3_10" value="<%= "#{advance_payment.payment_date.strftime('%d/%m/%Y')}, #{advance_payment.payment_time.strftime('%I:%M %p')}" %>" readonly="readonly">
+                </div>
+                <div class="col-md-2">
+                  <div class="input-group">
+                    <span class="input-group-addon" style="padding: 5px 10px;font-size:10px;"><%= currency_symbol %></span>
+                    <input type="text" class="form-control p3_10" value="<%= advance_payment.try(:amount_remaining).to_f + advance_payment_breakup.try(:amount).to_f %>" readonly="readonly">
+                  </div>
+                </div>
+                <div class="col-md-2">
+                  <div class="input-group">
+                    <span class="input-group-addon" style="padding: 5px 10px;font-size:10px;"><%= currency_symbol %></span>
+                    <input type="number" class="form-control p3_10" min="0" value="<%= advance_payment_breakup.try(:amount).to_f %>" readonly="readonly">
+                  </div>
+                </div>
+                <div class="col-md-1"></div>
+                <% style = ('display:none;border: 1px solid #ccc;padding: 5px;' if ['Cash'].include?(advance_payment.mode_of_payment)) || 'border: 1px solid #ccc;padding: 5px;' %>
+                <div class="col-md-4 col-md-offset-3 mt10 mop_details" style='<%= style %>'>
+                  <% if advance_payment.mode_of_payment == "Cash" %>
+                  <% elsif advance_payment.mode_of_payment == "Card" %>
+                    <div class="row">
+                      <div class="card_details">
+                        <div class="col-md-6">
+                          <b style="font-size:12px;">Card Number</b>
+                          <input type="text" class="form-control p3_10" minlength="4" maxlength="4" onKeyPress="return event.charCode >= 48 && event.charCode <= 57" placeholder="Card Number" readonly="readonly" value=<% if advance_payment.try(:card_number).present? %>"<%= advance_payment.try(:card_number).to_s.rjust(4, "0") %>"<% end %>>
+                        </div>
+                        <div class="col-md-6">
+                          <b style="font-size:12px;">Transaction Note</b>
+                          <input type="text" class="form-control p3_10" placeholder="Transaction Note" readonly="readonly" value="<%= advance_payment.card_transaction_note %>">
+                        </div>
+                      </div>
+                    </div>
+                  <% elsif advance_payment.mode_of_payment == "Paytm" %>
+                    <div class="row">
+                      <div class="other_details">
+                        <div class="col-md-6">
+                          <b style="font-size:12px;">Transaction Id</b>
+                          <input type="text" class="form-control p3_10" placeholder="Transaction Id" readonly="readonly" value="<%= advance_payment.paytm_transaction_id %>">
+                        </div>
+                        <div class="col-md-6">
+                          <b style="font-size:12px;">Transaction Note</b>
+                          <input type="text" class="form-control p3_10" placeholder="Transaction Note" readonly="readonly" value="<%= advance_payment.paytm_transaction_note %>">
+                        </div>
+                      </div>
+                    </div>
+                  <% elsif advance_payment.mode_of_payment == "Google Pay" %>
+                    <div class="row">
+                      <div class="other_details">
+                        <div class="col-md-6">
+                          <b style="font-size:12px;">Transaction Id</b>
+                          <input type="text" class="form-control p3_10" placeholder="Transaction Id" readonly="readonly" value="<%= advance_payment.gpay_transaction_id %>">
+                        </div>
+                        <div class="col-md-6">
+                          <b style="font-size:12px;">Transaction Note</b>
+                          <input type="text" class="form-control p3_10" placeholder="Transaction Note" readonly="readonly" value="<%= advance_payment.gpay_transaction_note %>">
+                        </div>
+                      </div>
+                    </div>
+                  <% elsif advance_payment.mode_of_payment == "PhonePe" %>
+                    <div class="row">
+                      <div class="other_details">
+                        <div class="col-md-6">
+                          <b style="font-size:12px;">Transaction Id</b>
+                          <input type="text" class="form-control p3_10" placeholder="Transaction Id" readonly="readonly" value="<%= advance_payment.phonepe_transaction_id %>">
+                        </div>
+                        <div class="col-md-6">
+                          <b style="font-size:12px;">Transaction Note</b>
+                          <input type="text" class="form-control p3_10" placeholder="Transaction Note" readonly="readonly" value="<%= advance_payment.phonepe_transaction_note %>">
+                        </div>
+                      </div>
+                    </div>
+                  <% elsif advance_payment.mode_of_payment == "Online Transfer" %>
+                    <div class="row">
+                      <div class="transfer_details">
+                        <div class="col-md-6">
+                          <b style="font-size:12px;">Transfer Date</b>
+                          <input type="text" class="form-control p3_10" placeholder="Transfer Date" readonly="readonly" value="<%= advance_payment.transfer_date %>">
+                        </div>
+                        <div class="col-md-6">
+                          <b style="font-size:12px;">Transfer Note</b>
+                          <input type="text" class="form-control p3_10" placeholder="Transfer Note" readonly="readonly" value="<%= advance_payment.transfer_note %>">
+                        </div>
+                      </div>
+                    </div>
+                  <% elsif advance_payment.mode_of_payment == "Cheque" %>
+                    <div class="row">
+                      <div class="cheque_details">
+                        <div class="col-md-6">
+                          <b style="font-size:12px;">Cheque Date</b>
+                          <input type="text" class="form-control p3_10" placeholder="Cheque Date" readonly="readonly" value="<%= advance_payment.cheque_date %>">
+                        </div>
+                        <div class="col-md-6">
+                          <b style="font-size:12px;">Cheque Note</b>
+                          <input type="text" class="form-control p3_10" placeholder="Cheque Note" readonly="readonly" value="<%= advance_payment.cheque_note %>">
+                        </div>
+                      </div>
+                    </div>
+                  <% elsif advance_payment.mode_of_payment == "Others" %>
+                    <div class="row">
+                      <div class="other_details">
+                        <div class="col-md-6">
+                          <b style="font-size:12px;">Transaction Id</b>
+                          <input type="text" class="form-control p3_10" placeholder="Transaction Id" readonly="readonly" value="<%= advance_payment.other_transaction_id %>">
+                        </div>
+                        <div class="col-md-6">
+                          <b style="font-size:12px;">Transaction Note</b>
+                          <input type="text" class="form-control p3_10" placeholder="Transaction Note" readonly="readonly" value="<%= advance_payment.other_note %>">
+                        </div>
+                      </div>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+      <hr>
+    <% else %>
+      <input type="hidden" name="invoice_inventory_invoice[advance_payment]" class="form-control invoice_advance_payment p3_10" id="invoice_advance_payment_total_bill" value="<%= @inventory_order.advance_payment %>" readonly="readonly">
+    <% end %>
+  </div>
+<% end %>
+<% if @advance_payments.where(advance_state: 'None').size > 0 %>
+  <div id="advance-payment-form">
+    <%= render partial: 'invoice/inventory_invoices/advance_payment_details_v1.html.erb', locals: { adv_against_order_size: adv_against_order.size } %>
+  </div>
+<% end %>
+
+<div id="payment-received-form">
+  <%= render partial: 'invoice/inventory_invoices/received_payment_details.html.erb' %>
+</div>

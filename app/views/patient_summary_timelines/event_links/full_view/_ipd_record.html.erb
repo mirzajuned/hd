@@ -1,0 +1,75 @@
+<% if @mode != "tabview" %>
+  <% unless timeline['pst'][0]['primary_model'] == "LegacyIpdClinicalNote" %>
+    <% @ipd_record = timeline['pst'][0]['links']['ipdrecord'] %>
+    <% if @ipd_record %>
+      <% @ipd_record_parent = Inpatient::IpdRecord.find_by(admission_id: @ipd_record['admission_id']) %>
+      <% if @ipd_record_parent.present? %>
+        <% template_type = timeline['pst'][0]['comments'][0].split(" ")[0].downcase+"_note" %>
+        <% if template_type != 'bom_note' %>
+          <% if template_type == "admission_note"  %>
+              <% template_type = 'clinical_note'%>
+          <% end %>
+          <% specialty_name = TemplatesHelper.get_speciality_folder_name(@ipd_record_parent.specialty_id) %>
+          <% @edit = "edit_inpatient_ipd_record_" + template_type + "_" + specialty_name + "_note_path(id: timeline['pst'][0]['query']['_id'], admission_id: @ipd_record[:admission_id].to_s)" %>
+          <%= link_to eval(@edit), :class => "timeline-viewsummary-html btn btn-primary btn-primary-transparent btn-xs btn-circle hg-tooltip", title: "Edit Ipd Record", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#ipdrecord-modal', method: :get } do %><i class="fa fa-edit"></i><% end %>
+
+          <% unless template_type == "ward_note" %>
+            <% @show = "inpatient_ipd_record_" + template_type + "_" + specialty_name + "_note_path(id: timeline['pst'][0]['query']['_id'], admission_id: @ipd_record[:admission_id].to_s)" %>
+            <%= link_to eval(@show), :class => "timeline-viewsummary-html btn btn-success btn-success-transparent btn-xs btn-circle hg-tooltip", title: "View Ipd Record", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#ipdrecord-modal', method: :get } do %><i class="fa fa-file-alt"></i><% end %>
+            <% print_policy_identifier = "HGP-101-106-100" if template_type == "clinical_note" %>
+            <% print_policy_identifier = "HGP-101-109-100" if template_type == "discharge_note" %>
+            <% print_policy_identifier = "HGP-101-107-100" if template_type == "operative_note" %>
+
+            <% if Authorization::PolicyHelper.verification(current_user.id ,print_policy_identifier) %>
+              <button class="btn btn-warning btn-warning-transparent btn-xs btn-circle" title="Print Ipd Record" data-toggle="dropdown"><i class="fa fa-print"></i></button>
+            <% end %>
+            <ul class="dropdown-menu children" style="margin-left:-60px;font-size: 12px;">
+              <% if @print_settings.count > 1 %>
+                <li><p class="text-center" style="margin:0px;">Summary</p></li>
+                <li><hr style="margin: 0px;"></li>
+                <li class="text-center">
+                  <% @print_settings.each do |print_setting| %>
+                    <li style="text-align:left" class="multi-print">
+                      <% print_summary = "inpatient_ipd_record_" + template_type + "_" + specialty_name + "_note_print_path(id: timeline['pst'][0]['query']['_id'], " + specialty_name + "_note_id: timeline['pst'][0]['query']['_id'], admission_id: @ipd_record[:admission_id], view: 'Summary', print_setting_id: print_setting.id, format: 'pdf')" %>
+                      <%= link_to eval(print_summary), :class => "",:style => "color: #d9534f;",:target => "_blank", :data => {method: :get} do %> <i class="fa fa-print mr5"></i> <%= print_setting.name %> <% end %>
+                    </li>
+                  <% end %>
+                </li>
+                <li><hr style="margin: 0px;"></li>
+                <li><p class="text-center" style="margin:0px;">Note</p></li>
+                <li><hr style="margin: 0px;"></li>
+                <li class="text-center">
+                  <% @print_settings.each do |print_setting| %>
+                    <li style="text-align:left">
+                      <% print_note = "inpatient_ipd_record_" + template_type + "_" + specialty_name + "_note_print_path(id: timeline['pst'][0]['query']['_id'], " + specialty_name + "_note_id: timeline['pst'][0]['query']['_id'], admission_id: @ipd_record[:admission_id], view: 'Note', print_setting_id: print_setting.id, format: 'pdf')" %>
+                      <%= link_to eval(print_note), :class => "",:style => "color: #d9534f;",:target => "_blank", :data => {method: :get} do %> <i class="fa fa-print mr5"></i> <%= print_setting.name %> <% end %>
+                    </li>
+                  <% end %>
+                </li>
+              <% else %>
+                <li class="text-center">
+                  <% print_summary = "inpatient_ipd_record_" + template_type + "_" + specialty_name + "_note_print_path(id: timeline['pst'][0]['query']['_id'], " + specialty_name + "_note_id: timeline['pst'][0]['query']['_id'], admission_id: @ipd_record[:admission_id], view: 'Summary', print_setting_id: @print_settings[0].id, format: 'pdf')" %>
+                  <%= link_to eval(print_summary), :class => "",:target => "_blank", :data => {method: :get} do %> <i class="fa fa-print mr5"></i> Summary <% end %>
+                </li>
+                <li><hr style="margin: 0px;"></li>
+                <li class="text-center">
+                  <% print_note = "inpatient_ipd_record_" + template_type + "_" + specialty_name + "_note_print_path(id: timeline['pst'][0]['query']['_id'], " + specialty_name + "_note_id: timeline['pst'][0]['query']['_id'], admission_id: @ipd_record[:admission_id], view: 'Note', print_setting_id: @print_settings[0].id, format: 'pdf')" %>
+                  <%= link_to eval(print_note), :class => "",:target => "_blank", :data => {method: :get} do %> <i class="fa fa-print mr5"></i> Note <% end %>
+                </li>
+              <% end %>
+            </ul>
+          <% else %>
+            <% @index = "inpatient_ipd_record_ward_note_" + specialty_name + "_notes_path(admission_id: @ipd_record[:admission_id].to_s)" %>
+            <%= link_to eval(@index), title: "View Ward Notes", class: "btn btn-success btn-success-transparent btn-circle btn-xs", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#ipdrecord-modal'} do %><i class="fa fa-file-alt"></i><% end %>
+          <% end %>
+        <% else %>
+          <%= link_to inpatient_bill_of_material_path(id: @ipd_record[:_id], admission_id: @ipd_record[:admission_id], patient_id: @ipd_record[:patient_id]), :class => "timeline-viewsummary-html btn btn-primary btn-primary-transparent btn-xs btn-circle hg-tooltip", title: "Edit Bill Of Material", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#bill-of-material-modal', method: :get } do %><i class="fa fa-edit"></i><% end %>
+        <% end %>
+      <% else %>
+        <b>Admission Deleted</b>
+      <% end %>
+    <% end %>
+  <% else %>
+    <%= link_to patient_legacy_old_surgery_list_path(id: timeline['pst'][0]['query']['_id'], legacy_patient_id: timeline['pst'][0]['links']['legacy']['legacy_patient_id'], new_patient_id: timeline['pst'][0]['links']['legacy']['new_patient_id']), :class => 'btn btn-xs btn-success btn-success-transparent btn-circle investigation-viewsummary-html', :id => 'investigation-viewsummary-html', :title => "Legacy Summary", :data => {:remote => true} do %> <i class="fa fa-file-alt"></i> <% end %>
+  <% end %>
+<% end %>

@@ -1,0 +1,43 @@
+<% unless @pat_workflow.try(:state) == "not_arrived" %>
+    <%# workflow = OpdClinicalWorkflow.find_by(appointment_id: @appointment.id.to_s) %>
+    <% all_transitions = workflow.opd_clinical_workflow_state_transitions %>
+    <div class="row no_margin no_padding" style="padding: 5px 5px;margin-top: 10px;border: 1px solid #aaa;">
+      <div class="col-md-12" style="line-height: 2;">
+        <label style="font-size:12px;border-radius: 12px;" class="label label-warning">Arrived</label>
+        <% all_transitions.each do |transition| %>
+            <% user_fullname =  User.find(transition.user_id).fullname%>
+            <% start_time = transition.transition_start %>
+            <% end_time = (transition.transition_end if transition.try(:transition_end).present?) || Time.current %>
+            <% time_difference = TimeDifference.between(start_time,end_time).in_minutes %>
+            <% if time_difference > 60 %>
+                <%time_difference = (time_difference/60).floor.to_s + " hr " + (time_difference.round % 60).to_s + " mins" %>
+            <% else %>
+                <%time_difference = time_difference.round.to_s + " mins" %>
+            <% end %>
+            <% if transition.try(:user_id) %>
+                <% if transition.to == "away" %>
+                    <i class="fa fa-long-arrow-alt-right"></i>
+                    <label title="<%= time_difference %>" style=" cursor: pointer;font-size:12px;border-radius: 12px;" class="label label-danger">Away</label>
+                <%elsif transition.to == "doctor" %>
+                    <i class="fa fa-long-arrow-alt-right"></i>
+                    <label title="<%= time_difference %>" style="font-size:12px;border-radius: 12px;cursor: pointer" class="label label-primary">Dr. <%= user_fullname%></label>
+                <%elsif transition.to == "complete" %>
+                    <i class="fa fa-long-arrow-alt-right"></i>
+                    <label title="" style="font-size:12px;border-radius: 12px;" class="label label-success away">Complete</label>
+                <% else %>
+                    <i class="fa fa-long-arrow-alt-right"></i>
+                    <label  title="<%= time_difference %>" style="font-size:12px;margin-left: 0px;margin-right: 0px;border-radius: 12px;cursor: pointer;" class="label label-default"><%= user_fullname%><label class="label label-danger"><%= transition.to.capitalize.first %></label></label>
+                <%end%>
+            <% else %>
+                <%if transition.to == "complete" %>
+                    <i class="fa fa-long-arrow-alt-right"></i>
+                    <label title="" style="font-size:12px;border-radius: 12px;" class="label label-success away">Complete</label>
+                <% else %>
+                    <i class="fa fa-long-arrow-alt-right"></i>
+                    <label title="<%= time_difference%>" style="font-size:12px;border-radius: 12px;cursor: pointer" class="label label-primary"><%= transition.to.capitalize%></label>
+                <% end %>
+            <% end %>
+        <% end %>
+      </div>
+    </div>
+<%end%>

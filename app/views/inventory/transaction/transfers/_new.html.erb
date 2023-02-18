@@ -1,0 +1,187 @@
+<%= javascript_include_tag "application-loggedin", "data-turbolinks-track" => true %>
+<div class="modal-dialog modal-lg" style="width: 98%">
+  <div class="modal-content transaction-content" style="">
+    <div class="modal-header transaction-header">
+      <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+      <h4 class="modal-title text-center">Transfer Items</h4>
+    </div>
+
+    <div class="modal-body transaction-body">
+      <div class="row">
+        <div class="col-md-3 col-sm-5 col-xs-5 items-lots">
+
+          <div class="items-lots-search">
+            <div class="col-md-4">
+              <strong>Search By:</strong>
+            </div>
+            <div class="col-md-8 input-group">
+              <div class="input row btn-group" target-input-id="search_type">
+                <button type="button" input-value="Barcode" class="btn btn-xs btn-white searchtype custom-radio-button <%= 'btn-brown' if @search_by == 'Barcode'%>" name="searchtype">Barcode Scan</button>
+                <button type="button" input-value="Description" class="btn btn-xs btn-white searchtype custom-radio-button <%= 'btn-brown' if @search_by == 'Description'%>" name="searchtype" >Description</button>
+                <% unless @inventory_store.department_id == '50121007' %>
+                  <button type="button" input-value="GenericName" class="btn btn-xs btn-white searchtype custom-radio-button <%= 'btn-brown' if @search_by == 'GenericName'%>" name="searchtype">Generic Name</button>
+                <% end %>
+              </div>
+              
+            </div>
+          </div>
+
+          <div class="items-lots-list">
+
+            <div class="row items-lots-search mb5">
+              <div class="col-md-9">
+                <div class="input-group">
+                  <input type="text" id="lots_search" placeholder="Type Description / Model No. to search..." class="form-control">
+                  <input type="text" id="lots_search_barcode" placeholder="Type Barcode to search..." class="form-control">
+                  <input type="text" id="lots_search_generic_name" placeholder="Type Generic Name to search..." class="form-control">
+                  <span class="input-group-addon"><i class="fa fa-times-circle" style="display: none"></i></span>
+                </div>
+              </div>
+              <div class="col-md-3 search-barcode">
+                <button id="search_by_barcode" type="button" style="margin: 2px; color: blue;">Submit</button>
+              </div>
+            </div>
+
+            <table class="table items-lots-table">
+              <tbody class="items-lots-body">
+              <%= render partial: 'inventory/item/lots/index_body' %>
+              </tbody>
+            </table>
+          </div>
+
+          <% unless @lots.count < 30 %>
+            <div class="show-more-timeline">
+              <a class="col-sm-12", href="javascript:;", id="show_more_lots", data-count = "0" , style="text-align: right;text-decoration: none;position: fixed;margin-left: 200px;">
+                <i class="fa fa-spinner fa-spin"></i> Loading...
+              </a>
+            </div>
+          <% end %>
+        </div>
+
+        <div class="col-md-9 col-sm-7 col-xs-7 items-lots">
+          <%= form_for @transfer_transaction, remote: true , html: { id: "inventory_transfer_transactions_form" } do |f| %>
+            <div class="input">
+              <input name="inventory_transaction_transfer[search_type]" class="hidden" type="hidden" id="search_type" value="<%=@search_by%>">
+            </div>
+            <%= render partial: '/inventory/transaction/transfers/form.html', locals: {f:f} %>
+
+
+            <div class="col-md-6 col-sm-6">
+              <%= f.submit "Save Changes", { class: 'btn btn-success validate-create-button', onclick: 'validate_inventory_transfer_transactions_form()', data: { disable_with: "Please Wait..."} } %>
+            </div>
+            <div class="col-sm-6">
+              <div class="col-sm-6 font_size">
+                <b>Total Amt Including Tax</b>
+              </div>
+              <div class="col-sm-2 text-center font_size">
+                :
+              </div>
+              <div class="col-sm-4 font_size">
+                <span><%= f.text_field :total_cost, { class: 'form-control p7_10 fullname',readonly: true, placeholder: "Total Cost" } %></span>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<style>
+
+  .inventory-list-row {
+    cursor: pointer;
+  }
+  .items-lots-search .fa {
+    cursor: pointer;
+  }
+  .items-lots-search input {
+    border-radius: 3px 0px 0px 3px !important;
+    border-right: none;
+    padding-left: 43px;
+    padding-right: 43px;
+    padding: 6px 12px;
+    background: #FFFFFF;
+    line-height: 1.42857;
+    box-shadow: none;
+    transition: none;
+  }
+
+  .items-lots-search input:focus {
+    border-color: #ccc;
+    box-shadow: none;
+  }
+
+  .items-lots-search .input-group-addon {
+    box-shadow: none;
+    transition: none;
+    color: #636e7b;
+    background: #FFFFFF;
+    border-radius: 0px 3px 3px 0px;
+  }
+
+
+  /*.items-lots-list {
+    background: #eef1f7;
+  }*/
+  .items-lots-list .table-striped > tbody > tr:nth-child(2n+1) > td, .items-lots-list .table-striped > tbody > tr:nth-child(2n+1) > th {
+    background-color: #fcfdfe;
+  }
+  .items-lots-list .table {
+    font-size: 12px;
+    line-height: 18px;
+    margin-bottom: 0px;
+    /* even columns width , fix width of table too*/
+  }
+  .items-lots-list .table thead {
+    font-weight: bold;
+    background: #8c95b3;
+    color: white;
+  }
+  .items-lots-list .table thead, .items-lots-list .table tbody tr {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+  }
+  .items-lots-list .table tbody {
+    display: block;
+    overflow-y: scroll;
+  }
+  .items-lots-list .table tbody tr td {
+    vertical-align: middle;
+  }
+
+
+
+
+  .transaction-lots-list {
+    background: #eef1f7;
+  }
+  .transaction-lots-list .table-striped > tbody > tr:nth-child(2n+1) > td, .transaction-lots-list .table-striped > tbody > tr:nth-child(2n+1) > th {
+    background-color: #fcfdfe;
+  }
+  .transaction-lots-list .table {
+    font-size: 12px;
+    line-height: 18px;
+    margin-bottom: 0px;
+    /* even columns width , fix width of table too*/
+  }
+  .transaction-lots-list .table thead {
+    font-weight: bold;
+    background: #8c95b3;
+    color: white;
+  }
+  .transaction-lots-list .table thead, .transaction-lots-list .table tbody tr {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+  }
+  .transaction-lots-list .table tbody {
+    display: block;
+    overflow-y: scroll;
+  }
+  .transaction-lots-list .table tbody tr td {
+    vertical-align: middle;
+  }
+</style>

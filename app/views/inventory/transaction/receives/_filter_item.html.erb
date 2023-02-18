@@ -1,0 +1,68 @@
+<div class="modal-dialog" style="width: 60%">
+  <div class="modal-content">
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal">&times;</button>
+      <h4 class="modal-title" style="color: #00BFFF"><%= @lot_units[0].description %></h4>
+    </div>
+    <div class="modal-body window-body">
+      <div class="lot-unit-details">
+        <table class="table inventory_table_center">
+          <thead class="inventory-table-head">
+            <tr>
+              <th>Sl. No.</th>
+              <th>Description</th>
+              <th>Barcode</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody class="inventory-table-body">
+            <% @lot_units.each_with_index do |lot_unit, index| %>
+              <tr class="lot-unit-item">
+                <td><%= index+1 %></td>
+                <td><%= lot_unit.description %></td>
+                <td><%= lot_unit.barcode_id %></td>
+                <%= hidden_field_tag :lot_unit_id, lot_unit.id, name: "item[#{index}][lot_unit_id]", class: 'lot-unit-id' %>
+                <td>
+                  <% is_checked = (@selected_lot_unit_ids.include? lot_unit.id.to_s) ? true : false %>
+                  <%= check_box_tag "item[#{index}][lot_unit_checked]", true, is_checked, {id: "lot_#{index}_unit_checked", class: 'lot-unit-item-checked', style: 'height: 20px; width: 20px'} %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="modal-footer window-footer">
+      <button class="btn btn-success" id="filter_item">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<script type="text/javascript">
+  $('#filter_item').on('click', function() {
+    var lot_unit_ids = '<%= params[:lot_unit_ids] %>'
+    if (lot_unit_ids[1] == '&') {
+      var data = JSON.parse(lot_unit_ids.replace(/&quot;/g,'"'));
+    } else {
+      var data = lot_unit_ids.split(',');
+    }
+    var tr_class_val = '<%= params[:tr_class_val] %>'
+    var selected_lot_unit_ids = []
+    $('.lot-unit-item').each(function() {
+      if ($(this).find('.lot-unit-item-checked').prop('checked')) {
+        selected_lot_unit_ids.push($(this).find('.lot-unit-id').val())
+      }
+    })
+
+    $.ajax({
+      type : 'get',
+      url: '/inventory/transaction/receives/lot_unit_item',
+      data: {
+        lot_unit_ids: data,
+        tr_class_val: tr_class_val,
+        selected_lot_unit_ids: selected_lot_unit_ids,
+        remote: 'true'
+      },
+    })
+  })
+</script>

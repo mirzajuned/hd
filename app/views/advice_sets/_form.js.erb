@@ -1,0 +1,236 @@
+function advice_set_page() {
+  var total_advice_set = $("#total_advice_set").val();
+  $("#advice_set_form").validate({
+
+    rules: {
+      "advice_set[name]": {
+        required: true,
+      },
+      "advice_set[content]": {
+        required: true,
+      },
+      "advice_set[specialty_id]": {
+        required: true,
+      }
+    },
+    messages: {
+      "advice_set[name]": {
+        required: "Please fill the Set name."
+      },
+
+      "advice_set[content]": {
+        required: "This field is required."
+      },
+      "advice_set[specialty_id]": {
+        required: "Please select any Specialty",
+      }
+    },
+  });
+
+}
+advice_set_page()
+$.validator.addMethod("SelectedLanguage", $.validator.methods.required, "Language cannot be blank");
+$.validator.addClassRules("selected_language", { SelectedLanguage: true});
+
+
+$(".advice-set-content").hide()
+$(".selected_language").on("click", function(e) {
+  var selected_language = $(this).val().toString();
+  $(".advice-set-content").hide()
+  $("#" + selected_language + "-language").show();
+});
+
+
+$(".button-clear").on("click", function(e) {
+  e.preventDefault();
+  var content_div = $(this).closest(".advice-set-content");
+  $(content_div).find(".note-editable").attr("contenteditable", false);
+  $(content_div).find(".consent_destroy").val("1");
+  $(content_div).find(".button-undo").show();
+  $(this).hide();
+});
+$(".button-undo").on("click", function(e) {
+  e.preventDefault();
+  var content_div = $(this).closest(".advice-set-content");
+  $(content_div).find(".note-editable").attr("contenteditable", true);
+  $(content_div).find(".consent_destroy").val("0");
+  $(content_div).find(".button-clear").show();
+  $(this).hide();
+});
+
+
+jQuery(".options_for_sets").select2({
+//    tags: true,
+//    tokenSeparators: [',', ';'],
+//    theme: "bootstrap",
+//    multiple: true
+});
+jQuery("#advice_sets_option").select2({
+//    tags: true,
+//    tokenSeparators: [',', ';'],
+//    theme: "bootstrap",
+//    multiple: true
+});
+
+var summernote_options = {
+  toolbar: [
+    ['style', ['bold', 'italic', 'underline', 'clear']],
+    ['fontsize', ['fontsize']],
+    ['height', ['height']],
+    ['fontname', ['fontname']],
+    ['para', ['ul', 'ol', 'paragraph']],
+  ],height: 325,
+  insertTableMaxSize: {col: 5,row: 7},
+  focus: true,
+  callbacks: {
+    onBlur: "lasttext=this"
+  }  
+};
+
+$('.text_note_down').summernote(summernote_options);
+$(".text_note_down").on("summernote.change", function (event) {});
+$('.advice-set .note-editable').attr('id','advice-set-content-summernote')
+
+jQuery("#options_for_sets").on('change',function(){
+  doinsert_ie($(this).val())
+  $(this).val("")
+  $("#select2-options_for_sets-container").hide()
+})
+
+jQuery(".options_for_sets").on("change",function(){
+  doinsert_ie($(this).val())
+  $(this).val("")
+})
+
+
+jQuery("#advice_sets_option").on('change',function(){
+  doinsert_ie($(this).val())
+  $(this).val("")
+  $("#select2-advice_sets_option-container").hide()
+})
+
+
+
+function doinsert_ie(sometext) {
+  var oldtext = $(".note-editable").closest("#advice-set-content-summernote").code();
+  var marker = "##MARKER##";
+  $('.advice-set .note-editable').focus();
+  var sel = document.getSelection();
+  sel.text = marker;
+  var tmptext = $(".note-editable").closest("#advice-set-content-summernote").code();
+  var curpos = tmptext.indexOf(marker);
+  pretext = oldtext.substring(0,curpos);
+  posttest = oldtext.substring(curpos,oldtext.length);
+  $(".note-editable").code(pretext + posttest + sometext)
+}
+
+$(".language_dropdown").select2();
+$("#add_sub_advice_set").on("click",function(e){
+  e.preventDefault();
+  $("#add_sub_advice_set").attr("disabled", "disabled")
+  var fieldcounter;
+  fieldcounter = $(".add_more_adive_set_translation").children(".form-inputs").length;
+  var level  = $("#advice_set_level").val();
+  var params = {counter: fieldcounter,level: level};
+  jQuery.ajax({
+    type: "GET",
+    dataType: "script",
+    url: "/advice_sets/new_language_subset_form",
+    data: {ajax: params, remote: "true" },
+    success: function(){
+      $("#add_sub_advice_set").removeAttr("disabled")
+    }
+  })
+})
+
+
+function _renumber_id_after_remove(removed) {
+  var counter = jQuery(removed).find(".form-inputs").length - 1
+  jQuery(removed).find(".form-inputs").each(function() {
+    jQuery(this).find("input").each(function(index, element) {
+      var nameattr, idattr;
+      nameattr = element.name.replace(/\[[0-9]+\]/g, '['+counter+']');
+      idattr = element.id.replace(/\_[0-9]+\_/g, '_'+counter+'_');
+      jQuery(this).attr('name', nameattr);
+      jQuery(this).attr('id', idattr);
+    });
+    jQuery(this).find("select").each(function(index, element) {
+      var nameattr, idattr;
+      nameattr = element.name.replace(/\[[0-9]+\]/g, '['+counter+']');
+      idattr = element.id.replace(/\_[0-9]+\_/g, '_'+counter+'_');
+      jQuery(this).attr('name', nameattr);
+      jQuery(this).attr('id', idattr);
+    });
+    jQuery(this).find("a").each(function(index, element) {
+      var idattr;
+      idattr = element.id.replace(/[0-9]/g, counter);
+      jQuery(this).attr('id', idattr);
+    });
+    counter--;
+  });
+}
+
+function _renumber_id_after_add(added) {
+  var counter = jQuery(added).find(".form-inputs").length
+  jQuery(added).find(".form-inputs").each(function() {
+    jQuery(this).find("input").each(function(index, element) {
+      var nameattr, idattr;
+      nameattr = element.name.replace(/\[[0-9]+\]/g, '['+counter+']');
+      idattr = element.id.replace(/\_[0-9]+\_/g, '_'+counter+'_');
+      jQuery(this).attr('name', nameattr);
+      jQuery(this).attr('id', idattr);
+    });
+    jQuery(this).find("select").each(function(index, element) {
+      var nameattr, idattr;
+      nameattr = element.name.replace(/\[[0-9]+\]/g, '['+counter+']');
+      idattr = element.id.replace(/\_[0-9]+\_/g, '_'+counter+'_');
+      jQuery(this).attr('name', nameattr);
+      jQuery(this).attr('id', idattr);
+    });
+    jQuery(this).find("a").each(function(index, element) {
+      var idattr;
+      idattr = element.id.replace(/[0-9]/g, counter);
+      jQuery(this).attr('id', idattr);
+    });
+    counter++;
+  });
+}
+
+
+jQuery('.modal-body').on("click",".remove_sub_advice_set",function(e){
+  e.preventDefault();
+  var advice_remove_div;
+  var fieldcounter;
+  fieldcounter = jQuery(this).attr('id').slice(-1);
+  var advice_set_arr = jQuery(this).parents('.form-inputs').find(".id");
+  if (advice_set_arr.length>0){
+    jQuery(this).parents('.form-inputs').find("input[name*='_destroy']").val("1");
+    advice_remove_div = jQuery(this).parents('.form-inputs').wrap('<p/>').parent().html();
+    jQuery(this).parents(".form-inputs").unwrap();
+    jQuery(".advice-set-remove").append(advice_remove_div);
+    jQuery(this).parents('.form-inputs').remove();
+    _renumber_id_after_remove(".modal-body",".advice-set-remove");
+  }else{
+    jQuery(this).parents('.form-inputs').remove();
+    _renumber_id_after_remove(".advice-set-remove");
+  }
+})
+
+jQuery('.modal-body').on("click","#add_sub_advice_set",function(e){
+  e.preventDefault();
+  var advice_remove_div;
+  var fieldcounter;
+  fieldcounter = jQuery(this).attr('id').slice(-1);
+  var advice_set_arr = jQuery(this).parents('.form-inputs').find(".id");
+  if (advice_set_arr.length>0){
+    jQuery(this).parents('.form-inputs').find("input[name*='_destroy']").val("0");
+    advice_remove_div = jQuery(this).parents('.form-inputs').wrap('<p/>').parent().html();
+    jQuery(this).parents(".form-inputs").unwrap();
+    jQuery(".advice-set-remove").append(advice_remove_div);
+    jQuery(this).parents('.form-inputs').remove();
+    _renumber_id_after_add(".modal-body");
+  }else{
+    jQuery(this).parents('.form-inputs').remove();
+    _renumber_id_after_add(".modal-body");
+  }
+})

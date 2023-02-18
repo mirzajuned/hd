@@ -1,0 +1,226 @@
+<% precision = @invoice.currency_id == 'VND001' ? 0 : 2 %>
+<div class="container-fluid">
+  <%= hidden_field_tag :invoice_id, @invoice.id %>
+  <% if !@skip_patient_info %>
+    <div class="row mb10" id="patient_button" style="border-bottom: 1px solid #eee;">
+      <%= render partial: 'patients/basic_info.html.erb', locals: { patient: @patient, invoice: @invoice } %>
+    </div>
+  <% end %>
+
+  <% if @invoice.try(:patient_payer_data).present? %>
+    <div class="row mb10" id="" style="border-bottom: 1px solid #eee;">
+      <%= render partial: 'invoice/invoices/patient_payer_data_view.html.erb', locals: { patient: @patient, invoice: @invoice } %>
+    </div>
+  <% end %>
+
+  <% if @visit_diagnoses.try(:size).to_i > 0 || @visit_procedures.try(:size).to_i > 0 %>
+    <div id="patient-assessment-header" class="col-md-12" style="padding:5px 0px;">
+      <div class="panel panel-default" style="margin-left: 3px;">
+        <div class="panel-heading" style="background-color: #49587E;margin-top: 0px;line-height: 0px;padding: 10px;">
+          <div class="panel-btns">
+            <a href="" class="minimize minimize-patient-assessment-box" style="margin-top: 0px;color: white;opacity: 1">-</a>
+          </div><!-- panel-btns -->
+          <p class="panel-title"  style="font-size: 11px;margin-top: 0px;line-height: 0px;color: white">PATIENT VISIT ASSESSMENT</p>
+        </div>
+
+        <div class="panel-body patient-assessment-section" style="display: none;padding: 0 15px;">
+          <div class="row mb10" id="" style="border-bottom: 1px solid #eee;">
+            <%= render partial: 'invoice/invoices/patient_assessment_data_view.html.erb', locals: { patient: @patient, invoice: @invoice, mail_job: false } %>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+  <div class="row">
+    <div class="row mb5" style="border-bottom:1px solid #eee;">
+      <div class="col-md-12">
+        <% if @invoice.version == "v20.0" %>
+          <div class="col-md-1"><b style="color:#000;">S.No</b></div>
+          <div class="col-md-3"><b style="color:#000;">Service Name</b></div>
+          <div class="col-md-2"><b style="color:#000;">Quantity</b></div>
+          <div class="col-md-2 text-right"><b style="color:#000;">Unit Price</b></div>
+          <div class="col-md-2 text-right"><b style="color:#000;">Price</b></div>
+        <% else %>
+          <div class="col-md-1"><b style="color:#000;">S.No</b></div>
+          <div class="col-md-3"><b style="color:#000;">Item Description</b></div>
+          <div class="col-md-1"><b style="color:#000;">Type</b></div>
+          <div class="col-md-1"><b style="color:#000;">Quantity</b></div>
+          <div class="col-md-1 text-right"><b style="color:#000;">Unit Price</b></div>
+          <div class="col-md-3 text-center"><b style="color:#000;">Gross Price</b></div>
+          <!-- <div class="col-md-1"><b style="color:#000;">Discount</b></div> -->
+          <div class="col-md-2 text-right"><b style="color:#000;">Net Price</b></div>
+        <% end %>
+      </div>
+    </div>
+
+  </div>
+  <% @patient_payment_amount = 0 %>
+  <% if @invoice.version == "v20.0" %>
+    <%= render partial: 'invoice/ipd/show_service_item_v20.html.erb', locals: { precision: precision } %>
+  <% else %>
+    <%= render partial: 'invoice/ipd/show_service_item_v21.html.erb', locals: { precision: precision } %>
+  <% end %>
+  <hr>
+  <% unless @invoice.try(:is_canceled) %>
+    <div class="row invoice_calculation_list">
+      <div class="row mb5">
+        <div class="col-md-3 col-md-offset-5 text-right">
+          <b>Gross Bill Total :</b>
+        </div>
+        <div class="col-md-2 text-right">
+          <% invoice_total_with_precision = number_with_precision(@invoice.total, precision: precision) %>
+          <% invoice_total_display = Common::Finance::NumberFormatService.call(@number_format, invoice_total_with_precision) %>
+          <b style="color:#000;"><%= invoice_total_display %></b>
+        </div>
+      </div>
+      <div class="row mb5">
+        <div class="col-md-3 col-md-offset-5 text-right">
+          <b>Total Discount on Items :</b>
+        </div>
+        <div class="col-md-2 text-right">
+          <% services_discount_with_precision = number_with_precision(@invoice.services_discount, precision: precision) %>
+          <% services_discount_display = Common::Finance::NumberFormatService.call(@number_format, services_discount_with_precision) %>
+          <b><%= services_discount_display %></b>
+        </div>
+      </div>
+      <div class="row mb5">
+        <div class="col-md-3 col-md-offset-5 text-right">
+          <b>Total offer discount on Items :</b>
+        </div>
+        <div class="col-md-2 text-right">
+          <% services_offer_with_precision = number_with_precision(@invoice.offer_on_services, precision: precision) %>
+          <% services_offer_display = Common::Finance::NumberFormatService.call(@number_format, services_offer_with_precision) %>
+          <b><%= services_offer_display %></b>
+        </div>
+      </div>
+      <div class="row mb5">
+        <div class="col-md-3 col-md-offset-5 text-right">
+          <b>Additional Discount on Bill :</b>
+        </div>
+        <div class="col-md-2 text-right">
+          <% additional_discount_with_precision = number_with_precision(@invoice.additional_discount, precision: precision) %>
+          <% additional_discount_display = Common::Finance::NumberFormatService.call(@number_format, additional_discount_with_precision) %>
+          <b><%= additional_discount_display %></b>
+        </div>
+      </div>
+      <div class="row mb5">
+        <div class="col-md-3 col-md-offset-5 text-right">
+          <b>Offer Discount on Bill :</b>
+        </div>
+        <div class="col-md-2 text-right">
+          <% bill_offer_with_precision = number_with_precision(@invoice.offer_on_bill, precision: precision) %>
+          <% bill_offer_display = Common::Finance::NumberFormatService.call(@number_format, bill_offer_with_precision) %>
+          <b><%= bill_offer_display %></b>
+        </div>
+      </div>
+      <div class="row mb5">
+        <div class="col-md-3 col-md-offset-5 text-right">
+          <b>Total of all Discounts :</b>
+        </div>
+        <div class="col-md-2 text-right">
+          <% total_discount = (@invoice.total_offer || 0) + (@invoice.total_discount || 0)%>
+          <% invoice_discount_with_precision = number_with_precision(total_discount, precision: precision) %>
+          <% invoice_discount_display = Common::Finance::NumberFormatService.call(@number_format, invoice_discount_with_precision) %>
+          <b><%= invoice_discount_display %></b>
+          <% if @invoice.total_discount? %>
+            <% @patient_payment_amount -= @invoice.total_discount %>
+          <% end %>
+        </div>
+      </div>
+      <div class="row mb5">
+        <div class="col-md-3 col-md-offset-5 text-right">
+          <b>Round (+/-) :</b>
+        </div>
+        <div class="col-md-2 text-right">
+          <b><%= number_with_precision(@invoice.round, precision: precision) %></b>
+        </div>
+      </div>
+      <div class="row mb5">
+        <div class="col-md-3 col-md-offset-5 text-right">
+          <b>Net Bill Total :</b>
+        </div>
+        <div class="col-md-2 text-right">
+          <% invoice_net_amount_with_precision = number_with_precision(@invoice.net_amount, precision: precision) %>
+          <% invoice_net_amount_display = Common::Finance::NumberFormatService.call(@number_format, invoice_net_amount_with_precision) %>
+          <b style="color:#000;"><%= invoice_net_amount_display %></b>
+        </div>
+      </div>
+      <hr style="padding:2px 0;margin:2px 0">
+      <% if @invoice.advance_payment_breakups.count > 0 %>
+        <div class="row mb5">
+          <div class="col-md-3 col-md-offset-5 text-right">
+            <b>Advance Settled :</b>
+          </div>
+          <div class="col-md-2 text-right">
+            <% advance_payment_with_precision = number_with_precision(@invoice.advance_payment.to_f, precision: precision) %>
+            <% advance_payment_display = Common::Finance::NumberFormatService.call(@number_format, advance_payment_with_precision) %>
+            <b class="im_net" style="color:#000;"><%= advance_payment_display %></b>
+          </div>
+        </div>
+      <% end %>
+      <div class="row mb5">
+        <div class="col-md-3 col-md-offset-5 text-right">
+          <b>Payment Received :</b>
+        </div>
+        <div class="col-md-2 text-right">
+          <% payment_received_with_precision = number_with_precision(@invoice.try(:payment_received).to_f, precision: precision) %>
+          <% payment_received_display = Common::Finance::NumberFormatService.call(@number_format, payment_received_with_precision) %>
+          <b style="color:#000;"><%= payment_received_display %></b>
+        </div>
+        <% if @invoice.payment_received_breakups.count > 0 %>
+          <div class="col-md-2">
+            <b style="color:#000;"><%= link_to invoice_invoices_payment_received_details_path(id: @invoice.id), data: { remote: true, 'toggle': 'modal', 'target': '#invoice-detail-modal' } do %>Details<% end %></b>
+          </div>
+        <% end %>
+      </div>
+      <% if @invoice.try(:payment_pending).to_f != 0.0 %>
+        <div class="row mb5">
+          <div class="col-md-3 col-md-offset-5 text-right">
+            <b>Payment Pending :</b>
+          </div>
+          <div class="col-md-2 text-right">
+            <% payment_pending_with_precision = number_with_precision(@invoice.try(:payment_pending).to_f, precision: precision) %>
+            <% payment_pending_display = Common::Finance::NumberFormatService.call(@number_format, payment_pending_with_precision) %>
+            <b style="color:#000;"><%= payment_pending_display %></b>
+          </div>
+          <div class="col-md-2">
+            <% if @invoice.is_draft == true %>
+              <b style="color:#000;"><a href="#" onclick="alert('This is a draft bill. You can settle pending amount only once the draft bill is converted to Final Bill.'); return false;">Settle</a></b>
+            <% else %>
+              <b style="color:#000;"><%= link_to invoice_invoices_settle_invoice_path(id: @invoice.id), data: { remote: true, 'toggle': 'modal', 'target': '#invoice-detail-modal' } do %>Settle<% end %></b>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+      <% if @invoice.patient_comment.present? || @invoice.comments.present? || @invoice.additional_discount_comment.present? %>
+        <div class="row mb5">
+          <div class="col-md-5">
+            <% if @invoice.patient_comment.present? %>
+              <b>Remarks for Customer:</b>
+              <%= @invoice.patient_comment %>
+            <% end %>
+            <% if @invoice.patient_comment.present? && @invoice.comments.present? %>
+              <hr style="margin:5px;">
+            <% end %>
+            <% if @invoice.comments.present? %>
+              <b>Internal Comments:</b>
+              <%= @invoice.comments %><br>
+              <span style='font-size:10px;'>(This will not appear in print)</span>
+            <% end %>
+            <% if @invoice.additional_discount_comment.present? %>
+              <% if @invoice.patient_comment.present? || @invoice.comments.present? %>
+                <hr style="margin:5px;">
+              <% end %>
+              <b>Additional Discount Reason:</b>
+              <%= @invoice.additional_discount_comment %><br>
+              <span style='font-size:10px;'>(This will not appear in print)</span>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+  <!-- <div class='row'>
+    <div class="col-md-8"></div>
+  </div> -->
+</div>

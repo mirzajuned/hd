@@ -1,0 +1,94 @@
+<div class="col-sm-3 text-center no_padding">
+  <% if @appointment.patient.patientassets.size > 0 %>
+      <%= image_tag(@appointment.patient.patientassets.last.asset_path_url, class: "patient_profile_pic") %>
+  <%else%>
+      <%= image_tag('placeholder.png', class: "patient_profile_pic") %>
+  <%end%>
+</div>
+<div class="col-sm-9">
+  <div class="row no_margin">
+    <h4 class="" style="display: inline">Patient Details <button id='edit-patient-info' class="btn btn-link btn-xs edit_patient_info" data-patient-id="<%= @appointment.patient.id %>"><i class="fa fa-edit"></i></button></h4>
+    <a href="/patients/summary?appointment_id=<%= @appointment.id.to_s %>&patientid=<%= @appointment.patient.id.to_s %>&opd=440655000" class="pull-right btn btn-default btn-xs ml10 ps view_patient_summary" data-remote="true" >View Summary</a>
+  </div>
+  <div class="row no_margin">
+    <div class="col-sm-4 no_padding text-left">Full Name</div>
+    <div class="col-sm-1 no_padding text-left">:</div>
+    <div class="col-sm-7 no_padding">
+      <b style="color:#333;"><%= @appointment.patient.fullname.to_s.upcase %></b>
+      <% if @appointment.patient.gender? %> <%= "(" + @appointment.patient.gender[0] + ")" %><% end %>
+    </div>
+  </div>
+  <div class="row no_margin">
+    <div class="col-sm-4 no_padding text-left">Patient ID</div>
+    <div class="col-sm-1 no_padding text-left">:</div>
+    <div class="col-sm-7 no_padding"><%=PatientIdentifier.find_by(patient_id: @appointment.patient.id.to_s).try(:patient_org_id) %></div>
+  </div>
+  <div class="row no_margin">
+    <div class="col-sm-4 no_padding text-left">Date of Birth<%if @appointment.patient.age.present? %> <strong>|</strong> Age<%end%></div>
+    <div class="col-sm-1 no_padding text-left">:</div>
+    <div class="col-sm-6 no_padding"><%= @appointment.patient.dob ? @appointment.patient.dob.strftime("%d-%m-%y") : "Unavailable" %><%if @appointment.patient.exact_age.present? %> <strong>|</strong> <%=@appointment.patient.exact_age.to_s.split("-").join(" ")%><%end%></div>
+  </div>
+
+  <div class="row no_margin">
+    <div class="col-sm-4 no_padding text-left">Primary Contact</div>
+    <div class="col-sm-1 no_padding text-left">:</div>
+    <div class="col-sm-7 no_padding"><%= @appointment.patient.mobilenumber %></div>
+  </div>
+
+  <% if @patient.address_1.present? || @patient.address_2.present? || @patient.city.present? || @patient.state.present? || @patient.pincode.present? || @patient.commune.present? || @patient.district.present? %>
+    <div class="row">
+      <div class="col-sm-4 text-left">Address</div>
+      <div class="col-sm-1 text-left">:</div>
+      <div class="col-sm-7">
+        <%= "#{@patient.try(:address_1)}" %>
+        <% if @patient.try(:address_1).present? %>, <% end %>
+        <%= "#{ @patient.try(:address_2) }" %>
+        <%= " #{ @patient.try(:area_manager_name) } #{ @patient.try(:city) } #{ @patient.try(:state) } #{ @patient.try(:commune) } #{ @patient.try(:district) }" %>
+        <% if @patient.try(:pincode).present? %>
+          <%= "(#{ @patient.try(:pincode) })" %>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <%if PatientOtherIdentifier.find_by(patient_id: @appointment.patient.id).present? %>
+      <div class="row no_margin">
+        <%if PatientOtherIdentifier.find_by(patient_id: @appointment.patient.id).mr_no.present? && PatientOtherIdentifier.find_by(patient_id: @appointment.patient.id).ip_no.present?%>
+            <div class="col-sm-2 no_padding text-left">MR NO :</div>
+            <div class="col-sm-4 no_padding"><%= PatientOtherIdentifier.find_by(patient_id: @appointment.patient.id).try(:mr_no) %></div>
+            <div class="col-sm-2 no_padding text-left">IP NO :</div>
+            <div class="col-sm-4 no_padding"><%= PatientOtherIdentifier.find_by(patient_id: @appointment.patient.id).try(:ip_no) %></div>
+        <%end%>
+        <%if PatientOtherIdentifier.find_by(patient_id: @appointment.patient.id).mr_no.present? && PatientOtherIdentifier.find_by(patient_id: @appointment.patient.id).ip_no.blank?%>
+            <div class="col-sm-4 no_padding text-left">MR NO</div>
+            <div class="col-sm-1 no_padding text-left">:</div>
+            <div class="col-sm-7 no_padding"><%= PatientOtherIdentifier.find_by(patient_id: @appointment.patient.id).try(:mr_no) %></div>
+        <%end%>
+        <%if PatientOtherIdentifier.find_by(patient_id: @appointment.patient.id).ip_no.present? && PatientOtherIdentifier.find_by(patient_id: @appointment.patient.id).mr_no.blank?%>
+            <div class="col-sm-4 no_padding text-left">IP NO</div>
+            <div class="col-sm-1 no_padding text-left">:</div>
+            <div class="col-sm-7 no_padding"><%= PatientOtherIdentifier.find_by(patient_id: @appointment.patient.id).try(:ip_no) %></div>
+        <%end%>
+
+        </div>
+  <%end%>
+  <%if @counsellor_workflow != nil and !current_user.has_role?"counsellor" %>
+      <div class="row no_margin">
+        <div class="col-sm-4 no_padding text-left">Counselling Status</div>
+        <div class="col-sm-1 no_padding text-left">:</div>
+        <div class="col-sm-7 no_padding"><label class="label label-danger"><%= @counsellor_workflow.state.split("_").join(" ").capitalize%>
+          <%if @counsellor_workflow.state == "followup"%>
+              <% followup_appointment = OpdClinicalWorkflow.find_by(patient_id: @appointment.patient.id.to_s,:appointmentdate.gt => Date.current) %>
+              <% if followup_appointment%>
+                  On <%= followup_appointment.appointmentdate.strftime("%d %b,%y") %>
+              <%else%>
+                  Today
+              <%end%>
+          <%end%>
+        </label>
+        </div>
+      </div>
+  <%end%>
+  </div>
+
+</div>

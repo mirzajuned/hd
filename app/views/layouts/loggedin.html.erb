@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <% if content_for?(:page_title) %>
+      <%= yield :page_title %>
+    <% else %>
+      <title>Foss - EHR</title>
+    <% end %>
+    <%= favicon_link_tag 'foss.ico' %>
+
+    <%= stylesheet_link_tag "application", media: "all", "data-turbolinks-track" => true, 'data-turbolinks-eval'=>false %>
+    <%= stylesheet_link_tag  "bootstrap-timepicker.min", media: "all", "data-turbolinks-track" => true, 'data-turbolinks-eval'=>false %>
+    <%= javascript_include_tag "application-header", "data-turbolinks-track" => true %>
+    <%= javascript_include_tag "jquery-ui-1.12.1.min", "data-turbolinks-track" => true %>
+    <%= javascript_include_tag "application", "data-turbolinks-track" => true, 'data-turbolinks-eval' => false %>
+    <%= javascript_include_tag "jquery.timeago", "data-turbolinks-track" => true %>
+    <%= javascript_include_tag "toggles.min", "data-turbolinks-track" => true %>
+    <%= javascript_include_tag "jquery.elevatezoom.js", "data-turbolinks-track" => true %>
+    <%= javascript_include_tag "bootstrap-timepicker.min", "data-turbolinks-track" => true, 'data-turbolinks-eval' => false %>
+    <%= csrf_meta_tags %>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  </head>
+  <body style="overflow: auto">
+    <!-- Preloader -->
+    <!--<div id="preloader" >-->
+      <!--<div id="status"><i class="fa fa-spinner fa-spin"></i></div>-->
+    <!--</div>-->
+    <div id="ajaxloader" style="display: none">
+      <img src="/images/loaders/mainloader.gif">
+    </div>
+
+    <%= render partial: "navbar/navbar.html.erb" %>
+
+    <div class="mainpanel" style="margin-top: 50px;">
+      <%= yield %>
+    </div>
+
+    <%= render "loggedin/modal" %>
+    <%= render "loggedin/modalimagegallery" %>
+
+    <%= javascript_include_tag "fuelux", "data-turbolinks-track" => true, 'data-turbolinks-eval' => false %>
+    <%= javascript_include_tag "bootstrap-timepicker.min", "data-turbolinks-track" => true, 'data-turbolinks-eval' => false %>
+
+    <script>
+      jQuery(document).ready(function () {
+        <% if current_user.facility_ids.length > 1 %>
+          <% if Time.current - Time.parse(session[:start_time].to_s) < 10 %>
+            // Current Facility PNotify
+            var current_facility_name = "<%= current_facility.name %>";
+            notice = new PNotify({
+              title: 'Welcome',
+              text: "<div class='row'><div class='col-md-12'>You are in&nbsp;&nbsp;&nbsp; <b style='font-size:20px;'>" + current_facility_name + "</b></div></div>",
+              icon: 'fa fa-hospital-o',
+              type: 'success'
+            });
+            notice.get().click(function(){
+              notice.remove()
+            });
+          <% end %>
+        <% end %>
+
+        <% if current_facility_setting&.queue_management && current_facility_setting&.user_set_station %>
+          <% if current_sub_station %>
+            <% if (Time.current - Time.parse(session[:start_time].to_s) < 10) || (Time.current - current_sub_station.updated_at < 10) %>
+              // Current Sub Station PNotify
+              let area = "<%= current_sub_station.area&.name %>";
+              let station = "<%= current_sub_station.station&.name %> (<%= current_sub_station.station&.display_code %>)"
+              let sub_station = '<%= current_sub_station.display_code %>'
+              let station_notice = new PNotify({
+                title: 'Working From',
+                text: `<div class='row'><div class='col-md-12'>Area : ${area}<br>Station : ${station}<br>Sub Station : ${sub_station}</div></div>`,
+                icon: '',
+                type: 'success'
+              });
+              station_notice.get().click(function(){
+                station_notice.remove()
+              });
+            <% end %>
+          <% elsif QueueManagement::SubStation.where(organisation_id: current_user.organisation_id).count > 0 %>
+            $('#user_station').click();
+          <% end %>
+        <% end %>
+
+
+        <% if (Time.current - Time.parse(session[:start_time].to_s)) < 5 && current_organisation_setting.organisation_notification_enabled %>
+          if ($('.new-notification-link').length > 0) {
+            $('.new-notification-link')[0].click()
+          }
+        <% end %>
+
+        if(<%= !current_user.new_feature_seen %>){
+          $("#new-feature-btn").trigger('click')
+        }
+
+        if ("<%= @inventory_store&.enable_stock_management %>" == "true") {
+          $("#stock-notification-btn").trigger('click')
+        }
+
+        jQuery(document).bind("ajax:beforeSend", function () {
+          $("#ajaxloader").show()
+        }).bind("ajaxComplete", function () {
+          url = window.location.href
+          if(url.indexOf('patients/summary?appointment_id=') > -1)
+            {
+              $('.facility_dropdown').removeAttr('data-toggle')
+            }
+          else
+            {$('.facility_dropdown').attr('data-toggle','dropdown')}
+          $("#ajaxloader").hide()
+        });
+
+        jQuery("ul.nav-bracket > li").on("click", function () {
+          jQuery("ul.nav-bracket > li[class='active']").removeClass("active");
+          jQuery(this).addClass("active");
+        });
+        $('.modal').on('hidden.bs.modal', function () {
+          $(this).html('')
+          $(".tipsy").on("hover",function(){
+            $(this).remove();
+          })
+        });
+
+        $('.modal').on('show.bs.modal', function () {
+          $(".tipsy").on("hover",function(){
+            $(this).remove();
+          })
+        });
+
+        jQuery('.thmb').hover(function () {
+          var t = jQuery(this);
+          t.find('.ckbox').show();
+          t.find('.fm-group').show();
+        }, function () {
+          var t = jQuery(this);
+          if (!t.closest('.thmb').hasClass('checked')) {
+            t.find('.ckbox').hide();
+            t.find('.fm-group').hide();
+          }
+        });
+
+        jQuery('.ckbox').each(function () {
+          var t = jQuery(this);
+          var parent = t.parent();
+          if (t.find('input').is(':checked')) {
+            t.show();
+            parent.find('.fm-group').show();
+            parent.addClass('checked');
+          }
+        });
+
+
+        jQuery('.ckbox').click(function () {
+          var t = jQuery(this);
+          if (!t.find('input').is(':checked')) {
+            t.closest('.thmb').removeClass('checked');
+            enable_itemopt(false);
+          } else {
+            t.closest('.thmb').addClass('checked');
+            enable_itemopt(true);
+          }
+        });
+
+        jQuery('#selectall').click(function () {
+          if (jQuery(this).is(':checked')) {
+            jQuery('.thmb').each(function () {
+              jQuery(this).find('input').attr('checked', true);
+              jQuery(this).addClass('checked');
+              jQuery(this).find('.ckbox, .fm-group').show();
+            });
+            enable_itemopt(true);
+          } else {
+            jQuery('.thmb').each(function () {
+              jQuery(this).find('input').attr('checked', false);
+              jQuery(this).removeClass('checked');
+              jQuery(this).find('.ckbox, .fm-group').hide();
+            });
+            enable_itemopt(false);
+          }
+        });
+
+        function enable_itemopt(enable) {
+          if (enable) {
+            jQuery('.itemopt').removeClass('disabled');
+          } else {
+
+            // check all thumbs if no remaining checks
+            // before we can disabled the options
+            var ch = false;
+            jQuery('.thmb').each(function () {
+              if (jQuery(this).hasClass('checked'))
+                ch = true;
+            });
+
+            if (!ch)
+              jQuery('.itemopt').addClass('disabled');
+          }
+        }
+
+        //Replaces data-rel attribute to rel.
+        //We use data-rel because of w3c validation issue
+        jQuery('a[data-rel]').each(function () {
+          jQuery(this).attr('rel', jQuery(this).data('rel'));
+        });
+
+        jQuery("a[rel^='prettyPhoto']").prettyPhoto();
+
+
+        // function to disable right click
+        // $(function() {
+        //   $(this).bind("contextmenu", function(e) {
+        //     e.preventDefault();
+        //   });
+        // });
+
+      });
+
+    </script>
+
+  </body>
+</html>

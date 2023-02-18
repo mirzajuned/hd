@@ -1,0 +1,143 @@
+<%= javascript_include_tag 'application-loggedin', 'data-turbolinks-track' => true %>
+<input type="hidden" name="" class="path_for_change" value="edit">
+<div class="modal-dialog" style="width:98%;">
+  <!-- Modal content-->
+  <div class="modal-content">
+    <%= form_for @invoice, format: :js, method: :put, remote: true, multipart: true, html: { class: 'invoice_edit_form_opd', id: 'invoice_edit_form_opd' } do |inv| %>
+      <%= inv.hidden_field :patient_id, value: @patient.id %>
+      <%= inv.hidden_field :appointment_id, value: @appointment.id %>
+      <%= inv.hidden_field :organisation_id, value: current_user.organisation_id %>
+      <%= inv.hidden_field :user_id, value: @invoice.user_id %>
+      <%= inv.hidden_field :invoice_type, value: @invoice_type, id: 'patient-type' %>
+      <%= inv.hidden_field :invoice_source, value: @finance_type %>
+      <%= inv.hidden_field :facility_id, value: @invoice.facility_id %>
+      <%= inv.hidden_field :tax_enabled, value: @invoice.tax_enabled %>
+      <%= inv.hidden_field :currency_symbol, value: @invoice.currency_symbol %>
+      <%= inv.hidden_field :currency_id, value: @invoice.currency_id %>
+      <%= inv.hidden_field :version, value: @invoice.try(:version) %>
+      <%= inv.hidden_field :specialty_id, value: @appointment.specialty_id %>
+      <%= inv.hidden_field :department_id, value: @department_id %>
+      <%= inv.hidden_field :department_name, value: @department_name %>
+      <%= inv.hidden_field :is_draft, value: @is_draft %>
+      <input type="hidden" id="deleted-services" name="deleted_services" value="">
+      <input type="hidden" id="deleted-items" name="deleted_items" value="">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+        <h4 class="modal-title <%= Invoice::InvoicesHelper.draft_class(@is_draft) %>">OPD Receipt<%= Invoice::InvoicesHelper.draft_text(@is_draft) %></h4>
+      </div>
+      <div class="modal-body">
+        <% if @invoice.tax_enabled %>
+          <%= render partial: 'invoice/opd/edit_tax_enabled.html.erb', locals: { inv: inv } %>
+        <% else %>
+          <%= render partial: 'invoice/opd/edit_tax_disabled.html.erb', locals: { inv: inv } %>
+        <% end %>
+      </div>
+      <div class="modal-footer">
+        <!-- <div style="float: left;"><%#= raw Invoice::InvoicesHelper.draft_note(@is_draft) %></div> -->
+        <%= inv.submit Invoice::InvoicesHelper.save_caption(@is_draft), class: 'btn btn-success save-invoice', data: { 'disable-with': 'Please Wait...' }, onclick: 'opd_invoice_page_edit();insurer_validation()' %>
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<style type="text/css">
+  .payment_received_breakups_date, .payment_received_breakups_time, .payment_received_breakups_cheque_date, .payment_received_breakups_transfer_date {
+    background: #fff !important;
+    cursor: pointer !important;
+  }
+
+  .service_row_count {
+    border: 1px solid #aaa;
+    padding: 21px;
+    margin-bottom: 10px;
+  }
+
+  .patient_info_box {
+    border-bottom: 1px solid #aaa;
+    border-right: 1px solid #aaa;
+    border-left: 1px solid #aaa;
+    padding: 10px 0;
+    margin-bottom: 10px;
+  }
+
+  input.error, select.error {
+    border-color: #b94a48;
+    background-image: none;
+  }
+  input.valid, select.valid {
+    border-color: #468847;
+    background-image: none;
+  }
+  .form-control-custom-input{
+    padding: 5px 10px;
+    border-right: none;
+    width: 100%;
+  }
+  .form-control-custom-slash {
+    background: #FFFFFF;
+    padding: 0px;
+    margin: 0px;
+    border-right: none;
+    border-left: none;
+  }
+  .form-control-custom-select-bill {
+    padding: 6px 0px;
+    margin: 0px 5px 0px -15%;
+    border-left: none;
+    width: 100%;
+    font-size: 13px;
+    line-height: 1.42857143;
+    height: 30px;
+    min-width: 30px;
+  }
+  .lbl_discount_amount {
+    margin-left: 10px;
+    margin-top: 5px;
+  }
+  .invoice_service_item_row {
+    padding: 5px;
+  }
+  .invoice_service_item_row:nth-child(even) {
+    background-color: #e6e5f780;
+  }
+</style>
+
+<script type="text/javascript">
+  <% unless @is_draft == true %>
+    $('.invoice_contact_group_id').attr('disabled',true);
+    $('.invoice_payer_master_id').attr('disabled',true);
+    $('.invoice_insurer_group_id').attr('disabled',true);
+    $('.invoice_insurer_id').attr('disabled',true);
+    $('.invoice_corporate_id').attr('disabled',true);
+    $('.invoice_insurance_id').attr('disabled',true);
+    $('.invoice_dispensary_id').attr('disabled',true);
+    // $('.invoice_corporate_name').attr('readonly','readonly');
+    // $('.invoice_insurance_name').attr('readonly','readonly');
+    // $('.invoice_dispensary_name').attr('readonly','readonly');
+
+  $('.discount_amount').attr('disabled',true);
+    <% if @invoice.payment_received_breakups.count > 0 %>
+      $('.payment_received_breakups_received_from').attr('disabled',true);
+      $('.payment_received_breakups_mode_of_payment').attr('disabled',true);
+      $('.payment_received_breakups_date').attr('disabled',true);
+      $('.payment_received_breakups_time').attr('disabled',true);
+      $('.payment_received_breakups_amount').attr('readonly','readonly');
+    <% end %>
+    $('.payment_received_breakups_card_number').attr('disabled',true);
+    $('.payment_received_breakups_paytm_transaction_id').attr('disabled',true);
+    $('.payment_received_breakups_gpay_transaction_id').attr('disabled',true);
+    $('.payment_received_breakups_phonepe_transaction_id').attr('disabled',true);
+    $('.payment_received_breakups_transfer_date').attr('disabled',true);
+    $('.payment_received_breakups_cheque_date').attr('disabled',true);
+    $('.payment_received_breakups_other_transaction_id').attr('disabled',true);
+
+    $('.payment_received_breakups_card_transaction_note').attr('disabled',true);
+    $('.payment_received_breakups_paytm_transaction_note').attr('disabled',true);
+    $('.payment_received_breakups_gpay_transaction_note').attr('disabled',true);
+    $('.payment_received_breakups_phonepe_transaction_note').attr('disabled',true);
+    $('.payment_received_breakups_transfer_note').attr('disabled',true);
+    $('.payment_received_breakups_cheque_note').attr('disabled',true);
+    $('.payment_received_breakups_other_note').attr('disabled',true);
+  <% end %>
+</script>

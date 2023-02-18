@@ -1,0 +1,310 @@
+<div class="modal-dialog modal-hg-patientreg">
+  <div class="modal-content">
+    <%= form_for @admission,:format => :js,:method => :post,remote: true,:multipart => true,:url => ipd_patients_admission_done_path,html: { :class => "patient-admission-bed-form", :id => "patient-admission-bed-form" } do |admission|%>
+	    <div class="modal-header">
+        <div class="pull-right"> <!-- Action Buttons starts -->
+          <%= admission.submit "Schedule Admission", class: "btn btn-success", remote: true , data: { 'disable-with': 'Please Wait...' } %>
+          <button aria-hidden="true" class="btn btn-info signup-patient-form-close" data-dismiss="modal">Close</button>
+        </div> <!-- Action Buttons ends -->
+        <div class="text-center">
+          <h4 class="nomargin">Enter Admission Details</h4>
+        </div>
+        <%= stylesheet_link_tag  "jquery.seat-charts", media: "all", "data-turbolinks-track" => true %>
+        <%= stylesheet_link_tag  "bootstrap-timepicker.min", media: "all", "data-turbolinks-track" => true %>
+		  </div>
+      <% if @wards.count > 0 %>
+        <% steps = [1,2,3] %>
+      <% else %>
+        <% steps = [1,"",2] %>
+      <% end %>
+
+      <div class="modal-body">
+        <div class="fuelux">
+          <div class="wizard" id="admission_process">
+            <ul class="steps" style="margin-left: 0;">
+              <li data-step="<%= steps[0] %>" class="active"><span class="badge badge-info"><%= steps[0] %></span>Admission Details<span class="chevron"></span></li>
+              <% if steps == [1,2,3] %>
+                <li data-step="<%= steps[1] %>" ><span class="badge"><%= steps[1] %></span>Bed Layout<span class="chevron"></span></li>
+              <% end %>
+              <li data-step="<%= steps[2] %>" ><span class="badge"><%= steps[2] %></span>Insurance<span class="chevron"></span></li>
+            </ul>
+            <div class="actions">
+              <button type="button" class="btn btn-default btn-prev make-admission-prev-step1" disabled="disabled"><span class="glyphicon glyphicon-arrow-left"></span>Prev</button>
+              <button type="button" class="btn btn-default btn-next make-admission-step2">Next<span class="glyphicon glyphicon-arrow-right"></span></button>
+            </div>
+
+            <div class="step-content" style="overflow: auto">
+              <div class="step-pane alert" data-step="<%= steps[0] %>">
+                <%= admission.hidden_field :user_id %>
+                <%= admission.hidden_field :patient_id %>
+                <%= hidden_field_tag "mr_no", params[:mr_no]  %>
+                <%= hidden_field_tag "ip_no", params[:ip_no]  %>
+                <%= admission.hidden_field :facility_id, value: current_facility.id.to_s %>
+                <% if @users.count > 1 %>
+                  <div class="form-group row">
+                    <label class="col-md-3 control-label">Admitting Doctor</label>
+                    <div class="col-md-4">
+                      <%= admission.select :doctor, options_for_select(""), {}, {:class => "form-control doctor"} %>
+                    </div>
+                  </div>
+                <% else %>
+                  <%= admission.hidden_field :doctor, value: @users.first.id.to_s %>
+                <% end %>
+
+                <div class="form-group row">
+                  <label class="col-md-3 control-label">Reason for Admission <span class="label label-danger">Required</span> </label>
+                  <div class="col-md-3">
+                    <%= admission.text_field :admissionreason, {:class => 'form-control admissionreason', :placeholder => "Reason" } %>
+                  </div>
+                </div>
+                <div class="form-group row">
+                  <label class="col-md-3 control-label">Management Plan </label>
+                  <div class="col-md-6">
+                    <%= admission.text_area :managementplan, {:class => 'form-control admissionreason', :placeholder => "Plan" } %>
+                  </div>
+                </div>
+
+                <div class="form-group row">
+                  <label class="col-md-3">Admission Date & Time <div class="mr1"></div><span class="label label-danger">Required</span> </label>
+                  <div class="col-md-3" style="padding-right: 8px;">
+                    <div class="input-group">
+                      <span class="input-group-addon"><i class="glyphicon glyphicon-calendar"></i></span>
+                      <%= admission.text_field :admissiondate, {:class => 'form-control admissiondate', :id => "admissiondate-datepicker", readonly: "readonly", style: "cursor:default;background:#fff;", :placeholder => "dd/mm/yyyy" } %>
+                    </div>
+                  </div>
+                  <div class="col-md-3" style="padding-left: 8px;">
+                    <div class="input-group mb15">
+                      <span class="input-group-addon"><i class="glyphicon glyphicon-time"></i></span>
+                      <div class="bootstrap-timepicker timepicker">
+                        <%= admission.text_field :admissiontime, {:class => 'form-control admissiontime', :id => "admissiontime-timepicker", value: (@admissiontime || Time.current.strftime("%I:%M %p")) } %>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="form-group row">
+                  <label class="col-md-3" style="margin-top:10px;">Discharge Date</label>
+                  <div class="col-md-3" style="padding-right: 8px;">
+                    <div class="input-group">
+                      <span class="input-group-addon"><i class="glyphicon glyphicon-calendar"></i></span>
+                      <%= admission.text_field :dischargedate, {:class => 'form-control dischargedate', :id => "dischargedate-datepicker", readonly: "readonly", style: "cursor:default;background:#fff;", :placeholder => "dd/mm/yyyy" } %>
+                    </div>
+                  </div>
+                  <div class="col-md-3" style="padding-left: 8px;">
+                    <div class="input-group mb15">
+                      <div class="bootstrap-timepicker timepicker">
+                        <%= admission.hidden_field :dischargetime, {:class => 'form-control dischargetime', :id => "dischargetime-timepicker", value: Time.current.strftime("%I:%M %p") } %>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <% if OtSchedule.where(patient_id: @patient.id.to_s).count > 0 %>
+                  <div class="form-group row">
+                    <div class="col-md-3">
+                      <span>Provisional OTs :</span>
+                    </div>
+                    <div class="col-md-9">
+                      <% OtSchedule.where(patient_id: @patient.id.to_s, is_deleted: false, admission_id: nil).each.with_index do |otschedule,i| %>
+                        <input type="hidden" name="otschedule[<%= i+1 %>][id]" value="<%= otschedule.id.to_s %>">
+                        <li>
+                          <p style="margin-bottom:0;">
+                            <b><%= otschedule.otdate.strftime("%d %b") %><%= otschedule.ottime.strftime(" at %I:%M %p") %></b> <b style="font-size:10px;">by <%= User.find(otschedule.user_id).fullname %>
+                            </b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                            <label><input type="radio" value="Link" name="otschedule[<%= i+1 %>][decider]" checked="checked"> &nbsp;Link OT</label>&emsp;
+                            <label><input type="radio" value="Delete" name="otschedule[<%= i+1 %>][decider]"> &nbsp;Delete</label>&emsp;
+                            <label><input type="radio" value="None" name="otschedule[<%= i+1 %>][decider]"> &nbsp;None</label>
+                          </p>
+                        </li>
+                      <% end %>
+                    </div>
+                    <!-- <div class="col-md-4">
+                      <p style="font-size:12px"><b style="font-size:14px;">Note:</b> The Unchecked Provisional OTs Will Be Linked To <b style="font-size:14px;">This Admission</b></p>
+                    </div> -->
+                  </div>
+                <% end %>
+              </div>
+              <% if steps == [1,2,3] %>
+                <div class="step-pane alert" data-step="<%= steps[1] %>">
+                  <div class="form-group row">
+                    <div class="col-md-2">Daycare</div>
+                    <div class="col-md-4">
+                      <div class="rdio rdio-primary col-md-4">
+                        <%= radio_button_tag "admission[daycare]", true, true, {:class => 'daycare', :id => "admissionDayCareRadio2"} %>
+                        <label for="admissionDayCareRadio2">Yes</label>
+                      </div>
+                      <div class="rdio rdio-primary col-md-4">
+                        <%= radio_button_tag "admission[daycare]", false, false, {:class => 'daycare', :id => "admissionDayCareRadio1"} %>
+                        <label for="admissionDayCareRadio1">No</label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <%= hidden_field_tag "admission[ward_id]" %>
+                  <%= hidden_field_tag "admission[room_id]" %>
+                  <%= hidden_field_tag "admission[bed_id]" %>
+
+                  <div class="selected-bed-room-for-admission" id="selected-bed-room-for-admission"></div>
+
+                  <table class="table table-primary bedmanagement-schedule-table-form" id="bedmanagement-schedule-table-form" width="100%">
+                    <thead>
+                      <tr>
+                        <th width="20%" style="padding-top:0px;padding-bottom:0px;">Ward Info</th>
+                        <th width="80%" style="padding-top:0px;padding-bottom:0px;"></th>
+                      </tr>
+                    </thead>
+                    <tbody class="bedmanagement-schedule-table-body" id="bedmanagement-schedule-table-body">
+                      <% Ward.where(:organisation_id => current_user.organisation_id).each_with_index do |ward, index| %>
+                        <tr class="bedmanagement-schedule-table-tr" id="bedmanagement-schedule-table-tr">
+                          <td class="bedmanagement-schedule-table-td-name" id="bedmanagement-schedule-table-td-name" style="padding-top:0px;padding-bottom:0px;">
+                          <%= ward.name %>
+                          </td>
+                          <td class="bedmanagement-schedule-table-td-room-name" id="bedmanagement-schedule-table-td-room-name" style="padding-top:0px;padding-bottom:0px;">
+                            <table class="table table-primary roommanagement-schedule-table-form" id="roommanagement-schedule-table-form" width="100%">
+                              <thead>
+                                <tr>
+                                  <th width="20%" style="padding-top:0px;padding-bottom:0px;"></th>
+                                  <th width="80%" style="padding-top:0px;padding-bottom:0px;"></th>
+                                </tr>
+                              </thead>
+                              <tbody class="roommanagement-schedule-table-body" id="roommanagement-schedule-table-body">
+                                <% ward.rooms.each_with_index do |room, index| %>
+                                  <tr class="roommanagement-schedule-table-tr" id="roommanagement-schedule-table-tr">
+                                    <td class="roommanagement-schedule-table-td-room-name" id="roommanagement-schedule-table-td-room-name" style="padding-top:0px;padding-bottom:0px;">
+                                      <%= room.name %>
+                                    </td>
+                                    <td class="bedmanagement-schedule-table-td-bed-layout" id="bedmanagement-schedule-table-td-bed-layout" style="padding-top:0px;padding-bottom:0px;">
+                                      <% room.beds.each_with_index do |bed, index| %>
+                                        <div class="row">
+                                          <div class="col-md-12">
+                                            <div class="<%= ward.name.gsub(" ", "") %>-<%= room.name.gsub(" ", "") %>" id="<%= ward.name.gsub(" ", "") %>-<%= room.name.gsub(" ", "") %>">
+                                            </div>
+                                          </div>
+                                        </div>
+                                      <% end %>
+                                    </td>
+                                  </tr>
+                                <% end %>
+                              </tbody>
+                            </table>
+                          </td>
+                        </tr>
+                      <% end %>
+                    </tbody>
+                  </table>
+                </div>
+              <% else %>
+                <%= hidden_field_tag "admission['daycare']", value: "Yes" %>
+              <% end %>
+
+              <div class="step-pane alert" data-step="<%= steps[2] %>">
+                <!-- Insurance Form -->
+                <%= render partial: 'inpatient/insurance/new', layout: false  %>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <%= javascript_include_tag "bootstrap-wizard.min", "data-turbolinks-track" => true %>
+      <%= javascript_include_tag "bootstrap-timepicker.min", "data-turbolinks-track" => true %>
+      <%= javascript_include_tag "jquery.seat-charts.min", "data-turbolinks-track" => true %>
+    <% end %>
+	</div>
+</div>
+
+<style type="text/css">
+  .bootstrap-timepicker-widget {
+    margin-top: 40px !important;
+  }
+  div.seatCharts-cell {
+      width: 16.66666667%;
+  }
+</style>
+<script>
+  jQuery('#admission_facility_id').on("change",function(){
+    jQuery.ajax({
+      type: "GET",
+      dataType: "json",
+      url: "/ipd_patients/ot_surgeonname",
+      data: {facility_id: jQuery("#admission_facility_id").val()},
+      success: function(response){
+        // Response of User Array
+        var user = response.user
+        // User Dropdown
+        jQuery('#admission_doctor').children().remove();
+        jQuery.each(user, function(key, value) {
+          jQuery('#admission_doctor').append(jQuery("<option></option>").attr("value",value[1]).text(value[0]));
+        });
+      }
+    })
+  });
+  // Trigger OnLoad
+  jQuery('#admission_facility_id').trigger("change");
+
+  jQuery("#bedmanagement-schedule-table-form").hide();
+  jQuery("#admissionDayCareRadio1").on("click", function() {
+    jQuery("#bedmanagement-schedule-table-form").show();
+    jQuery("#selected-bed-room-for-admission").show();
+  })
+  jQuery("#admissionDayCareRadio2").on("click", function() {
+    jQuery("#bedmanagement-schedule-table-form").hide();
+    jQuery("#selected-bed-room-for-admission").hide();
+  })
+
+
+  jQuery('#admissiondate-datepicker').datepicker({
+    dateFormat: "dd/mm/yy",
+    // minDate: 0,
+    onClose: function(){
+      //workaround to trigger javascript validation
+      jQuery(this).focusout();
+    }
+  });
+  jQuery('#dischargedate-datepicker').datepicker({
+      dateFormat: "dd/mm/yy",
+      // minDate: 0,
+
+      onClose: function(){
+          //workaround to trigger javascript validation
+          jQuery(this).focusout();
+      }
+  });
+  <% if @admissiondate %>
+    jQuery('#admissiondate-datepicker').datepicker("setDate", "<%= @admissiondate %>");
+  <% else %>
+    jQuery('#admissiondate-datepicker').datepicker("setDate", new Date());
+  <% end %>
+  jQuery('#dischargedate-datepicker').datepicker("setDate", "");
+  jQuery('#admissiontime-timepicker').timepicker();
+  jQuery('#dischargetime-timepicker').timepicker({defaultTIme: false});
+  jQuery("input[name='admission[daycare]']").on('click', function() {
+      var daycare = jQuery("input[name='admission[daycare]']:checked").val();
+      if (daycare == 'No') {
+          jQuery(".selected-bed-room-for-admission").show();
+          jQuery(".bedmanagement-schedule-table-form").show();
+      }
+      else if (daycare == 'Yes') {
+          jQuery(".selected-bed-room-for-admission").hide();
+          jQuery(".bedmanagement-schedule-table-form").hide();
+          jQuery(".selected-bed-room-for-admission").html("")
+          jQuery("#admission_ward_id").val("")
+          jQuery("#admission_bed_id").val("")
+          if (jQuery('.bedmanagement-schedule-table-td-bed-layout').find('.selected').length > 0) {
+              jQuery('.bedmanagement-schedule-table-td-bed-layout').find('.selected').each(function() {
+                  jQuery(this).removeClass("selected")
+                  jQuery(this).addClass("available")
+              })
+          }
+      }
+  });
+  // jQuery('#ward_list').change(function() {
+  //    jQuery.ajax({
+  //    url: "/ipd_patients/room_update",
+  //    data: {
+  //      id : jQuery('#ward_list').val()
+  //    },
+  //    dataType: "script"
+  //  });
+  // });
+</script>

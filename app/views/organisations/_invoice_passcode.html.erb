@@ -1,0 +1,108 @@
+<% org = Organisation.find(current_facility.organisation_id) %>
+<div class="row mb10">
+  <div class="col-md-12">
+    <label class="label label-info" style="font-size:16px;"><b>Note:</b> This Code Can be used for Receipt Authentication before any changes are done to Receipt.Max 4 Digit(Number Only) allowed. </label>
+  </div>
+</div>
+<div class="row">
+  <div class="col-md-2 text-right">
+    Code For Receipt:
+  </div>
+  <div class="col-md-2 radio_buttons_passcode">
+    <div class="rdio rdio-primary col-md-6">
+      <input type="radio" name="invoice_accessible" class="invoice_accessible" id="authorize_yes" value="true" <%= 'checked="checked"' if org.invoice_accessible == true %> />
+      <label for="authorize_yes">Yes</label>
+    </div>
+    <div class="rdio rdio-primary col-md-6">
+      <input type="radio" name="invoice_accessible" class="invoice_accessible" id="authorize_no" value="false" <%= 'checked="checked"' if org.invoice_accessible == false %> />
+      <label for="authorize_no">No</label>
+    </div>
+  </div>
+  <div class="col-md-1 passcode_div">
+    <input type="text" name="organisation_passcode" class="form-control organisation_passcode" placeholder="Code" value= "<%= org.invoice_access_code || '' %>" onkeypress='return event.charCode >= 48 && event.charCode <= 57' maxlength="4" />
+  </div>
+  <div class="col-md-1">
+    <button class="btn btn-success passcode_submit_button">Save</button>
+  </div>
+</div><!-- .row -->
+
+<% if false %>
+  <div class="row">
+    <table class="table table-bordered">
+      <tr>
+        <th rowspan="2">Role</th>
+        <th colspan="4" class="text-center">Receipt</th>
+        <th colspan="4" class="text-center">Cash Register</th>
+      </tr>
+      <tr>
+        <td>Can Create</td>
+        <td>Can Edit</td>
+        <td>Can Delete</td>
+        <td>Can View</td>
+        <td>Can Create</td>
+        <td>Can Edit</td>
+        <td>Can Delete</td>
+        <td>Can View</td>
+      </tr>
+      <% Role.all.each do |role| %>
+        <% if User.where(role_ids: role.id, facility_ids: current_facility.id).count > 0 %>
+          <tr>
+            <td>
+            <%= role.label %>
+            <button class="btn btn-link btn-xs pull-right"><i class="fa fa-cog"></i></button></td>
+            <td class="text-center"><input type="checkbox" name=""></td>
+            <td class="text-center"><input type="checkbox" name=""></td>
+            <td class="text-center"><input type="checkbox" name=""></td>
+            <td class="text-center"><input type="checkbox" name=""></td>
+            <td class="text-center"><input type="checkbox" name=""></td>
+            <td class="text-center"><input type="checkbox" name=""></td>
+            <td class="text-center"><input type="checkbox" name=""></td>
+            <td class="text-center"><input type="checkbox" name=""></td>
+          </tr>
+        <% end %>
+      <% end %>
+    </table>
+  </div>
+<% end %>
+
+<!-- invoice_access_code -->
+<script type="text/javascript">
+  // Monitor Click On Radio Button
+  $("#authorize_no").on('click', function(){
+    $(".passcode_div").find('.organisation_passcode').val("")
+    $(".passcode_div").hide()
+  })
+
+  $("#authorize_yes").on('click', function(){
+    $(".passcode_div").show()
+    <% if org.invoice_access_code? %>
+      $(".passcode_div").find('.organisation_passcode').val("<%= org.invoice_access_code %>")
+    <% end %>
+  })
+
+  // Trigger Initial Click
+  $('input[name=invoice_accessible]:checked', '.radio_buttons_passcode').trigger('click')
+
+  // Submit Button Ajax Call
+  $(".passcode_submit_button").on('click', function(e){
+    e.preventDefault();
+    if(($('input[name=invoice_accessible]:checked', '.radio_buttons_passcode').val() == "true" && $(".organisation_passcode").val() != "") || $('input[name=invoice_accessible]:checked', '.radio_buttons_passcode').val() == "false"){
+      var passcode = $(".organisation_passcode").val()
+      var invoice_accessible = $('input[name=invoice_accessible]:checked', '.radio_buttons_passcode').val()
+      $(".validation_passcode").remove()
+      $.ajax({
+        type: "GET",
+        url: "/organisations/set_password_internal",
+        data: {
+          passcode: passcode,
+          invoice_accessible: invoice_accessible
+        },
+        success: function(){
+          alert("Success")
+        }
+      })  
+    } else {
+      $(".organisation_passcode").closest('div').append("<span class='validation_passcode' style='color:red;'>Code Cant Be Empty</span>")
+    }
+  })
+</script>

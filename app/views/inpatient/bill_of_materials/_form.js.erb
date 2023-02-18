@@ -1,0 +1,118 @@
+function calTotalPrice() {
+  var each_item_totals = 0;
+  $('.item_total_price').each(function() {
+    var this_parent = $(this).parents('.inventory-bom-log-item')
+    if (($(this_parent).find('.billable-price').prop("checked"))) {
+      each_item_totals += parseFloat($(this).val()) || 0
+    }
+    
+  });
+  net_amount = parseFloat(each_item_totals - $('#inpatient_bill_of_material_discount').val())
+  $("#inpatient_bill_of_material_total_cost").val(each_item_totals.toFixed(2))
+  $('#inpatient_bill_of_material_total_billing_price').val(net_amount.toFixed(2))
+}
+
+function deductTotalPrice(total_list_price) {
+  var price = $("#inpatient_bill_of_material_total_cost").val()
+  var total_price = parseFloat(price) - parseFloat(total_list_price)
+  $("#inpatient_bill_of_material_total_cost").val(total_price.toFixed(2))
+}
+
+$('.delete_empty_item').on('click', function() {
+  if ($('.inventory-bom-log-item').length > 1) {
+    $(this).closest('.inventory-bom-log-item').remove()
+    var id = $(this).val()
+    $('#'+id).css('background-color', '')
+    $('#'+id).removeClass('disabled_row')
+    if (checkItem.includes(id)) {
+      checkItem.pop(id)
+    }
+  }
+  calTotalPrice()
+})
+
+$('.billable-price').on('click', function() {
+  calTotalPrice()
+})
+
+function calItemPrice(_this) {
+  var this_parent = $(_this).parents('.inventory-bom-log-item')
+  var quantity = parseFloat($(this_parent).find('.item_quantity').val() || 0)
+  var unit_item_list_price = parseFloat($(this_parent).find('.unit_item_list_price').val() || 0)
+  var item_total_price = unit_item_list_price * quantity
+  $(this_parent).find('.item_total_price').val(item_total_price.toFixed(2))
+  $(this_parent).find('.item_total_price').trigger('change')
+  if ($(this_parent).find('.billable-price').prop("checked")) {
+    calTotalPrice()
+  }
+}
+
+function calBomItemPrice(_this) {
+  var this_parent = $(_this).parents('.inventory-bom-log-item')
+  var quantity = parseFloat($(this_parent).find('.item_quantity').val())
+  var bom_qty = parseFloat($(this_parent).find('.item_bom_quantity').val())
+  var final_quantity = quantity < bom_qty ? quantity : bom_qty
+  var item_bom_list_price = parseFloat($(this_parent).find('.item_bom_list_price').val() || 0)
+  var item_total_price = item_bom_list_price * bom_qty
+  // if (final_quantity > 0) {
+  //   $(_this).val(final_quantity)
+  //   var item_total_price = item_bom_list_price * final_quantity
+  // } else {
+  //   $(_this).val(quantity)
+  // }
+  $(this_parent).find('.item_total_price').val(item_total_price.toFixed(2))
+  $(this_parent).find('.item_total_price').trigger('change')
+
+  if ($(this_parent).find('.billable-price').prop("checked")) {
+    calTotalPrice()
+  }
+}
+
+function calBomItemListPrice(_this) {
+  var this_parent = $(_this).parents('.inventory-bom-log-item')
+  var bom_qty = parseFloat($(this_parent).find('.item_bom_quantity').val())
+  var item_bom_list_price = parseFloat($(this_parent).find('.item_bom_list_price').val() || 0)
+  var item_total_price = item_bom_list_price * bom_qty
+  $(this_parent).find('.item_total_price').val(item_total_price.toFixed(2))
+  $(this_parent).find('.item_total_price').trigger('change')
+
+  if ($(this_parent).find('.billable-price').prop("checked")) {
+    calTotalPrice()
+  }
+}
+
+$(".item_quantity").on('keyup mouseup', function() {
+  calItemPrice(this)
+})
+
+$('.item_bom_quantity').on('keyup mouseup', function() {
+  calBomItemPrice(this)
+})
+
+$('.item_bom_list_price').on('keyup mouseup', function() {
+  calBomItemListPrice(this)
+})
+
+$('#inpatient_bill_of_material_discount').on('keyup change', function(){
+  total_cost = parseFloat($('#inpatient_bill_of_material_total_cost').val())
+  discount = $(this).val()
+  let discount_amount = (discount.length > 0) ? parseFloat(discount) : 0.00
+  let final_discount = discount_amount < total_cost ? discount_amount : total_cost
+  total_billing_price =  total_cost - final_discount
+
+  $(this).val(final_discount)
+  $('#inpatient_bill_of_material_total_billing_price').val(total_billing_price.toFixed(2))
+  calTotalPrice()
+})
+
+$('.item_bom_quantity').focus();  
+
+$(".item_quantity").keypress(function(e) {
+  if(e.which == 13) {
+    if ($("#search_type").val() == 'Description') {
+      $("#lots_search").focus();
+    } else {
+      $("#lots_search_barcode").focus();
+    }
+  }
+});

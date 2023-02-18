@@ -1,0 +1,82 @@
+<div class="modal-dialog" style="width:85%;">
+  <div class="modal-content">
+    <div class="modal-header p7_10">
+      <button type="button" class="close" data-dismiss="modal">&times;</button>
+      <h4 class="modal-title">PAYMENT RECEIVED</h4>
+    </div>
+    <div class="modal-body">
+		<table class="table table-bordered">
+		  <thead>
+		    <tr>
+		      <th>No.</th>
+		      <th>Date/Time</th>
+		      <th>Paid By</th>
+		      <th>Paid To</th>
+		      <th>Mode Of Payment</th>
+		      <th>Amount</th>
+		    </tr>
+		  </thead>
+		  <tbody>
+		    <% @invoice.try(:payment_received_breakups).try(:each_with_index) do |payment_received_breakup, i| %>
+		      <tr>
+		        <td><%= i + 1 %></td>
+		        <td><%= payment_received_breakup.time.strftime('%I:%M %p') %>, <%= payment_received_breakup.date.strftime('%d/%m/%Y') %></td>
+		        <td>
+		          <% if payment_received_breakup.received_from.to_s == @invoice.patient_id.to_s %>
+		            <%= @invoice.patient.fullname %>
+		          <% else %>
+		            <% @payer_master = PayerMaster.find_by(id: payment_received_breakup.received_from.to_s) %>
+		            <% if @payer_master.present? %>
+		              <%= @payer_master.try(:display_name).to_s.titleize %> - <%= @payer_master.contact_group.name.to_s.titleize %>
+		            <% end %>
+		          <% end %>
+		        </td>
+		        <td><%= User.find_by(id: payment_received_breakup.received_by.to_s).try(:fullname) %></td>
+		        <td>
+		          <%= payment_received_breakup.mode_of_payment %>
+		          <% if payment_received_breakup.mode_of_payment == "Card" && (payment_received_breakup.card_number.present? || payment_received_breakup.card_transaction_note.present?) %>
+		            <br>
+		            <% if payment_received_breakup.card_number.present? %><b>Card Number:</b> <%= payment_received_breakup.card_number %><% end %>
+		            <% if payment_received_breakup.card_number.present? && payment_received_breakup.card_transaction_note.present? %> | <% end %>
+		            <% if payment_received_breakup.card_transaction_note.present? %><b>Transaction Note:</b> <%= payment_received_breakup.card_transaction_note %><% end %>
+		          <% elsif payment_received_breakup.mode_of_payment == "Paytm" && (payment_received_breakup.paytm_transaction_id.present? || payment_received_breakup.paytm_transaction_note.present?) %>
+		            <br>
+		            <% if payment_received_breakup.paytm_transaction_id.present? %><b>Transaction Id:</b> <%= payment_received_breakup.paytm_transaction_id %><% end %>
+		            <% if payment_received_breakup.paytm_transaction_id.present? && payment_received_breakup.paytm_transaction_note.present? %> | <% end %>
+		            <b>Transaction Note:</b> <%= payment_received_breakup.paytm_transaction_note %>
+		          <% elsif payment_received_breakup.mode_of_payment == "Google Pay" && (payment_received_breakup.gpay_transaction_id.present? || payment_received_breakup.gpay_transaction_note.present?) %>
+		            <br>
+		            <% if payment_received_breakup.gpay_transaction_id.present? %><b>Transaction Id:</b> <%= payment_received_breakup.gpay_transaction_id %><% end %>
+		            <% if payment_received_breakup.gpay_transaction_id.present? && payment_received_breakup.gpay_transaction_note.present? %> | <% end %>
+		            <b>Transaction Note:</b> <%= payment_received_breakup.gpay_transaction_note %>
+		          <% elsif payment_received_breakup.mode_of_payment == "PhonePe" && (payment_received_breakup.phonepe_transaction_id.present? || payment_received_breakup.phonepe_transaction_note.present?) %>
+		            <br>
+		            <% if payment_received_breakup.phonepe_transaction_id.present? %><b>Transaction Id:</b> <%= payment_received_breakup.phonepe_transaction_id %><% end %>
+		            <% if payment_received_breakup.phonepe_transaction_id.present? && payment_received_breakup.phonepe_transaction_note.present? %> | <% end %>
+		            <b>Transaction Note:</b> <%= payment_received_breakup.phonepe_transaction_note %>
+		          <% elsif payment_received_breakup.mode_of_payment == "Online Transfer" && (payment_received_breakup.transfer_date.present? || payment_received_breakup.transfer_note.present?) %>
+		            <br>
+		            <% if payment_received_breakup.transfer_date.present? %><b>Transfer Date:</b> <%= payment_received_breakup.transfer_date %><% end %>
+		            <% if payment_received_breakup.transfer_date.present? && payment_received_breakup.transfer_note.present? %> | <% end %>
+		            <% if payment_received_breakup.transfer_note.present? %><b>Note:</b> <%= payment_received_breakup.transfer_note %><% end %>
+		          <% elsif payment_received_breakup.mode_of_payment == "Cheque" && (payment_received_breakup.cheque_date.present? || payment_received_breakup.cheque_note.present?) %>
+		            <br>
+		            <% if payment_received_breakup.cheque_date.present? %><b>Cheque Date:</b> <%= payment_received_breakup.cheque_date %><% end %>
+		            <% if payment_received_breakup.cheque_date.present? && payment_received_breakup.cheque_note.present? %> | <% end %>
+		            <% if payment_received_breakup.cheque_note.present? %><b>Note:</b> <%= payment_received_breakup.cheque_note %><% end %>
+		          <% elsif payment_received_breakup.mode_of_payment == "Others" && (payment_received_breakup.other_transaction_id.present? || payment_received_breakup.other_note.present?) %>
+		            <br>
+		            <% if payment_received_breakup.other_transaction_id.present? %><b>Transaction Id:</b> <%= payment_received_breakup.other_transaction_id %><% end %>
+		            <% if payment_received_breakup.other_transaction_id.present? && payment_received_breakup.other_note.present? %> | <% end %>
+		            <b>Note:</b> <%= payment_received_breakup.other_note %>
+		          <% end %>
+		        </td>
+		        <td><% amount_with_precision = number_with_precision(payment_received_breakup.amount.to_f, precision: 2) %><% amount_display = Common::Finance::NumberFormatService.call(@number_format, amount_with_precision) %><%= amount_display %></td>
+		      </tr>
+		    <% end %>
+		  </tbody>
+		</table>
+    </div>
+  </div>
+
+</div>

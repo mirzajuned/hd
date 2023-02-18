@@ -1,0 +1,91 @@
+<% unless @admission.isdischarged? || @admission.marked_for_discharged? %>
+  <li class=""><span>Consents</span></li>
+  <% if Authorization::PolicyHelper.verification(current_user.id ,"HGP-101-103-100") %>
+    <li><%= link_to ipd_patients_print_admissionconsent_path(:admission_id => @admission.id, :patient_id => @admission.patient_id, :format => :pdf), :target => "_blank" do %><i class="fa fa-file-alt"></i> Admission<% end %></li>
+    <li><%= link_to inpatient_ipd_records_consent_note_path(:admission_id => @admission.id, :patient_id => @admission.patient_id),:remote => true do %><i class="fa fa-file-alt"></i> OT<% end %></li>
+  <% else %>
+    <li><a style="text-decoration: line-through; cursor: not-allowed" title="Not Authorized" ><i class="fa fa-file-alt"></i> Admission</a></li>
+    <li><a style="text-decoration: line-through; cursor: not-allowed" title="Not Authorized" ><i class="fa fa-file-alt"></i> OT</a></li>
+  <% end %>
+  <li class=""><span>Templates</span></li>
+ 
+  <% if @clinical_note.nil? %>
+    <% @new = "new_inpatient_ipd_record_clinical_note_" + @specialty_folder_name + "_note_path(admission_id: @admission.id.to_s, specialty_id: @admission.specialty_id)" %>
+    <li><%= link_to eval(@new), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#ipdrecord-modal'} do %> <i class="fa fa-file"></i> Clinical Note<% end %></li>
+  <% else %>
+    <% @edit = "edit_inpatient_ipd_record_clinical_note_" + @specialty_folder_name + "_note_path(id: @clinical_note.id, admission_id: @admission.id.to_s, specialty_id: @admission.specialty_id)" %>
+    <li><%= link_to eval(@edit), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#ipdrecord-modal'} do %> <i class="fa fa-file-alt"></i>  Clinical Note<% end %></li>
+  <% end %>
+
+  <% if @clinical_note.present? || @specialty_folder_name == 'orthopedics'  %>
+    <% if !@assessment.present? %>
+      <li><%= link_to inpatient_new_path(patient_id: @admission.patient_id.to_s, admission_id: @admission.id.to_s), id: "assessment-note-btn", class: "assessment_note", :data => {:remote => true, 'toggle' => "modal", 'target' => '#assessment-modal'} do %> <i class="fa fa-file"></i> Assessment <% end %></li>
+    <% else %>
+      <li><%= link_to inpatient_path(patient_id: @admission.patient_id.to_s, admission_id: @admission.id.to_s), id: "assessment-note-btn", class: "assessment_note", :data => {:remote => true, 'toggle' => "modal", 'target' => '#assessment-modal'} do %> <i class="fa fa-file-alt"></i> Assessment <% end %></li>
+    <% end %>
+ 
+    <% if @nursingrecords.find_by(template_type: "careplan").present? %>
+      <% @careplan = @nursingrecords.find_by(template_type:"careplan") %>
+      <li><%= link_to inpatient_nursing_records_edit_path(patient_id: @admission.patient_id.to_s,admission_id: @admission.id.to_s,templatetype: "careplan",id: @careplan.id, specialty_id: @admission.specialty_id), id: "checklist-note-btn", class: "", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#nursing_record-modal'} do %><i class="fa fa-file-alt"></i> Care Plan <% end %></li>
+    <% else %>
+      <li><%= link_to inpatient_nursing_records_new_path(patient_id: @admission.patient_id.to_s,admission_id: @admission.id.to_s,templatetype: "careplan", specialty_id: @admission.specialty_id), id: "checklist-note-btn", class: "", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#nursing_record-modal'} do %><i class="fa fa-file"></i> Care Plan <% end %></li>
+    <% end %>
+
+    <% @new_check = "inpatient_ot_checklists_new_path(patient_id: '#{@admission.patient_id.to_s}',admission_id: '#{@admission.id.to_s}', specialty_id: '#{@admission.specialty_id.to_s}')" %>
+    <li><%= link_to eval(@new_check), class: "ot_check", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#ot-checklist-modal'} do %><i class="fa fa-file"></i> OT Checklist<% end %>
+    </li>
+    <% @ot_check.each do |note| %>
+      <% @edit_check = "inpatient_ot_checklists_edit_path(patient_id: '#{@admission.patient_id.to_s}',admission_id: '#{@admission.id.to_s}',id: '#{note.id}',specialty_id: '#{@admission.specialty_id.to_s}')" %>
+      <li>
+        <%= link_to eval(@edit_check) , class: "ot_check", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#ot-checklist-modal'} do %><i class="fa fa-file-alt"></i>&nbsp;&nbsp;Checklist,<%= (note.otchecklist_created_at.try(:strftime,"%d %b '%y") if note.otchecklist_created_at.present?) %><% end %>
+      </li>
+    <% end %>
+
+    <% if @nursingrecords.find_by(template_type:"sedation").present? %>
+      <% sedation = @nursingrecords.find_by(template_type:"sedation") %>
+      <li><%= link_to inpatient_nursing_records_edit_path(patient_id: @admission.patient_id.to_s,admission_id: @admission.id.to_s,templatetype: "sedation",id: sedation.id, specialty_id: @admission.specialty_id), id: "checklist-note-btn", class: "", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#nursing_record-modal'} do %><i class="fa fa-file-alt"></i> Sedation Chart <% end %></li>
+    <% else %>
+      <li><%= link_to inpatient_nursing_records_new_path(patient_id: @admission.patient_id.to_s,admission_id: @admission.id.to_s,templatetype: "sedation", specialty_id: @admission.specialty_id), id: "checklist-note-btn", class: "", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#nursing_record-modal'} do %><i class="fa fa-file"></i> Sedation Chart <% end %></li>
+    <% end %>
+
+    <% @new = "new_inpatient_ipd_record_operative_note_" + @specialty_folder_name + "_note_path(admission_id: @admission.id.to_s)" %>
+    <li><%= link_to eval(@new), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#ipdrecord-modal'} do %> <i class="fa fa-file"></i> Operative Note<% end %></li>
+    <% @operative_notes.each do |operative_note| %>
+      <% @edit = "edit_inpatient_ipd_record_operative_note_" + @specialty_folder_name + "_note_path(id: operative_note.id, admission_id: @admission.id.to_s)" %>
+      <li><%= link_to eval(@edit), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#ipdrecord-modal'} do %> <i class="fa fa-file-alt"></i>  Operative Note<%= "(#{Date.parse(operative_note.note_date).strftime("%d %b'%y")})" if operative_note.note_date.present? 
+        %><% end %></li>
+    <% end %>
+
+    <% if @nursingrecords.find_by(template_type:"aldrete").present? %>
+      <% aldrete = @nursingrecords.find_by(template_type:"aldrete") %>
+      <li><%= link_to inpatient_nursing_records_edit_path(patient_id: @admission.patient_id.to_s,admission_id: @admission.id.to_s,templatetype: "aldrete",id:aldrete.id, specialty_id: @admission.specialty_id), id: "checklist-note-btn", class: "", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#nursing_record-modal'} do %><i class="fa fa-file-alt"></i> Aldrete Score <% end %></li>
+    <% else %>
+      <li><%= link_to inpatient_nursing_records_new_path(patient_id: @admission.patient_id.to_s,admission_id: @admission.id.to_s,templatetype: "aldrete", specialty_id: @admission.specialty_id), id: "checklist-note-btn", class: "", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#nursing_record-modal'} do %><i class="fa fa-file"></i> Aldrete Score <% end %></li>
+    <% end %>
+
+    <% if @discharge_note.nil? %>
+      <% @new = "new_inpatient_ipd_record_discharge_note_" + @specialty_folder_name + "_note_path(admission_id: @admission.id.to_s)" %>
+      <li><%= link_to eval(@new), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#ipdrecord-modal'} do %> <i class="fa fa-file"></i> Discharge Note<% end %></li>
+    <% else %>
+      <% @edit = "edit_inpatient_ipd_record_discharge_note_" + @specialty_folder_name + "_note_path(id: @discharge_note.id, admission_id: @admission.id.to_s)" %>
+      <li><%= link_to eval(@edit), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#ipdrecord-modal'} do %> <i class="fa fa-file-alt"></i>  Discharge Note<% end %></li>
+    <% end %>
+
+    <% if @nursingrecords.find_by(template_type:"pain").present? %>
+      <% pain = @nursingrecords.find_by(template_type:"pain") %>
+      <li><%= link_to inpatient_nursing_records_edit_path(patient_id: @admission.patient_id.to_s,admission_id: @admission.id.to_s,templatetype: "pain",id:pain.id, specialty_id: @admission.specialty_id), id: "checklist-note-btn", class: "", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#nursing_record-modal'} do %><i class="fa fa-file-alt"></i> Pain Assessment <% end %></li>
+    <% else %>
+      <li><%= link_to inpatient_nursing_records_new_path(patient_id: @admission.patient_id.to_s,admission_id: @admission.id.to_s,templatetype: "pain", specialty_id: @admission.specialty_id), id: "checklist-note-btn", class: "", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#nursing_record-modal'} do %><i class="fa fa-file"></i> Pain Assessment <% end %></li>
+    <% end %>
+
+    <% @new = "new_inpatient_ipd_record_ward_note_" + @specialty_folder_name + "_note_path(admission_id: @admission.id.to_s, specialty_id: @admission.specialty_id)" %>
+    <li><%= link_to eval(@new), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#ipdrecord-modal'} do %> <i class="fa fa-file"></i>  Ward Note<% end %></li>
+    <% if @ward_notes.count > 0 %>
+      <% @index = "inpatient_ipd_record_ward_note_" + @specialty_folder_name + "_notes_path(admission_id: @admission.id.to_s, specialty_id: @admission.specialty_id)" %>
+      <li><%= link_to eval(@index), id: "all-ward-note-btn", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#ipdrecord-modal'} do %><i class="fa fa-file-alt"></i> View Ward Notes<% end %></li>
+    <% end %>
+
+  <% end %>
+<% else %>
+    <li><%= link_to inpatient_ipd_records_show_all_notes_path(admission_id: @admission.id, patient_id: @admission.patient_id), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#templates-modal'} do %> <i class="fa fa-print"> </i> Notes to Patient <% end %></li>
+<% end %>

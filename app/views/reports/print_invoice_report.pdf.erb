@@ -1,0 +1,174 @@
+<div class="col-md-12 text-center">
+  <b><%= current_facility.name.upcase %></b>
+</div>
+<br>
+<br>
+<div class="col-md-12 text-right" style="font-size:12px;">
+  <b>Date:</b> <%= @datepicker_date.strftime("%b %d, %Y") %>
+</div>
+<div class="row text-center" style="font-size:12px;">
+  <%= @title %>
+</div>
+<% services_hash = {} %>
+<div class="row">
+  <table class="table">
+    <tr class="invoice_head">
+      <th>S No.</th>
+      <th>Patient Name/ID</th>
+      <th>Bill Created By</th>
+      <th><%= @title %> ID</th>
+      <th>Services</th>
+      <th>Mode of Payment</th>
+      <th>Amount</th>
+    </tr>
+    <% @total_list.each.with_index do |list, i| %>
+      <tr class="invoice_data">
+        <td><%= i + 1 %></td>
+        <% unless @title == "Pharmacy Invoice" || @title == "Optical Invoice" %>
+          <td>
+            <div><%= list.patient.fullname %></div>
+            <div><%= PatientIdentifier.find_by(patient_id: list.patient_id.to_s).try(:patient_org_id) %></div>
+          </td>
+        <% else %>
+          <td>
+            <div><% if list.recipient? %><%= list.recipient %><% else %>-<% end %></div>
+            <div><% if list.patient_identifier? %><%= list.patient_identifier %><% else %>-<% end %></div>
+          </td>
+        <% end %>
+
+        <td>
+          <% if list.user_id.present? %>
+            <% user = User.find_by(id: list.user_id) %>
+            <% if user.present? %>
+              <%= user.try(:fullname) %>
+            <% end %>
+          <% else %>
+            -
+          <% end %>
+        </td>
+
+        <% if @title == "Insurance Invoice" %>
+          <td><%= list.insurance_display_id %><% if list.try(:is_canceled) %><strong style="color: #d43f3a"> - Cancelled</strong><% end %><% if list.is_refunded %><strong style="color: #d43f3a"> - Refunded(<%= list.refund_amount %>)</strong><% end %></td>
+        <% elsif @title == "Pharmacy Invoice" || @title == "Optical Invoice" %>
+          <td><%= list.bill_number %><% if list.try(:is_canceled) %><strong style="color: #d43f3a"> - Cancelled</strong><% end %><% if list.is_refunded %><strong style="color: #d43f3a"> - Refunded(<%= list.refund_amount %>)</strong><% end %></td>
+        <% else %>
+          <td><%= list.bill_number %><% if list.try(:is_canceled) %><strong style="color: #d43f3a"> - Cancelled</strong><% end %><% if list.is_refunded %><strong style="color: #d43f3a"> - Refunded(<%= list.refund_amount %>)</strong><% end %></td>
+        <% end %>
+        <% if @title == "OPD Invoice" || @title == "IPD Invoice" %>
+          <td>
+            <% list.services.each do |service| %>
+              <div>
+                <% if services_hash[service.description].present? %>
+                  <%= services_hash[service.description] %>
+                <% else %>
+                  <% if list.version == "v20.0" %>
+                    <% invoice_service_card = InvoiceServiceCard.find_by(id: service.try(:name)) %>
+                    <%= services_hash[service.description] = invoice_service_card&.service_name %>
+                  <% elsif service.entry_type == 'service' %>
+                    <% pricing_master = PricingMaster.find_by(id: service.description) %>
+                    <%= services_hash[service.description] = pricing_master&.service_name %>
+                  <% else %>
+                    <% surgery_package = SurgeryPackage.find_by(id: service.description) %>
+                    <%= services_hash[service.description] = surgery_package&.display_name %>
+                  <% end %>
+                <% end %>
+                (<%= list.currency_symbol %><%= service.unit_price %>)
+              </div>
+            <% end %>
+          </td>
+          <td>
+            <% list.advance_payment_breakups.try(:each_with_index) do |advance_payment, i| %>
+              <%= i == 0 ? 'Advance: ' : '' %><%= advance_payment[:mode_of_payment] %> (<%= advance_payment.currency_symbol %><%= advance_payment[:amount].to_f %>)<br>
+            <% end %>
+            <% list.payment_received_breakups.try(:each_with_index) do |payment_received, i| %>
+              <div>
+                <%= payment_received[:mode_of_payment] %> (<%= payment_received.currency_symbol %><%= payment_received[:amount].to_f %>)  <br>
+              </div>
+              <div>
+                <% if payment_received[:card_number].present? %>
+                  Card Number: <%= payment_received[:card_number] %>
+                <% end %>
+                <% if payment_received[:card_transaction_note].present? %>
+                  Transaction Note: <%= payment_received[:card_transaction_note] %>
+                <% end %>
+
+                <% if payment_received[:paytm_transaction_id].present? %>
+                  Transaction Id: <%= payment_received[:paytm_transaction_id] %>
+                <% end %>
+                <% if payment_received[:paytm_transaction_note].present? %>
+                  Transaction Note: <%= payment_received[:paytm_transaction_note] %>
+                <% end %>
+
+                <% if payment_received[:gpay_transaction_id].present? %>
+                  Transaction Id: <%= payment_received[:gpay_transaction_id] %>
+                <% end %>
+                <% if payment_received[:gpay_transaction_note].present? %>
+                  Transaction Note: <%= payment_received[:gpay_transaction_note] %>
+                <% end %>
+
+                <% if payment_received[:phonepe_transaction_id].present? %>
+                  Transaction Id: <%= payment_received[:phonepe_transaction_id] %>
+                <% end %>
+                <% if payment_received[:phonepe_transaction_note].present? %>
+                  Transaction Note: <%= payment_received[:phonepe_transaction_note] %>
+                <% end %>
+
+                <% if payment_received[:transfer_date].present? %>
+                  Date: <%= payment_received[:transfer_date] %>
+                <% end %>
+                <% if payment_received[:transfer_note].present? %>
+                  Transaction Note: <%= payment_received[:transfer_note] %>
+                <% end %>
+
+                <% if payment_received[:cheque_date].present? %>
+                  Date: <%= payment_received[:cheque_date] %>
+                <% end %>
+                <% if payment_received[:cheque_note].present? %>
+                  Transaction Note: <%= payment_received[:cheque_note] %>
+                <% end %>
+
+                <% if payment_received[:other_transaction_id].present? %>
+                  Transaction Id: <%= payment_received[:other_transaction_id] %>
+                <% end %>
+                <% if payment_received[:other_note].present? %>
+                  Transaction Note: <%= payment_received[:other_note] %>
+                <% end %>
+              </div>
+            <% end %>
+          </td>
+        <% elsif @title == "Pharmacy Invoice" || @title == "Optical Invoice" %>
+          <td>
+            <%= list.try(:mode_of_payment) %><% if list.mode_of_payment.present? %> (<%= list.currency_symbol %><%= list.total.to_f %>)<br><% else %>-<% end %>
+          </td>
+        <% end %>
+        <% unless @title == "Cash Register" || @title == "Pharmacy Invoice" || @title == "Optical Invoice" %>
+          <td class="text-right"><%= list.try(:currency_symbol) %><%= list.net_amount %></td>
+        <% else %>
+          <td class="text-right"><%= list.try(:currency_symbol) %><%= list.total %></td>
+        <% end %>
+      </tr>
+    <% end %>
+    <tr class="invoice_head">
+      <th colspan="<%= ('6' unless @title == 'Cash Register') || '4' %>" class="text-right">Net Amount</th>
+      <th class="text-right">
+        <% all_invoices = @total_list.group_by(&:currency_symbol) %>
+        <% all_invoices.each do |currency_symbol, invoices| %>
+          <%= currency_symbol %><%= invoices.map { |invoice| (invoice.try(:net_amount) || invoice.try(:total)).to_f }.sum %><br>
+        <% end %>
+      </th>
+    </tr>
+  </table>
+</div>
+
+<style type="text/css">
+  .invoice_data * {
+    font-size: 9px;
+    text-align: left;
+  }
+
+  .invoice_head * {
+    font-size: 10px;
+    color: #000;
+    font-weight: 900;
+  }
+</style>

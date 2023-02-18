@@ -1,0 +1,93 @@
+<div class="tab-pane active" id="laboratory">
+    <div class="row">
+      <div class="col-md-2 col-sm-1"></div>
+      <div class="rdio rdio-primary col-md-4 col-sm-5 col-xs-6">
+        <div id="standard_lab_inv" class="standard_lab_inv" style="margin-bottom:15px;">
+          <%= radio_button_tag "laboratory_investigation_type", "standard_laboratory_investigation", true, {:class => 'laboratory_investigation_type', :id => "LabRadio1"} %>
+          <label for="LabRadio1">Standard Laboratory Investigations</label>
+        </div>
+      </div>
+   
+      <div class="rdio rdio-primary custom_oph_inv col-md-4 col-sm-5 col-xs-6" id="custom_oph_inv">
+        <%= radio_button_tag "laboratory_investigation_type", "custom_laboratory_investigation", false, {:class => 'laboratory_investigation_type', :id => "LabRadio2"} %>
+        <label for="LabRadio2">Custom Laboratory Investigations</label>
+      </div>
+    </div>  
+
+  <div class="row">
+    <div class="col-md-6 col-sm-6 col-xs-12">
+      
+      <div class="col-md-4 col-sm-5 col-xs-3">  
+        <b>Laboratory Sets</b>
+        <select id="opdrecord_toplaboratoryset_tab" class="tabview tab_select_tag" style="display:none">
+          <option value="">Please Select</option>
+          <% @set_type.each do |set_type| %>
+            <option value="<%= set_type[1]%>"><%= set_type[0]%></option>
+          <% end %>
+        </select>
+        <div class="webview">
+          <%= f.input :toplaboratoryset, collection: (@set_type), input_html: { multiple: true, :size => '20', :style => 'height: 280px; width: 90%;', :class => 'form-control webview'}, as: :select,  :label => false,  :item_wrapper_class => 'form-control', :required => false %>
+        </div>
+      </div>
+      
+      <% all_investigations = LaboratoryInvestigationData.where(only_sub_test: false, facility_id: @current_facility.id, is_deleted: false) %>
+    
+      <div class="col-md-5 col-sm-5 col-xs-5">
+         <div class="standard-laboratory-investigations">
+          <b>Standard Investigations</b>
+          <% standard_investigations = all_investigations.where(is_custom: false) %>
+          <% standard_investigations = standard_investigations.sort_by!{ |investigation| investigation.investigation_name.downcase } %>
+          <select id="opdrecord_toplaboratoryinvestigation_tab" class="tabview tab_select_tag" style="display:none;">
+          <option value="">Please Select</option>
+          <% standard_investigations.each do |set_type| %>
+            <option value="<%= set_type.loinc_code %>"><%= set_type.investigation_name%></option>
+          <% end %>
+          </select>
+          <%= select_tag "toplaboratoryinvestigation", options_for_select(standard_investigations.map{|inv| [ inv.investigation_name, inv.loinc_code ]}) ,{ multiple: true, :style => 'height: 280px; width:100%', :class => 'form-control webview', :id => 'opdrecord_toplaboratoryinvestigation' } %>
+         </div>
+      </div>
+      <div class="col-md-5 col-sm-5 col-xs-5">
+        <div class="custom-laboratory-investigations">
+          <b>Custom Investigations</b>
+          <% custom_investigations = all_investigations.where(is_custom: true).sort_by!{ |investigation| investigation.investigation_name.downcase } %>
+          <select id="opdrecord_custom_toplaboratoryinvestigation_tab" class="tabview tab_select_tag" style="display:none;">
+            <option value="">Please Select</option>
+            <% custom_investigations.each do |set_type| %>
+              <option value="<%= set_type.loinc_code %>"><%= set_type.investigation_name%></option>
+            <% end %>
+          </select>
+
+          <%= select_tag "toplaboratoryinvestigation", options_for_select(custom_investigations.map{|inv| [ inv.investigation_name, inv.loinc_code ]}) ,{ multiple: true, :style => 'height: 280px; width:100%', :class => 'form-control webview', :id => 'opdrecord_custom_toplaboratoryinvestigation' } %>
+        </div>      
+      </div>
+    </div>
+
+    <div class="col-md-6 col-sm-6 col-xs-12">
+      <div class="row">
+        <div class="col-md-12">
+          <table class="table table-striped table-bordered table-investigationlist">
+            <tbody class="laboratoryinvestigations-added">
+              <%= render partial: "templates/common/soap_assessment_tab_laboratory_table_list.html.erb" , locals: { f: f, addedlaboratoryinvestigationlist: @opdrecord.addedlaboratoryinvestigationlist, opdrecord: @opdrecord,  specalityfoldername: @speciality_folder_name, templatetype: @templatetype, opdspeciality: @opdspeciality } %>
+            </tbody>
+          </table>
+          <div class="laboratoryinvestigations-removed" style="display:none;">
+          </div>
+        </div>
+      </div>
+      <% if @case_sheet.laboratory_investigations.where(:record_id.nin => [@opdrecord.id]).count > 0 %>
+        <div class="row">
+          <%= render partial: "opd_records/ophthalmology_notes/opd_partials/case_sheet_laboratory_investigations.html.erb" %>
+        </div>
+      <% end %>
+    </div>
+
+  </div>
+
+  <div class="row" style="margin-top: 26px;">
+    <div class="col-md-1 col-sm-2 col-xs-2">Comments:</div>
+    <div class="col-md-6 col-sm-6 col-xs-6">
+    <%= f.input :laboratorycomments, as: :text, :label => false, :required => false, :input_html => {:class => 'form-control', :rows => 2, :cols => 70, :name => "opdrecord[laboratorycomments]", :value => @opdrecord.read_attribute(:laboratorycomments) } %>
+    </div>
+  </div>
+
+</div>

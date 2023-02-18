@@ -1,0 +1,469 @@
+<% if mail_job == true %>
+  <% @inventory_store = inventory_store %>
+  <% @inventory_invoice = inventory_invoice %>
+  <% @invoice_setting = invoice_setting %>
+  <% @patient = patient %>
+<% end %>
+<% template_settings = OrganisationsSetting.find_by(organisation_id: current_user.organisation_id).custom_template_header_options["#{@inventory_invoice.department_name&.downcase}_settings"] %>
+<% if template_settings.present? %>
+  <% template_fields = template_settings[:invoices][0].select { |_key, value| value == true } %>
+<% end %>
+<% if template_fields.present? %>
+  <% fields_names = OrganisationSettingsHelper.get_data("#{@inventory_invoice.department_name&.downcase}_invoices", template_fields).keys %>
+<% end %>
+<% pending_amount = @inventory_invoice.payment_pending %>
+
+<div style="border:1px solid #ccc;">
+  <div class="row" style="border-bottom:1px solid #ccc;">
+    <div class="col-md-3 text-left">
+      <% if @inventory_store.asset_path.url %>
+        <% unless @inventory_store.asset_path.url.split('/').last == '_old_' %>
+          <img width="80" height="80" src="<%= @inventory_store.asset_path.url %>">
+        <% end %>
+      <% end %>
+    </div>
+    <div class="col-sm-6 text-center">
+      <% if @inventory_store.name ==nil || @inventory_store.name == "" || @inventory_store.shop_name == 'org-name' %>
+        <h3 style="margin:0px"><%= current_facility.name %></h3>
+      <% else %>
+        <h3 style="margin:0px"><%= @inventory_store.shop_name %></h3>
+      <% end %>
+    </div>
+    <div class="col-sm-3 text-right">
+      <% unless @inventory_store.address == 'org-address' %>
+        <h5 style="margin: 0px"><%= @inventory_store.address %></h5>
+      <% end %>
+      <% if @inventory_store.email.present? %>
+        <p> <h5 style="margin: 0px"><%= @inventory_store.email %></h5> </p>
+      <% end %>
+      <% if @inventory_store.mobilenumber.present? %>
+        <p> <h5 style="margin: 0px"><%= @inventory_store.mobilenumber %></h5> </p>
+      <% end %>
+    </div>
+
+    <div class="row">
+      <div class="col-sm-12 text-center">
+        <% org_setting = OrganisationsSetting.find_by(organisation_id: current_user.organisation_id) %>
+        <% @header_title = org_setting.custom_invoice_header_title.present? ? org_setting.custom_invoice_header_title["#{@inventory_invoice.department_name.downcase}_invoices_title"]['invoices'][0]["#{@inventory_invoice.try(:invoice_type)}_header_title"] : ''%>
+        <b><%= @header_title %> <%= "- Canceled" if @inventory_invoice.is_canceled? %></b>
+      </div>
+    </div>
+  </div>
+
+  <div class="row mb5">
+    <% if template_fields.present? %>
+      <% template_fields.each_with_index do |(key, value), i| %>
+        <% field_name = fields_names[i] %>
+
+        <% if key == 'recipient' %>
+          <% field_value = @inventory_invoice.recipient&.upcase %>
+
+        <% elsif key == 'doctor_name' %>
+          <% field_value = @inventory_invoice.doctor_name&.upcase.present? ? @inventory_invoice.doctor_name : 'NA' %>
+
+        <% elsif key == 'bill_number' %>
+          <% field_value = @inventory_invoice.bill_number.present? ? @inventory_invoice.bill_number : '-' %>
+
+        <% elsif key == 'mr_no' %>
+          <% field_value = @mr_no.present? ? @mr_no : 'NA' %>
+
+        <% elsif key == 'date_time' %>
+          <% field_value = @inventory_invoice.order_date_time&.strftime("%d %b'%y, %I:%M %p") %>
+
+        <% elsif key == 'patient_identifier' %>
+          <% field_value = @inventory_invoice.patient_identifier %>
+
+        <% elsif key == 'calculate_age_gender' %>
+          <% field_value = @patient.calculate_age.present? || @patient.gender.present? ? @patient.calculate_age.to_s + '/' + @patient.gender.to_s : 'Unavailable' %>
+
+        <% elsif key == 'mobilenumber' %>
+          <% field_value = @patient.mobilenumber %>
+
+        <% elsif key == 'address' %>
+          <% if @patient.address_1.present? || @patient.address_2.present? || @patient.city.present? || @patient.state.present? %>
+            <% field_value = @patient.patient_full_address %>
+          <% else %>
+            <% field_value = 'Unavailable' %>
+          <% end %>
+        <% elsif  key == 'bill_type'%>
+          <% field_value = @inventory_invoice.invoice_type&.capitalize %>
+        <% elsif  key == 'claim_processor'%>
+          <% field_value = if @inventory_invoice.payer_master_id.present?
+              "#{@inventory_invoice.payer_master&.display_name} (#{@inventory_invoice.contact_group&.name})"
+            else 
+              "N.A"
+            end %>
+        <% elsif key == 'insurer' %>
+          <% field_value = if @inventory_invoice.insurer_id.present?
+              "#{@inventory_invoice.insurer&.display_name} (#{@inventory_invoice.insurer_group&.name})"
+             else
+              "N.A"
+             end %>
+        <% end %>
+        <% flag = if ['insurer', 'claim_processor'].include?(key)
+              @inventory_invoice&.invoice_type == 'credit'
+           else
+             true
+           end
+         %>
+        <% if field_name.present? && flag == true %>
+          <div class="col-sm-2 font_size" style="width: 18%;">
+            <b><%= field_name %></b>&nbsp;:
+          </div>
+          <div class="col-sm-4 font_size" style="width: 30%;">
+            <%= field_value.try(:html_safe) %>
+          </div>
+        <% end %>
+      <% end %>
+    <% end %>
+  </div><!-- row -->
+
+  <div class="row mb5" style="border-bottom:1px solid #ccc;">
+  </div>
+  <table  style="border: 1px solid #ccc;width: 100%;">
+    <thead>
+      <tr style="<%= heading_font_size %>">
+        <th><b>S.No</b></th>
+        <th><b>Description</b></th>
+        <th><b>QTY</b></th>
+        <th style="min-width: 100px;"><b>Batch No.</b></th>
+        <% unless @inventory_store.department_id == '284748001' %>
+          <th style="min-width: 100px;"><b>Model No.</b></th>
+        <% end %>
+        <th><b>U.Price</b></th>
+        <th><b><% if @invoice_setting.show_tax_in_print %>Tax<% end %></b></th>
+        <th><b>Total</b></th>
+      </tr>
+    </thead>
+    <% grand_total_price = 0 %>
+    <% grand_total_tax = 0 %>
+    <% if @inventory_invoice.additional_discount %>
+      <% discount = @inventory_invoice.additional_discount %>
+    <% else %>
+      <% discount = 0 %>
+    <% end %>
+    <% if @inventory_invoice.offer_on_bill %>
+      <% offer_on_bill = @inventory_invoice.offer_on_bill %>
+    <% else %>
+      <% offer_on_bill = 0 %>
+    <% end %>
+
+    <% if @inventory_invoice.advance_payment %>
+      <% advance_payment = @inventory_invoice.advance_payment %>
+    <% else %>
+      <% advance_payment = 0 %>
+    <% end %>
+    <% @item_arr = [] %>
+    <% @inventory_invoice.items.each.with_index do |item, i| %>
+      <% if item.try(:quantity).to_i > 0 %>
+        <% @item_arr << item %>
+      <% end %>
+    <% end %>
+    <tbody class="font_size" style="<%= text_font_size %>">
+      <% @item_arr.each.with_index do |item,i| %>
+        <tr>
+          <td style="padding: 0"><%= i + 1 %></td>
+          <td style="text-align: left;">
+            <%= "#{item.description} #{item.variant_identifier}" %>
+            <% if item.expiry_date.present? %>
+              <span style="font-size: 10px;font-style: italic;">(Exp: <%= item.expiry_date %>)</span>
+            <% elsif item.expiry.present? %>
+              <span style="font-size: 10px;font-style: italic;">(Exp: <%= item.expiry.try(:strftime, '%d/%m/%Y') %>)</span>
+            <% end %>
+            <% if item.description_comment.present? %>
+              <br><%= item.description_comment %>
+            <% end %>
+          </td>
+          <td><%= item.quantity %></td>
+          <% if @inventory_store.department_id == '284748001' %>
+            <td><%= item.batch_no %></td>
+          <% else %>
+            <td><%= item.batch_no %></td>
+            <% model_no = item.model_no.present? ? item.model_no : 'NA' %>
+            <td ><%= model_no %></td>
+          <% end %>
+          <td>
+            <%= item.list_price&.round(2) %>
+          </td>
+          <td><% if @invoice_setting.show_tax_in_print %><%= number_with_precision(item.taxable_amount, precision: 2) %><% end %></td>
+          <td><%= item.total_list_price || (item.list_price&.to_f * item.quantity&.to_i) %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+
+  <div class="row mb5" style="border-bottom:1px solid #ccc;">
+  </div>
+  <% if @invoice_setting.show_tax_in_print %>
+    <div class="row">
+      <% if @inventory_invoice.try(:tax_breakup).count > 0 %>
+        <div class="col-sm-6 col-sm-offset-6 text-right">
+          <div class="col-sm-6 font_size">
+            <b>Taxable Amount</b>
+          </div>
+          <div class="col-sm-2 text-center font_size">
+            :
+          </div>
+          <div class="col-sm-4 font_size" >
+            <%= number_with_precision(@inventory_invoice.non_taxable_amount, precision: 2) %>
+          </div>
+        </div>
+        <div class="col-sm-6 col-sm-offset-6 text-right">
+          <% @inventory_invoice.tax_breakup.try(:each) do |tax_breakup| %>
+            <div class="col-sm-6 font_size">
+              <b><%= tax_breakup[:name] %></b>
+            </div>
+            <div class="col-sm-2 text-center font_size">
+              :
+            </div>
+            <div class="col-sm-4 font_size">
+              <%= number_with_precision(tax_breakup[:amount], precision: 2) %>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+    <hr style="padding: 0px;margin: 0px;">
+  <% end %>
+  <div class="row mb5">
+    <div class="col-sm-6 font_size">
+    <% @received_from = @inventory_invoice.patient.fullname %>
+      <% if @inventory_invoice.advance_payment_breakups.count > 0 %>
+        <p>Advance Settled :
+          <ul style="margin-left: -25px;">
+            <% @inventory_invoice.advance_payment_breakups.each do |breakup| %>
+              <li>
+                <b><%= "#{breakup.currency_symbol} #{breakup.amount}" %></b>
+                from <b><%= @received_from.to_s.upcase %></b>
+                by <b><%= breakup.mode_of_payment.titleize %></b>
+                on <b><%= breakup.date.strftime('%d/%m/%Y') %></b>.
+              </li>
+            <% end %>
+          </ul>
+        </p>
+        <hr style="padding: 0px;margin: 0px;">
+      <% end %>
+      <% if @inventory_invoice.payment_received_breakups.sum{|breakup| breakup[:amount_received].to_f } > 0 %>
+        <p>Received with thanks a sum of :
+          <ul style="margin-left: -25px;">
+            <% @inventory_invoice.payment_received_breakups.try(:each_with_index) do |payment_received, i| %>
+              <% if payment_received.amount_received > 0 %>
+                <% 
+                  payer_master = PayerMaster.find_by(id: payment_received.received_from)
+                  payer =  if payer_master.present? 
+                    "#{payer_master&.display_name&.upcase} - #{payer_master.contact_group.name.to_s.titleize}" 
+                  else
+                    @received_from.to_s.upcase
+                  end
+                %>
+                <li><b><%= payment_received.currency_symbol %> <%= payment_received.amount_received %></b> from <b><%= payer %></b> by <b><%= payment_received.mode_of_payment.titleize %></b> on <b><%= payment_received.date.strftime('%d/%m/%Y') %></b>.</li>
+              <% end %>
+            <% end %>
+          </ul>
+        </p>
+        <hr style="padding: 0px;margin: 0px;">
+      <% end %>
+
+      <% if pending_amount > 0 && @inventory_invoice.payment_pending_breakups.count > 0 %>
+        <p>Pending <%= "- Canceled" if @inventory_invoice.is_canceled? %> :
+          <ul style="margin-left: -25px;">
+            <% @inventory_invoice.payment_pending_breakups.each do |pending| %>
+              <li>
+                <b><%= "#{pending.currency_symbol} #{pending.amount}" %></b> from
+                <b>
+                  <% if pending.received_from.to_s == @inventory_invoice.patient_id.to_s %>
+                    <%= @inventory_invoice.patient.fullname %>
+                  <% else %>
+                    <% payer_master = PayerMaster.find_by(id: pending.received_from.to_s) %>
+                    <% if payer_master.present? %>
+                      <span><%= payer_master.try(:display_name).to_s.titleize %> - <%= payer_master.contact_group.name.to_s.titleize %></span>
+                    <% end %>  
+                  <% end %>
+                </b>
+              </li>
+            <% end %>
+          </ul>
+        </p>
+        <hr style="padding: 0px;margin: 0px;">
+      <% end %>
+      <% refund_payments = @inventory_invoice.refund_payments.select { |refund| refund.amount > 0 } %>
+      <% total_refund =  refund_payments.sum(&:amount) %>
+      <% if refund_payments.size > 0 %>
+        <p>Refunded a sum of :
+          <ul style="margin-left: -25px;">
+            <% refund_payments.each do |refund| %>
+              <li>
+                <b><%= "#{refund.currency_symbol} #{refund.amount}" %></b>
+                to <b><%= @received_from.to_s.upcase %></b>
+                by <b><%= refund.mode_of_payment.titleize %></b>
+                on <b><%= refund.payment_date.strftime('%d/%m/%Y') %></b>.
+              </li>
+            <% end %>
+          </ul>
+        </p> 
+      <% end %>      
+    </div>
+    <div class=" col-sm-6 text-right">
+
+      <div class="col-sm-6 font_size">
+        <b>Total Amt Including Tax</b>
+      </div>
+      <div class="col-sm-2 text-center font_size">
+        :
+      </div>
+      <div class="col-sm-4 font_size">
+        <% if @inventory_invoice.net_amount.present? %>
+          <%= @inventory_invoice.total.to_f.round(2) %>
+        <% else %>
+          <%= @inventory_invoice.total.to_f.round(2) - (discount.round(2) + offer_on_bill.round(2)) %>
+        <% end %>
+      </div>
+
+      <% if @inventory_invoice.additional_discount.present? %>
+        <div class="col-sm-6 font_size">
+          <b>Discount</b>
+        </div>
+        <div class="col-sm-2 text-center font_size">
+          :
+        </div>
+        <div class="col-sm-4 font_size">
+          <%= discount.round(2) || 0 %>
+        </div>
+      <% end %>
+
+      <% if offer_on_bill.present? %>
+        <div class="col-sm-6 font_size">
+          <b>Offer</b>
+        </div>
+        <div class="col-sm-2 text-center font_size">
+          :
+        </div>
+        <div class="col-sm-4 font_size">
+          <%= offer_on_bill.round(2) || 0 %>
+        </div>
+      <% end %>
+
+      <div class="col-sm-6 font_size">
+        <b>Total of all Discounts</b>
+      </div>
+      <div class="col-sm-2 text-center font_size">
+        :
+      </div>
+      <div class="col-sm-4 font_size">
+        <%= (discount.round(2) + offer_on_bill.round(2)) || 0 %>
+      </div>
+
+      <div class="col-sm-6 font_size">
+        <b>Net Amount</b>
+      </div>
+      <div class="col-sm-2 text-center font_size">
+        :
+      </div>
+      <div class="col-sm-4 font_size">
+        <% if @inventory_invoice.net_amount.present? %>
+          <%= net_amount = @inventory_invoice.net_amount.to_f.round(2) %>
+        <% else %>
+          <%= net_amount = @inventory_invoice.total.to_f.round(2) %>
+        <% end %>
+      </div>
+      <% if pending_amount > 0 %>
+        <div class="col-sm-12">
+          <hr style="padding: 0px;margin: 0px;">
+        </div>
+      <% end %>
+      <% if @inventory_invoice.payment_pending_breakups.count > 0 %>
+        <div class="col-sm-6 font_size">
+          <b>
+            <%= @inventory_invoice.is_canceled? ? 'Total Pending - Canceled' : 'Payment Pending'%>
+          </b>
+        </div>
+        <div class="col-sm-2 text-center font_size">
+          :
+        </div>
+        <div class="col-sm-4 font_size">
+          <%= pending_amount%>
+        </div>
+      <% end %>
+      <% amount_remaining = @inventory_invoice.amount_remaining.to_f.round(2) || 0 %>
+      <% if @inventory_invoice.advance_taken && !@inventory_invoice.payment_completed && amount_remaining > 0 %>
+        <div class="col-sm-6 font_size">
+          <b>Advance Paid</b>
+        </div>
+        <div class="col-sm-2 text-center font_size">
+          :
+        </div>
+        <div class="col-sm-4 font_size">
+          <%= @inventory_invoice.advance_payment.to_f.round(2) || 0 %>
+        </div>
+
+        <div class="col-sm-6 font_size">
+          <b>Remaining</b>
+        </div>
+        <div class="col-sm-2 text-center font_size">
+          :
+        </div>
+        <div class="col-sm-4 font_size">
+          <%= amount_remaining %>
+        </div>
+      <% end %>
+
+    </div>
+    <% unless @inventory_invoice.note.nil? or @inventory_invoice.note.empty? %>
+      <div class="col-md-12 text-center mt10" style="background-color:#eee;padding:0 auto">
+        <span style="font-size:11px;"><b>Additional Note:</b> <%= @inventory_invoice.note %></span>
+      </div>
+    <% end %>
+  </div><!--row-->
+  <div class="row" style="margin-top:50px;">
+    <div class="col-sm-10">
+    </div>
+    <div class="col-sm-2 font_size text-center">
+      <b>___________________</b><br>
+      <b>Q. P Signature</b>
+    </div>
+  </div>
+</div>
+
+<div>
+  <div class="row" style="border-bottom:1px solid #ccc;">
+    <div class="col-md-4 font_size">
+      <p><% if @inventory_invoice.department_id == "284748001" %>PHARMACIST <% elsif @inventory_invoice.department_id == "50121007" %>OPTICIAN<% end %> : <b><% if @inventory_store.username.present? %><%= @inventory_store.try(:username) %><% else %> <%= current_user.fullname %><% end %></b></p>
+    </div>
+    <div class="col-md-4 font_size text-center">
+      <% if @inventory_store.dl_number %><p>DL NO : <b><%= @inventory_store.dl_number %><% else %>__-___-_______,______,______</b></p><% end %>
+    </div>
+    <div class="col-md-4 font_size text-center">
+      <% if @inventory_store.gst.present? %><p>GST NO : <b><%= @inventory_store.gst %></b></p><% end %>
+    </div>
+  </div>
+  <div clas="row">
+    <div class="col-md-12">
+      <ul class="med_rules">
+        <li>ALL DISPUTES SUBJECT TO <% if current_facility.city != nil %><%= current_facility.city.upcase %> CITY<% end %> JURISDICTION ONLY.</li>
+        <li>MEDICINES WITHOUT BATCH NO., EXP DT. & LOOSE TABLETS WILL NOT BE TAKEN BACK.</li>
+        <li>PLEASE CONSULT DOCTOR BEFORE USING THE MEDICINES</li>
+        <li>MEDICINE WITHOUT BILL WILL NOT BE TAKEN BACK</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<style type="text/css">
+  .font_size {
+    font-size: 12px;
+  }
+  .med_rules {
+    font-size: 10px;
+  }
+  tr{
+    border-bottom: 1px solid #ccc;
+  }
+  td{
+    padding: 2px;
+    text-align: center;
+  }
+  th{
+    padding: 5px 2px  0 2px;
+    text-align: center;
+  }
+</style>

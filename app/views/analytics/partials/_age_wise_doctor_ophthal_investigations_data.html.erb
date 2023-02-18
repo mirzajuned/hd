@@ -1,0 +1,107 @@
+<% partial_name = @partial_name.present? %>
+<% data = {
+    service_name: "DoctorData",
+    action_name: "age_wise_doctor_ophthal_investigations",
+    partial_name: "age_wise_doctor_ophthal_investigations_data"
+} %>
+<div class="row">
+  <div class="<%= partial_name ? 'col-md-6': 'col-md-12' %>">
+    <div class="panel panel-default panel_b borderd_panel">
+      <div class="panel-heading to_add_expand_button">
+        <h5 class="subtitle mb5"><i class="fa fa-bar-chart" aria-hidden="true"></i><strong>  &nbsp;&nbsp; Age wise Ophthal Investigations</strong> &nbsp;&nbsp;
+          <a href="#" data-toggle="tooltip" data-placement="bottom" title="This Graph Shows Age wise Ophthal Investigations count according to Eye Regions"><i class="fa fa-info-circle" aria-hidden="true"></i></a>
+        </h5>
+        <%= render partial: "/analytics/shared/expand_button", locals:{partial_name: partial_name, data: data } %>
+      </div>
+      <div class="panel-body reduced_padding">
+        <%= select_tag "age_wise_eye_regions", options_for_select(get_procedures_eye_region.reject{ |ele| ele[1]=='plasty' }, @selected_age_wise_ophthal_region), class: "form-control age_wise_eye_regions_list_#{partial_name}" %>
+        <canvas id="age-wise-ophthal_investigations-line-chart_doctor_<%= partial_name%>" width="800" height="335"></canvas>
+      </div>
+    </div>
+  </div>
+  <% if partial_name %>
+    <div class="col-md-6">
+      <div class="table_wrapper">
+        <table class="table table_data table-bordered table-hover">
+          <thead>
+          <tr>
+            <th>Age Group</th>
+            <th>Count</th>
+          </tr>
+          </thead>
+          <tbody>
+          <% @age_wise_ophthal_inv_labels_doctor.each_with_index do |f_name, indx|%>
+            <tr>
+              <td><%= f_name %></td>
+              <td><%= @age_wise_ophthal_inv_data_doctor[indx].to_i %></td>
+            </tr>
+          <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<script type="text/javascript">
+  $('[data-toggle="tooltip"]').tooltip()
+
+  new Chart(document.getElementById("age-wise-ophthal_investigations-line-chart_doctor_<%= partial_name%>"), {
+    type: 'doughnut',
+    data: {
+      labels: <%= raw @age_wise_ophthal_inv_labels_doctor %>,
+      datasets: [{
+        data: <%= raw @age_wise_ophthal_inv_data_doctor %>,
+        backgroundColor:<%= raw get_chart_dataset_color %>
+      }
+      ]
+    },
+    options: {
+      rotation: -0.7 * Math.PI,
+      responsive: true,
+      legend: {
+        display: false,
+      },
+      title: {
+        display: false,
+      },
+      animation: {
+        duration: 500,
+        onComplete () {
+          const chartInstance = this.chart;
+          const ctx = chartInstance.ctx;
+          const dataset = this.data.datasets[0];
+          const meta = chartInstance.controller.getDatasetMeta(0);
+          Chart.helpers.each(meta.data.forEach((bar, index) => {
+            const label = this.data.labels[index];
+            const labelPositionX = 20;
+            const labelWidth = ctx.measureText(label).width + labelPositionX;
+            ctx.textBaseline = 'middle';
+            ctx.textAlign = 'left';
+            ctx.fillStyle = '#333';
+          }));
+        }
+      }
+    }
+  });
+
+  $(".age_wise_eye_regions_list_<%= partial_name%>").select2();
+  $(".age_wise_eye_regions_list_<%= partial_name%>").on("change", function(e){
+    var filtered_facility = $(".dropdown-facilitymenu-button").attr("data-facility-id")
+    var filtered_specialty = $(".dropdown-specialtymenu-button").attr("data-specialty-id")
+    var analytics_to_date = $("#analytics-to-datepicker").val()
+    var analytics_from_date = $("#analytics-from-datepicker").val()
+    var partial_name  = <%= partial_name %>;
+    var age_wise_ophthal_region = $(this).val();
+    var data = { filtered_facility: filtered_facility, filtered_specialty: filtered_specialty, analytics_to_date: analytics_to_date, analytics_from_date: analytics_from_date,
+      age_wise_ophthal_region: age_wise_ophthal_region, remote: true, partial_name: partial_name };
+
+    $.ajax({
+      method: "GET",
+      dataType: "script",
+      url:"/analytics/clinicals/get_age_wise_doctor_ophthal_investigations_data",
+      data: data,
+    })
+  })
+
+</script>

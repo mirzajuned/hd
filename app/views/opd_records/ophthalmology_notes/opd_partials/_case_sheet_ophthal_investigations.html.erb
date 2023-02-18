@@ -1,0 +1,104 @@
+<div class="col-md-12 other-ophthal-list">
+  <strong style="color:#428bca;text-decoration:underline;font-size:15px;">Other Investigation within this Case</strong>
+  <table class="table table-bordered">
+    <tbody id='ophthal_investigation-present' class='ophthal_investigation-present'>
+      <input type="hidden" name="opdrecord[disabled_ophthal_codes]" class="disabled_ophthal_codes" value="<%= @opdrecord.try(:disabled_ophthal_codes).to_s %>">
+      <% counter = 0 %>
+      <% @case_sheet.ophthal_investigations.where(:record_id.nin => [@opdrecord.id], is_performed: false, is_disabled: false).group_by{ |oi| [oi.investigation_id] }.each do |investigation_args, ophthal_investigations| %>
+        <% investigationsides = ophthal_investigations.map{ |ps| ps[:investigationside] }.uniq %>
+        <% right_eye_present, left_eye_present, both_eyes_present = investigationsides.include?('18944008'), investigationsides.include?('8966001'), investigationsides.include?('40638003') %>
+        <% if both_eyes_present %>
+          <% side_name = 'BE' %>
+          <% investigationside = "40638003" %>
+        <% elsif right_eye_present %>
+          <% side_name = 'RE' %>
+          <% investigationside = "18944008" %>
+        <% elsif left_eye_present %>
+          <% side_name = 'LE' %>
+          <% investigationside = "8966001" %>
+        <% end %>
+        <tr class="case-ophthal">
+          <input type="hidden" class="investigationfullcode" value="<%= ophthal_investigations[0].investigationfullcode %>">
+          <input type="hidden" class="investigationside" value="<%= investigationside %>">
+          <input type="hidden" class="investigation_type" value="<%= ophthal_investigations[0].investigation_type %>">
+          <td style="line-height: 1;">
+            <b><span id="ophthal_investigation_stage_<%= counter %>_p" style='color: #c9302c'><%= ophthal_investigations[0].investigationstage.to_s + " - " %></span> <%= ophthal_investigations[0].investigationname %> - <span id="ophthal_investigation_side_<%= counter %>_p"><%= side_name %></span></b><br/>
+            <span style="font-size: 10px;"><%= ophthal_investigations[0].advised_by %> on <%= ophthal_investigations[0].advised_datetime.try(:strftime, "%d/%m/%Y") %> </span>
+          </td>
+          <td style="width:30%;">
+            <button class="btn btn-primary btn-re-advice-ophthal btn-xs">Re-Advice</button>
+            <!-- <button class="btn btn-danger btn-disable-ophthal btn-xs">Disable</button> -->
+          </td>
+        </tr>
+        <% counter += 1 %>
+      <% end %>
+      <% @case_sheet.ophthal_investigations.where(:record_id.nin => [@opdrecord.id], is_performed: true).each_with_index do |ophthal_investigation, j| %>
+        <% stage_color = ("#c9302c" if ophthal_investigation.investigationstage == "Advised") || "#1caf9a" %>
+        <% if ophthal_investigation.investigationside.to_s == '18944008' %>
+          <% side_name = 'RE' %>
+        <% elsif ophthal_investigation.investigationside.to_s == '8966001' %>
+          <% side_name = 'LE' %>
+        <% else %>
+          <% side_name = 'BE' %>
+        <% end %>
+        <tr class="case-ophthal performed-ophthal">
+          <input type="hidden" class="investigationfullcode" value="<%= ophthal_investigation.investigationfullcode %>">
+          <input type="hidden" class="order_item_advised_id" value="<%= ophthal_investigation.order_item_advised_id.to_s %>">
+          <input type="hidden" class="investigationside" value="<%= ophthal_investigation.try(:investigationside) %>">
+          <input type="hidden" class="investigation_type" value="<%= ophthal_investigation.investigation_type %>">
+          <td style="line-height: 1;">
+            <b><span id="ophthal_investigation_stage_<%= counter %>_p" style='color:<%= stage_color %>'><%= ophthal_investigation.investigationstage.to_s + " - " %></span> <%= ophthal_investigation.investigationname %> - <span id="ophthal_investigation_side_<%= counter %>_p"><%= side_name %></span></b></br>
+            <span style="font-size: 10px;">A: <%= ophthal_investigation.advised_by %> on <%= ophthal_investigation.advised_datetime.try(:strftime, "%d/%m/%Y") %> </span><br/>
+            <span style="font-size: 10px;">P: <%= ophthal_investigation.performed_by %> on <%= ophthal_investigation.performed_datetime.try(:strftime, "%d/%m/%Y") %> </span>
+          </td>
+          <td style="width:30%;">
+            <button class="btn btn-primary btn-re-advice-ophthal btn-xs">Re-Advice</button>
+          </td>
+        </tr>
+        <% if ophthal_investigation.template_created %>
+          <tr class="performed-readings">
+            <td colspan="3" style="padding:5px;">
+              <table class="table table-bordered" style="margin:0px;">
+                <thead>
+                  <tr>
+                    <th style="padding:0px;text-align:center;font-size:12px;">Findings</th>
+                    <th style="padding:0px;text-align:center;font-size:12px;">Remark</th>
+                    <th style="padding:0px;text-align:center;font-size:12px;">Doctor's Remark</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style="padding:0px;text-align:center;font-size:12px;"><%= ophthal_investigation.investigation_val %></td>
+                    <td style="padding:0px;text-align:center;font-size:12px;"><%= ophthal_investigation.investigation_comment %></td>
+                    <td style="padding:0px;text-align:center;font-size:12px;"><%= ophthal_investigation.doctors_remark %></td>
+                  </tr>
+                </tbody>
+              </table>
+            </td>
+          </tr>
+        <% elsif ophthal_investigation.performed_comment.present? %>
+          <tr class="performed-readings">
+            <td colspan="3" style="padding:5px;">
+              <table class="table table-bordered" style="margin:0px;">
+                <thead>
+                  <tr>
+                    <th style="padding:0px;text-align:center;font-size:12px;">Findings</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style="padding:0px;text-align:center;font-size:12px;"><%= ophthal_investigation.performed_comment %></td>
+                  </tr>
+                </tbody>
+              </table>
+            </td>
+          </tr>
+        <% end %>
+      <% end %>
+    </tbody>
+  </table>
+</div>
+
+<script type="text/javascript">
+
+</script>

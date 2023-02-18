@@ -1,0 +1,105 @@
+<% unless timeline['pst'][0]['primary_model'] == "LegacyOpdClinicalNote" %>
+<% @opd_record = timeline['pst'][0]['links']['opdrecord'] %>
+  <% unless current_user.role_ids.include?(46255001) || current_user.role_ids.include?(387619007) || current_user.role_ids.include?(499992366) || @opd_record[:sign_off] == "true" %>
+    <% unless @nabh_setting.try(:enabled) && @opd_record[:created_at].strftime('%d%m%Y') != Date.current.strftime('%d%m%Y') %>
+      <% if Authorization::PolicyHelper.verification(current_user.id,"HGP-102-106-101") %>
+        <% @edit_opd_link = 'edit_opd_records_' + @opd_record[:specalityfoldername].downcase + "_note_path('#{@opd_record[:_id]}',:opdrecordid => '#{@opd_record[:_id]}', :patientid => '#{@opd_record[:patientid]}', :appointmentid => '#{@opd_record[:appointmentid]}', :templatetype => '#{@opd_record[:templatetype]}', :viewmode => @mode)" %>
+        <%= link_to eval(@edit_opd_link), class: 'timeline-viewsummary-html btn btn-primary btn-primary-transparent btn-xs btn-circle edit-opd-record', title: 'Edit OPD Record', data: { :remote => true, 'toggle' => 'modal', 'target' => '#templates-modal', method: :get } do %><i class="fa fa-edit"></i><% end %>
+      <% else %>
+        <a class='timeline-viewsummary-html btn btn-primary btn-xs btn-circle edit-opd-record disabled' style='cursor:not-allowed;pointer-events:all' title='Not Authorized'><i class="fa fa-edit"></i></a>
+      <% end %>
+    <% end %>
+  <% end %>
+<%= link_to opd_records_view_opd_summary_path(opdrecordid: (@opd_record[:_id]).to_s, patientid: (@opd_record[:patientid]).to_s, appointmentid: (@opd_record[:appointmentid]).to_s, specality: (@opd_record[:specalityfoldername]).to_s, templatetype: (@opd_record[:templatetype]).to_s, viewmode: @mode), class: 'timeline-viewsummary-html btn btn-success btn-success-transparent btn-xs btn-circle view-opd-record', title: 'View OPD Record', data: { :remote => true, 'toggle' => 'tooltip', 'target' => '#templates-modal' } do %><i class="fa fa-file-alt"></i><% end %>
+
+<% if @mode != "tabview" && Authorization::PolicyHelper.verification(current_user.id,"HGP-101-100-100") %>
+  <% if "#{@opd_record[:templatetype]}" == "eye"%>
+    <span>
+      <button class=" btn btn-warning btn-warning-transparent btn-xs btn-circle" title="Print OPD Record" data-toggle="dropdown"><i class="fa fa-print"></i></button>
+      <ul class="dropdown-menu children" style="margin-left:-60px;font-size: 12px;">
+        <% if @print_settings.count > 1 %>
+          <li><p class="text-center" style="margin:0px;">OPD Summary</p></li>
+          <li><hr style="margin: 0px;"></li>
+          <li class="text-center">
+            <% @print_settings.each do |print_setting| %>
+              <li style="text-align:left" class="multi-print">
+                <%= link_to opd_records_print_opd_record_path(opdrecordid: (@opd_record[:_id]).to_s, patientid: (@opd_record[:patientid]).to_s, appointmentid: (@opd_record[:appointmentid]).to_s, specality: @opd_record[:specalityfoldername].downcase.to_s, templatetype: (@opd_record[:templatetype]).to_s, print_setting_id: print_setting.id, format: :pdf), class: '', style: 'color: #d9534f;', target: '_blank', data: { method: :get } do %> <i class="fa fa-print mr5"></i> <%= print_setting.name %> <% end %>
+              </li>
+            <% end %>
+          </li>
+          <li><hr style="margin: 0px;"></li>
+          <li><p class="text-center" style="margin:0px;">Ophthalmic Report</p></li>
+          <li><hr style="margin: 0px;"></li>
+          <li class="text-center">
+            <% @print_settings.each do |print_setting| %>
+              <li style="text-align:left" class="multi-print">
+                <%= link_to opd_records_print_opd_record_path(opdrecordid: (@opd_record[:_id]).to_s, patientid: (@opd_record[:patientid]).to_s, appointmentid: (@opd_record[:appointmentid]).to_s, specality: @opd_record[:specalityfoldername].downcase.to_s, templatetype: 'ophthalmic_report', print_setting_id: print_setting.id, format: :pdf), class: '', style: 'color: #d9534f;', target: '_blank', data: { method: :get } do %> <i class="fa fa-print mr5"></i> <%= print_setting.name %> <% end %>
+              </li>
+            <% end %>
+          </li>
+        <% else %>
+          <li style="text-align:center;">
+            <%= link_to opd_records_print_opd_record_path(opdrecordid: (@opd_record[:_id]).to_s, patientid: (@opd_record[:patientid]).to_s, appointmentid: (@opd_record[:appointmentid]).to_s, specality: @opd_record[:specalityfoldername].downcase.to_s, templatetype: (@opd_record[:templatetype]).to_s, print_setting_id: @print_settings[0].id, format: :pdf), class: '', target: '_blank', data: { method: :get } do %> <i class="fa fa-print mr5"></i> OPD Summary <% end %>
+          </li>
+          <li><hr style="margin: 0px;"></li>
+          <li style="text-align:center;">
+            <%= link_to opd_records_print_opd_record_path(opdrecordid: (@opd_record[:_id]).to_s, patientid: (@opd_record[:patientid]).to_s, appointmentid: (@opd_record[:appointmentid]).to_s, specality: @opd_record[:specalityfoldername].downcase.to_s, templatetype: 'ophthalmic_report', print_setting_id: @print_settings[0].id, format: :pdf), class: '', target: '_blank', data: { method: :get } do %> <i class="fa fa-print mr5"></i> Ophthalmic Report <% end %>
+          </li>
+        <% end %>
+      </ul>
+    </span>
+  <% else %>
+    <div class="btn-group" style="margin-bottom: 0px;">
+      <% if @print_settings.count > 1 %>
+        <button class=" btn btn-warning btn-warning-transparent btn-xs btn-circle" title="Print OPD Record" data-toggle="dropdown"><i class="fa fa-print"></i></button>
+        <ul class="dropdown-menu children" style="margin-left:-60px;font-size: 12px;">
+          <% @print_settings.each do |print_setting| %>
+            <li style="text-align:left" class="multi-print">
+              <%= link_to opd_records_print_opd_record_path(opdrecordid: (@opd_record[:_id]).to_s, patientid: (@opd_record[:patientid]).to_s, appointmentid: (@opd_record[:appointmentid]).to_s, specality: @opd_record[:specalityfoldername].downcase.to_s, templatetype: (@opd_record[:templatetype]).to_s, print_setting_id: print_setting.id, format: :pdf), class: '', style: 'color: #d9534f;', target: '_blank', data: { method: :get } do %> <i class="fa fa-print mr5"></i> <%= print_setting.name %> <% end %>
+            </li>
+          <% end %>
+        </ul>
+      <% else %>
+        <%= link_to opd_records_print_opd_record_path(opdrecordid: (@opd_record[:_id]).to_s, patientid: (@opd_record[:patientid]).to_s, appointmentid: (@opd_record[:appointmentid]).to_s, specality: @opd_record[:specalityfoldername].downcase.to_s, templatetype: (@opd_record[:templatetype]).to_s, print_setting_id: @print_settings[0].id, format: :pdf), class: 'btn btn-warning btn-warning-transparent btn-xs btn-circle', target: '_blank', data: { method: :get } do %> <i class="fa fa-print mr5"></i> <% end %>
+      <% end %>
+    </div>
+  <% end %>
+<% end %>
+
+<% old_record_6_weeks = (DateTime.now - 42.days) >= @opd_record['created_at'] %>
+
+<% unless current_user.role_ids.include?(46255001) || current_user.role_ids.include?(387619007) || current_user.role_ids.include?(499992366) || @opd_record[:templatetype] == "vitalsign" || @opd_record[:templatetype] == "biometry" %>
+  <button type="button" class="btn btn-darkblue btn-darkblue-transparent btn-circle btn-clone-template-<%= timeline['pst'][0]['query']['_id'] %>" <% if @organisation_setting.disable_clone_old_template && old_record_6_weeks && @opd_record[:templatetype] != "vision" && @opd_record[:specalityid] == "309988001" %> disabled title="Cannot clone templates more than 6 weeks old"<% else %> title="Clone OPD Record"<% end %> id="clone-opd-templates" data-toggle="dropdown"><i class="fa fa-clone"></i></button>
+  <ul class="dropdown-menu clone-opd-templates clone-opd-templates-<%= timeline['pst'][0]['query']['_id'] %>" role="menu" aria-labelledby="opd-templates-dropdown"></ul>
+<% end %>
+<% else %>
+<%= link_to patient_legacy_old_data_list_path(id: timeline['pst'][0]['query']['_id'], legacy_patient_id: timeline['pst'][0]['links']['legacy']['legacy_patient_id'], new_patient_id: timeline['pst'][0]['links']['legacy']['new_patient_id']), class: 'btn btn-xs btn-success btn-success-transparent btn-circle investigation-viewsummary-html', id: 'investigation-viewsummary-html', title: 'Legacy Summary', data: { remote: true } do %> <i class="fa fa-file-alt"></i> <% end %>
+<% end %>
+
+<% unless timeline['pst'][0]['primary_model'] == "LegacyOpdClinicalNote" %>
+<script type="text/javascript">
+  $(".btn-clone-template-<%= timeline['pst'][0]['query']['_id'] %>").on('click', function(){
+    if($(this).closest('.full-view').hasClass('open')){
+    } else {
+      $(this).siblings("ul").html('<li class="text-center">Loading..</li>')
+      $.ajax({
+        type: "GET",
+        dataType: "script",
+        data: {
+          opd_record_id: "<%= timeline['pst'][0]['links']['opdrecord']['_id'] %>",
+          patient_id: "<%= @patient.id %>",
+          template_type: "<%= timeline['pst'][0]['links']['opdrecord']['templatetype'] %>",
+          mode: "<%= @mode %>"
+        },
+        url: "/patient_summary_timelines/appointment_list_clone_record"
+      })
+    }
+  })
+</script>
+<% end %>
+
+<style>
+  .btn[disabled] {
+    pointer-events: all !important;
+  }
+</style>

@@ -1,0 +1,69 @@
+$(document).ready(function(){
+  $('.minimize-patient-box').on('click', function(e){
+    e.preventDefault();
+    $(".patient-note-section").toggle();
+  })
+
+  $('.edit_dispatch_medicine').on('click', function(){
+    var data_type = $(this).attr('data-flag')
+    var state = $(this).attr('state')
+    var not_converted_to_converted = $(this).attr('not_converted_to_converted')
+    $.ajax({
+      type: "GET",
+      data: {
+        prescription_id: "<%= @prescription.id.to_s %>",
+        optical_patient_converted: $('.edit_dispatch_medicine').attr('update_to'),
+        not_converted_to_converted: not_converted_to_converted,
+        state: state
+      },
+      url: "/prescriptions/optical_mark_converted_form",
+    })
+  })
+
+  $("#patient-summary-timeline-link").on('click', function(){
+    var optical_id = $("#optical_refresher").val()
+    var active_tab = $(".tab_active").find(".active").attr('data-tab-id')
+    $.ajax({
+      type: "GET",
+      dataType: "script",
+      url: "/patient_summary/<%= @patient.try(:id).to_s %>",
+      data: {
+        current_date: "<%= @current_date %>",
+        optical_id: optical_id,
+        active_tab: active_tab,
+        url: "/prescriptions/optical_management"
+      }
+    });
+    history.pushState('', '', '/patient_summary/<%= @patient.try(:id).to_s %>'); // history.pushState([data], [title], [url]);
+  })
+
+  $(".btn-initial-more-detail").on('click', function(){
+    if($(this).html() == "More"){
+      $(this).html("Less")
+      $("#initial-more-detail").show()
+    } else {
+      $(this).html("More")
+      $("#initial-more-detail").hide()
+    }
+  })
+
+  $(".btn-patient-referral-more-detail").on('click', function(){
+    if($(this).html() == "More"){
+      $(this).html("Less")
+      $("#patient-referral-more-detail").show()
+    } else {
+      $(this).html("More")
+      $("#patient-referral-more-detail").hide()
+    }
+  })
+})
+
+$('.confirm-convertion').on('click', function(){
+  <% if @inventory_store.try(:billable_transaction) == true && @inventory_store.try(:enable_stock_management) == true  %>
+    button = '<%= link_to new_invoice_inventory_order_path(prescription_id: @prescription.id.to_s, department_id:  @inventory_store.try(:department_id) ,state: 'converted', patient_id: @prescription.patient_id, store_id: @inventory_store.id, not_converted_to_converted: true), class: "btn btn-success", data: { remote: true} do %>Yes<% end %>'
+  <% else %>
+    button = '<%= link_to prescriptions_optical_mark_converted_form_path(prescription_id: @prescription.id.to_s, state: 'converted', not_converted_to_converted: true), class: "btn btn-success", data: { remote: true, 'toggle': 'modal', 'target': '#mark-converted-modal' } do %>Yes<% end %>'
+  <% end %>
+  $('#confirm-convertion-modal').html("<%= escape_javascript(render('prescriptions/convertion_confrim_modal.html')) %>")
+  $('#confirm-convertion-modal .modal-footer').append(button)
+})

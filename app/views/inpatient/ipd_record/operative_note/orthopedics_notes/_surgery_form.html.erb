@@ -1,0 +1,178 @@
+<% @time_zone = current_facility.time_zone %>
+<div class="row mb20" style="margin-top:20px;">
+  <div class="col-md-2">
+    Type Of Surgery :
+  </div>
+  <div class="col-md-2">
+    <%= f.input :surgerytype, wrapper_html: {:class=>"routine-emergency"}, collection: ['Elective', 'Emergency'], :as => :hg_radio_button,:label => false, :required => false, :class => 'btn btn-xs btn-white', style: "margin-top:-2px;", :input_html => { }, :checked => @operative_note.read_attribute(:surgerytype) %>
+  </div>
+  <div class="col-md-1">
+    Anesthesia :
+  </div>
+  <div class="col-md-3">
+    <%= f.input :anesthesia, wrapper_html: {:class=>"anesthesia"}, collection: ['GA', 'EA', 'SA', 'LA', 'Sedation', 'Topical'], :as => :hg_checkbox,:label => false, :required => false, :class => 'btn btn-xs btn-white', style: "margin-top:-2px;", :input_html => { }, :checked => @operative_note.checkboxes_checked(@operative_note.read_attribute(:anesthesia)) %>
+  </div>
+  <div class="col-md-1">
+    Surgery Date
+  </div>
+  <div class="col-md-2">
+    <%= f.text_field :surgerydate, { class: "surgery-datepicker form-control",value: @operative_note.read_attribute(:surgerydate) } %>
+  </div>
+</div>
+<% if false %>
+  <div class="row mb20">
+    <div class="col-md-2 ">
+      Pre-Operative Diagnosis:
+    </div>
+    <div class="col-md-2">
+      <%= f.text_area :diagnosis, {style: "width:125%;", class: "form-control",value:  @operative_note.read_attribute(:diagnosis) || @clinical_note.try(:diagnosis)} %>
+    </div>
+
+  </div>
+  <div class="row mb20">
+    <div class="col-md-2">
+      Procedure Performed:
+    </div>
+    <div class="col-md-2">
+      <%= f.text_area :procedure_performed, {style: "width:125%;",class: "form-control",value: @operative_note.try(:procedure_performed) || @clinical_note.try(:procedurelist)} %>
+    </div>
+  </div>
+<% end %>
+<div class="row mb20">
+  <div class="col-md-2 ">
+    Pre-Operative Diagnosis :
+  </div>
+  <div class="col-md-9">
+    <% if @ipdrecord.diagnosislist.where(is_disabled: false).try(:length) > 0 %>
+      <% @ipdrecord.diagnosislist.where(is_disabled: false).group_by(&:icddiagnosiscode).each do |icddiagnosiscode, diagnoses| %>
+        <% if diagnoses[0][:created_from] == "migration" %>
+          <li style="margin-left: 10px"> <%= diagnoses[0][:diagnosisname].capitalize %></li>
+        <% else %>
+          <li style="margin-left: 10px"> <%= diagnoses[0][:diagnosisoriginalname].capitalize %>- <b><%= diagnoses[0][:icddiagnosiscode].upcase.insert(3, '.') %></b></li>
+        <% end %>
+      <% end %>
+    <% end %>
+    <% if @case_sheet.free_form_diagnoses.count > 0 %>
+      <% if @case_sheet.free_form_diagnoses[@ipdrecord.id.to_s].present? %>
+        <% if @case_sheet.free_form_diagnoses[@ipdrecord.id.to_s][:content].present? && @case_sheet.free_form_diagnoses[@ipdrecord.id.to_s][:content] != "<br>" %>
+          <div class="row" style="font-size:12px;">
+            <div class="col-md-12" style="text-decoration: underline;"><b>DIAGNOSES <% if @ipdrecord.diagnosislist.where(is_disabled: false).try(:length) > 0 %>TEXT<% end %></b></div>
+            <div class="col-md-12">
+              <span><b style="color: #333;"><%= @case_sheet.free_form_diagnoses[@ipdrecord.id.to_s][:content].to_s.html_safe() %></b></span>
+            </div>
+          </div>
+        <% end %>
+      <% else %>
+        <% uniq_array = [] %>
+        <div class="row" style="font-size:12px;">
+          <div class="col-md-12" style="text-decoration: underline;"><b>DIAGNOSES</b></div>
+          <% @case_sheet.free_form_diagnoses.each do |key, diagnosis| %>
+            <% unless uniq_array.include?(diagnosis[:content].to_s.html_safe()) %>
+              <% if diagnosis[:content].present? && diagnosis[:content] != "<br>" %>
+                <div class="col-md-12">
+                  <span><b style="color: #333;"><%= diagnosis[:content].to_s.html_safe() %></b></span>
+                </div>
+                <% uniq_array << diagnosis[:content].to_s.html_safe() %>
+              <% end %>
+            <% end %>
+          <% end %>
+        </div>
+      <% end %>
+    <% end %>
+    <% if @ipdrecord.diagnosislist.where(is_disabled: false).try(:length) == 0 && @case_sheet.free_form_diagnoses.count == 0 %>
+      None
+    <% end %>
+  </div>
+</div>
+<div class="row mb20">
+  <div class="col-md-2">
+    Procedure :
+  </div>
+  <div class="col-md-9">
+    <% if @case_sheet.free_form_procedures.count > 0 %>
+      <div class="row" style="font-size:12px;">
+        <!-- <div class="col-md-12" style="text-decoration: underline;"><b>PROCEDURES</b></div> -->
+        <% if @case_sheet.free_form_procedures[@ipdrecord.id.to_s].present? %>
+          <% if @case_sheet.free_form_procedures[@ipdrecord.id.to_s][:content].present? && @case_sheet.free_form_procedures[@ipdrecord.id.to_s][:content] != "<br>" %>
+            <div class="col-md-12">
+              <span><b style="color: #333;"><%= @case_sheet.free_form_procedures[@ipdrecord.id.to_s][:content].to_s.html_safe() %></b></span>
+            </div>
+          <% end %>
+        <% else %>
+          <% uniq_array = [] %>
+          <% @case_sheet.free_form_procedures.each do |key, procedure| %>
+            <% if procedure[:content].present? && procedure[:content] != "<br>" %>
+              <% unless uniq_array.include?(procedure[:content].to_s.html_safe()) %>
+                <div class="col-md-12">
+                  <span><b style="color: #333;"><%= procedure[:content].to_s.html_safe() %></b></span>
+                </div>
+                <% uniq_array << procedure[:content].to_s.html_safe() %>
+              <% end %>
+            <% end %>
+          <% end %>
+        <% end %>
+      </div>
+    <% else %>
+      None
+    <% end %>
+  </div>
+</div>
+<div class="row mb20" style="margin-left: 193px"></div>
+<div class="row mb20 timer_row mb10">
+  <div class='col-md-2 '>
+    Patient Entry Time :
+  </div>
+  <div class='col-md-3 timer_field bootstrap-timepicker timepicker'>
+    <%= f.hidden_field :patient_entry_time, {class: "feed_time patient_entry_time", style: "margin-top:-2px;text-align:center;", readonly: "readonly"} %>
+    <input type="text" class="feed_time_view patient_entry_time surgery_timepicker" style="margin-top:-2px;text-align:center;" value="<% unless @operative_note.patient_entry_time.nil? %><%= @operative_note.patient_entry_time.in_time_zone(@time_zone).strftime("%I:%M %p") %><% end %>" />
+    <button class="btn btn-primary btn-xs set_time" style="padding: 0 7px;"><i class="fa fa-clock-o fa-lg"></i></button>
+  </div>
+  <div class="col-md-1"></div>
+  <div class='col-md-2 '>
+    Patient Exit Time :
+  </div>
+  <div class='col-md-3 timer_field bootstrap-timepicker timepicker'>
+    <%= f.hidden_field :patient_exit_time, {class: "feed_time patient_exit_time", style: "margin-top:-2px;text-align:center;", readonly: "readonly"} %>
+    <input type="text" class="feed_time_view patient_exit_time surgery_timepicker" style="margin-top:-2px;text-align:center;" value="<% unless @operative_note.patient_exit_time.nil? %><%= @operative_note.patient_exit_time.in_time_zone(@time_zone).strftime("%I:%M %p") %><% end %>" />
+    <button class="btn btn-primary btn-xs set_time" style="padding: 0 7px;"><i class="fa fa-clock-o fa-lg"></i></button>
+  </div>
+</div>
+
+<div class="row mb20 timer_row mb10">
+  <div class='col-md-2 '>
+    Anesthesia Start :
+  </div>
+  <div class='col-md-3 timer_field bootstrap-timepicker timepicker'>
+    <%= f.hidden_field :anesthesia_start_time, {class: "feed_time anesthesia_start_time", style: "margin-top:-2px;text-align:center;", readonly: "readonly"} %>
+    <input type="text" class="feed_time_view anesthesia_start_time surgery_timepicker" style="margin-top:-2px;text-align:center;" value="<% unless @operative_note.anesthesia_start_time.nil? %><%= @operative_note.anesthesia_start_time.in_time_zone(@time_zone).strftime("%I:%M %p") %><% end %>" />
+    <button class="btn btn-primary btn-xs set_time" style="padding: 0 7px;"><i class="fa fa-clock-o fa-lg"></i></button>
+  </div>
+  <div class="col-md-1"></div>
+  <div class='col-md-2 '>
+    Anesthesia End :
+  </div>
+  <div class='col-md-3 timer_field bootstrap-timepicker timepicker'>
+    <%= f.hidden_field :anesthesia_end_time, {class: "feed_time anesthesia_end_time", style: "margin-top:-2px;text-align:center;", readonly: "readonly"} %>
+    <input type="text" class="feed_time_view anesthesia_end_time surgery_timepicker" style="margin-top:-2px;text-align:center;" value="<% unless @operative_note.anesthesia_end_time.nil? %><%= @operative_note.anesthesia_end_time.in_time_zone(@time_zone).strftime("%I:%M %p") %><% end %>" />
+    <button class="btn btn-primary btn-xs set_time" style="padding: 0 7px;"><i class="fa fa-clock-o fa-lg"></i></button>
+  </div>
+</div>
+<div class="row mb20 timer_row mb10">
+  <div class='col-md-2 '>
+    Surgery Start :
+  </div>
+  <div class='col-md-3 timer_field bootstrap-timepicker timepicker'>
+    <%= f.hidden_field :surgery_start_time, {class: "feed_time surgery_start_time", style: "margin-top:-2px;text-align:center;", readonly: "readonly"} %>
+    <input type="text" class="feed_time_view surgery_start_time surgery_timepicker" style="margin-top:-2px;text-align:center;" value="<% unless @operative_note.surgery_start_time.nil? %><%= @operative_note.surgery_start_time.in_time_zone(@time_zone).strftime("%I:%M %p") %><% end %>" />
+    <button class="btn btn-primary btn-xs set_time" style="padding: 0 7px;"><i class="fa fa-clock-o fa-lg"></i></button>
+  </div>
+  <div class="col-md-1"></div>
+  <div class='col-md-2 '>
+    Surgery End :
+  </div>
+  <div class='col-md-3 timer_field bootstrap-timepicker timepicker'>
+    <%= f.hidden_field :surgery_end_time, {class: "feed_time surgery_end_time", style: "margin-top:-2px;text-align:center;", readonly: "readonly"} %>
+    <input type="text" class="feed_time_view surgery_end_time surgery_timepicker" style="margin-top:-2px;text-align:center;" value="<% unless @operative_note.surgery_end_time.nil? %><%= @operative_note.surgery_end_time.in_time_zone(@time_zone).strftime("%I:%M %p") %><% end %>" />
+    <button class="btn btn-primary btn-xs set_time" style="padding: 0 7px;"><i class="fa fa-clock-o fa-lg"></i></button>
+  </div>
+</div>

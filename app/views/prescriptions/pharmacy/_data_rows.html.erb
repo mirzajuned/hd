@@ -1,0 +1,72 @@
+<% prescription_list.try(:each) do |prescription| %>
+  <% patient = @patient_fields.find { |p| p[:id].to_s == prescription.patient_id.to_s } %>
+  <div class='row no_margin summary_pharmacy summary_pharmacy_clickable' data-store-id='<%= @inventory_store.try(:id).to_s %>' data-prescription-id='<%= prescription.id.to_s %>'>
+    <div class='no_padding text-left patient_name col-sm-5' style="overflow: hidden;white-space: nowrap; text-overflow: ellipsis;" title="<%= prescription.patient_name.to_s.upcase %>">
+      <% if patient.present? %>
+        <span title="<%= patient[:title] %>"><%= patient[:bang] ? "<b><i class='fa fa-exclamation' style='font-size: 14px;color:#FF8735;'></i>&nbsp;</b>".html_safe : '' %></span>
+      <% end %>
+      <span><b><%= Patient.find_by(id: prescription.patient_id).fullname.upcase %></b></span>
+    </div>
+
+    <div class="col-sm-3 no_padding" style="padding-right: 5%;">
+      <span class="label label-success"><%= prescription.try(:consultant_name).to_s.titleize %></span>
+    </div>
+
+    <div class="col-sm-2 no_padding" style="padding-right: 5%;">
+      <% @appointment_workflow = OpdClinicalWorkflow.find_by(appointment_id: prescription.appointment_id.to_s) %>
+      <% if @appointment_workflow.present? %>
+        <%# if @appointment_workflow.in_department == true %>
+          <%# if @appointment_workflow.department_id == '309935007' %>
+            <%# department_name = 'Ophthalmology Department' %>
+          <%# else %>
+            <%# department_name = Department.find_by(id: @appointment_workflow.department_id).name %>
+          <%# end %>
+          <%# user_name = department_name.to_s.titleize %>
+        <%# else %>
+          <% if ['away','complete'].include?@appointment_workflow.state %>
+            <% user_name = @appointment_workflow.state.to_s.titleize %>
+          <% elsif @appointment_workflow.user_id.present? %>
+            <% if @appointment_workflow.with_user_role == "doctor" %>
+              <% user_name = "Dr. #{@appointment_workflow.with_user}".titleize %>
+            <% else %>
+              <% user_name = "#{@appointment_workflow.with_user}".titleize %>
+            <% end %>
+          <% end %>
+        <%# end %>
+        <span class="label label-success"><%= user_name.to_s.titleize %></span>
+      <% elsif prescription.admission_id.present? %>
+        <% user_name = prescription.author&.fullname %>
+      <span class="label label-success"><%= user_name.to_s.titleize %></span>
+      <% end %>
+    </div>
+
+    <div class="col-sm-1 no_padding text-center">
+      <% if prescription.converted.nil? %>
+        <span class="label label-default">Advised</span>
+      <% else %>
+        <% if prescription.converted == true %>
+          <span class="label label-info">Converted</span>
+        <% else %>
+          <span class="label label-danger">Not Converted</span>
+        <% end %>
+      <% end %>
+      <% if current_facility.specialty_ids.count > 1 %>
+        <% if @appointment_workflow.present? %>
+          <% specialtyname = @appointment_workflow.specialty_name %>
+        <% end %>
+        <% if specialtyname.blank? && prescription.admission.present? %>
+          <% specialtyname = Specialty.find_by(id: prescription.admission.specialty_id).name %>
+        <% end %>
+        <% if specialtyname.blank? && prescription.specialty_id.present? %>
+          <% specialtyname = Specialty.find_by(id: prescription.specialty_id).name %>
+        <% end %>
+        <% if specialtyname.present? %>
+          <br/>
+          <div class="specialty_section" style="margin-top: 4px;margin-bottom: -1px;">
+            <span class="label label-info" ><%= specialtyname %></span>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+<% end %>

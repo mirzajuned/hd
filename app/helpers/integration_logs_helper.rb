@@ -1,0 +1,2 @@
+module IntegrationLogsHelper
+end

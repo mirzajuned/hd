@@ -1,0 +1,147 @@
+
+//for calculating total price of rows
+var total_price = jQuery(".cash_register_fields_group").find('.total_price');
+
+  for (var i = 0; i < total_price.length; i++) {
+    calculate_total_price(total_price[i]);
+  }
+
+  function calculate_total_price(row) {
+    var unit_price = jQuery(row).parents('.register_row').find('.unit_price').val();
+    var quant = jQuery(row).parents('.register_row').find('.total_units').val();
+    $(row).val(unit_price * quant)
+  }
+
+
+//for creating new cash_register_template
+jQuery(".cash_register_fields_group").on('click',"#add_cash_register_item",function(e){
+
+  var total_rows = jQuery("#total_cash_register_detail_row_count").val()
+
+  var single_row_html = '<div class="row form-group">' +
+      '<div class="col-sm-4">' +
+      '<input class="form-control services-label-validation" id="cash_register_template_template_details_attributes_row_count_label" name="cash_register_template[template_details][row_count][label]" type="text">' +
+      '</div>' +
+      '<div class="col-sm-2"><input class="form-control services-unit-price-validation" id="cash_register_template_template_details_attributes_row_count_unit_price" name="cash_register_template[template_details][row_count][unit_price]" type="text">' +
+      '</div>' +
+      '<div class="col-sm-2"><input class="form-control services-total-units-validation" id="cash_register_template_template_details_attributes_row_count_total_units" min="1" name="cash_register_template[template_details][row_count][total_units]" type="number">' +
+      '</div>' +
+      '<div class="col-sm-2"><input class="form-control total" disabled="disabled" id="total_row_count" name="total_row_count" type="text" value="0">' +
+      '</div>' +
+      '<div class="col-sm-1"><span id="add_cash_register_item" class="btn btn-sm btn-primary btn-square glyphicon glyphicon-plus-sign add-icon">' +
+      '</span>' +
+      '</div>' +
+      '<div class="col-sm-1"><span id="remove_cash_register_item_row_count" class="btn btn-sm btn-primary btn-danger glyphicon glyphicon-remove remove-icon">' +
+      '</span>' +
+      '</div>' +
+      '</div>'
+
+  single_row_html = single_row_html.replace(/row_count/g,total_rows)
+  jQuery("#total_cash_register_detail_row_count").val(+total_rows+1)
+
+  jQuery(single_row_html).appendTo(".cash_register_fields_group")
+
+   if ($('.cash_register_fields_group').find('.add-icon').length > 1){
+      $('.cash_register_fields_group').find('.remove-icon').show()
+    }
+})
+
+
+jQuery("body").on('click',"[id^=remove_cash_register_item_]",function(e){
+
+  var id = e.currentTarget.id
+
+  jQuery("#"+id).parent().parent().remove()
+
+   if ($('.cash_register_fields_group').find('.remove-icon').length == 1){
+      $('.cash_register_fields_group').find('.remove-icon').hide()
+    }
+})
+
+jQuery(".cash_register_fields_group").on('keyup',"[id^=cash_register_template_template_details_attributes_][id$=unit_price]",calculate_total_cash_register_template)
+jQuery(".cash_register_fields_group").on('keyup',"[id^=cash_register_template_template_details_attributes_][id$=total_units]",calculate_total_cash_register_template)
+jQuery(".cash_register_fields_group").on('change',"[id^=cash_register_template_template_details_attributes_][id$=total_units]",calculate_total_cash_register_template)
+
+
+
+
+function calculate_total_cash_register_template(e){
+  var id = e.currentTarget.id
+  var row_count = id.replace("cash_register_template_template_details_attributes_","")
+  row_count = row_count.replace("_unit_price","")
+  row_count = row_count.replace("_total_units","")
+  var total_price = (jQuery("#cash_register_template_template_details_attributes_"+row_count+"_total_units").val() * jQuery("#cash_register_template_template_details_attributes_"+row_count+"_unit_price").val())
+  jQuery("#total_"+row_count).val(total_price)
+}
+
+function cash_register_template_autocomplete_bind(){
+  jQuery("[id^=cash_register_template_template_details_attributes_][id$=label]").autocomplete({
+    minLength: 2,
+    source: function(request, response) {
+      jQuery.ajax({
+        dataType: "json",
+        type : 'get',
+        url: '/services/findmatchingservice',
+        data: {q: request.term, remote: "true" },
+        success: function(data) {
+          response( data)
+        },
+        error: function(data) {
+          //jQuery('#searchpatientkeyword').removeClass('ui-autocomplete-loading');
+        }
+      })
+    },
+    select: function( event, ui ) {
+      var params = { id: ui.item["id"] }
+      jQuery.ajax({
+        type: "GET",
+        dataType: "script",
+        url: "/services/populateservicedetails",
+        data: {populateservicedetails: params, remote: "true",target_id: event.target.id,prefix: "cash_register_template_template_details_attributes_"}
+      })
+    },
+    close: function() {
+
+    }
+  })
+}
+
+cash_register_template_autocomplete_bind()
+
+
+function invoice_page() {
+
+  $("#new_cash_register_template").validate({
+
+    errorElement: 'div',
+    errorPlacement: function (error, element) {
+      error.insertAfter(element);
+    }
+  });
+
+  $("#edit_cash_register").validate({
+
+    errorElement: 'div',
+    errorPlacement: function (error, element) {
+      error.insertAfter(element);
+    }
+  });
+
+}
+invoice_page()
+
+
+
+//==== custom validation neccessary for nested attributes -anoop
+
+// alias required to cRequired with new message
+$.validator.addMethod("ItemRequired", $.validator.methods.required, "Item cannot be blank");
+$.validator.addMethod("NameRequired", $.validator.methods.required, "Name cannot be blank");
+$.validator.addMethod("UnitRequired", $.validator.methods.required, "Unit price cannot be blank");
+$.validator.addMethod("QuantityRequired", $.validator.methods.required, "Quantity cannot be blank");
+$.validator.addMethod("INumber", $.validator.methods.number, "Please enter a number");
+
+$.validator.addClassRules("services-label-validation", { ItemRequired: true});
+$.validator.addClassRules("cash-register-name-validation", { NameRequired: true});
+$.validator.addClassRules("services-unit-price-validation", { UnitRequired: true, INumber: true });
+$.validator.addClassRules("services-total-units-validation", { QuantityRequired: true, INumber: true });

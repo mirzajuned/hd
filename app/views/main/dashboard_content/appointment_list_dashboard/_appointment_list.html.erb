@@ -1,0 +1,109 @@
+<table class="table table-success mb30">
+  <thead>
+    <tr>
+      <th style="font-size:12px;">#</th>
+      <th style="font-size:12px;">Patient ID</th>
+      <th style="font-size:12px;">Patient Name</th>
+      <th style="font-size:12px;">Scheduled Time</th>
+      <th style="font-size:12px;"></th>
+    </tr>
+  </thead>
+  <tbody>
+  <!-- Doctor &\| Admin Filtered by UserID.Rest By FacilityID -->
+    <% if @facility == "all" %>
+      <% @fac_list = current_user.organisation.facilities.where(is_active: true) %>
+      <% if current_user.has_role?(:doctor) %>
+        <% @appointment_list_today = Appointment.where(appointmentstatus: 416774000,  :doctor => current_user.id, :appointmentdate.gte => @current_date, :appointmentdate.lt => @current_date + 1) %>
+      <% else %>
+        <% if @user.nil? %>
+          <% @appointment_list_today = Appointment.where(appointmentstatus: 416774000, :facility_id.in =>  current_user.facility_ids, :appointmentdate.gte => @current_date, :appointmentdate.lt => @current_date + 1) %>
+        <% else %>
+
+          <% @appointment_list_today = Appointment.where(appointmentstatus: 416774000,  :appointmentdate.gte => @current_date, :appointmentdate.lt => @current_date + 1, :doctor => @user.id.to_s) %>
+        <% end %>
+      <% end %>
+    <%else%>
+      <% @fac_list = [@facility] %>
+      <% if current_user.has_role?(:doctor) %>
+        <% @appointment_list_today = Appointment.where(appointmentstatus: 416774000, :facility_id => @facility.id.to_s, :doctor => current_user.id, :appointmentdate.gte => @current_date, :appointmentdate.lt => @current_date + 1) %>
+      <% else %>
+        <% if @user.nil? %>
+          <% @appointment_list_today = Appointment.where(appointmentstatus: 416774000, :facility_id => @facility.id.to_s, :appointmentdate.gte => @current_date, :appointmentdate.lt => @current_date + 1) %>
+        <% else %>
+
+          <% @appointment_list_today = Appointment.where(appointmentstatus: 416774000, :facility_id => @facility.id.to_s, :appointmentdate.gte => @current_date, :appointmentdate.lt => @current_date + 1, :doctor => @user.id.to_s) %>
+        <% end %>
+      <% end %>
+    <%end%>
+    <% if current_user.has_role?(:doctor) %>
+      
+    <% else %>
+      <% if @user.nil? %>
+        
+      <% else %>
+        
+      <% end %>
+    <% end %>
+  <!-- Doctor &\| Admin Filtered by UserID.Rest By FacilityID -->
+  <!-- If Appointment count is more than 0 show "td" -->
+    <% if @appointment_list_today.count > 0 %>
+      <% @fac_list.each do |fac| %>
+        <% if @fac_list.count > 1 && @appointment_list_today.where(facility_id: fac.id.to_s).count > 0 %>
+          <tr>
+            <td style="font-size:12px;text-align:center;background-color:#eee;color:#000;font-weight:bold;" colspan="5"><%= fac.name.upcase %></td>
+          </tr>
+        <% end %>
+        <% @appointment_list_today.where(facility_id: fac.id.to_s).order(start_time: :desc).limit(20).each.with_index do |appointment_list_today,i| %>
+          <% @patient = Patient.find_by(:id => appointment_list_today.patient_id) %>
+          <tr>
+            <td style="font-size:12px;"><%= i+1 %></td>
+            <td style="font-size:12px;"><% @abc = PatientIdentifier.find_by(patient_id: appointment_list_today.patient_id).try(:patient_org_id).split("-") %><%= @abc[1] %>-<%= @abc[2] %></td>
+            <td style="font-size:12px;"><%= @patient.fullname %></td>
+            <td style="font-size:12px;"><%= appointment_list_today.start_time.try(:strftime, '%I:%M %p') %></td>
+            <td style="font-size:12px;" class="table-action">
+              <%@pat_timeline = PatientTimeline.where(patient_id: @patient.id,encountertype: "OPD").order(encounterdate: :desc)%>
+              <%# @opdrecord = OpdRecord.where(appointmentid: appointment_list_today.id.to_s).order(created_at: :desc) %>
+              <% if @pat_timeline.count > 0 %>
+                <%= link_to opd_records_view_opd_summary_path(opdrecordid: @pat_timeline[0].record_id.to_s, patientid: appointment_list_today.patient_id, appointmentid: appointment_list_today.id, :specality => @pat_timeline[0].specalityid, :templatetype => @pat_timeline[0].templatetype), :class => "timeline-viewsummary-html hg-tooltip", :id => "timeline-viewsummary-html", :title => "View Latest Template", :data => {:remote => true, 'toggle' =>  "tooltip", 'target' =>'#templates-modal'} do %><i class="fa fa-file-alt"></i><% end %>
+              <% else %>
+                <span href="#" style="cursor: default;"><i class="fa fa-file-alt" style="color:#fff;"></i></span>
+              <% end %>
+              <%= link_to patients_summary_path(:patientid => @patient.id, :appointment_id => appointment_list_today.id, :opd => Global.ehrcommon.opd.id), :class => "patientsummary ps", :id => "patientsummary hg-tooltip ps", :title => "Patient Summary", :data => {:remote => true, :toggle => "tooltip", :placement => "bottom"} do %><i class="fa fa-chevron-right"></i><% end %>
+            </td>
+          </tr>
+        <% end %>
+      <% end %>
+    <!-- If Appointment count is less than 0 dont show "td" -->
+    <%else%>
+      <td></td>
+      <td>No Appointments</td>
+    <%end%>
+  <!-- AppointmentList Ends -->
+  </tbody>
+</table>
+<div class="pull-left" style="margin-top:-20px;">
+</div>
+<div class="pull-right" style="margin-top:-20px;">
+  <%if @facility == "all" %>
+  <%else%>
+    <% if @user.nil? %>
+    <% if @appointment_list_today.count > 0 %>
+      <%= link_to opd_appointments_printopdappointmentlist_path(:facility_id => @facility.id.to_s, :appointmentdate => @current_date, :organisation => current_user.organisation, :format => :pdf), :class => "btn btn-sm btn-darkblue", :target => "_blank" do %> <i class="fa fa-print"></i> <%=@facility.name%> <% end %>
+    <% end %>
+    <% else %>
+      <% if @appointment_list_today.count > 0 %>
+        <%= link_to opd_appointments_printopdappointmentlist_path(:facility_id => @facility.id.to_s, :appointmentdate => @current_date, :organisation => current_user.organisation,:doctor => @user.id, :format => :pdf), :class => "btn btn-sm btn-darkblue", :target => "_blank" do %> <i class="fa fa-print"></i> <%=@user.fullname%> <% end %>
+      <% end %>
+    <% end %>
+  <% end %>
+</div>
+
+<style type="text/css">
+  .patientsummary {
+    color: #636e7b;
+  }
+</style>
+
+<script type="text/javascript">
+  $(".hg-tooltip").tipsy();
+</script>

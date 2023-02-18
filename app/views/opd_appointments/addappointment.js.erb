@@ -1,0 +1,106 @@
+jQuery(".opdappointmentvisittype").hide()
+jQuery(".signuppatientform").hide()
+jQuery(".showpatient").html("<%= escape_javascript(render 'opd_appointments/showpatient') %>")
+jQuery('#appointments-schedule-table').dataTable().fnClearTable()
+jQuery(".appointment-list-day").html("<%= escape_javascript(render 'opd_appointments/appointmentsday') %>")
+jQuery('#appointments-schedule-table').dataTable({
+	"bDestroy": true,
+	"sPaginationType": "full_numbers",
+	"sDom": '<"top"<"buttonPlaceholder"><"mb10">fl<"clear">>rt<"bottom"ip<"clear">>',
+	"aoColumns" : [
+                    {"sWidth": "5%"},
+                    {"sWidth": "10%"},
+                    {"sWidth": "25%"},
+                    {"sWidth": "5%"},
+                    {"sWidth": "5%"},
+                    {"sWidth": "15%"},
+                    {"sWidth": "10%"},
+                    {"sWidth": "20%"}
+    	    ],
+   	"oLanguage": {
+            "sZeroRecords": "No appointments found",
+            "sLoadingRecords": "Please wait - loading appointments..."
+    }
+})
+jQuery('#appointments-schedule-table').removeClass('display').addClass('table table-primary table-striped table-bordered')
+jQuery("div.buttonPlaceholder").append("<%= escape_javascript(render 'opd_appointments/appointmentcontrols') %>")
+jQuery("div-print-opd-appointment-list").append("<%= escape_javascript(render 'opd_appointments/printopdappointmentlistcontrols') %>")
+
+jQuery("select").chosen({
+  'min-width': '100px',
+  'white-space': 'nowrap',
+  disable_search_threshold: 10
+})
+jQuery.datepicker._gotoToday = function(id) {
+    jQuery(id).datepicker('setDate', new Date())
+    var params = {date: moment(new Date()).format('DD/MM/YYYY')}
+	jQuery.ajax({
+          type: "GET",
+          dataType: "script",
+          url: "/opd_appointments/showday",
+          data: {datepicker: params, remote: "true"}
+    })
+}
+var select_templates = []
+jQuery(".appointment-list-checkbox").on("change", stateChange)
+function stateChange(e){    
+    if(e.currentTarget.checked){
+      if(jQuery.inArray(e.currentTarget.defaultValue, select_templates) == -1) {
+          select_templates.push(e.currentTarget.defaultValue)
+      } 
+    }
+    else {
+        select_templates.splice( jQuery.inArray(e.currentTarget.defaultValue, select_templates), 1 )
+    }
+    jQuery(".appointment-checkedlist").val(select_templates)
+    if(select_templates.length > 0) {
+        jQuery('.multiple-appointment-reschedule').show()
+        jQuery('.multiple-appointment-cancel').show()
+    } else {
+      jQuery('.multiple-appointment-reschedule').hide()
+      jQuery('.multiple-appointment-cancel').hide()
+    }
+}
+jQuery(".appointment-checkboxall").click(function(){
+    if(jQuery(".appointment-checkboxall").is(':checked')) {
+        jQuery('.appointment-list-checkbox').prop('checked', true).trigger('change')
+        jQuery('.multiple-appointment-reschedule').show()
+        jQuery('.multiple-appointment-cancel').show()
+    } else {
+        jQuery('.appointment-list-checkbox').prop('checked', false).trigger('change')
+        jQuery('.multiple-appointment-reschedule').hide()
+        jQuery('.multiple-appointment-cancel').hide()
+    }
+})
+jQuery('.multiple-appointment-reschedule').hide()
+jQuery('.multiple-appointment-cancel').hide()
+jQuery('.multiple-appointment-reschedule').on("click", function() {
+    var params = {appointmentidsarray: jQuery('.appointment-checkedlist').val() }
+        jQuery.ajax({
+            type: "GET",
+            dataType: "script",
+            url: "/opd_appointments/reschedulemultiple",
+            data: {appointment: params, remote: "true" }
+        })
+})
+jQuery('.multiple-appointment-cancel').on("click", function() {
+    var params = {appointmentidsarray: jQuery('.appointment-checkedlist').val() }
+        jQuery.ajax({
+            type: "GET",
+            dataType: "script",
+            url: "/opd_appointments/cancelmultiple",
+            data: {appointment: params, remote: "true" }
+        })
+})
+jQuery('.print-opd-appointment-list').on("click", function() {
+    jQuery.ajax({
+        type: "GET",
+        dataType: "html",
+        url: "/opd_appointments/printopdappointmentlist",
+        data: {remote: "true" }
+    }).done(function(data) {
+        var win = window.open("", "OPD Print Window", "width=900, height=500");
+        win.document.write(data);
+        win.close();
+    })
+})

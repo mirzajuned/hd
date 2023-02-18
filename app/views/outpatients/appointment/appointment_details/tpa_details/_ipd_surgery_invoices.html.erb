@@ -1,0 +1,130 @@
+<div class="col-sm-6">
+  <div style="display: inline;">
+    <% if @invoices.count < 1 %>
+      <span>Receipt Amount : <label class="label label-success"> No Receipt Found </label></span>
+    <% else %>
+      <% maintotalinvoice =  @invoices.pluck(:net_amount) %>
+      <span>Receipt Amount : <label class="label label-success"><i class="fa fa-rupee"></i> <%= (maintotalinvoice.inject(0){|sum,x| sum + x }).to_i %> </label></span>
+    <% end %>
+  </div>
+</div>
+<div class="col-sm-6">
+  <div class="btn-group pull-right" style="margin-bottom: 0; margin-left: 10px;">
+    <div class="btn-group">
+      <button type="button" class="btn btn-xs btn-success dropdown-toggle opd-invoice" data-toggle="dropdown">
+        <i class="fa fa-rupee"></i> Receipt
+      </button>
+      <ul class="dropdown-menu dropdown-menu-right" role="menu" aria-labelledby="invoice-print-dropdown">
+        <!-- Stored Receipts -->
+        <% @invoice_templates.each do |invoice_template| %>
+          <li style="text-align:center;">
+            <%= link_to new_invoice_ipd_path(:admissionid => @admission.id, :typeid => Global.ehrcommon.ipd.id, :type => Global.ehrcommon.ipd.abbr,:invoice_template => invoice_template[:template_details]), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#invoice-modal'} do %><%= invoice_template[:name]%><% end %>
+          </li>
+        <% end %>
+        <!-- Free Receipt -->
+        <li style="text-align:center;">
+          <%= link_to new_invoice_ipd_path(:admissionid => @admission.id, :typeid => Global.ehrcommon.ipd.id, :type => Global.ehrcommon.ipd.abbr), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#invoice-modal'} do %>Free Receipt<% end %>
+        </li>
+        <!-- Advance Receipt -->
+        <li style="text-align:center;">
+          <%= link_to new_invoice_advance_payment_path(:appointment_id => @admission.id, :type => Global.ehrcommon.ipd.abbr, patient_id: @admission.patient_id), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#invoice-modal'} do %> Advance Receipt<% end %>
+        </li>
+        <!-- Refund Receipt -->
+<!--        <li style="text-align:center;">-->
+<!--          <%#= link_to new_invoice_refund_payment_path(:appointment_id => @admission.id, :type => Global.ehrcommon.ipd.abbr, patient_id: @admission.patient_id), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#invoice-modal'} do %> Refund Receipt<%# end %>-->
+<!--        </li>-->
+        <!-- Old Receipts -->
+        <% if @past_invoices.size > 0 %>
+          <li class="old_invoice_ss"><span>Previous Receipts</span></li>
+          <% @past_invoices.newest_invoice_first.each do |patient_pastinvoice| %>
+            <li style="text-align:center;">
+              <%= link_to invoice_opd_path(:id => patient_pastinvoice.id), :data => {:remote => true} do %><%= patient_pastinvoice.created_at.strftime("%d %b'%y at %I:%M %p") %><% end %>
+            </li>
+          <% end %>
+        <% end %>
+        <!-- All Receipts End -->
+      </ul>
+    </div>
+
+    <div class="btn-group">
+      <button type="button" class="btn btn-xs btn-info dropdown-toggle opd-cash-register" title="Cash Register" data-toggle="dropdown">
+        <i class="fa fa-rupee"></i> Cash Register
+      </button>
+      <ul class="dropdown-menu cash-register-dropdown" role="menu" aria-labelledby="old-invoice-print-dropdown" style="left: -55px;">
+        <% @cash_register_templates.each do |cash_register_template| %>
+          <li style="text-align:center;">
+            <%= link_to new_cash_register_path(appointmentid: @admission.id, :typeid => Global.ehrcommon.ipd.id, :type => Global.ehrcommon.ipd.abbr,:cash_register_template => cash_register_template[:template_details]), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#cash-register-modal'} do %><%= cash_register_template[:name]%><% end %>
+          </li>
+        <% end %>
+        <li style="text-align:center;">
+          <%= link_to new_cash_register_path(appointmentid: @admission.id, patientid: @admission.patient_id, typeid: Global.ehrcommon.ipd.id, type: Global.ehrcommon.ipd.abbr), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#cash-register-modal'} do %>Cash Register<% end %>
+        </li>
+
+         <!-- Old Cash registers -->
+        <% if @past_cash_registers.size > 0 && false %>
+          <li class="old_invoice_ss"><span>Previous Cash registers</span></li>
+          <% @past_cash_registers.newest_register_first.each do |patient_pastcashregister| %>
+            <li style="text-align:center;">
+              <%= link_to cash_register_path(:id => patient_pastcashregister.id), :data => {:remote => true} do %><%= patient_pastcashregister.created_at.strftime("%d %b'%y at %I:%M %p") %><% end %>
+            </li>
+          <% end %>
+        <% end %>
+      </ul>
+    </div>
+
+  </div><!-- btn-group -->
+</div>
+<% if @advance_payments.count > 0 %>
+  <div class="row no_margin">
+    <div class="col-sm-12 mb10">
+      <% advance_payment_total = @advance_payments.group_by(&:currency_symbol) %>
+      <span>Advance Payment (Remaining Adv. Amt.):
+          <label class="label label-warning">
+            <% counter = 0 %>
+            <% advance_payment_total.each do |currency_symbol, advance_payments| %>
+              <% if counter > 0 %>&nbsp;|&nbsp;<% end %> <%= currency_symbol %><%= (advance_payments.map { |va| va[:amount].to_f.try(:round, 3) }.sum).try(:round, 3) %> (<%= (advance_payments.map { |va| va[:amount_remaining].to_f }.sum).to_f.try(:round, 3) - (advance_payments.map { |va| va[:refund_amount].to_f }.sum).to_f.try(:round, 3) %> )
+              <% counter += 1 %>
+            <% end %>
+          </label>
+        </span>
+    </div>
+    <!-- <div class="col-sm-8 col-md-offset-4 text-right">
+      <p style="font-size:10px;"><b style="font-size:14px;">Note:</b> This is Amount Which Is Not Yet Been Adjusted Or Refunded</p>
+    </div> -->
+    <% @advance_payments.each do |advance_payment| %>
+      <div class="col-sm-4 mb3">
+        <% if advance_payment.is_refunded %>
+          <%= link_to invoice_advance_payment_path(id: advance_payment.id), class: 'btn btn-xs btn-default', data: { :remote => true, 'toggle' => 'modal', 'target' => '#invoice-modal' } do %><%= advance_payment.currency_symbol %><%= advance_payment.amount.try(:round, 3) %>(<strike> <%= advance_payment.currency_symbol %><%= advance_payment.amount_remaining.try(:round, 3) %> </strike>) on <%= advance_payment.created_at.strftime("%d %b'%y") %><% end %>
+        <% else %>
+          <%= link_to invoice_advance_payment_path(id: advance_payment.id), class: 'btn btn-xs btn-default', data: { :remote => true, 'toggle' => 'modal', 'target' => '#invoice-modal' } do %><%= advance_payment.currency_symbol %><%= advance_payment.amount.try(:round, 3) %> (<%= advance_payment.currency_symbol %><%= advance_payment.amount_remaining.try(:round, 3) %>) on <%= advance_payment.created_at.strftime("%d %b'%y") %><% end %>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+<% end %>
+<hr>
+<% if @refund_payments.count > 0 %>
+  <div class="row no_margin">
+    <div class="col-sm-12 mb10">
+      <% refund_payment_total = @refund_payments.group_by(&:currency_symbol) %>
+      <span>Refund Payment :
+          <label class="label label-warning">
+            <% counter = 0 %>
+            <% refund_payment_total.each do |currency_symbol, refund_payments| %>
+              <% if counter > 0 %>&nbsp;|&nbsp;<% end %> <%= currency_symbol %><%= (refund_payments.map { |va| va[:amount].to_f }.sum).try(:round, 3) %>
+              <% counter += 1 %>
+            <% end %>
+          </label>
+        </span>
+    </div>
+    <!-- <div class="col-sm-8 col-md-offset-4 text-right">
+      <p style="font-size:10px;"><b style="font-size:14px;">Note:</b> This is Amount Which Is Not Yet Been Adjusted Or Refunded</p>
+    </div> -->
+    <% @refund_payments.each do |refund_payment| %>
+      <div class="col-sm-4 mb3">
+        <%= link_to invoice_refund_payment_path(id: refund_payment.id), class: 'btn btn-xs btn-default', data: { :remote => true, 'toggle' => 'modal', 'target' => '#invoice-modal' } do %><%= refund_payment.currency_symbol %><%= refund_payment.amount.try(:round, 3) %> on <%= refund_payment.created_at.strftime("%d %b'%y") %><% end %>
+      </div>
+    <% end %>
+  </div>
+<% end %>
+<hr>

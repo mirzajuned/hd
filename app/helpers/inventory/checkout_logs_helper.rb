@@ -1,0 +1,2 @@
+module Inventory::CheckoutLogsHelper
+end

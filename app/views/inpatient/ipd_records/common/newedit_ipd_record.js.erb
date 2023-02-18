@@ -1,0 +1,176 @@
+$("#ipdrecord-modal").html("<%= escape_javascript(render 'inpatient/ipd_records/common/newedit_ipd_record') %>")
+$("#ipdrecord-modal").modal("show")
+<% unless @template_type == "wardnote" %>
+  <% Global.send("ipd").send("#{@template_type}").js.each do |ipd_record_specality_template_js| %>
+    <%= render partial: "#{ipd_record_specality_template_js}" %>
+  <% end %>
+<% end %>
+
+
+
+$("#correct_patient").on("click", function(e){
+  child = document.getElementById("inpatient_ipd_record[correct_patient]-error")
+  if (child != null) {child.remove()}
+});
+
+
+<%= render partial: 'templates/common/js/constants'%>
+<%= render partial: 'templates/common/js/common_functions'%>
+<%= render partial: 'inpatient/ipd_records/diagnosis_table_append'%>
+$('tbody').on('click', "a[name*='removediagnosisbutton']", function() {
+    jQuery(this).parents('.diagnosislist').remove();
+});
+
+$(".select-opdrecord").on("change",function(){
+    var opdpatient = $(".select-opdrecord option:selected").val()
+    var opdpatientarray =  opdpatient.split("_")
+    var opdrecord_id = opdpatientarray[0]
+    var patientid = opdpatientarray[1]
+    $.ajax({
+
+          url: "/inpatient/ipd_records/get_opd_data",
+          dataType: 'json',
+          data: {
+              opdrecord_id: opdrecord_id,
+              patientid: patientid,
+              admission_id: "<%= @admission.id.to_s%>",
+              templatetype: "admissionnote",
+
+          },
+          success: function(res){
+              var fullhistory = ''
+              var full_r_anterior = ''
+              var full_l_anterior = ''
+              var opthal_inv = ''
+              var radio_inv = ''
+              var lab_inv = ''
+              $(".selected_opdrecord").val(res.id)
+              for(i=0; i < res.history.length; i++){
+                  fullhistory += res.history[i]+"\n"
+              }
+              $(".r_hpi").text(fullhistory)
+              $(".r_refraction").text(res.r_refraction);
+              $(".l_refraction").text(res.l_refraction);
+              $(".r_iop").text(res.r_iop);
+              $(".l_iop").text(res.l_iop);
+              $(".r_appendages").text(res.r_appendages);
+              $(".l_appendages").text(res.l_appendages);
+              for(i=0; i < res.r_anterior_segment.length; i++){
+                  full_r_anterior += res.r_anterior_segment[i]+"\n"
+              }
+              for(i=0; i < res.l_anterior_segment.length; i++){
+                  full_l_anterior += res.l_anterior_segment[i]+"\n"
+              }
+              $(".r_anterior").text(full_r_anterior);
+              $(".l_anterior").text(full_l_anterior);
+              $(".r_posterior").text(res.r_posterior_segment);
+              $(".l_posterior").text(res.l_posterior_segment);
+              $(".r_eom").text(res.r_eom);
+              $(".l_eom").text(res.l_eom);
+              $(".first_opd_visit").val(res.encounterdate);
+              for(i=0; i < res.investigation["ophthal"].length; i++){
+                  opthal_inv += res.investigation["ophthal"][i]+"\n"
+              }
+              for(i=0; i < res.investigation["radio"].length; i++){
+                  radio_inv += res.investigation["radio"][i]+"\n"
+              }
+              for(i=0; i < res.investigation["lab"].length; i++){
+                  lab_inv += res.investigation["lab"][i]+"\n"
+              }
+              $(".investigation").text(opthal_inv+radio_inv+lab_inv);
+              if(res.department == "orthopedics"){
+                  console.log(res.freeform)
+                  $(".history").text(res.freeform["history"].replace(/(<([^>]+)>)/g, "").replace(/&nbsp;/gi,''))
+                  $(".examination").text(res.freeform["examination"].replace(/(<([^>]+)>)/g, "").replace(/&nbsp;/gi,''))
+                  $(".diagnosis").text(res.freeform["diagnosis"].replace(/(<([^>]+)>)/g, "").replace(/&nbsp;/gi,''))
+                  $(".procedure").text(res.freeform["procedure"].replace(/(<([^>]+)>)/g, "").replace(/&nbsp;/gi,''))
+                  $(".investigation").text(res.freeform["investigation"].replace(/(<([^>]+)>)/g, "").replace(/&nbsp;/gi,''))
+              }
+              $.ajax({
+
+                  url: "/inpatient/ipd_records/get_opd_data",
+                  dataType: 'script',
+                  data: {
+                      opdrecord_id: opdrecord_id,
+                      patientid: patientid,
+                      admission_id: "<%= @admission.id.to_s%>",
+                      templatetype: "admissionnote",
+
+                  },
+                  success: function(res){
+                  },
+                  error: function(err){
+                  }
+              })
+
+          },
+          error: function(err){
+          }
+    })
+});
+
+//function ipdrecord_form() {
+//
+//  $("#ipdrecord_form").validate({
+//    rules: {
+//      "inpatient_ipd_record[correct_patient]": {
+//        required: true,
+//      },
+//
+//      "inpatient_ipd_record[otchecklist_comments]": {
+//        required: true,
+//      },
+//    },
+//    messages: {
+//      "inpatient_ipd_record[correct_patient]": {
+//        required: "Please check the correct patient."
+//      },
+//      "inpatient_ipd_record[otchecklist_comments]": {
+//        required: "Please comment."
+//      },
+//    },
+//  });
+//}
+//ipdrecord_form()
+
+//$('#operativeWizard')
+//// Call the wizard plugin
+//    .wizard()
+//
+//    // Triggered when clicking the Next/Prev buttons
+//    .on('actionclicked.fu.wizard', function(e, data) {
+//      var fv         = $('#ipdrecord_form').data('validate'), // FormValidation instance
+//          step       = data.step,                              // Current step
+//      // The current step container
+//          $container = $('#ipdrecord_form').find('.step-pane[data-step="' + step +'"]');
+//
+//      // Validate the container
+//      fv.validateContainer($container);
+//
+//      var isValidStep = fv.isValidContainer($container);
+//      if (isValidStep === false || isValidStep === null) {
+//        // Do not jump to the target panel
+//        e.preventDefault();
+//      }
+//    })
+//
+//    // Triggered when clicking the Complete button
+//    .on('finished.fu.wizard', function(e) {
+//      var fv         = $('#ipdrecord_form').data('validate'),
+//          step       = $('#operativeWizard').wizard('selectedItem').step,
+//          $container = $('#ipdrecord_form').find('.step-pane[data-step="' + step +'"]');
+//
+//      // Validate the last step container
+//      fv.validateContainer($container);
+//
+//      var isValidStep = fv.isValidContainer($container);
+//      if (isValidStep === true) {
+//        // Uncomment the following line to submit the form using the defaultSubmit() method
+//        // fv.defaultSubmit();
+//
+//        // For testing purpose
+//        $('#thankModal').modal();
+//      }
+//    });
+
+

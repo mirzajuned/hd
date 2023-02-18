@@ -1,0 +1,51 @@
+<% if @returns.length > 0 %>
+  <% @returns.each do |refund| %>
+    <tr id="<%= refund.id %>" class="inventory-list-row font_<%=refund.is_canceled%>">
+      <td style="font-size: 10px; color: #17a08c;" class="col-md-3 font_<%=refund.is_canceled%>"><%= refund.return_date %>&nbsp;&nbsp;|&nbsp;&nbsp;<%= refund.return_time&.strftime("%I:%M%p") %></td>
+      <td style="" class="col-md-3"><b><%= refund.recipient %></b></td>
+      <td class="col-md-2"><b><%= refund.note.try(:capitalize) %></b></td>
+      <td class="col-md-2"><b><%= refund.total_cost %></b></td>
+      <% if refund.status == "Pending" %>
+        <% if Authorization::PolicyHelper.verification(current_user.id ,"HGP-100-109-101") %>
+          <td class="col-md-2"><button type="button" class=" btn btn-primary btn-xs receive-items" id="<%= refund.id %>" title="Receive Items">Receive</button></td>
+        <% else %>
+          <td class="col-md-2"><button type="button" class=" btn btn-primary btn-xs disabled" style="pointer-events: all" title="Not Authorized">Receive</button></td> 
+        <% end %>
+      <% else %>
+        <td class="col-md-2"><button type="button" disabled class=" btn btn-xs receive-items" title="Receive Items">Received</button></td>
+      <% end %>
+    </tr>
+  <% end %>
+<% else %>
+  <tr>
+    <td align="center"><strong style="font-size: 20px;">Nothing to Display</strong></td>
+  </tr>
+<% end %>
+
+<script type="text/javascript">
+  $('.receive-items').on('click', function() {
+    var id =  $(this).attr('id');
+    $.ajax({
+      type: 'GET',
+      data: {
+        id: id,
+        start_date: '<%= @start_date %>',
+        end_date: '<%= @end_date %>',
+        store_id: '<%= @store_id %>',
+        remote: true
+      },
+      url: '/inventory/transaction/returns/items',
+      success: function(){
+      }
+    })
+  })
+
+  $(function() {
+    $('.tooltip-wrapper').tooltip({position: "bottom"});
+  });
+</script>
+<style>
+  .font_true{
+    color: red !important; 
+  }
+</style>

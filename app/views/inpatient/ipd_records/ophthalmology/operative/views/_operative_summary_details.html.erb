@@ -1,0 +1,144 @@
+<!-- Surgeon -->
+<% ipdrecord_find_admissionnote = Inpatient::IpdRecord.find_by(:admission_id => admission.id.to_s, :patient_id => admission.patient.id.to_s, :template_type => "admissionnote") %>
+<% procedure = Inpatient::Procedure.where(ipdrecord_id: ipdrecord_find_admissionnote.try(:id),procedurestatus: "Performed").order("created_at DESC")%>
+<% diagnosis_from_opd = Inpatient::Diagnosis.where(ipdrecord_id: ipdrecord_find_admissionnote.try(:id)).order('created_at DESC')%>
+<% if ipdrecord.surgeon.to_i == 1 %>
+  <% surgeon = ipdrecord.surgeon1 %>
+<% elsif ipdrecord.surgeon.to_i == 2 %>
+  <% surgeon = ipdrecord.surgeon1 + ', ' + ipdrecord.surgeon2 %>
+<% elsif ipdrecord.surgeon.to_i == 3 %>
+  <% surgeon = ipdrecord.surgeon1 + ', ' + ipdrecord.surgeon2 + ', ' + ipdrecord.surgeon3 %>
+<% end %>
+
+<!-- Surgeon Assistant -->
+<% surgeon_assistant = "" %>
+<% if ipdrecord.surgeon_assistant.to_i == 1 %>
+  <% surgeon_assistant = ipdrecord.surgeon_assistant1 %>
+<% elsif ipdrecord.surgeon_assistant.to_i == 2 %>
+  <% surgeon_assistant = ipdrecord.surgeon_assistant1 + ', ' + ipdrecord.surgeon_assistant2 %>
+<% elsif ipdrecord.surgeon_assistant.to_i == 3 %>
+  <% surgeon_assistant = ipdrecord.surgeon_assistant1 + ', ' + ipdrecord.surgeon_assistant2 + ', ' + ipdrecord.surgeon_assistant3 %>
+<% end %>
+
+<% anesthesia = ["GA","EA","SA","LA","Sedation","Topical"] %>
+<% eye = ["Left", "Right", "BE"] %>
+
+<div class="row operative-summary">
+  <div class="row mb30">
+    <div class="col-md-4">
+      <b class="title-summary-detail">Surgery Details: </b>
+    </div>
+    <% if procedure.count > 0 %>
+        <div class="col-md-8">
+          <table class="table table-bordered">
+            <tr>
+              <th>Name Of Surgery</th>
+              <th>Eye Operated</th>
+              <th>Date of Surgery</th>
+            </tr>
+
+              <% procedure.each_with_index do |i|%>
+                <tr>
+                  <td><%= i.procedurename%></td>
+                  <% if i.procedureside == "8966001" %>
+                      <td>Left Eye</td>
+                  <% elsif i.procedureside == "18944008" %>
+                      <td>Right Eye</td>
+                  <% elsif i.procedureside == "40638003" %>
+                      <td>Both Eyes</td>
+                  <%end%>
+                  <td><%= i.surgerydate%></td>
+                </tr>
+              <%end%>
+          </table>
+        </div>
+    <% end %>
+  </div>
+
+  <div class="row mb30">
+    <div class="col-md-4">
+      <b class="title-summary-detail">Type of Anaesthesia : </b>
+    </div>
+    <div class="col-md-8">
+      <b><%= ipdrecord.anesthesia.upcase %></b>
+    </div>
+  </div>
+
+  <div class="row mb30">
+    <div class="col-md-4">
+      <b class="title-summary-detail">Diagnosis : </b>
+    </div>
+    <div class="col-md-8">
+      <%= render partial: 'inpatient/ipd_records/common/diagnosis_output.html.erb',locals: {diagnosis: diagnosis_from_opd}%>
+    </div>
+  </div>
+
+  <div class="row mb30">
+    <div class="col-md-4">
+      <b class="title-summary-detail">Surgeon Name : </b>
+    </div>
+    <div class="col-md-8">
+      <b><%= surgeon %></b>
+    </div>
+  </div>
+
+  <div class="row mb30">
+    <div class="col-md-4">
+      <b class="title-summary-detail">Assisted By : </b>
+    </div>
+    <div class="col-md-8">
+      <b><%= surgeon_assistant %></b>
+    </div>
+  </div>
+
+  <div class="row mb30">
+    <div class="col-md-4">
+      <b class="title-summary-detail">IOL Power : </b>
+    </div>
+    <div class="col-md-2">
+      <b><%= ipdrecord.power_inventory %></b>
+    </div>
+    <div class="col-md-6">
+      <div class="iol-sticker-box">IOL Sticker Here</div>
+    </div>
+  </div>
+
+  <div class="row mb30">
+    <div class="col-md-12 text-right">
+      <b>Doctor's Signature</b>
+    </div>
+  </div>
+</div>
+
+<style type="text/css">
+  .iol-sticker-box {
+    width: 100%;
+    height: 75px;
+    border: 3px solid #888;
+    text-align: center;
+    font-size: 21px;
+    padding-top: 25px;
+    margin: -10px 0 15px;
+  }
+
+
+  <% if params[:action] == "print_summary" %>
+    .operative-summary * {
+      color: #333;
+      font-size: 12px;
+    }
+
+    .title-summary-detail {
+       font-size: 10px !important;
+    }
+  <% else %>
+    .operative-summary * {
+      color: #333;
+      font-size: 14px;
+    }
+
+    .title-summary-detail {
+       font-size: 15px !important;
+    }
+  <% end %>
+</style>

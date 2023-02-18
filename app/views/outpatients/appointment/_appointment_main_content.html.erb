@@ -1,0 +1,208 @@
+<style>
+@media only screen and (max-device-width: 1024px) {
+   .nav_head_section {
+       font-size: 10px !important;
+   }
+   #patient-summary-timeline-link{
+    position: absolute;
+    z-index: 1;
+    right: 28px;
+   }
+   .edit_patient_info{
+    position: absolute;
+    z-index: 1;
+   }
+   .tabletwork{
+    position: absolute;
+    z-index: 1;
+   }
+}
+</style>
+<div id="toolbar">
+  <nav class="navbar navbar-secondary navbar-inverse navbar-fixed-top " style="margin-top: 50px; left: auto; right: auto; width: 50%;z-index:555;">
+    <div class="container-fluid" style="padding: 0;">
+      <div class="col-md-12 appointment-actions">
+        <ul class="nav navbar-nav navbar-left">
+          <span class="nav_head_section">Visit Details&nbsp;&nbsp;</span>
+          <% if @paid_for_data %>
+            <div class="btn-group">
+              <%= link_to patients_preview_patient_excel_path, class: 'btn btn-orange navbar-btn navbar-btn-hover', data: { remote: true } do %><i class="fa fa-download"></i> Excel<% end %>
+            </div>
+          <% end %>
+        </ul>
+        <ul class="nav navbar-nav navbar-right">
+          <% if !@current_user.role_ids.include?(499992366) %>
+            <div class="btn-group">
+              <% if current_organisation_setting&.time_slots_enabled %>
+                <% if Authorization::PolicyHelper.verification(current_user.id ,"HGP-102-101-100") %>
+                  <%= link_to new_patient_path(url: '/patients/new', current_date: @current_date.to_s, modal: 'patient-modal'), class: 'btn btn-danger navbar-btn navbar-btn-hover', id: 'add-patient-btn', data: { remote: true, toggle: 'modal', target: '#patient-modal' } do %><i class="glyphicon glyphicon-plus"></i> Register Patient<% end %>
+                <% end %>
+                <% if Authorization::PolicyHelper.verification(current_user.id ,"HGP-102-100-101") %>
+                  <%= link_to patients_search_path(url: '/appointments/new', current_date: @current_date.to_s, modal: 'appointment-modal', type: 'appointment'), class: 'btn btn-danger navbar-btn navbar-btn-hover', id: 'add-appointment-btn', data: { remote: true, toggle: 'modal', target: '#appointment-modal' } do %><i class='glyphicon glyphicon-plus'></i> Add Appointment<% end %>
+                <% end %>
+                <% if Authorization::PolicyHelper.verification(current_user.id ,"HGP-102-100-100") %>
+                  <%= link_to patients_search_path(url: '/appointments/new', current_date: @current_date.to_s, modal: 'appointment-modal', type: 'walkin'), class: 'btn btn-danger navbar-btn navbar-btn-hover', id: 'add-appointment-btn', data: { remote: true, 'toggle': 'modal', 'target': '#appointment-modal' } do %> <i class="glyphicon glyphicon-plus"></i> Add OP<% end %>
+                <% end %>
+              <% else %>
+                <%= link_to patients_search_path(url: '/appointments/new', current_date: @current_date.to_s, modal: 'appointment-modal'), class: 'btn btn-danger navbar-btn navbar-btn-hover', id: 'add-appointment-btn', data: { remote: true, toggle: 'modal', target: '#appointment-modal' } do %> <i class="fa fa-plus"></i> Add Appointment<% end %>
+              <% end %>
+            </div>
+            <div class="btn-group">
+              <% if Authorization::PolicyHelper.verification(current_user.id ,"HGP-102-104-100") %>
+                <% if current_facility.clinical_workflow %>
+                  <% if current_user.role_ids.include?(158965000) %>
+                    <%= link_to opd_appointments_printopdappointmentlist_path(appointmentdate: Date.strptime(@current_date.to_s, '%Y-%m-%d'), format: :pdf), class: 'btn btn-info navbar-btn navbar-btn-hover', target: '_blank' do %><i class="fa fa-print"></i> Print<% end %>
+                  <% else %>
+                    <%= link_to opd_appointments_filteropdappointmentlist_path(appointmentdate: Date.strptime(@current_date.to_s, '%Y-%m-%d'), facility: current_facility), class: 'btn btn-info navbar-btn navbar-btn-hover', data: { remote: true, toggle: 'modal', target: '#appointment-modal' } do %><i class="fa fa-print"></i> Print<% end %>
+                  <% end %>
+                <% else %>
+                  <button type="button" class="btn btn-info navbar-btn navbar-btn-hover" data-toggle="dropdown">
+                    <i class="fa fa-print"></i> Print</span> <span class="caret fa-color"></span>
+                  </button>
+                  <ul class="dropdown-menu children">
+                    <li>
+                      <%= link_to opd_appointments_printopdappointmentlist_path(appointmentdate: Date.strptime(@current_date.to_s, '%Y-%m-%d'), format: :pdf), class: 'text-center', target: '_blank' do %>All<% end %>
+                    </li>
+                    <li>
+                      <%= link_to appointments_print_path(appointmentdate: Date.strptime(@current_date.to_s, '%Y-%m-%d'), list_type: 'scheduled', format: :pdf), class: 'text-center', target: '_blank' do %>Scheduled<% end %>
+                    </li>
+                    <li>
+                      <%= link_to appointments_print_path(appointmentdate: Date.strptime(@current_date.to_s, '%Y-%m-%d'), list_type: 'waiting', format: :pdf), class: 'text-center', target: '_blank' do %>Waiting<% end %>
+                    </li>
+                    <li>
+                      <%= link_to appointments_print_path(appointmentdate: Date.strptime(@current_date.to_s, '%Y-%m-%d'), list_type: 'engaged', format: :pdf), class: 'text-center', target: '_blank' do %>Engaged<% end %>
+                    </li>
+                    <li>
+                      <%= link_to appointments_print_path(appointmentdate: Date.strptime(@current_date.to_s, '%Y-%m-%d'), list_type: 'seen', format: :pdf), class: 'text-center', target: '_blank' do %>Seen (Finished)<% end %>
+                    </li>
+                  </ul>
+                <% end %>
+              <% end %>
+            </div>
+          <% end %>
+          <div class="btn-group">
+            <% if [158965000, 158966000, 499992366].include?(current_user.role_ids[0]) #doctor, counsellor %>
+              <% if @counsellor.count > 0 && !current_facility.show_finances %>
+                <%= link_to opd_clinical_workflow_open_counsellor_reports_path, data: { remote: true }, class: 'btn btn-info navbar-btn navbar-btn-hover', id: 'counselling_report' do %><i class="fa fa-line-chart fa-xs"></i> C.Reports<% end %>
+              <% end %>
+            <% end %>
+          </div>
+          <% if current_facility.show_finances? %>
+            <div class="btn-group">
+              <button type="button" class="btn btn-info navbar-btn navbar-btn-hover" id='all-reports' data-toggle="dropdown">
+                <i class="fa fa-file"></i> Reports <span class="caret fa-color"></span>
+              </button>
+              <ul class="dropdown-menu children" style="margin-left:-60px;">
+                <li class="text-center">
+                  <% if Authorization::PolicyHelper.verification(current_user.id, "HGP-102-114-100") %>
+                    <%= link_to invoice_invoices_settle_invoices_path(type: 'Invoice::Opd'), data: { remote: true, toggle: 'modal', target: '#invoice-settle-modal' } do %>Settle Bills<% end %>
+                  <% else %>
+                    <a style="cursor: not-allowed; text-decoration: line-through" title="Not Authorized"> Settle Bills </a>
+                  <% end %>
+                </li>
+                <li style="border-bottom: 1px solid #aaa;"></li>
+                <% if [158965000, 499992366].include?(current_user.role_ids[0]) #doctor, counsellor %>
+                  <% if @counsellor.count > 0 %>
+                    <li>
+                      <%= link_to opd_clinical_workflow_open_counsellor_reports_path, data: { remote: true }, id: 'counselling_report', style: 'border-color:#FF8735' do %> Counsellor Reports<% end %>
+                    </li>
+                    <li style="border-bottom: 1px solid #aaa;"></li>
+                  <% end %>
+                <% end %>
+                <li class="dropdown-submenu">
+                  <a class="sub-button" tabindex="-1" href="#">My Bills</a>
+                  <ul class="dropdown-menu">
+                    <li><%= link_to reports_role_wise_drafts_path(date: Date.strptime(@current_date.to_s, '%Y-%m-%d'), location: 'OPD Invoice', format: :pdf), class: '', style: 'border-color:#FF8735', target: '_blank' do %>Draft Bills<% end %></li>
+                    <li><%= link_to reports_role_wise_invoice_path(date: Date.strptime(@current_date.to_s, '%Y-%m-%d'), location: 'OPD Invoice', format: :pdf), class: '', style: 'border-color:#FF8735', target: '_blank' do %>Final Bills<% end %></li>
+                  </ul>
+                </li>
+                <% if current_user.department_ids.include?('224608005') %>
+                  <li class="dropdown-submenu" id="li_all_bills">
+                    <a class="sub-button" tabindex="-1" href="#">All Bills</a>
+                    <ul class="dropdown-menu">
+                      <li><%= link_to reports_daily_report_draft_path(date: Date.strptime(@current_date.to_s, '%Y-%m-%d'), location: 'OPD', format: :pdf), class: '', style: 'border-color:#FF8735', target: '_blank' do %>Draft Bills<% end %></li>
+                      <li><%= link_to reports_daily_report_all_path(date: Date.strptime(@current_date.to_s, '%Y-%m-%d'), location: 'OPD', format: :pdf), class: '', style: 'border-color:#FF8735', target: '_blank' do %>Final Bills<% end %></li>
+                    </ul>
+                  </li>
+                  <li><%= link_to reports_daily_advance_report_path(date: Date.strptime(@current_date.to_s, '%Y-%m-%d'), location: 'OPD Invoice', format: :pdf), class: '', style: 'border-color:#FF8735', target: '_blank' do %> Advance Receipts<% end %></li>
+                  <li><%= link_to reports_daily_refund_report_path(date: Date.strptime(@current_date.to_s, '%Y-%m-%d'), location: 'OPD Invoice', format: :pdf), class: '', style: 'border-color:#FF8735', target: '_blank' do %> Refund Receipts<% end %></li>
+                <% end %>
+                <li><%= link_to reports_daily_collection_report_path(date: Date.strptime(@current_date.to_s, '%Y-%m-%d'), location: 'My Collection', format: :pdf), class: '', style: 'border-color:#FF8735', target: '_blank' do %>My Collection Receipts<% end %></li>
+                <% if current_user.department_ids.include?('224608005') %>
+                  <li><%= link_to reports_daily_collection_report_path(date: Date.strptime(@current_date.to_s, '%Y-%m-%d'), location: 'All Collection', format: :pdf), class: '', style: 'border-color:#FF8735', target: '_blank' do %>All Collection Receipts<% end %></li>
+                <% end %>
+              </ul>
+            </div>
+          <% end %>
+        </ul>
+      </div>
+    </div>
+  </nav>
+</div>
+
+<div id="appointment_summary" style="height: calc(100% - 50px); margin-top: 50px; overflow-y: scroll;">
+</div>
+<style>
+  .nav_head_section{
+    margin:13px 0 0 0;
+    font-size:18px;
+  }
+
+  .dropdown-submenu {
+    position: relative;
+  }
+
+  .dropdown-submenu .dropdown-menu {
+    top: 0;
+    left: -106%;
+    margin-top: -1px;
+    margin-left: 5px;
+  }
+
+  .appointment-actions {
+    padding-right: 15px;
+  }
+
+  .appointment-actions .btn-group {
+    margin-bottom: 0px;
+  }
+</style>
+
+<script type="text/javascript">
+  function checkKey(e) {
+    if($('textarea').is(":focus") || $('input').is(":focus")){
+    } else {
+      e = e || window.event;
+      if (e.keyCode == 78){
+        if(!($(".modal").hasClass('in'))){
+          $("#add-appointment-btn").trigger('click')
+        }
+      }
+    }
+  }
+  document.onkeydown = checkKey;
+
+  $('.dropdown-submenu a.sub-button').on("click", function(e){
+    $(".dropdown-submenu a.sub-button").not(this).next('ul').hide()
+    $(this).next('ul').toggle();
+    e.stopPropagation();
+    e.preventDefault();
+  });
+
+  $('.dropdown-menu a, #li_all_bills, #all-reports').not('.sub-button').on("click", function(e){
+    $('.dropdown-submenu ul').hide();
+  });
+
+  const $menu = $('.dropdown-menu')
+  $(document).mouseup(e => {
+     if (!$menu.is(e.target) // if the target of the click isn't the container...
+     && $menu.has(e.target).length === 0) // ... nor a descendant of the container
+     {
+       $menu.removeClass('is-active');
+    }
+   });
+
+  $('.toggle').on('click', () => {
+    $menu.toggleClass('is-active');
+  });
+</script>

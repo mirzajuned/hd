@@ -1,0 +1,169 @@
+<div class="row">
+  <div class="col-md-9" style="margin: 0.7%">
+    <div class="col-md-3"> Description</div>
+    <div class="col-md-3"> Batch No </div>
+    <div class="col-md-2"> Quantity  </div>
+    <div class="col-md-3"> Billable  </div>
+  </div>
+  
+</div> 
+
+<% if @ipdrecord.ot_inventory_items %>
+  
+  <% @ipdrecord.ot_inventory_items.each do |item| %>
+    <% unless item["description"] == '' && item["batch_no"] == '' && item["quantity"] == '' %>
+      <div class="col-md-9" style="margin: 0.7%">
+        <div class="col-md-3"> <%= item["description"]%> </div>
+        <div class="col-md-3"> <%= item["batch_no"]%> </div>
+        <div class="col-md-1"> <%= item["quantity"]%> </div>
+        <div class="col-md-3"> <%= item["billable"]%> </div>
+      </div>
+      <br>
+    <% end %>
+  <% end %>
+<% else %>
+<div class="col-md-9 ot_inventory_item" style="margin-bottom: 1%">
+  <%= f.fields_for 'ot_inventory_items[]', [] do |otinventory| %>
+
+    <div class="col-md-3">
+      <%= otinventory.text_field :description, {:class => 'ot_inventory_item_description form-control', :value => "", :style => "width: 100%", :required => true  } %>
+    </div>
+    <div class="col-md-3">
+      <%= otinventory.text_field :batch_no, {:class => 'ot_inventory_item_batch form-control', :value => "", :style => "width: 100%"} %>
+      <%= otinventory.hidden_field :inventory_item_id, {:class => 'ot_inventory_item_id form-control', :style => "width: 100%", :value => "non-inventory-item" } %>
+    </div>
+    <div class="col-md-2">
+      <%= otinventory.number_field :quantity, {:class => 'ot_inventory_item_quantity form-control', :value => "", :style => "width: 100%" } %>
+    </div>
+    <div class="col-md-3">
+      <%= otinventory.hidden_field :billable, {:class => 'ot_inventory_billable form-control', :style => "width: 100%", :value => "yes" } %>
+      <div class="btn-group mr5" style="margin-top: 8px" >          
+        <button type="button" class="btn btn-xs btn-white custom-radio-button btn-brown billable_yes">Yes</button>
+        <button type="button" class="btn btn-xs btn-white custom-radio-button billable_no" >No</button>
+      </div>
+      <a class="add_ot_inventory_item btn btn-xs btn-primary btn-square" href="javascript:;" name="add_ot_inventory_item" ><span class="glyphicon glyphicon-plus-sign"></span></a>
+    </div>
+  <% end %>
+</div>
+<% end %>
+
+
+<script type="text/javascript">
+
+  $(document).ready(function(){
+  function binder(){
+    $(".add_ot_inventory_item").on('click', function(e){
+      var main_el =  $(this).closest('.ot_inventory_item');
+      var clone_el = $(main_el).clone().find('input').val('').end();
+      var target = ('#ot_inventory_items');
+      cloned_el = $(target).append(clone_el);
+      $(clone_el).find('.ot_inventory_item_id').val("non-inventory-item");
+      $(clone_el).find('.billable_yes').click();
+      $(clone_el).find('.ot_inventory_billable').val('yes')
+      $(clone_el).find('.ot_inventory_item_quantity').val('0')
+      // cloned_el.children().children().children().val("");
+      $(this).attr("class", "remove_ot_inventory_item btn btn-xs btn-danger btn-square");
+      $(this).children().attr("class", "glyphicon glyphicon-remove")
+      $(this).unbind();
+
+      $(".add_ot_inventory_item").bind("click",function() {
+        // $(this).parent().siblings().children(".ot_inventory_item_batch").val("");  
+      });
+
+      $(".remove_ot_inventory_item").unbind();
+      remover();
+      binder();
+      autocomplete_binder();
+      billableno();
+
+    });
+  } 
+
+  $('.delete_ot_inventory_item').on('click', function(e){
+    
+    $(this).closest('.ot_inventory_item').remove();
+  });
+
+  $('.billable_no').on('click', function(e){
+    current_target = e.currentTarget
+    $(current_target).parent().siblings('.ot_inventory_billable').val('no')
+  });
+
+  $('.billable_yes').on('click', function(e){
+    current_target = e.currentTarget
+    $(current_target).parent().siblings('.ot_inventory_billable').val('yes')
+  });
+
+  function billableno(){
+    $('.billable_no').bind('click', function(e){
+      current_target = e.currentTarget
+      $(current_target).parent().siblings('.ot_inventory_billable').val('no')
+    });
+    billableyes();
+  }
+
+  function billableyes(){
+    $('.billable_no').bind('click', function(e){
+      current_target = e.currentTarget
+      $(current_target).parent().siblings('.ot_inventory_billable').val('no')
+    });
+  }
+
+  
+  function remover(){
+    $(".remove_ot_inventory_item").bind('click', function(e){
+      // e.preventDefault;
+      $(this).closest('.ot_inventory_item').remove();
+      $(this).unbind();
+      remover();
+      autocomplete_binder();
+    });
+  }
+
+  function autocomplete_binder(){
+    $(".ot_inventory_item_description").bind('focus', function(e){
+      autocomplete();
+
+    })
+  }
+
+  function autocomplete(){
+    $(".ot_inventory_item_description").focus(function(e) {
+    current_target = e.currentTarget
+    $.ajax({
+      url: '/icdtree/getotinventoryitem',
+      dataType: 'json',
+      method: 'get',
+      success: function(res) {
+        item_array = [];
+        var i, len, item;
+        for (i = 0, len = res.length; i < len; i++) {
+          item = res[i];
+          item_array.push(item.description);
+        }
+        $(current_target).autocomplete(
+        {
+          source: item_array,
+          minLength: 0,
+          select: function(event, ui) {
+            value = ui.item.value;
+            item = res[(item_array.indexOf(value))];
+            $(current_target).parent().siblings().children(".ot_inventory_item_batch").val(item.batch_no);
+            $(current_target).parent().siblings().children(".ot_inventory_item_id").val(item.id);
+          }
+        });
+      },
+      error: function(err)
+      {
+      }
+    });
+  });
+  }
+  
+  autocomplete();
+  binder();
+  billableyes();
+
+  });
+  
+</script>

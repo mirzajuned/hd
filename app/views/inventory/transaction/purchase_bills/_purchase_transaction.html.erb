@@ -1,0 +1,116 @@
+<% if @purchase_transactions.length > 0 %>
+  <% @purchase_transactions.each do |purchase_transaction| %>
+  <tr id="purchase-transaction-<%= purchase_transaction.id %>" data-id="<%= purchase_transaction.id %>" class="inventory-list-row transaction-list-row">
+    <td>
+      <span class="col-md-12"><%= purchase_transaction.approved_on&.strftime("%d-%m-%Y") %>&nbsp;&nbsp;|&nbsp;&nbsp;<%= purchase_transaction.approved_on&.strftime("%I:%M %p")%></span>
+      <span class="col-md-12"><%= purchase_transaction.purchase_display_id %></span>
+      <span class="col-md-12"><%= purchase_transaction.entered_by %></span>
+    </td>
+    <td>
+      <% if !purchase_transaction.purchase_order_ids.empty? %>
+        <% purchase_order = Inventory::Order::Purchase.find_by(id: purchase_transaction.purchase_order_ids[0]) %>
+        <span class="col-md-12"><%= purchase_order.approved_date_time&.strftime("%d-%m-%Y") %>&nbsp;&nbsp;|&nbsp;&nbsp;<%= purchase_order.approved_date_time&.strftime("%I:%M %p")%></span>
+        <span class="col-md-12"><%= purchase_order.purchase_display_id %></span>
+        <span class="col-md-12"><%= purchase_order.entered_by %></span>
+      <% end %>
+    </td>
+    <td>
+      <% if purchase_transaction.bill_type == "bill" %>
+        <span class="col-md-12"><%= purchase_transaction.bill_type %></span>
+        <span class="col-md-12"><%= purchase_transaction.bill_number %></span>
+        <span class="col-md-12"><%= purchase_transaction.bill_date&.strftime("%d-%m-%Y") %>&nbsp;&nbsp;|&nbsp;&nbsp;<%= purchase_transaction.created_at&.strftime("%I:%M %p")%></span>
+      <% else %>
+        <span class="col-md-12"><%= purchase_transaction.bill_type %></span>
+        <span class="col-md-12"><%= purchase_transaction.challan_number %></span>
+        <span class="col-md-12"><%= purchase_transaction.challan_date&.strftime("%d-%m-%Y") %>&nbsp;&nbsp;|&nbsp;&nbsp;<%= purchase_transaction.created_at&.strftime("%I:%M %p")%></span>
+      <% end %>
+    </td>
+  </tr>
+  <% end %>
+<% else %>
+  <tr>
+    <td align="center"><strong style="font-size: 20px;">Nothing to Display</strong></td>
+  </tr>
+<% end %>
+<script type="text/javascript">
+
+  $(".purchase-transactions-list .transaction-list-row").unbind();
+  $(".purchase-transactions-list .transaction-list-row").click(function(e){
+   e.preventDefault();
+   var id = $(this).attr('data-id')
+   $('#purchase-transaction-'+id).addClass('disabled_row')
+    var _id =  $(this).attr('data-id');
+    var store_id = "<%= @inventory_store.id %>"
+    var vendor_id = $('#inventory_transaction_purchase_bill_vendor_id').val()
+    $.ajax({
+      type: 'GET',
+      data: {
+        transaction_id: _id,
+        vendor_id: vendor_id,
+        store_id: store_id,
+        remote: true
+      },
+      url: '/inventory/transaction/purchase_bills/purchase_transaction_item',
+      success: function(){
+        $('#purchase-transaction-'+id).css('background-color', '#cfe8d2')
+        $('#purchase-transaction-'+id).addClass('disabled_row')
+      }
+    })
+  });
+
+  $('#purchase-bill-table').on('click','.delete_empty_item', function(){
+    var id = $(this).attr("value")
+    // if ($(".purchase-transaction").length > 1){
+      $(".purchase-"+id).closest(".purchase-bill-log-item").each(function(){
+        var data = $(this).attr("data")
+        delete tax_breakup[data]
+      })
+      $(".purchase-"+id).remove();
+      $('#purchase-transaction-'+id).css('background-color', "white")
+      $('#purchase-transaction-'+id).removeClass('disabled_row')
+      unset_invoice_data()
+      set_purchase_transaction_ids()
+      calTotalPrice("new")
+      validate_create_button()
+
+    // }
+  })
+
+  $(window).resize(function() {
+    adjust_height()
+  })
+
+  adjust_height()
+  function adjust_height(){
+    modalContentHeigth = $(window).height() - 275
+    // $(".items-lots").height(modalContentHeigth)
+    itemsVariants = modalContentHeigth - $('.transaction-header').height() + 120
+    $('.items-variants-body').height(itemsVariants)
+    purchaseInvoiceInfoHeight = $('.purchase-invoice-information').height()
+    transactionListHeight = modalContentHeigth - $('.transaction-title').height() - $('.transaction-common-fields').height() - purchaseInvoiceInfoHeight
+    $('.transaction-table-body').height(transactionListHeight - $('.transaction-table-head').height())
+  }
+
+  function isScrolledIntoLastRow(last_row_elem, scrollable_container) {
+    if (last_row_elem.length == 1) {
+      var top_of_element = $(last_row_elem).offset().top - $(scrollable_container).offset().top ;
+      var table_height = $(scrollable_container).innerHeight()
+      return top_of_element <= table_height
+    }
+  }
+
+  scrollinventory()
+  function scrollinventory(){
+    $(".items-variants-body").scroll(function() {
+      last_row_elem = $('.items-variants-body').find('tr:nth-last-child(1)')
+      scrollable_container = $(".items-variants-body")
+      if (isScrolledIntoLastRow(last_row_elem, scrollable_container)) {
+        $("#show_more_variants").trigger("click")
+        $(".items-variants-body").off('scroll');
+        setTimeout(function() {   //calls click event after a certain time
+          scrollinventory()
+        }, 500);
+      }
+    })
+  }
+</script>

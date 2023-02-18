@@ -1,0 +1,71 @@
+<div class="mobile_devise">
+  <div class="">
+    <div class="mobile_content">
+      <%= render partial: "templates/common/#{@formbuttons}" %>  <!-- Render common user action buttons template from partial -->
+      <% if params[:action]!= 'custom_new' && params[:action]!= 'custom_edit' %>
+        <%= render partial: "templates/common/patientinfo", locals: { patient: @patient } %>  <!-- Render common patient info template from partial -->
+      <% end %>
+
+      <% if @templatetype == "optometrist" %>
+        <% optometrist_array = User.where(facility_ids: @appointment.facility_id, role_ids: 28229004, is_active: true).pluck(:fullname, :id) %>
+        <div class="pull-right row col-md-3"><strong class="col-md-4">Optometrist:</strong>
+          <% if optometrist_array.length >= 1 %>
+            <%= select_tag("opdrecord[view_owner_id]", options_for_select(optometrist_array,@opdrecord.optometrist_id ? @opdrecord.optometrist_id : @current_user.id), {:include_blank => '',:class => 'form-control', style: "width: 60%; padding: 8px 0px;"}) %>
+          <% elsif optometrist_array.length == 1 %>
+            <%= select_tag("opdrecord[view_owner_id]", options_for_select(optometrist_array,optometrist_array[0][1]), {:class => 'form-control', style: "width: 60%; padding: 8px 0px;"}) %>
+          <% else %>
+          <% end %>
+        </div>
+      <%else%>
+
+        <% doctors_array = User.where(facility_ids: @appointment.facility_id, role_ids: 158965000, is_active: true).pluck(:fullname, :id) %>
+        <% current_doctor_array =  [[@opdrecord.consultant_name , @opdrecord.consultant_id]]%>
+        <% appointment_opd_records = OpdRecord.where(appointmentid: @appointment.id.to_s, templatetype: @templatetype) %>
+        <% extra_doctors_array = appointment_opd_records.pluck(:consultant_name, :consultant_id) %>
+        <% doctors_array.delete_if {|el| ([el[1].to_s] & extra_doctors_array.map {|el| el[1]}).length > 0} %>
+        <% doctors_array  = doctors_array | current_doctor_array  %>
+
+        <div class="pull-right row col-md-3"><strong class="col-md-4">Doctor:</strong>
+          <% if doctors_array.length >= 1 %>
+            <%= select_tag("opdrecord[view_owner_id]", options_for_select(doctors_array,@opdrecord.consultant_id ? @opdrecord.consultant_id : @current_user.id), {:include_blank => '',:class => 'form-control', style: "width: 60%; padding: 8px 0px;"}) %>
+          <% elsif doctors_array.length == 1 %>
+            <%= select_tag("opdrecord[view_owner_id]", options_for_select(doctors_array,doctors_array[0][1]), {:class => 'form-control', style: "width: 60%; padding: 8px 0px;"}) %>
+          <% else %>
+          <% end %>
+        </div>
+      <% end %>
+
+      <div class="text-center">
+        <h4 class="nomargin"><%= @displayname %>
+        <%if @nabh_setting.try(:enabled) %>
+          <% if params[:action] == 'new'%>
+            (Initial Assessment)
+          <% else %>
+            (Re-Assessment)
+          <% end %>
+        <%end%>
+        </h4>
+      </div>
+
+      <%= render partial: "templates/common/stylesheetincludes" %> <!-- Render common stylesheet includes template from partial -->
+
+    </div>
+
+    <%= render partial: "opd_records/#{@speciality_folder_name}_notes/opd_partials/opd_template_form" %>
+
+  </div>
+</div>
+<script>
+<% Global.opd.soap_opd_record_common_js.each do |opd_record_common_js| %>
+<%= render partial: "#{opd_record_common_js}" %>
+<% end %>
+<% Global.send("#{@speciality_folder_name}").send("#{@templatetype}template").js.each do |opd_record_specality_template_js| %>
+<%= render partial: "#{opd_record_specality_template_js}", locals: { templatetype: @templatetype } %>
+<% end %>
+
+//saving doctor_id in the opd record
+$("#opdrecord_view_owner_id").on("change",function(){
+  $(".opdrecord_owner_id").val($(this).val())
+  $(".opdrecord_owner_name").val($("#opdrecord_view_owner_id option:selected").text())
+}).trigger("change");
+</script>

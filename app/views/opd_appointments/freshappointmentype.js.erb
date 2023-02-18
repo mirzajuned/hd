@@ -1,0 +1,143 @@
+jQuery(".opd-appointment-visittype-close").hide()
+jQuery(".signuppatientform").html("<%= escape_javascript(render 'opd_appointments/todayfreshsignuppatientform') %>")
+jQuery('#basicWizard').bootstrapWizard()
+jQuery("#ref_doc_details").on('keyup',"[id^=patient_appointments_attributes_0_ref_doc_name]",clear_doc_values)
+jQuery('#patientdob-datepicker-inline').datepicker({
+    dateFormat: "dd/mm/yy",
+    changeMonth: true,
+    changeYear: true,
+    yearRange: "c-120:c",
+    onClose: function(){
+        //workaround to trigger javascript validation
+        $(this).focusout();
+    }
+})
+jQuery('#datepicker-inline').datepicker({
+    dateFormat: "dd/mm/yy",
+//    minDate: 0
+})
+
+jQuery('#datepicker-inline').datepicker("setDate", new Date("<%=@appointment_date%>"))
+
+timepicker_options = {defaultTIme: false, minuteStep: 5}
+<% if @start_time.length > 0 %>
+    <% time = Time.zone.parse(@start_time).strftime("%I:%M %p") %>
+    //timepicker_options = {defaultTIme: false, minuteStep: 5}
+    jQuery('#timepicker').timepicker(timepicker_options)
+    jQuery('#timepicker').timepicker('setTime', '<%= time %>')
+<% else %>
+    //timepicker_options = {defaultTIme: false, minuteStep: 5}
+    jQuery('#timepicker').timepicker(timepicker_options)
+<% end %>
+
+jQuery(".patientdob").on('change', calculate_age_fromdob)
+function calculate_age_fromdob() {
+    var patientdobday, patientdobmonth, patientdobyear
+    if (jQuery(".patientdob").val().length > 9) {
+        patientdobday = "0" + moment(jQuery(".patientdob").val(), "DD/MM/YYYY").date()
+        patientdobmonth = "0" + moment(jQuery(".patientdob").val(), "DD/MM/YYYY").month()
+        patientdobyear = moment(jQuery(".patientdob").val(), "DD/MM/YYYY").year()
+        var todaydate = new Date()
+        var birthdate = new Date (patientdobyear, patientdobmonth, patientdobday)
+        var age = (todaydate - birthdate) / (365.25 * 24 * 60 * 60 * 1000)
+        var computed_age = Math.floor(age)
+        var computed_age_month = Math.floor((age - computed_age) * 12.175 ) // 365.35/30
+        jQuery("#patient_age").val(computed_age)
+        jQuery("#patient_age").prop('readonly', true)
+        jQuery(".patientage_month").val(computed_age_month)
+        jQuery(".patientage_month").prop('readonly', true)
+    }
+}
+
+//validations
+jQuery("#new_patient").enableClientSideValidations();
+
+jQuery("#patient_appointments_attributes_0_ref_doc_name").autocomplete({
+    minLength: 2,
+    source: function(request, response) {
+        jQuery.ajax({
+            dataType: "json",
+            type : 'get',
+            url: '/referring_doctors/find_matching',
+            //data: {searchpatient: params, remote: "true" },
+            data: {q: request.term, remote: "true" },
+            success: function(data) {
+                //jQuery('#searchpatientkeyword').removeClass('ui-autocomplete-loading')
+                response( data)
+            },
+            error: function(data) {
+                //jQuery('#searchpatientkeyword').removeClass('ui-autocomplete-loading');
+            }
+        })
+    },
+    select: function( event, ui ) {
+        var params = { id: ui.item["id"] }
+        jQuery.ajax({
+            type: "GET",
+            dataType: "script",
+            url: "/referring_doctors/populate",
+            data: {populate_doc_details: params, remote: "true",target_id: event.target.id, prefix: "patient_appointments_attributes_"}
+        })
+    },
+    close: function() {
+
+    }
+})
+
+jQuery("#patient_appointments_attributes_0_ref_doc_name").autocomplete( "option", "appendTo", "#ref_doc_details" )
+
+jQuery('#signuppatient').on("change","#facility-filter",function(){
+    jQuery.ajax({
+        type: "GET",
+        dataType: "html",
+        url: "/departments/get_departments_for_facility",
+        data: {facility_id: jQuery("#signuppatient #facility-filter").val()},
+        success: function(data) {
+            $("#signuppatient #department-filter").html(data)
+            $("#signuppatient #department-filter").trigger("change")
+        }
+    })
+
+})
+
+jQuery('#signuppatient').on("change","#department-filter",function(){
+
+    jQuery.ajax({
+        type: "GET",
+        dataType: "html",
+        url: "/users/get_users_for_department",
+        data: {department_id: jQuery("#signuppatient #department-filter").val(),facility_id: jQuery("#signuppatient #facility-filter").val(),show_all: false},
+        success: function(data) {
+            $("#signuppatient #user-filter").html(data)
+        }
+    })
+
+
+})
+jQuery("#patient_patient_history_attributes_patientpersonalhistory_attributes_problems, #patient_patient_history_attributes_patientallergyhistory_attributes_antimicrobialagents, #patient_patient_history_attributes_patientallergyhistory_attributes_antifungalagents, #patient_patient_history_attributes_patientallergyhistory_attributes_antiviralagents, #patient_patient_history_attributes_patientallergyhistory_attributes_contact, #patient_patient_history_attributes_patientallergyhistory_attributes_food,#patient_patient_history_attributes_patientallergyhistory_attributes_nsaids,#patient_patient_history_attributes_patientallergyhistory_attributes_eyedrops").select2({
+    tags: true,
+    tokenSeparators: [',', ';'],
+    theme: "bootstrap",
+    multiple: true
+});
+
+function clear_doc_values() {
+    jQuery("#patient_appointments_attributes_0_ref_doc_id").val("")
+    jQuery("#patient_appointments_attributes_0_ref_doc_speciality").val("")
+    jQuery("#patient_appointments_attributes_0_ref_doc_place").val("")
+    jQuery("#patient_appointments_attributes_0_ref_doc_number").val("")
+    jQuery("#patient_appointments_attributes_0_ref_doc_email").val("")
+    jQuery("#patient_appointments_attributes_0_ref_doc_city").val("")
+//    jQuery("#patient_appointments_attributes_0_ref_doc_name").change()
+    //calculate_all_totals();
+}
+
+// jQuery("#patient_gender_female").click(function(){
+// if jQuery("#patient_gender_female").is(':checked').val()
+//     Jquery(".patient_gender").show();
+// }).change();
+
+// jQuery("#patient_gender_male").click(function(){
+// if jQuery("#patient_gender_male").is(':checked').val()
+//     Jquery(".patient_gender").hide();
+// }).change();

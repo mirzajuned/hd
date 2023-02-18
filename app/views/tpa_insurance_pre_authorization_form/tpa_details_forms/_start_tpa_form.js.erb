@@ -1,0 +1,284 @@
+// Set Form Height
+$(".tpa-insurance-modal-body").css('height', $(window).height() - 230 + "px").css('overflow', 'scroll')
+
+$(window).resize(function() {
+  $(".tpa-insurance-modal-body").css('height', $(window).height() - 230 + "px").css('overflow', 'scroll')
+})
+
+// Appointment DateTime Picker
+$('.admission-datepicker').datepicker({dateFormat: "dd/mm/yy"});
+$('.discharge-datepicker').datepicker({
+  dateFormat: "dd/mm/yy",
+  minDate: <%= (Date.parse(@min_date.to_s) - Date.current) %>,
+});
+
+$('.admission-timepicker').timepicker();
+$('.discharge-timepicker').timepicker();
+
+// This Code to Set Date for Time as Date Selected
+$(".admission-datepicker").on('change', function(){
+  var timestamp = $(this).val() + " " + $(".admission-timepicker").val()
+  $("#admission_admissiontime").attr("value", timestamp)
+}).trigger('change')
+
+$(".admission-timepicker").on('change', function(){
+  var timestamp = $(".admission-datepicker").val() + " " + $(this).val()
+  $("#admission_admissiontime").attr("value", timestamp)
+}).trigger('change')
+
+
+$(".discharge-datepicker").on('change', function(){
+  var timestamp = $(this).val() + " " + $(".discharge-timepicker").val()
+  $("#admission_dischargetime").attr("value", timestamp)
+}).trigger('change')
+
+$(".discharge-timepicker").on('change', function(){
+  var timestamp = $(".discharge-datepicker").val() + " " + $(this).val()
+  $("#admission_dischargetime").attr("value", timestamp)
+}).trigger('change')
+
+<% if @admission_list_view && @admission_list_view.try(:current_state) != "Scheduled" %>
+  $(".admission-datepicker").attr('disabled','disabled')
+  $(".admission-timepicker").attr('disabled','disabled')
+  $("#admission_facility_id").attr('disabled','disabled')
+<% end %>
+
+// Change User onChange Facility
+$("#admission_facility_id").on('change', function(){
+  var fac_id = $("#admission_facility_id").val();
+  $.ajax({
+    type: "GET",
+    dataType: "json",
+    url: "/admissions/get_users_from_facility",
+    data: {facility_id: fac_id},
+    success: function(response){
+      $('#admission_doctor').children().remove();
+      $.each(response, function(key, value) {
+        if(value[2] == undefined){
+          text_value = value[0]
+        } else {
+          text_value = value[0] + " | " + value[2]
+        }
+        $('#admission_doctor').append($("<option></option>").attr("value",value[1]).text(text_value));
+        $('#admission_doctor').find("option[value='<%= current_user.id.to_s %>']").attr('selected', 'selected')
+      });
+    
+      $("#admission_doctor").trigger('change')
+    }
+  });
+})
+
+// setting date format
+Date.prototype.toInputFormat = function() {
+  var yyyy = this.getFullYear().toString();
+  var mm = (this.getMonth()+1).toString();
+  var dd  = this.getDate().toString();
+  return (dd + '/'  + mm + '/' + yyyy)
+};
+
+function calculate_admission_date(days){
+  if(days != ""){
+    var date = new Date();
+    date.setDate(date.getDate() + days);
+    $('.admission-datepicker').val(date.toInputFormat())
+    $(".admission-datepicker").trigger("change");
+  }
+}
+
+// Logic for Admission type from Admission section
+$(".admission_hospitalization_type").click(function(){
+  if ($('#admission_emergency_hospitalization').is(':checked')) {
+    $(".expected_days_planned_admission").hide();
+    $('#emergency_hospitalization').attr('checked','checked')
+  } else {
+    $(".expected_days_planned_admission").show();
+    $('#planned_hospitalization').attr('checked','checked')
+  }
+});
+
+// Logic for Admission type from Insurance section
+$(".hospitalization_type").click(function(){
+  if ($('#emergency_hospitalization').is(':checked')) {
+    $(".expected_days_planned_admission").hide();
+    $('#admission_emergency_hospitalization').attr('checked','checked')
+  } else {
+    $(".expected_days_planned_admission").show();
+    $('#admission_planned_hospitalization').attr('checked','checked')
+  }
+});
+
+$("#admission_planned_admission_days").val(4)
+$("#admission_planned_admission_days").on("change", function(){
+  var no_of_days = parseInt($("#admission_planned_admission_days option:selected").val())
+  calculate_admission_date(no_of_days)
+})
+
+// Logic For IsInsured from insurance section
+$(".is_insured_field").click(function(){
+  if ($('#is_insured_true').is(':checked')) {
+    $('#is_insured_admission_true').attr('checked','checked')
+    $(".tpa_form_checked").show();
+    $(".admission_section_admission_type").show()
+    if ($('#admission_planned_hospitalization').is(':checked')){ calculate_admission_date(4)}
+  } else {
+    $('#is_insured_admission_false').attr('checked','checked')
+    $(".admission_section_admission_type").hide()
+    $(".tpa_form_checked").hide();
+  }
+});
+
+// Logic For IsInsured from admission section
+$(".is_insured_admission_field").click(function(){
+  if ($('#is_insured_admission_true').is(':checked')) {
+    $('#is_insured_true').attr('checked','checked')
+    $(".tpa_form_checked").show();
+    $(".admission_section_admission_type").show()
+    if ($('#admission_planned_hospitalization').is(':checked')){
+     calculate_admission_date(4)
+    }else{ calculate_admission_date(0) }
+  } else {
+    $('#is_insured_false').attr('checked','checked')
+    $(".admission_section_admission_type").hide()
+    $(".tpa_form_checked").hide();
+  }
+});
+
+// setting false on new admission
+$('#is_insured_false').attr('checked','checked')
+if($('#is_insured_true').is(':checked')){
+  $(".tpa_form_checked").show();
+} else {
+  $(".tpa_form_checked").hide();
+}
+
+
+// by default setting fields
+$('#is_insured_admission_false').attr('disabled',true)
+$('#is_insured_false').attr('disabled',true)
+$('#is_insured_admission_true').attr('checked','checked');
+$('#is_insured_true').attr('checked','checked');
+$(".tpa_form_checked").show()
+$(".admission_discharge_date_time_tag").show()
+
+// conditions on admision_types
+var admission_type = "<%= @admission.try(:admission_hospitalisation_type) %>"
+if (admission_type == "planned"){
+  $("#admission_planned_hospitalization").attr('checked','checked');
+  $("#planned_hospitalization").attr('checked','checked');
+  // $('#is_insured_true').attr('checked','checked');
+  // $(".expected_days_planned_admission").show();
+  // $(".tpa_form_checked").show()
+}else{
+  $("#admission_emergency_hospitalization").attr('checked','checked');
+  $("#emergency_hospitalization").attr('checked','checked');
+  $(".expected_days_planned_admission").hide();
+  // $("#admission_emergency_hospitalization").trigger('click')
+  // $(".expected_days_planned_admission").hide();
+}
+
+var insurance_type = "<%= @admission.try(:insurance_type) %>"
+if (insurance_type == "Company") {
+  $('#insurer_company').attr('checked','checked');
+  $(".insurer_company_fields").show()
+}else {
+  $(".insurer_company_fields").hide();
+}
+
+$(".insurer_field").click(function(){
+  if ($('#insurer_company').is(':checked')) {
+    $(".insurer_company_fields").show();
+  } else {
+    $(".insurer_company_fields").hide();
+  }
+});
+
+function validate_is_insured(){
+  // if($('#is_insured_true').is(':checked')){
+    $('.tpa_details_forms_tabs').children().removeClass('active')
+    $('.tpa-details-form-body').children().removeClass('active')
+    $('#insurance-details').addClass('active')
+    $('.insurance-details-tab').addClass('active')
+  // }
+}
+
+// Validate Form
+function tpa_details_form_page() {
+  validate_is_insured()
+
+  $("#tpa_form").validate({
+    rules: {
+      "admission[insurance_contact_id]": {
+        required: true,
+      },
+       "admission[insurance_contact_no]": {
+        required: true,
+      },
+       "admission[insurance_contact_person]": {
+        required: true,
+      },
+      "admission[insurance_address]": {
+        required: true,
+      },
+      "admission[insurance_policy_no]": {
+        required: true,
+      },
+      "admission[insurance_policy_expiry_date]": {
+        required: true,
+      },
+      "admission[tpa_contact_id]": {
+        required: true
+      },
+       "admission[tpa_contact_no]": {
+        required: true,
+      },
+       "admission[tpa_contact_person]": {
+        required: true,
+      },
+       "admission[tpa_address]": {
+        required: true,
+      },
+    },
+    messages: {
+       "admission[insurance_contact_selected_id]": {
+        required: "Select any Insurance Provider",
+      },
+       "admission[insurance_contact_no]": {
+        required: "Enter contact number",
+      },
+       "admission[insurance_contact_person]": {
+        required: "Enter contact person",
+      },
+       "admission[insurance_address]": {
+        required: "Enter address",
+      },
+       "admission[insurance_policy_no]": {
+        required: "This field is required",
+      },
+       "admission[insurance_policy_expiry_date]": {
+        required: "Please select Date",
+      },
+       "admission[tpa_contact_id]": {
+        required: "Select any TPA Provider",
+      },
+       "admission[tpa_contact_no]": {
+        required: "Enter contact number",
+      },
+       "admission[tpa_contact_person]": {
+        required: "Enter contact person",
+      },
+       "admission[tpa_address]": {
+        required: "Enter address",
+      },
+    }
+  });
+}
+// tpa_details_form_page()
+
+// $(document).ready(function(){
+//   $.validator.addMethod('PolicyExpiryDate', function(value,element) {
+//     var current_date = new Date();
+//     var value = new Date(value)
+//     return (value > current_date)
+//   }, 'This Policy has been expired.');
+// $.validator.addClassRules("policy_expiry_date", { PolicyExpiryDate: true});
+// })

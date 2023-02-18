@@ -1,0 +1,78 @@
+<div class="row" style="margin-top:15px;">
+  <div class="col-sm-6">
+    <strong>Please Select Template</strong><br>
+    <%= f.select :communication_template_id, options_from_collection_for_select(@communication_templates, 'id', 'template_title', f.object.communication_template_id), {include_blank: "Select Template"}, {:class => "form-control", :required => true} %>
+  </div>
+  <div class="col-sm-6">
+  </div>
+</div>
+<%if f.object.try(:communication_template).try(:is_disable?)%>
+  <div class="row" style="margin-top:15px; padding: 10px; color: red;">
+    <span>Your currently selected approved template is disabled, So you need to select enabled approved templates from the list</span>
+  </div>
+<% end %>
+<div class="row" style="padding: 10px;">
+  <%= f.text_area :message_format , { class: 'form-control', readonly: true, rows: 8} %>
+</div>
+<div class="row" style="margin-top:15px;">
+  <div class="col-sm-6">
+    <strong>Event Name</strong><br>
+    <%= f.text_field :name, { class: 'form-control p7_10 name', placeholder: 'name', maxlength: 30 , :required => true} %>
+    <%= hidden_field_tag "communication_event[module_name]",( @module_type || f.object.module_name) %>
+  </div>
+  <div class="col-sm-6">
+    <!-- <strong>Module name</strong><br> -->
+    <%#= f.select :module_name, options_for_select([['OPD', 'opd'],['IPD', 'ipd'],['Optical', 'optical'],['Pharmacy', 'pharmacy']], f.object.module_name), {include_blank: "Select Feature"}, {:class => "form-control", :required => true} %>
+    <strong>Event Feature</strong><br>
+    <%= f.select :feature_type, options_for_select(get_features_type(params, @communication_event), f.object.feature_type), {include_blank: "Select Feature"}, {:class => "form-control", :required => true} %>
+  </div>
+</div>
+<div class="row" style="margin-top:15px;">
+  <div class="col-sm-6">
+    <strong>Event Type</strong><br>
+    <%= f.select :event_type, options_for_select([['Reminder','reminder'] ,['Confirmation','confirmation']], f.object.event_type), {include_blank: "Select Event Type"}, {:class => "form-control", required: true} %>
+  </div>
+  <div class="col-sm-6">
+    <div id="reminder_confirmation"></div>
+  </div>
+</div>
+
+<div id="reminder_event_confirmation"></div>
+
+<%= hidden_field_tag "communication_event_id", @communication_event.try(:id) %>
+  
+<script>
+  $(document).on("change","#communication_event_communication_template_id" ,function() {
+    $.ajax({
+      type: "GET",
+      dataType: "json",
+      url: '/communication_events/'+this.value+'/set_templates_message',
+      success: function(data) {
+        $("#communication_event_message_format").val(data.message_text)
+      }
+    });
+  })
+
+  $("#communication_event_event_type").on("change",function() {
+    $.ajax({
+      type: "GET",
+      dataType: "script",
+      url: '/communication_events/'+event.target.value+'/communication_event_type',
+    });
+  })
+
+  $("#communication_event_communication_template_id").select2();
+
+
+  $("#communication_event_feature_type").change(function(e){
+   $("#reminder_confirmation").empty();
+   $("#reminder_event_confirmation").empty();
+    if(this.value == "same_day_or_emergency" || this.value == "admission_cancelled" || this.value == "discharge_message" || this.value == "appointment_cancellation" || this.value == "mark_as_completed" || this.value == "patient_arrived"){
+      $("#communication_event_event_type option[value='reminder']").remove();
+    }
+    else{
+      $("#communication_event_event_type option[value='reminder']").remove();
+      $("#communication_event_event_type").append(`<option value="reminder">Reminder</option>`);
+    }
+  })
+</script>

@@ -1,0 +1,97 @@
+<%= hidden_field_tag 'facility_id', params[:facility_id], class: 'facility_id' %>
+<div class="row">
+  <div class="col-md-12">
+    <input type="hidden" name="count" class="count" value="0">
+    <table class="table table-bordered surgery-package-table" id="surgery_package_table">
+      <thead>
+        <tr>
+          <th>Package Definition <%= link_to package_list_surgery_packages_path(@options), data: { remote: true }, class: 'btn btn-link btn-xs btn-refresh-package-list', style: 'display: none;' do %><i class="fa fa-refresh"></i><% end %></th>
+          <th>Package Details</th>
+          <th>Package Services</th>
+          <th>Package Action</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="sub-surgery_package-list">
+        <% @surgery_packages.each do |group_id, surgery_packages| %>
+          <% package_definition = @package_definitions.find { |pd| pd[:package_group_id] == group_id } %>
+          <% surgery_packages.sort_by { |sp| sp[:created_at] }.each_with_index do |package, i| %>
+            <% package_specialty = @specialties.find { |specialty| specialty.id.to_s == package_definition[:specialty_id] } %>
+            <% package_sub_specialty = @sub_specialties.find { |sub_specialty| sub_specialty.id.to_s == package_definition[:sub_specialty_id] } %>
+            <tr>
+              <% if i == 0 %>
+                <td rowspan="<%= surgery_packages.count %>">
+                  <b style="font-size: 16px;"><%= package_definition[:name] %></b>
+                  <div style="font-size: 12px;">
+                    <span><b>Specialty</b> : <%= package_specialty.present? ? package_specialty.name : 'No Specialty' %></span><br>
+                    <span><b>Sub Specialty</b> : <%= package_sub_specialty.present? ? package_sub_specialty.name : 'No Sub Specialty' %></span><br>
+                    <span><b>Department</b> : <%= package_definition[:department_id] == '485396012' ? 'OPD' : 'IPD' %></span><br>
+                    <span><b>Type</b> : <%= package_definition[:service_type].to_s.titleize %></span><br>
+                    <span><b><%= package_definition[:service_type].to_s.titleize %> Name</b> : <%= package_definition[:service_type_code_name] %></span><br>
+                  </div>
+                </td>
+              <% end %>
+              <td style="padding-left:8px;">
+                <div style="font-size: 12px;">
+                  <span><b>Display Name</b> : <%= package.display_name %></span><br>
+                  <span><b>Amount</b> : <%= package.amount %></span><br>
+                  <span><b>Payer</b> : <%= package.payer_master_id == 'general' ? 'Cash' : PayerMaster.find_by(id: package.payer_master_id)&.display_name %> (<%= package.contact_group_id == 'self' ? 'Self' : ContactGroup.find_by(id: package.contact_group_id)&.name %>)</span><br>
+                  <span><b>Type</b> : <%= package.type.to_s.titleize %></span><br>
+                  <span><b>Room Type</b> : <%= package.room_type || '-' %></span><br>
+                  <span><b>Valid From</b> : <%= package.valid_from.try(:strftime, '%d-%b-%Y') %></span><br>
+                  <span><b>Valid Till</b> : <%= package.valid_till.try(:strftime, '%d-%b-%Y') %></span><br>
+                  <span><b>No. of Services</b> : <%= package.services.length %></span><br>
+                </div>
+              </td>
+              <td>
+                <% if package.services.where(is_active: true).length > 0 %>
+                  <% package.services.where(is_active: true).each_with_index do |service, j| %>
+                    <% if j != 0 %><hr style="margin: 10px;"><% end %>
+                    <div style="font-size: 12px;">
+                      <span><b>Item Name</b> : <%= service&.item_name.presence || '-' %></span><br>
+                      <span><b>Item Code</b> : <%= service&.item_code.presence || '-' %></span><br>
+                      <span><b>Unit/Days</b> : <%= service&.unit %></span><br>
+                      <span><b>Unit Price</b> : <%= service&.unit_price %></span><br>
+                      <span><b>Total Price</b> : <%= service&.total_price %></span><br>
+                    </div>
+                  <% end %>
+                <% else %>
+                  <span><i>No Services</i></span>
+                <% end %>
+              </td>
+              <td>
+                <% if package.activated %>
+                  <label class="label label-success">Package Activated</label>
+                <% else %>
+                  <%= link_to activate_surgery_package_path(id: package.id), data: { remote: true, confirm: "<b>Once Activated you cannot <span style='color: #f00;font-size: 15px;'>'ADD/REMOVE Services'</span> from this Package.<b>" }, class: 'btn btn-success btn-xs btn-activate-package' do %>Activate<% end %>
+                <% end %>
+                <% if package.is_active %>
+                  <%= link_to surgery_package_path(id: package.id), method: :delete, data: { remote: true }, class: 'btn btn-danger btn-xs btn-destroy-package' do %>Disable<% end %>
+                <% else %>
+                  <%= link_to enable_surgery_package_path(id: package.id), data: { remote: true }, class: 'btn btn-info btn-xs btn-enable-package' do %>Enable<% end %>
+                <% end %>
+              </td>
+              <% if i == 0 %>
+                <td rowspan="<%= surgery_packages.count %>">
+                  <% if surgery_packages.pluck(:is_active).uniq.include?(true) %>
+                    <%= link_to edit_multiple_surgery_packages_path(package_group_id: group_id, clone: false), data: { remote: true, toggle: 'modal', target: '#surgery-package-modal' }, class: 'btn btn-primary btn-xs btn-edit-packages' do %>Edit<% end %>
+                    <%= link_to destroy_multiple_surgery_packages_path(package_group_id: group_id), data: { remote: true }, class: 'btn btn-danger btn-xs btn-destroy-packages' do %>Disable<% end %>
+                    <span>|</span>
+                    <%= link_to edit_multiple_surgery_packages_path(package_group_id: group_id, clone: true), data: { remote: true, toggle: 'modal', target: '#surgery-package-modal' }, class: 'btn btn-orange btn-xs btn-clone-package-definition' do %>Clone Definition<% end %>
+                  <% else %>
+                    <%= link_to enable_multiple_surgery_packages_path(package_group_id: group_id), data: { remote: true }, class: 'btn btn-info btn-xs btn-enable-packages' do %>Enable<% end %>
+                  <% end %>
+                </td>
+              <% end %>
+            </tr>
+          <% end %>
+        <% end %>
+        <% if @surgery_packages.count == 0 %>
+          <tr>
+            <td class="text-center" colspan="4">No Surgery Packages</td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>

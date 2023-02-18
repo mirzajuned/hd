@@ -1,0 +1,248 @@
+<% inv_workflow = InvestigationWorkflow.find_by(appointment_id: @appointment.id.to_s)%>
+<% @counsellor_workflow = CounsellorWorkflow.find_by(appointment_id: @appointment.id.to_s)%>
+<div class="row no_margin no_padding" style="padding: 5px;">
+  <%= hidden_field_tag :hidden_appointment_id, @appointment.id %>
+  <div class="col-sm-3 text-center no_padding">
+    <% if @appointment.patient.patientassets.count > 0 %>
+        <%= image_tag(@appointment.patient.patientassets.last.asset_path_url, class: "patient_profile_pic") %>
+    <%else%>
+        <%= image_tag('placeholder.png', class: "patient_profile_pic") %>
+    <%end%>
+  </div>
+<%= render partial: 'opd_clinical_workflow/patient_details',locals: {pat_workflow: @pat_workflow,inv_workflow: inv_workflow,with_user:@with_user}%>
+  <!-- .row -->
+    <div class="row no_margin no_padding" style="padding: 5px;">
+      <div class="col-sm-6">
+        <div class="row no_margin">
+          <% if current_user.roles[0].try(:name) == "doctor" || current_user.roles[1].try(:name) == "doctor" %>
+              <div class="doctor_reminder">
+                <%= text_area_tag :reminder_text, @reminder_text, rows:1, style: "width:100%;max-width:280px;",spellcheck: "false", placeholder: "Reminder note...", class: "doc_reminder_text", title: @reminder_text%>
+              </div>
+          <%end%>
+        </div>
+      </div>
+    </div>
+</div>
+<div class="row no_margin" style="padding:0 15px;">
+    <% if @pat_workflow %>
+        <div class="col-sm-4 ">
+            <% unless @with_user.id == current_user.id.to_s || @pat_workflow.state == "complete"%>
+                <label class="label label-danger">
+                  <% if @pat_workflow.state == "not_arrived" %>
+                      Not Arrived
+                  <% elsif @with_user.role_ids.include?158965000%>
+                      With &nbsp;&nbsp;<b style="color:white;font-size:13px;">Dr.&nbsp;<%= @with_user.try(:fullname).try(:capitalize)%></b>&nbsp;&nbsp;</span>
+                  <% elsif @with_user.role_ids.include?159561009 || @with_user.role_ids.include?(106292003)%>
+                      With &nbsp;&nbsp;<b style="color:white;font-size:13px;"><%= @with_user.try(:fullname).try(:capitalize)%></b>&nbsp;&nbsp; at Reception
+                  <%elsif @with_user.role_ids.include?28229004%>
+                      With &nbsp;&nbsp;Optometrist&nbsp;&nbsp;<b style="color:white;font-size:13px;"><%= @with_user.try(:fullname).try(:capitalize)%></b>
+                  <%elsif @with_user.role_ids.include?499992366%>
+                      With &nbsp;&nbsp;Counsellor&nbsp;&nbsp;<b style="color:white;font-size:13px;"><%= @with_user.try(:fullname).try(:capitalize)%></b>
+                  <%end%>
+                </label>
+            <%end%>
+            <% if @pat_workflow.state == "complete"%>
+                <label class="label label-danger">Completed</label>
+            <%end%>
+        </div>
+        <%unless @pat_workflow.state == "not_arrived"%>
+            <div class="col-sm-3" style="width: 27%" >
+              <% transitions =  OpdClinicalWorkflowStateTransition.where(opd_clinical_workflow_id: @pat_workflow.id)%>
+              <%if transitions.count > 1%>
+                  <%last_transition = transitions[transitions.count-2]%>
+              <%else%>
+                  <%last_transition = transitions[transitions.count-1]%>
+              <%end%>
+              <% if last_transition.try(:user_id) and transitions.count != 1%>
+                  <%if last_transition.user_id.to_s == current_user.id.to_s || @pat_workflow.state == "complete"%>
+                    <a href="#" class="btn btn-xs undo-state">Undo</a>
+                  <%end%>
+              <%end%>
+              <%unless  @pat_workflow.state == "complete" || @pat_workflow.user_id == current_user.id.to_s%>
+                 <a href="#" class="btn btn-link btn-xs get-patient">Get Patient</a>
+              <%end%>
+            </div>
+          <% if transitions.count == 1 && @pat_workflow.state == 'doctor' %>
+              <div class="col-md-1">
+                <%unless @pat_workflow.try(:state) == "complete"%>
+                    <a href="/opd_clinical_workflow/mark_as_not_arrived?appointment_id=<%= @appointment.id.to_s%>" data-remote="true" title="Not Arrived" class="btn btn-xs btn-danger pull-right" style="padding: 0px 5px">NA</a>
+                <%end%>
+              </div>
+                <div class="col-md-3">
+                <%if @pat_workflow.try(:state) != "complete" and @pat_workflow.state == "doctor"%>
+                    <a href="/opd_clinical_workflow/patient_complete?appointment_id=<%= @appointment.id.to_s%>" data-remote="true" class="btn btn-xs btn-success pull-right" style="padding: 0px 5px; margin-left: 2%">Mark as Completed</a>
+                <%end%>
+              </div>
+          <% else %>
+              <div class="col-md-3 col-md-offset-4">
+                <%if @pat_workflow.try(:state) != "complete" and @pat_workflow.state == "doctor"%>
+                    <a href="/opd_clinical_workflow/patient_complete?appointment_id=<%= @appointment.id.to_s%>" data-remote="true" class="btn btn-xs btn-success pull-right" style="padding: 0px 5px">Mark as Completed</a>
+                <%end%>
+              </div>
+          <% end %>
+        <%else%>
+              <div class="col-md-4 col-md-offset-2 text-right pull-right">
+                <a href="/opd_clinical_workflow/patient_arrived?appointment_id=<%= @appointment.id.to_s%>&source=<%= source%>" data-remote="true" class="btn btn-xs btn-warning p_arrived" style="padding: 0px 5px" >Marked as Arrived</a>
+              </div>
+        <%end%>
+    <%end%>
+</div>
+
+<% if inv_workflow.try(:state) == 'seen_by_doctor' %>
+  <hr style="margin: 10px 0 10px;">
+    <div class="row" style="padding: 5px;">
+      <div class="col-md-6">
+        <span style="padding-left: 10px">Investigation Status:
+          <label class="label label-danger inv_status">
+              Investigation Completed
+          </label>
+        </span>
+      </div>
+    </div>
+<% end %>
+  <div class="col-md-5 text-right pull-right">
+
+
+  </div>
+</div>
+
+<%if @pat_workflow.try(:state) == "doctor" && current_user.id.to_s == @pat_workflow.user_id%>
+    <div class="row no_margin no_padding" style="padding: 0 15px;margin-top: 3px;">
+      <div class="col-sm-2 no_padding text-left">Send To &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:</div>
+      <% unless @current_facility_receptionists.count == 0 %>
+      <div class="col-sm-2 no_padding text-left">
+        <div class="dropdown">
+          <button class="btn btn xs btn-primary dropdown-toggle" type="button" data-toggle="dropdown" style="padding: 0px;width: 80px;">Reception
+            <span class="caret"></span></button>
+          <ul class="dropdown-menu">
+            <% @current_facility_receptionists.each do |user|%>
+                <%appointment_count = OpdClinicalWorkflow.where(user_id: user.id,:appointmentdate => Date.current,state: "receptionist").count%>
+                <li><a href="/opd_clinical_workflow/send_state_doctor?option=<%=user.id%>&appointment_id=<%= @appointment.id.to_s%>&source=<%= source%>" data-remote="true" data-attr-reception="<%= user.fullname%>"><%= user.fullname %>&nbsp; <label class="label label-primary" style="border-radius:100%;font-size:12px;"><%=appointment_count%></label></a></li>
+            <%end%>
+          </ul>
+        </div>
+      </div>
+      <%end%>
+      <% unless @current_facility_doctors.count < 2 %>
+      <div class="col-sm-2 no_padding text-left">
+        <div class="dropdown">
+          <button class="btn btn xs btn-primary dropdown-toggle" type="button" data-toggle="dropdown" style="padding: 0px;width: 70px;">Doctor
+            <span class="caret"></span></button>
+          <ul class="dropdown-menu">
+            <% (@current_facility_doctors-[current_user]).each do |user|%>
+              <% @user_state = UserState.find_by(user_id: user.id, facility_id: current_facility.id) %>
+              <% if current_facility.show_user_state && @user_state %>
+              <%appointment_count = OpdClinicalWorkflow.where(user_id: user.id,:appointmentdate => Date.current,state: "doctor").count%>
+                <% if @user_state.active_state == "OPD" %>
+                  <li><a href="/opd_clinical_workflow/send_state_doctor?option=<%=user.id%>&appointment_id=<%= @appointment.id.to_s%>&source=<%= source%>" data-remote="true" data-attr-doctor="<%= user.fullname%>" data-attr-doctor="<%= user.fullname %>"><span><i class="fa fa-circle" style="color: <%= @user_state.state_color %>"></i></span>&emsp;<%= user.fullname %>&nbsp; <label class="label label-primary" style="border-radius:100%;font-size:12px;"><%=appointment_count%></label></a></li>
+                <% else %>
+                  <li><a href="/opd_clinical_workflow/send_state_doctor?option=<%=user.id%>&appointment_id=<%= @appointment.id.to_s%>&source=<%= source%>" data-remote="true" data-attr-doctor="<%= user.fullname%>" data-attr-doctor="<%= user.fullname %>" style="opacity:0.5;text-decoration: line-through;"><span><i class="fa fa-circle" style="color: <%= @user_state.state_color %>"></i></span>&emsp;<%= user.fullname %>&nbsp; <label class="label label-primary" style="border-radius:100%;font-size:12px;"><%=appointment_count%></label></a></li>
+                <% end %>
+                <% else %>
+                    <li><a href="/opd_clinical_workflow/send_state_doctor?option=<%=user.id%>&appointment_id=<%= @appointment.id.to_s%>&source=<%= source%>" data-remote="true" data-attr-doctor="<%= user.fullname%>" data-attr-doctor="<%= user.fullname %>">&emsp;<%= user.fullname %>&nbsp; <label class="label label-primary" style="border-radius:100%;font-size:12px;"><%=appointment_count%></label></a></li>
+              <% end %>
+            <%end%>
+          </ul>
+        </div>
+      </div>
+      <%end%>
+      <% unless @current_facility_optometrist.count == 0 %>
+      <div class="col-sm-2 no_padding text-left">
+        <div class="dropdown">
+          <button class="btn btn xs btn-primary dropdown-toggle" type="button" data-toggle="dropdown" style="padding: 0px;width: 100px;">Optometrist
+            <span class="caret"></span></button>
+          <ul class="dropdown-menu">
+            <% @current_facility_optometrist.each do |user|%>
+                <%appointment_count = OpdClinicalWorkflow.where(user_id: user.id,:appointmentdate => Date.current,state: "optometrist").count%>
+                <li><a href="/opd_clinical_workflow/send_state_doctor?option=<%=user.id%>&appointment_id=<%= @appointment.id.to_s%>&source=<%= source%>" data-remote="true" data-attr-optometrist="<%= user.fullname%>"><%= user.fullname %>&nbsp; <label class="label label-primary" style="border-radius:100%;font-size:12px;"><%=appointment_count%></label></a></li>
+            <%end%>
+          </ul>
+        </div>
+      </div>
+      <%end%>
+      <% unless @pat_workflow.state == "counsellor"%>
+          <% unless @current_facility_counsellor.count == 0 %>
+              <div class="col-sm-2 no_padding text-left">
+                <div class="dropdown" style="margin-left: 21px;">
+                  <button class="btn btn xs btn-primary dropdown-toggle" type="button" data-toggle="dropdown" style="padding: 0px;width: 100px;">Counsellor
+                    <span class="caret"></span></button>
+                  <ul class="dropdown-menu">
+                    <% @current_facility_counsellor.each do |user|%>
+                        <%appointment_count = OpdClinicalWorkflow.where(user_id: user.id,:appointmentdate => Date.current,state: "counsellor").count%>
+                        <li><a href="/opd_clinical_workflow/send_to_counsellor?option=<%=user.id%>&appointment_id=<%= @appointment.id.to_s%>&source=<%= source%>" data-remote="true" data-attr-counsellor="<%= user.fullname %>"><%= user.fullname %>&nbsp; <label class="label label-primary" style="border-radius:100%;font-size:12px;"><%=appointment_count%></label></a></li>
+                    <%end%>
+                  </ul>
+                </div>
+              </div>
+          <%end%>
+      <%end%>
+      <!--Below code is for Lab technician, can be implemented after login is implemented for technician-->
+      <!--<div class="col-sm-2 no_padding text-left">-->
+      <!--<div class="dropdown">-->
+      <!--<button class="btn btn xs btn-danger dropdown-toggle" type="button" data-toggle="dropdown" style="padding: 0px;width: 50px;margin-left: 25px;">Lab-->
+      <!--<span class="caret"></span></button>-->
+      <!--<ul class="dropdown-menu">-->
+      <!--<li><a href="#">Rakesh</a></li>-->
+      <!--<li><a href="#">Rahul</a></li>-->
+      <!--<li><a href="#">Huzi</a></li>-->
+      <!--</ul>-->
+      <!--</div>-->
+      <!--</div>-->
+    </div>
+<% end %>
+
+<%= render partial: "opd_clinical_workflow/patient_state_diagram",locals: {workflow: @pat_workflow}%>
+
+<% if inv_workflow %>
+  <%if inv_workflow.try(:state) != "no_investigations" && inv_workflow.try(:state) != "seen_by_doctor"%>
+    <!-- canvas code commented do not delete-->
+    <!--<div class="row no_margin no_padding" style="padding: 5px;">-->
+    <!--<canvas id="<%= @appointment.id.to_s%>" width="600" height="100" style="border:1px solid #d3d3d3;"></canvas>-->
+    <!--</div>-->
+    <%states = InvestigationWorkflowStateTransition.where(investigation_workflow_id: inv_workflow.try(:id)).pluck(:to)%>
+    <%states = states.map {|i| i.capitalize}%>
+    <!-- <hr style="margin-top: 10px;margin-bottom: 4px">
+      <span style="margin-left: 16px">Investigation States:</span>
+    <div class="row no_margin no_padding" style="padding: 5px 5px;margin-top: 10px;border: 1px solid #aaa;">
+
+      <div class="col-md-12">
+        <label style="font-size:12px;border-radius: 12px;" class="label label-warning">Arrived</label>
+        <% states.each_with_index do |state,index|%>
+            <i class="fa fa-long-arrow-alt-right"></i>
+            <% if index ==  4 || index == 11 || index==17 %>
+              <hr style="margin-top: 4px;margin-bottom: 4px">
+            <%end%>
+            <%if index == states.length-1%>
+              <label style="font-size:12px;border-radius: 12px;" class="label label-success"><%= state.gsub("_", " ")%></label>
+            <%else%>
+              <label style="font-size:12px;margin-left: 0px;margin-right: 0px;border-radius: 12px;" class="label label-default"><%= state.gsub("_", " ")%></label>
+            <%end%>
+        <%end%>
+
+      </div>
+    </div> -->
+  <%end%>
+<% end %>
+
+<%= render partial: 'opd_clinical_workflow/appointment_invoice_details',locals: {pat_workflow: @pat_workflow}%>
+
+<!-- .row -->
+<script>
+    $(".undo-state").on('click',function(e){
+        e.preventDefault()
+        $.ajax({
+            data: {appointment_id: '<%= @appointment.id.to_s%>',from: "doctor",source: '<%= source%>'},
+            url:  "/opd_clinical_workflow/undo_state"
+        })
+
+    })
+
+    $(".get-patient").on('click',function(e){
+        e.preventDefault()
+        $.ajax({
+            data: {appointment_id: '<%= @appointment.id.to_s%>',from: "receptionist",source: '<%= source%>'},
+            url:  "/opd_clinical_workflow/get_patient"
+        })
+
+    })
+</script>

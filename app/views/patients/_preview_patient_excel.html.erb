@@ -1,0 +1,221 @@
+
+
+<div class="modal-dialog">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h4 class="modal-title">Filter for Excel data</h4>
+    </div>
+
+    <div class="modal-body">
+      <div class="row">
+        <div class="col-md-4 col-sm-4" style="margin-top: 10px;">
+          Opdrecords Between :
+        </div>
+        <div class="col-md-8 col-sm-8">
+          <div class="row">
+            <div class="col-md-5 col-sm-5">
+              <div class="input-group">
+                <span class="input-group-addon"><i class="glyphicon glyphicon-calendar"></i></span>
+                <input type="text" id="start-report-datepicker" value="" class="form-control report-to-datepicker" value="<%= Date.current.to_s %>" style="cursor:pointer;background-color:#fff;" placeholder="Start Date" readonly="readonly">
+              </div>
+            </div>
+            <div class="col-md-1 col-sm-1 text-center">
+              <i class="fa fa-arrows-alt-h" style="margin-top:15px;color:dodgerblue;font-size: 20px;"></i>
+            </div>
+            <div class="col-md-5 col-sm-5">
+              <div class="input-group">
+                <span class="input-group-addon"><i class="glyphicon glyphicon-calendar"></i></span>
+                <input type="text" id="end-report-datepicker" value="" class="form-control report-from-datepicker" value="<%= Date.current.to_s %>" style="cursor:pointer;background-color:#fff;" placeholder="End Date" readonly="readonly">
+              </div>
+            </div>
+          </div>  
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-4 col-sm-4 col-xs-12" style="margin-top: 20px;">
+          Location :
+        </div>
+        <div class="col-md-8 col-sm-8 col-xs-12">
+          <!--<div class="col-md-2">-->
+          <select class="form-control facility-dropdown">
+            <option value="">All</option>
+            <% current_user.facility_ids.each do |facility_id| %>
+                <option value="<%= facility_id.to_s %>"><%= Facility.find_by(id: facility_id).try(:name) %></option>
+            <% end %>
+          </select>
+          <!--</div>-->
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-4 col-sm-4 cl-xs-12" style="margin-top: 20px;">
+          Doctor :
+        </div>
+        <div class="col-md-8 col-sm-8 col-xs-12">
+          <select class="form-control doctor-dropdown">
+            <option value="">All</option>
+            <% User.where(organisation_id: current_user.organisation.id,:role_ids.in => [158965000]).each do |i| %>
+                <option value="<%= i.id.to_s %>"><%= i.fullname %></option>
+            <% end %>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <a href="" class="download_excel btn btn-primary"><i class="fa fa-download"></i>Download Excel</a>
+      <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+    </div>
+  </div>
+</div>
+<style>
+    .find_for.active{
+        background: #f8f8ff;
+        color: #428bca;
+    }
+    .facility-dropdown {
+      height: 40px;
+      margin-top: 10px !important;
+      width: 91%;
+    }
+    .doctor-dropdown {
+      height: 40px;
+      margin-top: 10px !important;
+      width: 91%;
+    }
+    @media screen and (max-width: 767px) {
+      .facility-dropdown {
+        height: 40px;
+        margin-top: 10px !important;
+        width: 100%;
+      }
+      .doctor-dropdown {
+        height: 40px;
+        margin-top: 10px !important;
+        width: 100%;
+      }
+    }
+</style>
+<script>
+    jQuery('#end-report-datepicker').datepicker({
+        dateFormat: "dd/mm/yy",
+    })
+    jQuery('#start-report-datepicker').datepicker({
+        dateFormat: "dd/mm/yy",
+    })
+    jQuery('#start-report-datepicker').datepicker("setDate", new Date("<%= Date.current %>"))
+    jQuery('#end-report-datepicker').datepicker("setDate", new Date("<%= Date.current %>"))
+    $(".facility-dropdown").on('change',function(){
+        var fac_id = $(".facility-dropdown").val();
+        if (fac_id != ""){
+            $.ajax({
+                type: "GET",
+                dataType: "json",
+                url: "/appointments/get_users_from_facility",
+                data: {facility_id: fac_id},
+                success: function(response){
+                    $('.doctor-dropdown').children().remove();
+                    $('.doctor-dropdown').append($("<option></option>").attr("value","").text("All"));
+                    $.each(response, function(key, value) {
+                        $('.doctor-dropdown').append($("<option></option>").attr("value",value[1]).text(value[0]));
+
+                    });
+                    $(".doctor-dropdown").trigger('change')
+                }
+            });
+        }
+    })
+//        var start_date = $("#start-report-datepicker").val()
+//        var end_date = $("#end-report-datepicker").val()
+//        var facility_id = $(".facility-dropdown option:selected").val()
+//        var doctor_id = $(".doctor-dropdown option:selected").val()
+////        $.ajax({
+////            type: "GET",
+////            url: "/patients/download_patient_excel.xls?start_date="+start_date+"&end_date="+end_date,
+////
+////            success: function(response){
+////                console.log("Success in downloading excel")
+////            }
+////        });
+//        $(".download_excel").attr("href","/patients/download_patient_excel.xls?start_date="+start_date+"&end_date="+end_date)
+
+//    $("#btnReportRange").on("click",function(){
+//        var start_date = $("#start-report-datepicker").val()
+//        var end_date = $("#end-report-datepicker").val()
+//        var facility_id = $(".facility-dropdown option:selected").val()
+//        var doctor_id = $(".doctor-dropdown option:selected").val()
+//        $.ajax({
+//            type: "GET",
+//            url: "/patients/download_patient_excel",
+//            data: {start_date: start_date,end_date: end_date,facility_id: facility_id,doctor_id: doctor_id},
+//            success: function(response){
+//                console.log("Success")
+//            }
+//        });
+//        $(".download_excel").attr("href","/patients/download_patient_excel.xls?start_date="+start_date+"&end_date="+end_date+"&facility_id="+facility_id+"&doctor_id="+doctor_id)
+//    }).click();
+    //    $(".download_excel").on('click',function(){
+    //
+    //    })
+    $("#start-report-datepicker").on('change',function(){
+        var start_date = $("#start-report-datepicker").val()
+        var end_date = $("#end-report-datepicker").val()
+        var facility_id = $(".facility-dropdown option:selected").val()
+        var doctor_id = $(".doctor-dropdown option:selected").val()
+        $(".download_excel").attr("href","/patients/download_patient_excel.xls?start_date="+start_date+"&end_date="+end_date+"&facility_id="+facility_id+"&doctor_id="+doctor_id)
+    })
+    $("#end-report-datepicker").on('change',function(){
+        var start_date = $("#start-report-datepicker").val()
+        var end_date = $("#end-report-datepicker").val()
+        var facility_id = $(".facility-dropdown option:selected").val()
+        var doctor_id = $(".doctor-dropdown option:selected").val()
+        $(".download_excel").attr("href","/patients/download_patient_excel.xls?start_date="+start_date+"&end_date="+end_date+"&facility_id="+facility_id+"&doctor_id="+doctor_id)
+    })
+    $(".facility-dropdown").on('change',function(){
+        var start_date = $("#start-report-datepicker").val()
+        var end_date = $("#end-report-datepicker").val()
+        var facility_id = $(".facility-dropdown option:selected").val()
+        var doctor_id = $(".doctor-dropdown option:selected").val()
+        $(".download_excel").attr("href","/patients/download_patient_excel.xls?start_date="+start_date+"&end_date="+end_date+"&facility_id="+facility_id+"&doctor_id="+doctor_id)
+    })
+    $(".doctor-dropdown").on('change',function(){
+        var start_date = $("#start-report-datepicker").val()
+        var end_date = $("#end-report-datepicker").val()
+        var facility_id = $(".facility-dropdown option:selected").val()
+        var doctor_id = $(".doctor-dropdown option:selected").val()
+        $(".download_excel").attr("href","/patients/download_patient_excel.xls?start_date="+start_date+"&end_date="+end_date+"&facility_id="+facility_id+"&doctor_id="+doctor_id)
+    })
+
+    var start_date = $("#start-report-datepicker").val()
+    var end_date = $("#end-report-datepicker").val()
+    var facility_id = $(".facility-dropdown option:selected").val()
+    var doctor_id = $(".doctor-dropdown option:selected").val()
+    $(".download_excel").attr("href","/patients/download_patient_excel.xls?start_date="+start_date+"&end_date="+end_date+"&facility_id="+facility_id+"&doctor_id="+doctor_id)
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

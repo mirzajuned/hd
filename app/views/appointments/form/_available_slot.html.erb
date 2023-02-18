@@ -1,0 +1,122 @@
+<style type="text/css">
+  [data-toggle='tooltip'] + .tooltip > .tooltip-inner {
+    background: black;
+    color:#ffffff;
+    border: 1px solid #000000;
+
+  }
+</style>
+<% @date_array = [] %>
+<% @time_array = [] %>
+<% @holiday.each do |holiday| %>
+  <% if @current_date.between?(holiday.start_date, holiday.end_date) %>
+    <% if holiday.start_time && holiday.end_time %>
+      <% @time_array << holiday.id %>
+    <% else %>
+      <% @date_array << holiday.id %>
+    <% end %>
+  <% end %>
+<% end %>
+
+<div class="row" style="padding: 1.85%;background: beige;font-weight: 500;text-align: center; border: 1px solid #eee">
+  Reserved Slot for <%= @current_date.strftime('%d %b , %Y') %>
+</div>
+<div style="margin-top: 20px; overflow-y: auto;min-height: 350px;max-height: 350px;">
+  <% @time_group = ['6:00:00','7:00:00','8:00:00','9:00:00','10:00:00','11:00:00','12:00:00','13:00:00','14:00:00','15:00:00','16:00:00','17:00:00','18:00:00','19:00:00','20:00:00','21:00:00','22:00:00','23:00:00'] %>
+  <% if @date_array.count <= 0 %>
+    <% @time_group.each_with_index do |t,index| %>
+      <% t1 = Time.zone.parse(t) + ((@current_date - Date.current).to_i).days %>
+      <% t2 = t1 + 3599 %>
+      <% if t2 > Time.current %>
+        <% #if Time.current < t1 + 7199 %>
+        <% if @selected_doctor %>
+            <% @booked = @appointments.where(start_time: t1..t2) %>
+        <% else %>
+            <% @booked = [] %>
+        <% end %>
+        <span style="font-size: 12px">
+          <%= Time.zone.parse(t).strftime('%I') %> - <%= (Time.zone.parse(t) + 3600).strftime('%I %p') %> : &emsp;&emsp;
+        </span>
+        <% if @time_array.count <= 0 %>
+          <span>
+            <% if @booked.size > 0 %>
+              <% @booked.each do |app| %>
+                <label class="label label-danger" style="padding: 3px" title="<%= app.patient.fullname %>"><%= app.start_time.strftime('%I:%M') %>  </label>&nbsp;
+              <% end %>
+            <% else %>
+              <label class="label label-primary" style="padding: 3px">None </label>
+            <% end %>
+          </span>
+        <% else %>
+          <span>
+            <% if @booked.size > 0 %>
+              <% @booked.each.with_index do |app,i| %>
+                <label class="label label-danger" style="padding: 3px" title="<%= app.patient.fullname %>"><%= app.start_time.strftime('%I:%M') %>  </label>&nbsp;
+              <% end %>
+            <% else %>
+                <label class="none-label label label-primary" style="padding: 3px">None </label>&nbsp;
+            <% end %>
+            <% @time_array.each do |time| %>
+              <% @this_time = HolidayPlan.find_by(id: time.to_s) %>
+              <% start = @this_time.start_date.to_s + ' ' + @this_time.start_time.strftime("%I:%M %p").to_s %>
+              <% ending = @this_time.end_date.to_s + ' ' + @this_time.end_time.strftime("%I:%M %p").to_s %>
+              <% start = DateTime.parse(start) %>
+              <% ending = DateTime.parse(ending) %>
+
+              <% test_start = @current_date.to_s + ' ' + Time.zone.parse(t).strftime("%H:%M") %>
+              <% test_ending = @current_date.to_s + ' ' + Time.zone.parse(t).strftime("%H:%M") %>
+              <% test_start = DateTime.parse(test_start).utc  %>
+              <% test_ending = DateTime.parse(test_ending).utc + 1.hour - 1.second%>  
+
+              <!-- Not changing the below code , only adding the correct logic to it  -->
+              <% if start.between?(test_start,test_ending) && ending.between?(test_start,test_ending) %>
+                <label class="new-awesome label label-danger" style="padding: 3px">Dr. NA : <%= @this_time.plan %> <%= @this_time.start_time.strftime("%I:%M ").to_s + '-' + @this_time.end_time.strftime("%I:%M").to_s %></label>&nbsp;
+              <!-- for every record, check if current time_group value is in start and ending   -->
+              <% elsif test_start.between?(start, ending) || test_ending.between?(start,ending)  %>  
+                <label class="new-awesome label label-danger" style="padding: 3px">Dr. NA : <%= @this_time.plan %>
+                  <% if start.between?(test_start,test_ending) %>
+                    <%= @this_time.start_time.strftime("%I:%M ").to_s + ".." %>
+                  <% elsif ending.between?(test_start,test_ending)%>
+                    <%= ".." + @this_time.end_time.strftime("%I:%M ").to_s %>
+                  <% else %>
+                    <%= ".." %>
+                  <% end %>
+                </label>&nbsp;
+              <% elsif Time.zone.parse(t).strftime("%H:%M") >= @this_time.start_time.strftime("%H:%M") && Time.zone.parse(t).strftime("%H:%M") < @this_time.end_time.strftime("%H:%M") && (Time.zone.parse(t) + 3600).strftime("%H:%M") > @this_time.start_time.strftime("%H:%M") && (Time.zone.parse(t) + 3600).strftime("%H:%M") <= @this_time.end_time.strftime("%H:%M") %>
+                <label class="new-awesome label label-danger" style="padding: 3px">Dr. NA : <%= @this_time.plan %> </label>&nbsp;
+              <% elsif Time.zone.parse(t).strftime("%H:%M") < @this_time.start_time.strftime("%H:%M") && Time.zone.parse(t).strftime("%H:%M") < @this_time.end_time.strftime("%H:%M") && (Time.zone.parse(t) + 3600).strftime("%H:%M") < @this_time.end_time.strftime("%H:%M") && (Time.zone.parse(t) + 3600).strftime("%H:%M") > @this_time.start_time.strftime("%H:%M") %>
+                <label class="new-awesome label label-danger" style="padding: 3px">Dr. NA : <%= @this_time.plan %> </label>&nbsp;
+              <% elsif Time.zone.parse(t).strftime("%H:%M") > @this_time.start_time.strftime("%H:%M") && Time.zone.parse(t).strftime("%H:%M") < @this_time.end_time.strftime("%H:%M") && (Time.zone.parse(t) + 3600).strftime("%H:%M") > @this_time.end_time.strftime("%H:%M") && (Time.zone.parse(t) + 3600).strftime("%H:%M") > @this_time.start_time.strftime("%H:%M") %>
+                <label class="new-awesome label label-danger" style="padding: 3px">Dr. NA : <%= @this_time.plan %> </label>&nbsp;
+                
+              <% else %>
+
+              <% end %>
+            <% end %>
+          </span>
+        <% end %>
+        <br>
+        <hr style="margin-top: 3px; margin-bottom: 3px">
+        <%# end %>
+      <% end %>
+    <% end %>
+  <% else %>
+    <% @date_array.each do |date| %>
+      <% @this_date = HolidayPlan.find_by(id: date.to_s) %>
+      <span style="font-size: 12px">Full Day : &emsp;&emsp;</span>
+      <label class="label label-danger" style="padding: 3px">Dr. NA : <%= @this_date.plan %></label>
+      <br>
+      <hr style="margin-top: 3px; margin-bottom: 3px">
+    <% end %>
+  <% end %>
+</div>
+<style>
+  .new-awesome{
+    background-color: #a100af;
+  }
+</style>
+<script type="text/javascript">
+  // $(".new-awesome").siblings().remove()
+  // $(".none-label").closest('span').append('<label class="label label-primary" style="padding: 3px">None </label>')
+  // $(".none-label").siblings('.none-label').remove()s
+</script>

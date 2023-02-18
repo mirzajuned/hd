@@ -1,0 +1,206 @@
+<%= render partial: 'form.js.erb' %>
+function validate_whatsapp_number(event){
+  if($("#communication_number").val() == '' && $('.name').val() != ''){
+    notice = new PNotify({ text: 'Whatsapp Number Required (Step 4: Setting)', type: 'error' }); notice.get().click(function(){ notice.remove() });
+    event.preventDefault();
+    return false;
+  }
+  else{
+    return true
+  }
+}
+
+function validate_specialty_presence(event){
+  var result = false 
+  var a = $("[name='facility[specialty_ids][]']")
+  for (const [index, [, value]] of Object.entries(Object.entries(a))) {
+    // console.log(`${index}: ${value}`);
+    var e = $("[name='facility[specialty_ids][]']")[index]
+    if($(e).is(":checked")){
+      result = true
+    }
+  } 
+  if(result == false && $('.name').val() != ''){
+    notice = new PNotify({ text: 'Please Select Atleast One Speciality (Step 2: Speciality)', type: 'error' }); notice.get().click(function(){ notice.remove() });
+    event.preventDefault();
+
+    return false;
+  }
+  return result
+
+}
+
+function new_facility() {
+  validate_whatsapp_number(event)
+  validate_specialty_presence(event)
+  $('#new_facility').validate({
+    rules: {
+      "facility[name]": {
+        required: true,
+      },
+      "facility[display_name]": {
+        required: true,
+        remote: '/facilities/validate_facility?organisation_id=<%= @organisation.id %>'
+      },
+      "facility[abbreviation]": {
+        required: true,
+        remote: '/facilities/validate_facility?organisation_id=<%= @organisation.id %>'
+      },
+      "facility[country_id]": {
+        required: true,
+      },
+      "facility[time_zone]": {
+        required: true,
+      },
+      "facility[currency_id]": {
+        required: true,
+      },
+      "facility[currency_ids][]": {
+        required: true,
+      },
+      "facility[address]": {
+        required: true,
+      },
+      "facility[city]": {
+        required: true,
+        minlength: 3,
+        "remote":  {
+          url: '/locations/check_city',
+          type: "get",
+          data: { country_id: function(){ return $('#facility_country_id option:selected').attr('value') } }
+        }
+      },
+      "facility[state]": {
+        required: true,
+        minlength: 3,
+        "remote":  {
+          url: '/locations/check_state',
+          type: "get",
+          data: { country_id: function(){ return $('#facility_country_id option:selected').attr('value') } }
+        }
+      },
+     "facility[pincode]": {
+        required: true,
+        minlength: 3,
+        "remote":  {
+          url: '/locations/check_pincode',
+          type: "get",
+          data: { country_id: function(){ return $('#facility_country_id option:selected').attr('value') } }
+        }
+      },
+      "facility[commune]": {
+        required: true,
+        minlength: 2,
+        "remote":  {
+          url: '/locations/check_commune',
+          type: "get",
+          data: { country_id: function(){ return $('#facility_country_id option:selected').attr('value') } }
+        }
+      },
+      "facility[district]": {
+        required: true,
+        minlength: 2,
+        "remote":  {
+          url: '/locations/check_district',
+          type: "get",
+          data: { country_id: function(){ return $('#facility_country_id option:selected').attr('value') } }
+        }
+      },
+      "facility[email]": {
+        required: true,
+      },
+      "email_local": {
+        required: true,
+      },
+      "email_domain": {
+        required: true,
+      },
+      "facility[sms_contact_number]": {
+        required: true
+      }
+    },
+    messages: {
+      "facility[name]": {
+        required: "Name Required."
+      },
+      "facility[display_name]": {
+        required: "Display Name Required",
+        remote: "Already Taken",
+      },
+      "facility[abbreviation]": {
+        required: "Required",
+        remote: "Already Taken",
+      },
+      "facility[country_id]": {
+        required: "Country Required",
+      },
+      "facility[time_zone]": {
+        required: "Timezone Required",
+      },
+      "facility[currency_id]": {
+        required: "Currency Required",
+      },
+      "facility[currency_ids][]": {
+        required: "Please add Currencies supported within this Facility",
+      },
+      "facility[region_master_id]": {
+        required: "Please add Regions supported within this Facility",
+      },
+      "facility[address]": {
+        required: "Address Required",
+      },
+      "facility[city]": {
+        required: "City Required",
+        remote: "Search and Select"
+      },
+      "facility[state]": {
+        required: "State Required",
+        remote: "Search and Select"
+      },
+      "facility[pincode]": {
+        required: "Pincode Required",
+        remote: "Search and Select"
+      },
+      "facility[commune]": {
+        required: "Commune Required",
+        remote: "Search and Select"
+      },
+      "facility[district]": {
+        required: "District Required",
+        remote: "Search and Select"
+      },
+      "facility[email]": {
+        required: "Email Required",
+      },
+      "email_local": {
+        required: "Email Required",
+      },
+      "email_domain": {
+        required: "Email Domain is Required",
+      },
+      "facility[sms_contact_number]": {
+        required: "SMS Contact Number Required"
+      }
+    },
+    errorPlacement: function (error, element) {
+      var elem = $(element);
+      if(elem.hasClass("select2-hidden-accessible")) {
+        if($(element).attr("id") == "facility_currency_ids"){
+          element = $(".select2-selection--multiple").parent();
+        } else {
+          element = $("#select2-" + elem.attr("id") + "-container").parent();
+        }
+        error.insertAfter(element);
+      } else {
+        error.insertAfter(element);
+      }
+    }
+  });  
+}
+new_facility()
+
+$.validator.addMethod('isLocalName', function(value, element) {
+  return !(value.indexOf('@') > 0)
+}, 'Please provide local name only')
+
+$.validator.addClassRules("email_local", { isLocalName: true });

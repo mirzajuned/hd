@@ -1,0 +1,129 @@
+// Referral/Sub Referral Select2
+$("#patient_referral_type_referral_type_id").select2()
+$("#patient_referral_type_sub_referral_type_id").select2()
+
+// Get SubReferralType from ReferralType
+$("#patient_referral_type_referral_type_id").on('change', function(){
+  var referral_type_id = $(this).val()
+  if($(this).val() == "FS-RT-0004"){
+    change_relative_referral_type()
+  } else if($(this).val() == "FS-RT-0001"){
+    change_self_referral_type()
+  } else {
+    change_sub_referral_type(referral_type_id, "<%= @patient_referral_type.sub_referral_type_id.to_s %>")
+  }
+}).trigger('change')
+
+// Add SubReferralType
+$("#btn-add-sub-referral-type").on('click', function(e){
+  e.preventDefault();
+  var referral_type_id = $("#patient_referral_type_referral_type_id").val();
+  if(referral_type_id != ""){
+    $.ajax({
+      dataType: "script",
+      type : 'get',
+      url: '/sub_referral_types/new',
+      data: { referral_type_id: referral_type_id, location: 'appointment', flag: 'edit' },
+      success: function(response) {
+        $("#referral-modal").modal('show')
+      },
+      error: function(response) {
+      }
+    });
+  }
+})
+
+// Update SubReferralType
+function change_sub_referral_type(referral_type_id, sub_referral_type_id=""){
+  // Initialize SubReferralType 
+  $("#btn-add-sub-referral-type").show() // Remove Add Button
+  $("#patient_referral_form").html("") // Clear Relative Referral Form
+  $("#notice-for-delete").hide() //Notice to Delete Referral if Empty box
+
+  var referral_type_id = referral_type_id
+  var facility_id = "<%= @patient_referral_type.appointment.facility_id.to_s %>"
+  var sub_referral_type = $('#patient_referral_type_sub_referral_type_id')
+  
+  if(referral_type_id != ""){
+    $(".sub-referral-types-section").show() // Show Sub Referral Dropdown
+
+    $.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/referral_types/sub_referral_type',
+      data: { referral_type_id: referral_type_id, facility_id: facility_id },
+      success: function(response) {
+        $(sub_referral_type).children().remove();
+        $.each(response.sub_referral_type, function(key, value) {
+          $(sub_referral_type).append($("<option></option>").attr("value",value[1]).text(value[0]));
+        });
+        if(sub_referral_type_id == ''){
+          $(sub_referral_type).prepend($('<option selected="selected" disabled="disabled">Select</option>'))
+        } else {
+          if($("#patient_referral_type_sub_referral_type_id option[value='" + sub_referral_type_id + "']").length > 0){
+            $("#patient_referral_type_sub_referral_type_id option[value='" + sub_referral_type_id + "']").attr('selected', 'selected')
+          } else {
+            $(sub_referral_type).prepend($('<option selected="selected" disabled="disabled">Select</option>'))
+          }
+        }
+        $("#btn-add-sub-referral-type").show()
+
+        $(sub_referral_type).trigger('change') // For Select2
+      },
+      error: function(response) {
+      }
+    });
+  } else {
+    $(sub_referral_type).prepend($('<option selected="selected" disabled="disabled">Select</option>'))
+    $("#btn-add-sub-referral-type").hide() // Hide Add Sub Referral Button
+    $(".sub-referral-types-section").hide() // Hide Sub Referral Dropdown
+    $("#notice-for-delete").show() //Notice to Delete Referral if Empty box
+
+    $(sub_referral_type).trigger('change') // For Select2
+  }
+}
+
+// Form Relative ReferralType
+function change_relative_referral_type(){
+  $(".sub-referral-types-section").hide()
+  $("#btn-add-sub-referral-type").hide()
+  $("#patient_referral_form").html("<%= escape_javascript(render 'appointments/form/relative_referral_form.html.erb') %>")
+}
+
+function change_self_referral_type(){
+  $(".sub-referral-types-section").hide()
+  $("#btn-add-sub-referral-type").hide()
+  $("#patient_self_referral_form").html()
+  $("#patient_referral_form").html("<%= escape_javascript(render 'appointments/form/self_referral_form.html.erb') %>")
+}
+
+// Validate Form
+function patient_referral_page() {
+  $("#edit_patient_referral_type_<%= @patient_referral_type.id.to_s %>").validate({
+    rules: {
+      "sub_referral_type[name]": {
+        required: true
+      },
+      "patient_referral_type[sub_referral_type_id]": {
+        required: true
+      }
+    },
+    messages: {
+      "sub_referral_type[name]": {
+        required: "Name is Required"
+      },
+      "patient_referral_type[sub_referral_type_id]": {
+        required: "Sub Referral Type is Required"
+      }
+    },
+    errorPlacement: function (error, element) {
+      var name = $(element).attr('name')
+      if(name == 'patient_referral_type[sub_referral_type_id]') {
+        $(".sub-referral-types-section").append(error)
+      } else {
+        error.insertAfter(element);
+      }
+    }
+  });
+}
+patient_referral_page()

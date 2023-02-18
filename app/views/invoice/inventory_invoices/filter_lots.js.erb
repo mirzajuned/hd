@@ -1,0 +1,63 @@
+$(".items-lots-body").html("<%= escape_javascript(render partial: 'inventory/item/lots/index_body') %>")
+
+$('.btn-group.open').removeClass('open')
+highlight_items()
+
+adjust_height()
+function adjust_height(){
+  modalContentHeigth = $(window).height() - 160
+  itemsLots = modalContentHeigth - $('.invoice-header').height()
+  $('.items-lots-body').height(itemsLots)
+}
+
+function add_lot(lot_id) {
+  var id =  lot_id || '<%= @lots[0]&.id %>'
+  if (!checkItem.includes(id)) {
+    checkItem.push(id)
+    $.ajax({
+      type: 'GET',
+      data: {
+        lot_id: id,
+        remote: true
+      },
+      url: '/invoice/inventory_invoices/add_lot',
+      success: function(){
+        $('#'+id).css('background-color', '#cfe8d2')
+        $('#'+id).addClass('disabled_row')
+      }
+    })
+  }
+}
+
+if($('.items-lots-body tr').length == <%= @lots.count %>){
+  $('#show_more_lots').hide();
+}
+
+$('.items-lots-list .inventory-list-row').unbind()
+$('.items-lots-list .inventory-list-row').on('click', function(e) {
+  e.preventDefault();
+  var lot_name =  $(this).find('.description').text();
+  var lot_id = $(this).attr('id')
+  add_lot(lot_id);
+})
+
+if ((<%= @search_type == 'Barcode' %>) && (<%= @lots&.size == 1 %>)) {
+  var expiry_date = '<%= @lots[0]&.expiry %>'
+  var current_date = '<%= Date.current %>'
+  if (expiry_date == '') {
+    add_lot().trigger();
+  } else {
+    if ((new Date(expiry_date)) > (new Date(current_date))) {
+      add_lot().trigger();
+    }
+  }
+}
+
+function highlight_items()
+{
+  var id = ''
+  $('.inventory-invoice-log-item').each(function() {
+    id = $(this).find('.delete_empty_item').val()
+    $('#'+id).css('background-color', '#cfe8d2')
+  });
+}

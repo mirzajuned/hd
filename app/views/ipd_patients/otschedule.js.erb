@@ -1,0 +1,117 @@
+var current_date = "<%= @datepicker_date%>"
+var refresh_icons_ot = "<span class='refresh-data-ot glyphicon glyphicon-refresh' title='Refresh OT List' style='margin-top:10px;cursor:hand;cursor:pointer;padding-right:10px;border-right:1px solid;'></span>"
+var ot_schedule = jQuery('#ot-schedule-table').dataTable({
+    "bDestroy": true,
+    "sPaginationType": "full_numbers",
+    "bServerSide": true,
+    "sAjaxSource":"/ipd_patients/ot_schedule.json?current_date="+current_date+"&department_id=<%= @req_dept_id %>&surgeonname=<%= @users_array[0][1] %>&facility_id=<%= current_facility.id %>&status=scheduled",
+    "sDom": '<"top"<"buttonPlaceholderOT row ot_ipd"><"clear"><"table-filters-ot row"<"filter-title-ot col-md-1"><"facility-filter-ot col-md-2"><"department-filter-ot"><"user-filter-ot col-md-2"><"status-filter-ot col-md-3">f><"clear">>rt<"bottom"ip<"clear">>',
+    "aoColumns": [
+        {"sTitle":'S.No',"sWidth": "5%", "bSortable": false},
+        {"sTitle":'Admission ID',"sWidth": "10%", "bSortable": false},
+        {"sTitle":"Patient ID","sWidth": "10%", "sClass": "patient_identifier", "bSortable": false},
+        {"sTitle":"Patient Name","sWidth": "15%","sClass": "patient_name", "bSortable": false},
+        {"sTitle":"Gender","sWidth": "5%", "bSortable": false},
+        {"sTitle":"Age","sWidth": "5%", "bSortable": false},
+        {"sTitle":"OT Date & Time","sWidth": "15%", "bSortable": false},
+        {"sTitle":"Actions","sWidth": "25%", "bSortable": false}
+    ],
+    "oLanguage": {
+        "sZeroRecords": "No OT Scheduled",
+        "sLoadingRecords": "Please wait - loading OTs...",
+        "sSearch": '_INPUT_<span class="input-group-addon"><i class="glyphicon glyphicon-search"></i></span>'
+    },
+    "bPaginate": false
+})
+
+jQuery('#ot-schedule-table').removeClass('display').addClass('table table-primary table-striped table-bordered')
+jQuery("div.buttonPlaceholderOT").append("<%= escape_javascript(render 'ot_controls') %>")
+jQuery(".department-filter-ot").html("<%= escape_javascript(render 'ipd_patients/partials/departments_dropdown_ot') %>")
+jQuery(".user-filter-ot").html("<%= escape_javascript(render 'ipd_patients/partials/users_dropdown_ot') %>")
+//jQuery(".facility-filter-ot").html("<%= escape_javascript(render 'ipd_patients/partials/facilities_dropdown_ot') %>")
+jQuery(".filter-title-ot").html(refresh_icons_ot)
+// jQuery( "<hr style='margin-top: 7px;margin-bottom: 7px;'>" ).insertBefore( ".dataTables_wrapper>.top>.table-filters-ot" );
+// jQuery( "<hr style='margin-top: 7px;margin-bottom: 7px;'>" ).insertAfter( ".dataTables_wrapper>.top>.table-filters-ot" );
+
+jQuery(".dataTables_filter input").unwrap()
+jQuery(".dataTables_filter").wrapInner("<div class='input-group'></div>")
+jQuery(".dataTables_filter input").addClass("form-control")
+jQuery(".dataTables_filter").css({width: '180px'})
+
+jQuery(".refresh-data-ot").on("click",function(){
+    jQuery('#ot-schedule-table').dataTable().fnDraw()
+})
+
+jQuery(".dataTables_length").addClass("col-md-3")
+jQuery('#ot-datepicker-inline').datepicker({
+    dateFormat: "dd/mm/yy",
+    //showButtonPanel: true,
+    showOn: "button",
+    buttonText: '<i class="fa fa-calendar"></i>',
+    onSelect: function (dateText,obj) {
+        //pushPageState({x: "1"}, "", "/ipd_patients/otschedule?admission_day="+moment(dateText, "DD/MM/YYYY").format('DD-MMMM-YYYY'))
+        jQuery.ajax({
+            type: "GET",
+            dataType: "script",
+            url: "/ipd_patients/otschedule?admission_day="+moment(dateText, "DD/MM/YYYY").format('DD-MMMM-YYYY')
+        })
+    }
+})
+jQuery(".ui-datepicker-trigger").addClass("btn btn-success")
+jQuery("a.ui-state-default").addClass("datepicker-ps")
+jQuery.datepicker._gotoToday = function(id) {
+    jQuery(id).datepicker('setDate', new Date())
+    //pushPageState({x: "1"}, "", "/inpatients/admission_management/"+moment(new Date()).format('DD-MMMM-YYYY'))
+    jQuery.ajax({
+        type: "GET",
+        dataType: "script",
+        url: "/ipd_patients/otschedule?admission_day="+moment(dateText, "DD/MM/YYYY").format('DD-MMMM-YYYY')
+    })
+}
+
+jQuery('.print-ot-list').on("click", function() {
+    var url = "/ipd_patients/printotlist";
+    window.open(url, "","toolbar=0,status=0");
+    event.preventDefault();
+})
+jQuery('#facility-filter-ot').on("change",function(){
+    
+    jQuery.ajax({
+        type: "GET",
+        dataType: "html",
+        url: "/departments/get_departments_for_facility",
+        data: {facility_id: jQuery("#facility-filter-ot").val()},
+        success: function(data) {
+            $("#department-filter-ot").html(data)
+            $("#department-filter-ot").trigger("change")
+        }
+    })
+})
+jQuery('#department-filter-ot').on("change",function(){
+    //refresh the user list
+    jQuery.ajax({
+        type: "GET",
+        dataType: "html",
+        url: "/users/get_users_for_department",
+        data: {department_id: jQuery("#department-filter-ot").val(),facility_id: "<%=current_facility.id%>"},
+        success: function(data) {
+            $("#user-filter-ot").html(data)
+        }
+    })
+    //get the appointment list
+
+    var settings = ot_schedule.fnSettings()
+    settings.sAjaxSource = "/ipd_patients/ot_schedule.json?current_date="+current_date+"&department_id="+jQuery("#department-filter-ot").val()+"&facility_id="+jQuery("#facility-filter-ot").val()+"&status="+jQuery("#status-filter-ot").val()
+    ot_schedule.fnDraw()
+})
+jQuery('#user-filter-ot').on("change",function(){
+    //get the appointment list
+    var settings = ot_schedule.fnSettings()
+    settings.sAjaxSource = "/ipd_patients/ot_schedule.json?current_date="+current_date+"&department_id="+jQuery("#department-filter-ot").val()+"&surgeonname="+jQuery("#user-filter-ot").val()+"&facility_id="+"<%=current_facility.id%>"+"&status="+jQuery("#status-filter-ot").val()
+    ot_schedule.fnDraw()
+})
+jQuery("#status-filter-ot").on("change",function(){
+    var settings = ot_schedule.fnSettings()
+    settings.sAjaxSource = "/ipd_patients/ot_schedule.json?current_date="+current_date+"&department_id="+jQuery("#department-filter-ot").val()+"&facility_id="+jQuery("#facility-filter-ot").val()+"&status="+jQuery("#status-filter-ot").val()
+    ot_schedule.fnDraw()
+})

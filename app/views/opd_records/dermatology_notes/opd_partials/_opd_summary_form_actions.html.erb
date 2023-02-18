@@ -1,0 +1,276 @@
+<div class="row mb10">
+
+  <div class="col-md-12 col-sm-12 mb5">
+
+      <div class="opd-review-actions">
+
+        <div class="col-md-7 col-sm-4">
+          <div class="btn-group mr10">
+            <% @edit_opd_link = "edit_opd_records_"+@speciality_folder_name+"_note_path(opdrecord._id,:opdrecordid => opdrecord._id, :patientid => patient.id, :appointmentid => appointment.id, :templatetype => templatetype, :mode => @mode, :viewmode => @viewmode, :facility_id => @current_facility.id)"%>
+            <% if @mode == "tabview"%>
+              <% request_type = false %>
+            <% else %>
+              <% request_type = true %>
+            <% end %>
+            <%unless @consolidate_report == 'true'%>
+              <% unless opdrecord.sign_off == "true" %>
+                <%unless @nabh_setting.try(:enabled) && @opdrecord.created_at.strftime('%d%m%Y') != Date.current.strftime('%d%m%Y') %>
+                  <% unless current_user.role_ids.include?(46255001) || current_user.role_ids.include?(387619007) %>
+                    <%= link_to eval(@edit_opd_link),   :class => "btn btn-primary edit-record", :data => {:remote => request_type,'disable-with' =>  "Please Wait...", 'target' => '#templates-modal', method: :get } do %> <i class="fa fa-edit"></i> Edit <% end %>
+                  <% end %>
+                <%else%>
+                  <%= link_to eval(@edit_opd_link),  :class => "btn btn-primary edit-record disabled", :data => {:remote => request_type,'disable-with' =>  "Please Wait...", 'target' => '#templates-modal', method: :get } do %> <i class="fa fa-edit"></i> Edit <% end %>
+                <% end %>
+              <%else%>
+                  <%= link_to eval(@edit_opd_link), :class => "btn btn-primary edit-record disabled", :data => {:remote => request_type,  'disable-with' =>  "Please Wait...", 'target' => '#templates-modal', method: :get } do %> <i class="fa fa-edit"></i> Edit <% end %>
+              <% end %>
+            <% end %>
+            
+            <% if @mode != "tabview" && @viewmode != "tabview" %>
+              <% if @print_settings.count > 1 %>
+                <div class="btn-group">
+                  <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown"><i class="fa fa-print mr5"></i> Print <i class="fa fa-caret-down"></i></button>
+                  <ul class="dropdown-menu dropdown-left-manual" role="menu" aria-labelledby="summary-print-dropdown" style="">
+                    <% @print_settings.each do |print_setting| %>
+                      <li style="text-align:left" class="multi-print">
+                        <%= link_to opd_records_print_opd_record_path(:opdrecordid => opdrecord._id, :patientid => patient.id, :appointmentid => appointment.id, :templatetype => templatetype, :specality => specalityfoldername,print_setting_id:print_setting.id, :format => :pdf), :class => "full_print",:style => "color: #d9534f;",:target => "_blank", :data => {method: :get} do %> <i class="fa fa-print mr5"></i> <%= print_setting.name %> <% end %>
+                      </li>
+                    <% end %>
+                  </ul>
+                </div>
+              <% else %>
+                <%= link_to opd_records_print_opd_record_path(:opdrecordid => opdrecord._id, :patientid => patient.id, :appointmentid => appointment.id, :templatetype => templatetype, :specality => specalityfoldername,print_setting_id:@print_settings[0].id, :format => :pdf), :class => "btn btn-primary full_print",:target => "_blank", :data => {method: :get} do %> <i class="fa fa-print mr5"></i> Print <% end %>
+              <% end %>
+            <% end %>
+            
+            <% mode = @mode || @viewmode || "webview" %>    
+            <%= link_to new_mail_record_tracker_path(record_name: templatetype.to_s.capitalize + ' - Template', record_id: opdrecord._id, record_model: 'OpdRecord', patient_id: patient.id, appointment_id: appointment.id, templatetype: templatetype, speciality: specalityfoldername, speciality_id: @opdrecord.specalityid, :mode => mode),  class: "btn btn-primary", :id => "record-mail-html", :data => {:remote => true, 'disable-with' =>  "Please Wait..."} do %><i class="glyphicon glyphicon-envelope"></i> Email<% end %>  
+          </div>
+        </div>
+
+        <%@current_facility = current_facility%>
+        <%@facility = Facility.find_by(id: @current_facility.id)%>
+        <%@show_language_support = @facility.show_language_support%>
+        <%if @show_language_support == true%>
+          <% @opdrecord.treatmentmedication.each.with_index do |medication,i| %>
+            <%unless @consolidate_report == 'true'%>
+              <%if @show_single_dropdown == true%>
+                <div class="col-md-4 col-sm-4" style="margin-left: -6%; " >
+                  <div class="col-md-4 col-sm-4 tabview_lng">Language:</div>
+                  <div class="col-md-8 col-sm-8">
+                    <%= select_tag("combined_dropdown", options_for_select(@combined_dropdown),{:include_blank => '',:class => 'form-control'}) %>
+                  </div>
+                </div>
+              <%else%>
+                <%if @opdrecord.advice_set_id.present?%>
+                  <div class="col-md-4 col-sm-4" style="margin-left: -6%; " >
+                    <div class="col-md-4 col-sm-4 tabview_lng">Language:</div>
+                    <div class="col-md-8 col-sm-8">
+                      <%= select_tag("advice_sets_option", options_for_select(@advice_set_language),{:include_blank => '',:class => 'form-control'}) %>
+                    </div>
+                  </div>
+                <%end%>
+                <%if medication.instruction.present?%>
+                  <%if @opdrecord.treatmentmedication.present?%>
+                    <div class="col-md-4 col-sm-4" style="margin-left: -6%; " >
+                      <div class="col-md-4 col-sm-4 tabview_lng">Language:</div>
+                      <div class="col-md-8 col-sm-8">
+                        <%= select_tag("medication_dropdown", options_for_select([["English","en"],["Hindi","hi"],["Kannada","kn"],["Tamil","ta"],["Telugu","te"],["Gujarati","gu"]], "en"),{:include_blank => '',:class => 'form-control'}) %>
+                      </div>
+                    </div>
+                  <%end%>
+                  <%break%>
+                <%else%>
+                  <%if medication.instruction.present? || medication.medicineinstructions.present?%>
+                    <b>**No translation for these instruction are available</b>
+                  <%end%>
+                  <%break%>
+                <%end%>
+              <%end%>
+            <%end%>
+            <%break%>
+          <%end%>
+          <% if @opdrecord.treatmentmedication.count <= 0 && @opdrecord.advice_set_id.present? %>
+            <div class="col-md-4 col-sm-4" style="margin-left: -6%; " >
+              <div class="col-md-4 col-sm-4 tabview_lng">Language:</div>
+              <div class="col-md-8 col-sm-8">
+                <%= select_tag("advice_sets_option", options_for_select(@advice_set_language),{:include_blank => '',:class => 'form-control'}) %>
+              </div>
+            </div>
+          <% end %>
+        <%end%>
+
+        <%unless @consolidate_report == 'true'%>
+          <%unless @nabh_setting.try(:enabled) && @opdrecord.created_at.strftime('%d%m%Y') != Date.current.strftime('%d%m%Y') %>
+            <span class="refresh-sign-off">
+
+              <%= render "opd_records/refresh_sign_off.html"  %>
+
+            </span>
+          <%end%>
+        <%end%>
+
+      </div>
+
+  </div>
+
+  <% if @mode != "tabview" && @viewmode != "tabview" %>
+    <div class="col-md-12 col-sm-12">
+      <label class="col-md-2 col-sm-2" for="printsummary-labels"><strong>Print only:</strong></label>
+    <div class="col-md-10">
+      <% if @opdrecord.print_history_flag == "1" %>
+          <div class="ckbox ckbox-default col-md-3 col-sm-4">
+            <%= check_box_tag 'opdrecord[print_history_flag]', @opdrecord.print_history_flag, true, { class: 'print_history_flag', id: "checkboxhistory" } %>
+            <label for="checkboxhistory">History</label>
+          </div>
+      <% else %>
+          <div class="ckbox ckbox-default col-md-3 col-sm-4">
+            <%= check_box_tag 'opdrecord[print_history_flag]', @opdrecord.print_history_flag, false, { class: 'print_history_flag', id: "checkboxhistory" } %>
+            <label for="checkboxhistory">History</label>
+          </div>
+      <% end %>
+
+      <% if @opdrecord.print_examination_flag == "1" %>
+          <div class="ckbox ckbox-default col-md-3 col-sm-4">
+            <%= check_box_tag 'opdrecord[print_examination_flag]', @opdrecord.print_examination_flag, true, { class: 'print_examination_flag', id: "checkboxexamination" } %>
+            <label for="checkboxexamination">Examination</label>
+          </div>
+      <% else %>
+          <div class="ckbox ckbox-default col-md-3 col-sm-4">
+            <%= check_box_tag 'opdrecord[print_examination_flag]', @opdrecord.print_examination_flag, false, { class: 'print_examination_flag', id: "checkboxexamination" } %>
+            <label for="checkboxexamination">Examination</label>
+          </div>
+      <% end %>
+
+      <% if @opdrecord.print_diagnosis_flag == "1" %>
+          <div class="ckbox ckbox-default col-md-3 col-sm-4">
+            <%= check_box_tag 'opdrecord[print_diagnosis_flag]', @opdrecord.print_diagnosis_flag, true, { class: 'print_diagnosis_flag', id: "checkboxdiagnosis" } %>
+            <label for="checkboxdiagnosis">Diagnosis</label>
+          </div>
+      <% else %>
+          <div class="ckbox ckbox-default col-md-3 col-sm-4">
+            <%= check_box_tag 'opdrecord[print_diagnosis_flag]', @opdrecord.print_diagnosis_flag, false, { class: 'print_diagnosis_flag', id: "checkboxdiagnosis" } %>
+            <label for="checkboxdiagnosis">Diagnosis</label>
+          </div>
+      <% end %>
+
+      <% if @opdrecord.print_investigations_flag == "1" %>
+          <div class="ckbox ckbox-default col-md-3 col-sm-4">
+            <%= check_box_tag 'opdrecord[print_investigations_flag]', @opdrecord.print_investigations_flag, true, { class: 'print_investigations_flag', id: "checkboxinvestigations" } %>
+            <label for="checkboxinvestigations">Investigations</label>
+          </div>
+      <% else %>
+          <div class="ckbox ckbox-default col-md-3 col-sm-4">
+            <%= check_box_tag 'opdrecord[print_investigations_flag]', @opdrecord.print_investigations_flag, false, { class: 'print_investigations_flag', id: "checkboxinvestigations" } %>
+            <label for="checkboxinvestigations">Investigations</label>
+          </div>
+      <% end %>
+
+      <% if @opdrecord.print_procedures_flag == "1" %>
+          <div class="ckbox ckbox-default col-md-3 col-sm-4">
+            <%= check_box_tag 'opdrecord[print_procedures_flag]', @opdrecord.print_procedures_flag, true, { class: 'print_procedures_flag', id: "checkboxprocedures" } %>
+            <label for="checkboxprocedures">Procedures</label>
+          </div>
+      <% else %>
+          <div class="ckbox ckbox-default col-md-3 col-sm-4">
+            <%= check_box_tag 'opdrecord[print_procedures_flag]', @opdrecord.print_procedures_flag, false, { class: 'print_procedures_flag', id: "checkboxprocedures" } %> 
+            <label for="checkboxprocedures">Procedures</label>
+          </div>
+      <% end %>
+
+      <% if @opdrecord.print_advice_flag == "1" %>
+          <div class="ckbox ckbox-default col-md-3 col-sm-4">
+            <%= check_box_tag 'opdrecord[print_advice_flag]', @opdrecord.print_advice_flag, true, { class: 'print_advice_flag', id: "checkboxadvice" } %>
+            <label for="checkboxadvice">Advice</label>
+          </div>
+      <% else %>
+          <div class="ckbox ckbox-default col-md-3 col-sm-4">
+            <%= check_box_tag 'opdrecord[print_advice_flag]', @opdrecord.print_advice_flag, false, { class: 'print_advice_flag', id: "checkboxadvice" } %>
+            <label for="checkboxadvice">Advice</label>
+          </div>
+      <% end %>
+      </div>
+    </div>
+  <% end %>  
+</div>
+
+<script type="text/javascript">
+
+  $(".edit-record").on('click', function(){
+    var mode = "<%=@mode%>"
+    if (mode == 'tabview') {
+      var token = Android.getToken();
+      var href = $(this).attr("href")
+      var new_href = href + '&token='+ token
+      $(this).attr("href", new_href)
+    }
+  })
+
+  $('#advice_sets_option').on('change',function(){
+    var advice_language = $(this).val();
+    var opdrecord = "<%=@opdrecord.id%>";
+    var appointmentid = "<%=@opdrecord.appointmentid%>";
+    var patientid = "<%=@opdrecord.patientid%>";
+    var specality = "<%=@opdrecord.specalityname%>";
+    var templatetype = "<%=@opdrecord.templatetype%>";
+    var language_flag = true;
+    jQuery.ajax({
+        type: "GET",
+        dataType: "script",
+        data: { advice_language: advice_language, opdrecord: opdrecord },
+        url: '/opd_records/replace_advice_set',
+        success: function(){
+          var current_path = $('.full_print').attr('href');
+          var modified_path = $('.full_print').attr('href')+"&language_flag=true&advice_language="+advice_language;
+          var remove_current_path = $('.full_print').removeAttr('href');
+          var add_modfied_path = $('.full_print').attr('href',modified_path);
+        }
+      });
+  })
+
+  $("#medication_dropdown").on("change",function(){
+    var advice_language = $(this).val();
+    var opdrecord = "<%=@opdrecord.id%>";
+    jQuery.ajax({
+      type: 'GET',
+      dataType: "script",
+      data: { advice_language: advice_language, opdrecord: opdrecord},
+      url: '/opd_records/replace_medication_instruction',
+      success: function(){
+        var current_path = $('.full_print').attr('href');
+        var modified_path = $('.full_print').attr('href')+"&language_flag=true&advice_language="+advice_language;
+        var remove_current_path = $('.full_print').removeAttr('href');
+        var add_modfied_path = $('.full_print').attr('href',modified_path);
+      }
+    })
+  })
+
+  $("#combined_dropdown").on("change",function(){
+    var advice_language = $(this).val();
+    var opdrecord = "<%=@opdrecord.id%>";
+    jQuery.ajax({
+      type: 'GET',
+      dataType: "script",
+      data: { advice_language: advice_language, opdrecord: opdrecord},
+      url: '/opd_records/replace_medication_instruction',
+      success: function(){
+        var current_path = $('.full_print').attr('href');
+        var modified_path = $('.full_print').attr('href')+"&language_flag=true&advice_language="+advice_language;
+        var remove_current_path = $('.full_print').removeAttr('href');
+        var add_modfied_path = $('.full_print').attr('href',modified_path);
+        jQuery.ajax({
+          type: "GET",
+          dataType: "script",
+          data: { advice_language: advice_language, opdrecord: opdrecord },
+          url: '/opd_records/replace_advice_set',
+          success: function(){
+            // var current_path = $('.full_print').attr('href');
+            // var modified_path = $('.full_print').attr('href')+"&language_flag=true&advice_language="+advice_language;
+            // var remove_current_path = $('.full_print').removeAttr('href');
+            var add_modfied_path = $('.full_print').attr('href',modified_path);
+          }
+        });
+      }
+    })
+  })
+</script>

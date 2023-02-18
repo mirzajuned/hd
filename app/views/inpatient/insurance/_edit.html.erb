@@ -1,0 +1,192 @@
+<div class="modal-dialog" style="width:70%;">
+  <!-- Modal content-->
+  <div class="modal-content">
+    <%= form_tag '/inpatient/insurances/update', method: "patch", remote: true, multipart: true, html: { class: "tpa_edit_form", id: "tpa_edit_form" } do %>
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+        <% if @tpa.is_insured == 'Yes' %>
+          <h4 class="modal-title">Edit Patient Insurance Form</h4>
+        <% else %>
+          <h4 class="modal-title">New Patient Insurance Form</h4>
+        <% end %>
+      </div>
+
+      <div class="modal-body">
+        <%= hidden_field_tag "tpa[patient_id]", @tpa.patient_id , id: "tpa_patient_id"%>
+        <%= hidden_field_tag "insurance_id", @tpa.id %>
+        <%#= hidden_field_tag :admission_id, {class: 'form-control tpa_admission_id', id: "tpa_admission_id" } %>
+  
+        <div class="form-group row">
+          <div class="col-md-3 text-center"><b>Cashless Hospitalisation:</b></div>
+          <div class="col-md-9">
+            <div class="rdio rdio-primary col-md-4">
+              <%= radio_button_tag "tpa[is_insured]", "Yes", false, {class: 'is_insured_field', id: "is_insured_true"} %>
+              <label for="is_insured_true">Yes</label>  
+            </div>
+            <div class="rdio rdio-primary col-md-4">
+              <%= radio_button_tag "tpa[is_insured]", "No", true, {class: 'is_insured_field', id: "is_insured_false"} %>
+              <label for="is_insured_false">No</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="row tpa_form_checked" style="border-top:1px solid #eee;padding-top:10px;">
+          <div class="col-sm-3"><b style="color:#000">Admission Type</b></div>
+          <div class="col-sm-8">
+            <% planned = @tpa.admission_hospitalisation_type == "planned" %>
+            <div class="rdio rdio-primary col-sm-6">
+              <%= radio_button_tag "tpa[admission_hospitalisation_type]", "planned", planned, { class: 'hospitalization_type', id: "planned_hospitalization" } %>
+              <label for="planned_hospitalization">Planned</label>
+            </div>
+            <div class="rdio rdio-primary col-sm-6">
+              <%= radio_button_tag "tpa[admission_hospitalisation_type]", "emergency", !planned, { class: 'hospitalization_type', id: "emergency_hospitalization" } %>
+              <label for="emergency_hospitalization">Emergency</label>
+            </div>
+          </div>
+          <div class="col-md-12 mb10 text-center" style="text-decoration:underline;"><b>Insurance Form</b></div>
+          <div class="row mb10" style="padding-bottom: 3px;padding-left: 15px;padding-right: 15px;">
+            <div class="col-md-6">
+              <b style="color:#000;">Insurance Name</b>
+              <%= select_tag "tpa[insurance_contact_id]", options_for_select(@insurance_contacts.map { |insurance| [insurance.display_name, insurance.id, {"contact" => insurance.mobile_number, "address" => insurance.address_line_1.to_s + " "+ insurance.address_line_2.to_s + " "+ insurance.city.to_s + " "+ insurance.state.to_s, "email" => insurance.email}]}, @tpa.try(:insurance_contact_id)), {class: "form-control insurance_contact_id disable_field", include_blank: "Select Insurance"} %>
+            </div>
+            <% if current_facility.country_id == "IN_108" %>
+              <div class="col-md-6">
+                <b style="color:#000;">TPA Name</b>
+                <%= select_tag "tpa[tpa_contact_id]", options_for_select(@tpa_contacts.map { |tpa| [tpa.display_name, tpa.id, {"contact" => tpa.mobile_number, "address" =>  tpa.address_line_1.to_s + " "+ tpa.address_line_2.to_s + " "+ tpa.city.to_s + " "+ tpa.state.to_s, "email" => tpa.email}] }, @tpa.try(:tpa_contact_id)), {class: "form-control tpa_contact_id" , include_blank: "Select Tpa"} %>
+              </div>
+            <% end %>
+          </div>
+
+          <div class="row mb10" style="padding-bottom: 3px;padding-left: 15px;padding-right: 15px;">
+            <div class="col-sm-6">
+              <b style="color:#000;">Policy No.</b>
+              <%= text_field_tag "tpa[insurance_policy_no]", @tpa.try(:insurance_policy_no), { class: 'form-control p7_10 policy_no disable_field', id: "tpa_policy_no", placeholder: "Policy No." } %>
+            </div>
+            <div class="col-sm-6">
+              <b style="color:#000;">Policy Expiry Date</b>
+              <%= text_field_tag "tpa[insurance_policy_expiry_date]", @tpa.try(:insurance_policy_expiry_date).try(:strftime, "%d/%m/%Y"), {class: 'form-control p7_10 policy_expiry_date disable_field', id: "policy_expiry_date", readonly: 'readonly', style: 'cursor: pointer;background-color: #fff;' } %>
+            </div>
+          </div>
+           
+          <div class="row mb10" style="padding-bottom: 3px;padding-left: 15px;padding-right: 15px;">
+            <div class="col-sm-4"><b style="color:#000">Insurance Type</b></div>
+            <div class="col-sm-8">
+              <div class="rdio rdio-primary col-sm-4">
+                <%= radio_button_tag "tpa[insurance_type]", "Personal", true, {class: 'insurer_field', id: "insurer_personal"} %>
+                <label for="insurer_personal">Personal</label>
+              </div>
+              <div class="rdio rdio-primary col-sm-4">
+                <%= radio_button_tag "tpa[insurance_type]", "Company", false, {class: 'insurer_field', id: "insurer_company"} %>
+                <label for="insurer_company">Company</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="row mb10 insurer_company_fields" style="padding-bottom: 3px;padding-left: 15px;padding-right: 15px;">
+            <div class="col-sm-6">
+              <b style="color:#000;">Company Name</b>
+              <%= text_field_tag "tpa[company_name]", @tpa.try(:company_name), {class: 'form-control p7_10 company_name', id: "company_name", placeholder: "Company Name" } %>
+            </div>
+            <div class="col-sm-6">
+              <b style="color:#000;">Employee ID</b>
+              <%= text_field_tag "tpa[employee_id]", @tpa.try(:employee_id), {class: 'form-control p7_10 employee_id', id: "employee_id", placeholder: "Employee ID" } %>
+            </div>
+          </div>
+
+          <div class="row mb10" style="padding-bottom: 3px;padding-left: 15px;padding-right: 15px;">
+            <div class='col-sm-4'>
+              <b style="color:#000;">Sum Insured</b>
+              <%= number_field_tag "tpa[sum_insured]", @tpa.try(:sum_insured), {class: 'form-control p7_10 sum_insured', min: 0, id: "sum_insured",placeholder: "Sum Insured" } %>
+            </div>
+            <div class="col-sm-8">
+              <b style="color:#000;">Comments</b>
+              <%= text_field_tag "tpa[insurance_comments]", @tpa.try(:insurance_comments), {class: 'form-control p7_10 insurance_comments', id: "insurance_comments", placeholder: "Comments (If Any)" } %>
+            </div>
+          </div>
+          
+          <div class="col-sm-12"><b style="color:#000;padding-left: 15px;">Document Recieved</b></div>
+          <div style="padding-bottom: 3px;padding-left: 15px;padding-right: 15px;">
+            <% Global.government_document[current_facility.country_id].each do |document| %>
+              <div class="col-sm-6">
+                <div class="ckbox ckbox-primary mb5">
+                  <% flag = (true if @tpa.try(document[0].to_sym)) || false %>
+                  <input type="hidden" name="tpa[<%= document[0] %>]" value='false'>
+                  <%= check_box_tag "tpa[#{document[0]}]", true, flag, {id: "doc_#{document[0]}"} %>
+                  <label for="doc_<%= document[0] %>"><%= document[1] %></label>
+                </div>
+              </div>
+            <% end %>
+            <% if current_facility.country_id == "IN_108" %>
+              <div class="col-sm-12">
+                <div class="ckbox ckbox-primary mb5">
+                  <% flag = (true if @tpa.try(:document_patient_cancelled_cheque)) || false %>
+                  <input type="hidden" name="tpa[document_patient_cancelled_cheque]" value='false'>
+                  <%= check_box_tag 'tpa[document_patient_cancelled_cheque]', true, flag, {id: "doc_patient_cancelled_cheque"} %>
+                  <label for="doc_patient_cancelled_cheque">Cancelled Cheque of the patient's account to process the refund</label>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+   
+      <div class="modal-footer">
+        <% if @tpa.is_insured == 'Yes' %>
+          <%= submit_tag "Update", {class: 'btn btn-success'}%>
+        <% else %>
+          <%= submit_tag "Save", {class: 'btn btn-success'}%>
+        <% end %>
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+      </div>
+    <% end %>
+
+  </div>
+
+</div>
+
+
+<script type="text/javascript">
+  $('#policy_expiry_date').datepicker({
+    minDate: 0,
+    yearRange: "c:+20",
+    dateFormat: "dd/mm/yy",
+    changeMonth: true,
+    changeYear: true
+  })
+
+  // Logic For Insurer
+  if ($('#insurer_company').is(':checked')) {
+    $(".insurer_company_fields").show();
+  } else {
+    $(".insurer_company_fields").hide();
+  }
+
+  // $(".insurer_company").hide();
+  $(".insurer_field").click(function(){
+    if ($('#insurer_company').is(':checked')) {
+      $(".insurer_company_fields").show();
+    } else {
+      $(".insurer_company_fields").hide();
+    }
+  });
+  // Logic For IsInsured
+  // $('#is_insured_false').attr('checked', 'checked')
+  if($('#is_insured_true').is(':checked')){
+    $(".tpa_form_checked").show();
+  } else {
+    $(".tpa_form_checked").hide();
+  }
+  $(".is_insured_field").click(function(){
+    if ($('#is_insured_true').is(':checked')) {
+      $(".tpa_form_checked").show();
+    } else {
+      $(".tpa_form_checked").hide();
+    }
+  });
+
+  var is_insured = "<%= @tpa.is_insured %>"
+  if (is_insured == 'Yes'){
+    $("#is_insured_true").attr("checked", true)
+    $(".tpa_form_checked").show();
+  }
+</script>

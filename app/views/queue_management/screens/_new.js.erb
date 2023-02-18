@@ -1,0 +1,84 @@
+const organisationId = "<%= current_facility.organisation_id.to_s %>"
+const userId = "<%= current_user.id.to_s %>"
+
+const screenValidation = () => {
+  $("#new-screen-form").validate({
+    rules: {
+      "facility_id": {
+        required: true,
+      },
+    },
+    messages: {
+      "facility_id": {
+        required: "Facility is required."
+      },
+    },
+  });
+
+  // Screen Validation
+  $.validator.addClassRules("screen-name", { required: true });
+};
+screenValidation();
+
+const generatePassCode = () => {
+  passCode = Math.random().toString(36).substring(2, 12) // JS Equivalent of <%= SecureRandom.hex(5) %>
+  if(!/\d/.test(passCode)){ generatePassCode() } // Validate it to be AlphaNumeric
+
+  return passCode
+}
+
+const generateUserName = () => {
+  userName = `qm_${Math.random().toString(36).substring(2, 10)}` // JS Equivalent of <%= SecureRandom.hex(4) %>
+
+  return userName
+}
+
+// Select2
+$('.screen_facility_id').select2();
+
+// Load Area Dropdown
+$(".screen_facility_id").on('change', function(){
+  let facilityId = $(this).val();
+  $('.screens_facility_id').val(facilityId)
+})
+
+// Add Screens
+$("#btn-add-screen").on("click", function(e){
+  e.preventDefault();
+  let facilityId = $("#facility_id").val()
+  let passCode = generatePassCode()
+  let userName = generateUserName()
+
+  let screenRowCount = $(".screen-form").length
+  let screenDetails = `
+    <div class="row screen-form">
+      <input type="hidden" name="screens[${screenRowCount}][organisation_id]" class="screens_organisation_id" id="screens_${screenRowCount}_organisation_id" value="${organisationId}">
+      <input type="hidden" name="screens[${screenRowCount}][facility_id]" class="screens_facility_id" id="screens_${screenRowCount}_facility_id" value="${facilityId}">
+      <input type="hidden" name="screens[${screenRowCount}][user_id]" class="screens_user_id" id="screens_${screenRowCount}_user_id" value="${userId}">
+      <input type="hidden" name="screens[${screenRowCount}][expiry_date]" class="screens_expiry_date" id="screens_${screenRowCount}_expiry_date" value="<%= Date.today + 1.year %>">
+      <div class="col-md-4">
+        <input type="text" class="form-control p5_10 screen-name" name="screens[${screenRowCount}][name]" id="screens_${screenRowCount}_name">
+      </div>
+      <div class="col-md-3">
+        <input type="text" class="form-control p5_10 screen-username" name="screens[${screenRowCount}][username]" id="screens_${screenRowCount}_username" value="${userName}" readonly>
+      </div>
+      <div class="col-md-3">
+        <input type="text" class="form-control p5_10 screen-passcode" name="screens[${screenRowCount}][passcode]" id="screens_${screenRowCount}_passcode" value="${passCode}" readonly>
+      </div>
+      <div class="col-md-2">
+        <button class="btn btn-danger btn-remove-screen btn-xs" id="screens_${screenRowCount}_remove"><i class="fa fa-trash-alt"></i></button>
+      </div>
+    </div>
+  `
+
+  $(".screen-form-row").append(screenDetails)
+});
+
+// Remove Screens
+$("#screen-block").on("click", ".btn-remove-screen", function(e){
+  e.preventDefault();
+  $(this).closest(".screen-form").remove();
+
+  let screenRows = $("#screen-block").find(".screen-form")
+  renumberIndex(screenRows, ["input"], 1)
+});

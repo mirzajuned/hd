@@ -1,0 +1,148 @@
+<div class="row">
+  <div class="col-sm-9">
+    <div class="row">
+      <div class="col-md-8 mt10">
+        <h4 style="display: inline;"><b><%= @patient.fullname.to_s.upcase %></b></h4>
+        <% if @patient.gender || @patient.dob %>
+          <span>(
+            <%= @patient.gender[0] if @patient.gender %>
+            <%= '/' if @patient.gender && @patient.dob %>
+            <%= @patient.dob&.strftime('%d-%m-%Y') %>
+            <% if @patient.exact_age.present? %>
+              <strong>|</strong>
+              <% age_year, age_month = @patient.calculate_age(true) %>
+              <% if age_year.to_i >= 80 || age_year.to_i <= 4 %>
+                <% if age_year == 4 && age_month != 0 %>
+                  <b><%= @patient.calculate_age %></b>
+                <% else %>
+                  <b style="background:#ff8735;color:#fff;padding:2px 5px;"><%= @patient.calculate_age %></b>
+                <% end %>
+              <% else %>
+                <b><%= @patient.calculate_age %></b>
+              <% end %>
+            <% end %>
+          )</span>
+        <% end %>
+      </div>
+      <div class="col-md-4 mt10 text-right">
+        <% if @patient.reg_status %>
+          <button class="btn btn-default btn-xs" id="patient-summary-timeline-link" title="Patient Summary">Summary</button>
+        <% end %>
+      </div>
+    </div>
+    <div class="mt10" id='patient-details'>
+      <div class="row">
+        <div class="col-sm-4 text-left">Patient ID</div>
+        <div class="col-sm-1 text-left">:</div>
+        <div class="col-sm-7">
+          <%= @patient.patient_identifier_id %>
+        </div>
+      </div>
+      <% if @patient.patient_mrn.present? %>
+        <div class="row">
+          <div class="col-sm-4 text-left">MR No.</div>
+          <div class="col-sm-1 text-left">:</div>
+          <div class="col-sm-7"><b style="color:#000;background: #fed136;"><%= @patient.patient_mrn %></b></div>
+        </div>
+      <% end %>
+      <% if @patient.patient_type.present? %>
+        <div class="row">
+          <div class="col-sm-4 text-left">Patient Type</div>
+          <div class="col-sm-1 text-left">:</div>
+          <div class="col-sm-7">
+            <label class="label label-default" style="margin-left:0px;background:<%= @patient.patient_type.color %>"><%= @patient.patient_type.label.to_s.upcase %> <% if @patient.patient_type_comment? %>- <%= @patient.patient_type_comment %><% end %></label>
+          </div>
+        </div>
+      <% end %>
+      <div class="row">
+        <div class="col-sm-4 text-left">Registration Date</div>
+        <div class="col-sm-1 text-left">:</div>
+        <div class="col-sm-7">
+          <%= @patient.reg_time.try(:strftime, '%d/%m/%Y') %>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-sm-4 text-left">Primary Contact</div>
+        <div class="col-sm-1 text-left">:</div>
+        <div class="col-sm-7">
+          <%= @patient.mobilenumber %>
+        </div>
+      </div>
+      <% if @patient.address_1.present? || @patient.address_2.present? || @patient.city.present? || @patient.state.present? || @patient.pincode.present? || @patient.commune.present? || @patient.district.present? %>
+        <div class="row">
+          <div class="col-sm-4 text-left">Address</div>
+          <div class="col-sm-1 text-left">:</div>
+          <div class="col-sm-7">
+            <%= "#{@patient.try(:address_1)}" %>
+            <% if @patient.try(:address_1).present? %>, <% end %>
+            <%= "#{ @patient.try(:address_2) }" %>
+            <%= " #{ @patient.try(:area_manager_name) } #{ @patient.try(:city) } #{ @patient.try(:state) } #{ @patient.try(:commune) } #{ @patient.try(:district) }" %>
+            <% if @patient.try(:pincode).present? %>
+              <%= "(#{ @patient.try(:pincode) })" %>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+      <% if @patient.emergency_contact.present? %>
+        <div class="row">
+          <div class="col-sm-4 text-left">Emergency Details</div>
+          <div class="col-sm-1 text-left">:</div>
+          <div class="col-sm-7">
+            <%= @patient.emergency_contact %>
+          </div>
+        </div>
+      <% end %>
+      <% if @patient.primary_language.present? || @patient.secondary_language.present? %>
+        <div class="row">
+          <div class="col-sm-4 text-left">Language</div>
+          <div class="col-sm-1 text-left">:</div>
+          <div class="col-sm-7">
+            <%= @patient.primary_language %>
+            <%= (', ' + @patient.secondary_language.to_s if @patient.secondary_language.present? && @patient.primary_language.present?) || @patient.secondary_language.to_s %>
+          </div>
+        </div>
+      <% end %>
+      <% if @patient.social_security_number.present? %>
+        <div class="row">
+          <div class="col-sm-4 text-left">VSS Number</div>
+          <div class="col-sm-1 text-left">:</div>
+          <div class="col-sm-7">
+            <%= @patient.social_security_number %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+  <div class="col-sm-3 text-center no_padding">
+    <%= image_tag @patient_asset.present? ? @patient_asset : 'placeholder.png', class: 'patient_profile_pic' %>
+
+    <% if @patient.one_eyed == "Yes" %>
+      <div style="margin-top:4px;"><b style="background:#ff8735;color:#fff;padding:2px 5px;">One Eyed</b></div>
+    <% end %>
+    <% if @token_setting.try(:token_enabled) %>
+      <% if @current_date == Date.current %>
+        <% if @appointment.token_number.present? %>
+          <p class="text-right" style="margin-top: -12%;margin-right: 9%;"><%= link_to token_settings_show_tokens_path(token_setting_id: @token_setting.id.to_s, appointment_id: @appointment.id, existing_token: @appointment.token_number), data: { remote: true, toggle: 'modal', target: '#appointment-modal' }, class: 'btn btn-danger', style: 'border-radius: 100%;border:2px solid #ac2925;padding: 3px 6px;font-size: 10px;' do %><%= @appointment.token_number %><% end %></p>
+        <% else %>
+          <% if @appointment_list_view.current_state != "Scheduled" %>
+            <%= link_to token_settings_show_tokens_path(token_setting_id: @token_setting.id.to_s, appointment_id: @appointment.id), data: { remote: true, toggle: 'modal', target: '#appointment-modal' }, class: 'btn btn-link btn-xs' do %>Assign Token<% end %>
+          <% end %>
+        <% end %>
+      <% else %>
+        <p class="text-right" style="margin-top: -10%;margin-right: 10%;"><label class="label label-danger" style="border-radius: 100%;border:2px solid #ac2925;padding: 10px 7px;position: relative;"><%= @appointment.token_number %></label><p>
+      <% end %>
+    <% end %>
+    <% if @patient.rating.present? %>
+      <div><b style="color: #f5bf18;"><%= @patient.rating.round(2).to_s %> <i class="glyphicon glyphicon-star"></i></b></div>
+    <% end %>
+  </div>
+  <% if @patient.allergy_histories.present? || @patient.others_allergies.present? || @patient.speciality_history_records.count > 0 || @patient.opthal_history_comment.present? || @patient.history_comment.present? || @patient.other_history.medical_history.present? || @patient.other_history.family_history.present? || (@patient.other_history.specialstatus.present? && @patient.other_history.specialstatus != 'None') %>
+    <div class="col-sm-12" id="patient_history_allergy">
+      <hr>
+      <div class="row">
+        <%= render partial: 'outpatients/appointment/appointment_details/patient_histories.html.erb' %>
+        <%= render partial: 'outpatients/appointment/appointment_details/patient_allergies.html.erb' %>
+      </div>
+    </div>
+  <% end %>
+</div>

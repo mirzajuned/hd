@@ -1,0 +1,368 @@
+<%= javascript_include_tag "application-loggedin", "data-turbolinks-track" => true %>
+<div class="modal-dialog" style="width: 80%">
+  <div class="modal-content">
+    <%= form_for @inventory_invoice, remote: true, html: { id: 'inventory_invoices_review_form', class: 'inventory-invoices-review-form' } do |f| %>
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+        <h5 class="modal-title">Review Order</h5>
+      </div>
+      <div class="modal-body window-body">
+        <% currency_symbol = (@inventory_order.currency_symbol || current_facility.currency_symbol) %>
+        <div class="container-fluid" id="freeInvoiceEdit" style="border-bottom:1px solid #eee;">
+          <div class="row mt10 mb5">
+            <% if @patient_prescription.present? %>
+              <div class="prescription-information">
+                <% if @patient_prescription.class == PatientPrescription %>
+                  <%= render partial: 'invoice/inventory_invoices/patient_prescription' %>
+                <% elsif @patient_prescription.class == PatientOpticalPrescription %>
+                  <%= render partial: 'invoice/inventory_invoices/patient_optical_prescription' %>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+          <div class="row mt10 mb5">
+            <div class="col-lg-2 font_size text-labels">
+            <% if @inventory_order.is_create_gst_bill.present? %>
+            Legal Name:
+            <% else %>
+              Patient:
+            <% end %>  
+            </div>
+            <div class="col-lg-2 font_size">
+            <% if @inventory_order.is_create_gst_bill.present? %>
+            <%= @inventory_order.legal_name %>
+            <% else %>
+              <%= @inventory_order.recipient %>
+            <% end %>  
+            </div>
+            <div class="col-lg-2 font_size text-labels">
+              Patient ID:
+            </div>
+            <div class="col-lg-2 font_size">
+              <%= @inventory_order.patient_identifier%>
+            </div>
+            <div class="col-lg-2 font_size text-labels">
+              Patient Mobile
+            </div>
+            <div class="col-lg-2 font_size">
+              <%= @inventory_order.recipient_mobile %>
+            </div>
+          </div>
+          <div class="row mb5">
+            <div class="col-lg-2 font_size text-labels">
+              Doctor:
+            </div>
+            <div class="col-lg-2 font_size">
+              <%= @inventory_order.doctor_name %>
+            </div>
+            <div class="col-lg-2 font_size text-labels">
+              Order date:
+            </div>
+            <div class="col-lg-2 font_size">
+              <%= @inventory_order.try(:order_date).try(:strftime, "%d/%m/%Y") %>
+            </div>
+            <% if  @inventory_order&.delivered && @inventory_order.department_id == '50121007' %>
+              <div class="col-lg-2 font_size text-labels">
+                Delivery date:
+              </div>
+              <div class="col-lg-2 font_size">
+                <%= @inventory_order.try(:delivery_date).try(:strftime, "%d/%m/%Y") %>
+              </div>
+            <% elsif @inventory_order.department_id == '50121007' %>
+              <div class="col-lg-2 font_size text-labels">
+                Est. Delivery:
+              </div>
+              <div class="col-lg-2 font_size">
+                <%= @inventory_order.try(:estimated_delivery_date).try(:strftime, "%d/%m/%Y") %>
+              </div>
+            <% end %>
+            <div class="col-lg-2 font_size text-labels">
+            <% if @inventory_order.is_create_gst_bill.present? %>
+            GSTIN:
+            <% else %>
+            <% end %>  
+            </div>
+            <div class="col-lg-2 font_size">
+            <% if @inventory_order.is_create_gst_bill.present? %>
+            <%= @inventory_order.gstin %>
+            <% else %>
+              
+            <% end %>  
+            </div>
+          </div>
+          <!-- row -->
+          <div class="row">
+            <h4>Item</h4>
+          </div>
+          <div class="row check-font mt10 mb5">
+            <table class="table table table-striped table-bordered">
+              <thead>
+                <tr>
+                  <th>Code</th>
+                  <th>Description</th>
+                  <th>QTY</th>
+                  <th>Batch</th>
+                  <th>Model No.</th>
+                  <th>Exp.Date</th>
+                  <th>U.Price</th>
+                  <th>Tax</th>
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% grand_total_price = 0 %>
+                <% grand_total_tax = 0 %>
+                <% if @inventory_order.additional_discount %>
+                  <% discount = @inventory_order.additional_discount %>
+                <% else %>
+                  <% discount = 0 %>
+                <% end %>
+                <% if @inventory_order.offer_on_bill %>
+                  <% offer_on_bill = @inventory_order.offer_on_bill %>
+                <% else %>
+                  <% offer_on_bill = 0 %>
+                <% end %>
+                <% @inventory_order.items.each do |item| %>
+                  <tr>
+                    <td><%= item.item_code %></td>
+                    <td><%= item.description&.capitalize %></td>
+                    <td><%=item.quantity %></td>
+                    <td><%= item.batch_no %></td>
+                    <td><%= item.model_no %></td>
+                    <td>
+                      <% if item.expiry_date.present? %>
+                        <%= item.expiry_date %>
+                      <% elsif item.expiry.present? %>
+                        <%= item.expiry.try(:strftime, "%d/%m/%Y") %>
+                      <% else %>
+                        N.A
+                      <% end %>
+                    </td>
+                    <td><%= item.list_price&.round(2) %></td>
+                    <td><%= number_with_precision(item.taxable_amount, precision: 2) %></td>
+
+                    <% if item.list_price.present? %>
+                      <% list_price = item.list_price %>
+                    <% else %>
+                      <% list_price = 0 %>
+                    <% end %>
+                    <% if item.quantity.present? %>
+                      <% quantity = item.quantity %>
+                    <% else %>
+                      <% quantity = 0 %>
+                    <% end %>
+
+                    <td><%= item.total_list_price || (list_price * quantity) %></td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+          <div class="row mb5">
+            <% if @inventory_order.try(:tax_breakup).count > 0 %>
+              <div class="col-sm-5 col-sm-offset-7 text-labels">
+                <div class="col-sm-6 font_size">
+                  <b>Non-Taxable Amount</b>
+                </div>
+                <div class="col-sm-3 text-center font_size">
+                  :
+                </div>
+                <div class="col-sm-2 font_size">
+                  <%= number_with_precision(@inventory_order.non_taxable_amount, precision: 2) %>
+                </div>
+              </div>
+              <div class="col-sm-5 col-sm-offset-7 text-labels">
+                <% @inventory_order.tax_breakup.try(:each) do |tax_breakup| %>
+                  <div class="col-sm-6 font_size">
+                    <b><%= tax_breakup[:name] %></b>
+                  </div>
+                  <div class="col-sm-3 text-center font_size">
+                    :
+                  </div>
+                  <div class="col-sm-2 font_size">
+                    <%= number_with_precision(tax_breakup[:amount], precision: 2) %>
+                  </div>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+          <hr style="padding: 0px;margin: 0px;">
+          <div class="row mb5" style="border-top: 1px solid #eee">
+            <div class="col-sm-5 col-sm-offset-7 text-labels">
+              <div class="col-sm-7 font_size">
+                <b>Total Amt Incl. Tax</b>
+              </div>
+              <div class="col-sm-2 text-center font_size" style="margin-left: -10px">
+                :
+              </div>
+              <div class="col-sm-2 font_size" id="" style="margin-left: 10px">
+                <% if @inventory_order.net_amount.present? %>
+                  <%= @inventory_order.total.to_f.round(2) %>
+                <% else %>
+                  <%= @inventory_order.total.to_f.round(2) - (discount.round(2) + offer_on_bill.round(2)) %>
+                <% end %>
+              </div>
+              <% if @inventory_order.additional_discount.present? %>
+                <div class="col-sm-6 font_size">
+                  <b>Discount</b>
+                </div>
+                <div class="col-sm-3 text-center font_size">
+                  :
+                </div>
+                <div class="col-sm-2 font_size">
+                  <%= discount.round(2) || 0 %>
+                </div>
+              <%end%>
+              <% if @inventory_order.offer_on_bill.present? %>
+                <div class="col-sm-6 font_size">
+                  <b>Offer</b>
+                </div>
+                <div class="col-sm-3 text-center font_size">
+                  :
+                </div>
+                <div class="col-sm-2 font_size">
+                  <%= offer_on_bill.round(2) || 0 %>
+                </div>
+              <%end%>
+              <div class="col-sm-6 font_size">
+                <b>Total of all discounts</b>
+              </div>
+              <div class="col-sm-3 text-center font_size">
+                :
+              </div>
+              <div class="col-sm-2 font_size">
+                <%= (offer_on_bill + discount).round(2) || 0 %>
+              </div>
+              <div class="col-sm-6 font_size">
+                <b>Net Amount&nbsp;(<span style="padding: 3px;font-size:10px;"><%= currency_symbol %></span>)</b>
+              </div>
+              <div class="col-sm-3 text-center font_size">
+                :
+              </div>
+              <div class="col-sm-2 font_size" id="">
+                <% if @inventory_order.net_amount.present? %>
+                  <%= @inventory_order.net_amount.to_f.round(2) %>
+                <% else %>
+                  <%= @inventory_order.total.to_f.round(2) %>
+                <% end %>
+              </div>
+
+              <% if @inventory_order.advance_taken && !@inventory_order.payment_completed %>
+                <div class="col-sm-6 font_size">
+                  <b>Advance Paid (<span style="padding: 3px;font-size:10px;"><%= currency_symbol %></span>)</b>
+                </div>
+                <div class="col-sm-3 text-center font_size">
+                  :
+                </div>
+                <div class="col-sm-2 font_size">
+                  <%= @inventory_order.advance_payment.to_f.round(2) || 0 %>
+                </div>
+
+                <div class="col-sm-6 font_size">
+                  <b>Remaining(<span style="padding: 3px;font-size:10px;"><%= currency_symbol %></span>)</b>
+                </div>
+                <div class="col-sm-3 text-center font_size">
+                  :
+                </div>
+                <div class="col-sm-2 font_size">
+                  <%= @inventory_order.amount_remaining.to_f.round(2) || 0 %>
+                </div>
+              <% end %>
+            </div>
+          </div>
+          <hr>
+          <div class="row payment-details-section mb5" style="margin-top: 5px;">
+            <div class="row">
+              <div class="col-md-8">
+                <h5>PAYMENT DETAILS</h5>
+              </div>
+              <div class="col-md-2 mb5">
+                <b style="color: red">Balance/Pending</b><br>
+                <input type="text" name="invoice_total_payment_remaining" class="form-control invoice_total_payment_remaining p3_10" id="invoice_total_payment_remaining" value="<%= @inventory_order.amount_remaining.to_f.round(2) || 0 %>" readonly="readonly">
+              </div>
+              <div class="col-md-2 mb5">
+                <b style="color: green">Received</b><br>
+                <input type="text" name="invoice_total_payment" class="form-control invoice_total_payment p3_10" id="invoice_total_payment" value="<%= @inventory_order.advance_payment.to_f.round(2) || 0 %>" readonly="readonly">
+              </div>
+            </div>
+          </div>
+          <div class="row mb5">
+            <div id="payment-details" style="border: 1px solid #aaa;padding: 20px;">
+              <%= render partial: 'invoice/inventory_invoices/advance_payment_details.html.erb' %>
+            </div>
+          </div>
+          <!--row-->
+        </div>
+      </div>
+
+
+      <%= f.hidden_field :tax_enabled, value: @invoice_setting.tax_enabled_pharmacy %>
+      <%= f.hidden_field :currency_symbol, value: @currency.symbol %>
+      <%= f.hidden_field :currency_id, value: @currency.id %>
+      <% if @patient_prescription.present? %>
+        <% specialty_id = @patient_prescription.try(:specalityid) %>
+        <% fresh_booking = @patient_prescription.prescription_date == Date.current ? true : false %>
+        <%= f.hidden_field :fresh_booking, value: fresh_booking  %>
+      <% else %>
+        <% if @inventory_store.department_id == '50121007' %>
+          <% specialty_id = '309988001' %>
+          <% else %>
+          <% specialty_id = 'all' %>
+        <% end %>
+      <% end %>
+      <%= f.hidden_field :specialty_id, value: specialty_id %>
+      <%= f.hidden_field :facility_id, value: @current_facility_id %>
+      <%= f.hidden_field :store_id, value: @inventory_store.id %>
+      <%= f.hidden_field :department_id, value: @inventory_store.department_id %>
+      <%= f.hidden_field :department_name, value: @inventory_store.department_name %>
+      <%= f.hidden_field :organisation_id, value: @current_organisation_id %>
+      <%= f.hidden_field :prescription_id, value: @patient_prescription.try(:id) %>
+      <%= f.hidden_field :patient_id, value: @patient.id %>
+      <%= f.hidden_field :entered_by, { value: current_user.fullname } %>
+      <%= f.hidden_field :user_id, { value: current_user.id } %>
+      <%= f.hidden_field :from, { value: params[:from] } %>
+      <%= f.hidden_field :patient_mrn, { value: @patient_o_idn.try(:mr_no) } %>
+      <%= f.hidden_field :order_id, { value: @inventory_order.id } %>
+      <%= f.hidden_field :checkout_date, { value: @inventory_order&.checkout_date } %>
+      <%= f.hidden_field :action_from, { value: 'order' } %>
+
+
+
+      <div class="modal-footer window-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+        <% if params[:action_from] == 'inventory_invoice' %>
+          <%= f.submit "Complete Payment", { class: 'btn btn-success btn-sm', onclick: 'validate_inventory_invoices_review_form()' }%>
+        <% else %>
+          <%= f.submit "Create Bill", { class: 'btn btn-success btn-sm', onclick: 'validate_inventory_invoices_review_form()' }%>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<style>
+  .font_size {
+    font-size: 10px;
+  }
+  input[type=number]::-webkit-inner-spin-button,
+  input[type=number]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  .text-labels {
+    font-weight: bold;
+  }
+  .check-font table tr th {
+    padding: 2px 5px;
+  }
+
+  .check-font table tr td {
+    padding: 2px 5px;
+  }
+
+  .check-font {
+    font-size: 11px;
+  }
+
+  .modal { overflow: auto !important; }
+</style>

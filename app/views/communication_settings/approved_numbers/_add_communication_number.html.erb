@@ -1,0 +1,120 @@
+<%= javascript_include_tag 'application-loggedin', 'data-turbolinks-track' => true %>
+<div class="modal-dialog">
+  <!-- Modal content-->
+  <div class="modal-content">
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal">&times;</button>
+      <h4 class="modal-title">Add Approved Number</h4>
+    </div>
+    <%= form_for @communication_number, url: create_number_communication_settings_path, method: :post, remote: true, html: { id: 'communication_form' } do |f|%>
+
+      <%= f.hidden_field :organisation_id, { value: @current_user.organisation_id } %>
+      <%= f.hidden_field :communication_type, { value: 'whatsapp' } %>
+      <%= f.hidden_field :country_code, { value: @communication_number.try(:country_code) } %>
+      <%= f.hidden_field :country_flag, { value: @communication_number.try(:country_code)  } %>
+      <div class="modal-body">
+        <div id="error_msg"></div>
+        <div class="row" style="margin-top:15px;">
+          <div class="col-md-4">
+      	    <strong>Communication Number</strong>
+          </div>
+      	  <div class="col-sm-8" id="whatsapp-number">
+      	    <%= f.text_field :communication_number, { class: 'form-control p7_10 name', placeholder: 'communication number' , :required => true , onkeypress: 'return event.charCode >= 48 && event.charCode <= 57', maxlength: 10, minlength: 10} %>
+            <div id="valid-msg" class="hide">✓ Valid</div>
+            <div id="error-msg" class="hide"></div>
+      	  </div>
+        </div>
+    	</div>
+      <div class="modal-footer">
+        <%= f.submit 'Save Changes', { class: 'btn btn-success' } %>
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<script type="text/javascript">
+  var auto_facility = "<%= current_facility.try(:country).try(:abbreviation1).try(:downcase) %>"
+
+  if(auto_facility == "us"){
+    var second_country = "in"
+  }
+  else{
+    var second_country = "us"
+  }
+
+  $("#communication_number_communication_number").intlTelInput({
+    formatOnInit: true,
+    separateDialCode: true,
+    utilsScript: "../assets/libphonenumber/utils.js",
+    preferredCountries: [( auto_facility || "in" ), second_country]
+  });
+
+  $("#communication_number_communication_number").change(function(){
+    var  whatsapp_country_code = $("#whatsapp-number .intl-tel-input .flag-container .selected-flag .selected-dial-code").html();
+    var whatsapp_country_flag = $("#whatsapp-number .intl-tel-input .flag-container .selected-flag .iti-flag")[0].className.split(" ")[1]
+    $("#communication_number_country_code").val(whatsapp_country_code)
+    $("#communication_number_country_flag").val(whatsapp_country_flag)
+   })
+
+
+  $("#communication_number_communication_number").keyup(function(){
+    if(this.value.length == 0){
+      $('#error-msg').html('')
+      $('#error-msg').addClass('hide')
+      $('#valid-msg').addClass('hide')
+      $('.btn-success').attr('disabled', false)
+    }
+    if(this.value.length == 1){
+      $('.btn-success').attr('disabled', true)
+    }
+    code = $("#whatsapp-number .selected-dial-code").html()
+    full_number = code+this.value
+    if(isValidNumber(full_number) == false){
+      $('.btn-success').attr('disabled', true)
+      $('#valid-msg').addClass('hide')
+      $('#error-msg').removeClass('hide')
+      $('#error-msg').html('Invalid Number')
+    }
+    else{
+      $('#error-msg').html('')
+      $('#error-msg').addClass('hide')
+      $('#valid-msg').removeClass('hide')
+      $('.btn-success').attr('disabled', false)
+    }
+  })
+
+  function isValidNumber(number) {
+    return new libphonenumber.parsePhoneNumber(number).isValid()
+  }
+</script>
+
+<style type="text/css">
+  #error-msg {
+    color: red;
+  }
+  #valid-msg {
+    color: #00C900;
+  }
+  input.error {
+    border: 1px solid #FF7C7C;
+  }
+  .hide {
+    display: none;
+  }
+  .intl-tel-input.separate-dial-code.iti-sdc-3 input, .intl-tel-input.separate-dial-code.iti-sdc-3 input[type=text], .intl-tel-input.separate-dial-code.iti-sdc-3 input[type=tel]{
+    padding-left: 90px !important;
+  }
+
+  .intl-tel-input.allow-dropdown.separate-dial-code.iti-sdc-3 {
+    width: 250px !important;
+  }
+
+  .intl-tel-input.separate-dial-code.allow-dropdown.iti-sdc-2 input, .intl-tel-input.separate-dial-code.allow-dropdown.iti-sdc-2 input[type=text], .intl-tel-input.separate-dial-code.allow-dropdown.iti-sdc-2 input[type=tel] {
+    padding-left: 76px;
+    min-width: 240px !important;
+  }
+  input#communication_number_communication_number {
+    width: 240px !important;
+  }
+</style>

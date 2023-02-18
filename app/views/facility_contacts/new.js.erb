@@ -1,0 +1,171 @@
+$("#contact-modal").html("<%= escape_javascript(render 'new.html.erb') %>")
+
+$(".hg-tooltip").tipsy(); // for display_name
+
+function facility_contact_new() {
+  $("#new_facility_contact").validate({
+    rules: {      
+      "facility_contact[display_name]": {
+        required: true,
+      },
+      "facility_contact[contact_group_id]": {
+        required: true
+      },
+      "facility_contact[city]": {
+        minlength: 3 ,
+        remote: "/locations/check_city?country_id=<%= current_facility.country_id %>" 
+      },
+      "facility_contact[state]": {
+        minlength: 3,
+        remote: "/locations/check_state?country_id=<%= current_facility.country_id %>" 
+      },
+      "facility_contact[pincode]": {
+        minlength: 3,
+        remote: "/locations/check_pincode?country_id=<%= current_facility.country_id %>" 
+      }
+    },
+    messages: {
+      "facility_contact[display_name]": {
+        required: "Display Name is Required"
+      },
+      "facility_contact[contact_group_id]": {
+        required: "Contact Group is Required",
+      },
+      "facility_contact[city]": {
+        remote: "Search and Select" 
+      },
+      "facility_contact[state]": {
+        remote: "Search and Select" 
+      },
+      "facility_contact[pincode]": {
+        remote: "Search and Select" 
+      }
+    },
+    errorPlacement: function (error, element) {
+      error.insertAfter(element);
+    }
+  });
+}
+facility_contact_new()
+
+//Search State
+var country_id = "<%= current_facility.country_id %>"
+if (country_id == 'IN_108'){
+  jQuery('#search_state').autocomplete({
+      minLength: 3,
+      source: function(request, response) {
+          jQuery.ajax({
+              dataType: "json",
+              type : 'get',
+              url: '/locations/search_state',
+              data: {q: request.term, country_id: country_id, remote: "true" },
+              success: function(data) {
+                  response(data);
+              },
+              error: function(data) {
+              }
+          });
+      },
+      select: function( event, ui ) {
+        name = ui.item["state"]
+        setTimeout(function() {
+        jQuery("#search_state").val(name)
+        jQuery('#search_state').blur()
+      }, 20);
+      },
+      create: function () {
+        $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+          return $('<li>')
+              .append('<a style=\"color:#000;text-shadow: 2px\">' + item.state  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+              .appendTo(ul);
+        };
+     }
+  });
+
+  //Search City
+  jQuery('#search_city').autocomplete({
+    minLength: 3,
+    source: function(request,response){
+      var state = jQuery('#search_state').val();
+      jQuery.ajax({
+        dataType: "json",
+        type : 'get',
+        url: '/locations/search_city',
+        data: {q: request.term, state: state, remote: "true"},
+        success: function(data){
+          response(data);
+        },
+        error: function(data){
+
+        }
+      });
+    },
+    select: function( event, ui ) {
+        city  = ui.item["city"]
+        state = ui.item["state"]
+        setTimeout(function() {
+        jQuery("#search_city").val(city)
+        jQuery("#search_state").val(state)
+        jQuery('#search_city').blur()
+      }, 20);
+      },
+    create: function () {
+        $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+          return $('<li>')
+              .append('<a style=\"color:#000;text-shadow: 2px\">' + item.city  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+              .appendTo(ul);
+        };
+    }
+  });
+
+  //Search Pincode 
+  jQuery('#search_pincode').autocomplete({
+    minLength: 3,
+    source: function(request,response){
+      var state = jQuery('#search_state').val();
+      var city = jQuery('#search_city').val();
+      jQuery.ajax({
+        dataType: "json",
+        type : 'get',
+        url: '/locations/search_pincode',
+        data: {q: request.term, state: state, city: city, remote: "true"},
+        success: function(data){
+          response(data);
+        },
+        error: function(data){
+
+        }
+      });
+    },
+    select: function( event, ui ) {
+        pincode = ui.item["pincode"]
+        city  = ui.item["city"]
+        state = ui.item["state"]
+        setTimeout(function() {
+        jQuery("#search_pincode").prop('readonly',true).val(pincode)
+        jQuery("#search_state").prop('readonly', true).val(state)
+        jQuery("#search_city").prop('readonly', true).val(city)
+        jQuery(".clear-pincode").show()
+        jQuery('#search_pincode').blur()
+      }, 20);
+      },
+    create: function () {
+        $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+          return $('<li>')
+              .append('<a style=\"color:#000;text-shadow: 2px; text-align: center;\">' + item.pincode  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+              .appendTo(ul);
+        };
+    }
+  });
+
+  //:link {background: #ff0} :visited {background: #fff} :hover {outline: thin red solid} :active {background: #00f}
+
+  // Clear pincode
+  $(".clear-pincode").on('click', function(e){
+    e.preventDefault()
+    $("#search_pincode").prop('readonly',false).val("")
+    $("#search_state").prop('readonly', false).val("")
+    $("#search_city").prop('readonly', false).val("")
+    $(".clear-pincode").hide()
+  });
+}

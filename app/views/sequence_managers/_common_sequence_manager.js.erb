@@ -1,0 +1,536 @@
+$('#sequence_manager_prefix_level').trigger("change");
+function renumbering() {
+  var selected_list = $('#display_entities_fields_add').find('.sr_no')
+  $.each( selected_list, function( counter, field ) {
+    $(field).html(counter + 1)
+  });
+  update_preview();
+  remove_rule_div();
+}
+// EOF renumbering
+
+function move_position() {
+  $('.move_row_up_btn').unbind().on('click', function(e) {
+    e.preventDefault();
+    var parent_div = $(this).parent().parent().parent();
+    var position = parent_div.find('.sr_no').html();
+    if (position != 1) {
+      parent_div.insertBefore(parent_div.prev('.counter_rows'));
+      parent_div.css("background-color",'rgb(247, 232, 225)');
+      setTimeout(function(argument) {
+        parent_div.css("background-color",'');
+      }, 300);
+      $('.notify_area').html('');
+    } else {
+      $('.notify_area').html("<span class='label label-danger'>Can't move further Up - Side..</span>");
+    }
+    renumbering();
+  });
+
+  $('.move_row_down_btn').unbind().on('click', function(e) {
+    e.preventDefault();
+    var parent_div = $(this).parent().parent().parent()
+    var position = parent_div.find('.sr_no').html();
+    var total_rows = $('.counter_rows').length
+
+    if (position != total_rows) {
+      parent_div.insertAfter(parent_div.next('.counter_rows'));
+      parent_div.css("background-color",'rgb(247, 232, 225)')
+      setTimeout(function(argument) {
+        parent_div.css("background-color",'')  
+      }, 300);
+      $('.notify_area').html('')
+    } else {
+      $('.notify_area').html("<span class='label label-danger'>Can't move further Down - Side..</span>")
+    }
+    renumbering();
+  });
+  renumbering();
+}
+// EOF move_position
+
+function update_preview() {
+  var selected_list = $('#display_entities_fields_add').find('.counter_rows:visible');
+  var field_class = ''; var preview_str = ''; var latest_preview = ''; var separator_val = '';
+  $.each( selected_list, function( counter, field ) {
+    var field_class = $(field).attr('class').match(/\S*_fields\b/i)[0];
+    let lastIndex = field_class.lastIndexOf("_");
+    let button_class = field_class.substring(0, lastIndex);
+    if(button_class == 'separator') {
+      separator_val = $(field).find('.separator_val').html();
+      preview_str += separator_val + ',';
+      latest_preview += separator_val;
+    } else {
+      if(button_class == 'organisation_counter' || button_class == 'facility_counter' || button_class == 'region_counter' || button_class == 'entity_group_counter') {
+        latest_preview += $('#sequence_manager_original_counter').val();
+      } else if(button_class == 'has_date') {
+        date_format = $('#sequence_manager_date_format option:selected').text();
+        latest_preview += formatDate(date_format);
+      } else if(button_class == 'year_format') {
+        date_format = $('#sequence_manager_year_format option:selected').text();
+        latest_preview += formatDate(date_format);
+      } else {
+        latest_preview += $('#sequence_manager_'+button_class).val();
+      }
+      preview_str += button_class + ',';
+    }
+  });
+  $('#latest_display_format').val(latest_preview);
+  preview_str = preview_str.substring(0, preview_str.length -1);
+  $('#sequence_manager_display_format').val(preview_str);
+}
+// EOF update_preview
+
+$('.btn-submit').unbind().on('click', function(){
+  save_sequence_manager().then(function(){
+    if ($("#sequence_manager_counter_level").hasClass('error') ||
+      ($("#sequence_manager_module_name").val() == '') ||
+      $("#sequence_manager_counter_length").hasClass('error') ||
+      $("#sequence_manager_original_counter").hasClass('error') ||
+      (($("#sequence_manager_date_format").length > 0) && 
+        ($("#sequence_manager_date_format").val() == '')
+      ) || 
+      (($("#sequence_manager_year_format").length > 0) && 
+        ($("#sequence_manager_year_format").val() == '')
+      )
+      ){
+        if (($("#sequence_manager_date_format").length > 0) && ($("#sequence_manager_date_format").val() == '')){
+          $("#sequence_manager_date_format").addClass('error')
+          $('#sequence_manager_date_format-error').show()
+          $('#sequence_manager_module_name').attr('disabled', true);
+          $('#sequence_manager_department_id').prop('disabled', true);
+        }
+        if (($("#sequence_manager_year_format").length > 0) && ($("#sequence_manager_year_format").val() == '')){
+          $("#sequence_manager_year_format").addClass('error')
+          $('#sequence_manager_year_format-error').show()
+          $('#sequence_manager_module_name').attr('disabled', true);
+          $('#sequence_manager_department_id').prop('disabled', true);
+        }
+    } else {
+      $('#manage_sequence_manager').submit()
+    }
+  })
+})
+
+async function save_sequence_manager() {
+  $('#sequence_manager_counter_level').prop('disabled', false);
+  $('#sequence_manager_prefix_level').prop('disabled', false);
+  $('#sequence_manager_module_name').attr('disabled', false);
+  $('#sequence_manager_department_id').prop('disabled', false);
+  $('#sequence_manager_reset_month').prop('disabled', false);
+  $('#manage_sequence_manager').validate({
+    rules: {
+      "sequence_manager[counter_level]": {
+        required: true,
+        remote:  {
+          url: '/sequence_managers/validate_sequence_manager.json',
+          type: "get",
+          data: {
+            sequence_manager_id: $('#sequence_manager_id').val(), 
+            organisation_id: $('#sequence_manager_organisation_id').val(),
+            department_id: $('#sequence_manager_department_id').val(),
+            counter_level: function(){ return $('#sequence_manager_counter_level option:selected').attr('value') }, 
+            module_name: function(){ return $('#sequence_manager_module_name option:selected').attr('value') }, 
+            item_name: $('#sequence_manager_item_name').val()
+          }
+        }
+      },
+      "sequence_manager[module_name]": {
+        required: true,
+        remote:  {
+          url: '/sequence_managers/validate_sequence_manager.json',
+          type: "get",
+          data: {
+            sequence_manager_id: $('#sequence_manager_id').val(), 
+            organisation_id: $('#sequence_manager_organisation_id').val(),
+            department_id: $('#sequence_manager_department_id').val(),
+            counter_level: function(){ return $('#sequence_manager_counter_level option:selected').attr('value') }, 
+            module_name: function(){ return $('#sequence_manager_module_name option:selected').attr('value') }, 
+            item_name: $('#sequence_manager_item_name').val()
+          }
+        }
+      },
+      "sequence_manager[counter_length]": {
+        required: true,
+        min: 1,
+        range: [1, 10]
+      },
+      "sequence_manager[original_counter]": {
+        required: true,
+        minlength: 1,
+        maxlength: $('#sequence_manager_counter_length').val()
+      }
+    },
+    messages: {
+      "sequence_manager[counter_level]": {
+        required: "Counter Level Required",
+        remote: "Sequence is already available with this combination or you've reached max number of sequences"
+      },
+      "sequence_manager[module_name]": {
+        required: "Module Name Required",
+        remote: "Sequence is already available with this combination or you've reached max number of sequences"
+      },
+      "sequence_manager[counter_length]": {
+        required: 'Counter Length Required',
+        min: 'Please enter more than 0',
+        max: 'Please enter less than 11'
+      },
+      "sequence_manager[original_counter]": {
+        required: 'Original Counter Required',
+        minlength: 'Counter Length should be more than 0',
+        maxlength: "Counter Length should be less than " + $('#sequence_manager_counter_length').val()
+      }
+    },
+    errorPlacement: function (error, element) {
+      error.insertAfter(element);
+      $('#sequence_manager_counter_level').prop('disabled', true);
+      $('#sequence_manager_module_name').attr('disabled', true);
+      $('#sequence_manager_department_id').prop('disabled', true);
+      $('#sequence_manager_reset_month').prop('disabled', true);
+      $('.btn-submit').prop('disabled', true);
+      if($('#sequence_manager_prefix_level').val() == '') {
+        $('#sequence_manager_prefix_level').prop('disabled', false);
+      } else {
+        $('#sequence_manager_prefix_level').prop('disabled', true);
+      }
+    }
+  });
+  check_error_class();
+}
+// save_sequence_manager
+
+function check_error_class(){
+  if($('#sequence_manager_counter_level').hasClass('error') && $('#sequence_manager_module_name').hasClass('error')) {
+    $('#sequence_manager_counter_level').prop('disabled', true);
+    $('#sequence_manager_module_name').attr('disabled', true);
+    $('#sequence_manager_department_id').prop('disabled', true);
+    $('#sequence_manager_reset_month').prop('disabled', true);
+    $('.btn-submit').prop('disabled', true);
+    if($('#sequence_manager_prefix_level').val() == '') {
+      $('#sequence_manager_prefix_level').prop('disabled', false);
+    } else {
+      $('#sequence_manager_prefix_level').prop('disabled', true);
+    }
+  }
+}
+
+function change_counter_name(counter_level) {
+  var display_counter = $('#display_entities_original_counter');
+  var organisation_counter = $('#display_entities_organisation_counter');
+  var facility_counter = $('#display_entities_facility_counter');
+  var region_counter = $('#display_entities_region_counter');
+  var entity_group_counter = $('#display_entities_entity_group_counter');
+  var replace_var = ''; var replace_with = '';
+  if(counter_level == 'organisation' && !organisation_counter.length) {
+    replace_with = 'organisation_counter';
+    if(display_counter.length) {
+      replace_var = 'display_entities_original_counter';
+    } else if(facility_counter.length) {
+      replace_var = 'display_entities_facility_counter';
+    } else if(region_counter.length) {
+      replace_var = 'display_entities_region_counter';
+    } else if(entity_group_counter.length) {
+      replace_var = 'display_entities_entity_group_counter';
+    }
+  } else if(counter_level == 'facility' && !facility_counter.length) {
+    replace_with = 'facility_counter';
+    if(display_counter.length) {
+      replace_var = 'display_entities_original_counter';
+    } else if(organisation_counter.length) {
+      replace_var = 'display_entities_organisation_counter';
+    } else if(region_counter.length) {
+      replace_var = 'display_entities_region_counter';
+    } else if(entity_group_counter.length) {
+      replace_var = 'display_entities_entity_group_counter';
+    }
+  } else if(counter_level == 'region' && !region_counter.length) {
+    replace_with = 'region_counter';
+    if(display_counter.length) {
+      replace_var = 'display_entities_original_counter';
+    } else if(organisation_counter.length) {
+      replace_var = 'display_entities_organisation_counter';
+    } else if(facility_counter.length) {
+      replace_var = 'display_entities_facility_counter';
+    } else if(entity_group_counter.length) {
+      replace_var = 'display_entities_entity_group_counter';
+    }
+  } else if(counter_level == 'entity_group' && !entity_group_counter.length) {
+    replace_with = 'entity_group_counter';
+    if(display_counter.length) {
+      replace_var = 'display_entities_original_counter';
+    } else if(organisation_counter.length) {
+      replace_var = 'display_entities_organisation_counter';
+    } else if(facility_counter.length) {
+      replace_var = 'display_entities_facility_counter';
+    } else if(region_counter.length) {
+      replace_var = 'display_entities_region_counter';
+    }
+  }
+  if(replace_var != ''){
+    change_data_values(replace_var, 'display_entities_'+replace_with, replace_with);
+  }
+}
+// EOF change_counter_name
+
+function change_data_values(current_id, changing_id, attr_val) {
+  // console.log(' ----------current_id: ' + current_id);
+  $('#' + current_id).attr('data-value', attr_val);
+  $('#' + current_id).attr('input-value', attr_val);
+  $('#' + current_id).attr('id', changing_id);
+}
+// EOF change_data_values
+
+function remove_rule_div() {
+  $(".remove_entity").unbind().on("click", function(e) {
+    e.preventDefault();
+    let class_name = $(this).closest(".counter_rows").attr('class').match(/\S*_fields\b/i)[0];
+    let lastIndex = class_name.lastIndexOf("_");
+    let button_class = class_name.substring(0, lastIndex);
+    if(button_class == 'separator') {
+      // $(this).closest('.counter_rows').fadeOut();
+    } else {
+      $("#display_entities_"+button_class).trigger("click");
+    }
+    $(this).closest('.counter_rows').remove();
+    move_position();
+    renumbering();
+    // update_preview();
+    // remove_rule_div();
+  });
+
+  $('.close-icon').unbind().on('click',function() {
+    $(this).closest('.counter_rows').fadeOut();
+  });
+}
+// EOF remove_rule_div
+
+function add_separator(_this) {
+  var separator = $(_this).val();
+  var new_row = $('.counter_rows').length + 1;
+  let new_div = `
+    <div class="col-md-12 col-sm-12 col-xs-12 complaint_name counter_rows separator_fields">
+      <div class="col-md-1 display_section">
+        <b><span class="sr_no">${new_row}</span></b>
+      </div>
+      <div class="col-md-3 col-sm-3 col-xs-3">
+        <div class="title">
+          Separator
+        </div>
+      </div>
+      <div class="col-md-6 col-sm-6 col-xs-6 separator_val">${separator}</div>
+      <div class="col-md-2 col-sm-2 col-xs-2">
+        <div class="action">
+          <button class="btn btn-primary btn-xs move_row_up_btn" title="Move Up"><i class="fa fa-arrow-circle-up" aria-hidden="true"></i></button>&nbsp;
+          <button class="btn btn-primary btn-xs move_row_down_btn" title="Move Down"><i class="fa fa-arrow-circle-down" aria-hidden="true"></i></button>&nbsp;
+          <button class="btn btn-danger btn-xs remove_entity"><i class="fa fa-trash-alt"></i></button>
+        </div>
+      </div>
+    </div>
+  `
+  $("#display_entities_fields_add").append(new_div);
+  $(_this).val('');
+  move_position();
+  // update_preview();
+  remove_rule_div();
+
+}
+// EOF add_separator
+
+function disable_counter_dropdown() {
+  var display_counter = $('#display_entities_original_counter');
+  var organisation_counter = $('#display_entities_organisation_counter');
+  var facility_counter = $('#display_entities_facility_counter');
+  var region_counter = $('#display_entities_region_counter');
+  var entity_group_counter = $('#display_entities_entity_group_counter');
+  if((organisation_counter.length && organisation_counter.hasClass('btn-darkblue')) || (facility_counter.length && facility_counter.hasClass('btn-darkblue')) || (region_counter.length && region_counter.hasClass('btn-darkblue')) || (entity_group_counter.length && entity_group_counter.hasClass('btn-darkblue'))) {
+    $('#sequence_manager_counter_level').attr('disabled', true);
+    $('.btn-submit').attr('disabled', false);
+  } else if($('#sequence_manager_counter_level').val() == '') {
+    if(display_counter.length) {
+      display_counter.hide();
+    } else if(organisation_counter.length) {
+      organisation_counter.hide();
+    } else if(facility_counter.length) {
+      facility_counter.hide();
+    } else if(region_counter.length) {
+      region_counter.hide();
+    } else if(entity_group_counter.length) {
+      entity_group_counter.hide();
+    }
+    $('.btn-submit').attr('disabled', true);
+    $('#sequence_manager_module_name').attr('disabled', true);
+  } else {
+    if(display_counter.length) {
+      display_counter.show();
+    } else if(organisation_counter.length) {
+      organisation_counter.show();
+    } else if(facility_counter.length) {
+      facility_counter.show();
+    } else if(region_counter.length) {
+      region_counter.show();
+    } else if(entity_group_counter.length) {
+      entity_group_counter.show();
+    }
+    $('.btn-submit').attr('disabled', false);
+  }
+}
+disable_counter_dropdown();
+
+function disable_prefix_dropdown() {
+  let module_prefix = $('#display_entities_module_prefix');
+  let entity_prefix = $('#display_entities_entity_group_abbreviation');
+  if($('#sequence_manager_prefix_level').val() == '') {
+    module_prefix.hide();
+    entity_prefix.hide();
+  } else if((module_prefix.length && module_prefix.hasClass('btn-darkblue')) || (entity_prefix.length && entity_prefix.hasClass('btn-darkblue'))) {
+    $('#sequence_manager_prefix_level').attr('disabled', true);
+  } else {
+    module_prefix.show();
+    entity_prefix.show();
+  }
+}
+disable_prefix_dropdown();
+
+$('#separators').on('change', function(){
+  add_separator(this);
+});
+// $('#separators') on change
+
+$('.chk_reset_on_newyear').on('click', function(){
+  reset_month_div($(this).prop('checked'));
+});
+
+$('#sequence_manager_reset_month').on('change', function(){
+  reset_month_div($('.chk_reset_on_newyear').prop('checked'));
+});
+
+function reset_month_div(is_checked) {
+  $('#sequence_manager_reset_month').attr('disabled', false);
+  year_format = $('#sequence_manager_year_format').val();
+  reset_month = $('#sequence_manager_reset_month').val();
+  if(year_format != '' && is_checked == true) {
+    $('.div_reset_month').show();
+    if(year_format == '%Y') {
+      $('#sequence_manager_reset_month').val('1');
+      $('#sequence_manager_reset_month').attr('disabled', true);
+    } else if(year_format == 'YY-YY' || year_format == 'YYYY-YYYY') {
+      if(reset_month == '' || reset_month == '1'){
+        $('#sequence_manager_reset_month').val('4');
+      }
+    }
+  } else if((year_format == 'YY-YY' || year_format == 'YYYY-YYYY') && is_checked == false){
+    $('.div_reset_month').show();
+    $('.chk_reset_on_newyear').prop('checked', true);
+    $('#sequence_manager_reset_month').val('4');
+  } else if((year_format == '%Y') && is_checked == false){
+    $('.div_reset_month').hide();
+    $('#sequence_manager_reset_month').val('');
+  } else {
+    $('.div_reset_month').hide();
+  }
+}
+// EOF reset_month_div
+
+$('.btn-preview').on('click', function(e){
+  update_preview();
+  $('.div_preview').addClass('well');
+  $('.div_preview').html("<h3>" + $('#latest_display_format').val() + "</h3>");
+});
+// EOF $('.btn-preview') on click
+
+$('#sequence_manager_prefix_level').on('change', function() {
+  let prefix_level = $(this).val();
+  let display_entities = $('#display_entities_module_prefix');
+  let entity_group_prefix = $('#display_entities_entity_group_abbreviation');
+  if(prefix_level == 'other' && !display_entities.length && entity_group_prefix.length) {
+    change_data_values('display_entities_entity_group_abbreviation', 'display_entities_module_prefix', 'module_prefix');
+  } else if(prefix_level == 'entity_group' && !entity_group_prefix.length && display_entities.length) {
+    change_data_values('display_entities_module_prefix', 'display_entities_entity_group_abbreviation', 'entity_group_abbreviation');
+  }
+  if(prefix_level == 'other' || prefix_level == 'entity_group'){
+    display_entities.show();
+    entity_group_prefix.show();
+  } else {
+    display_entities.hide();
+    entity_group_prefix.hide();
+  }
+});
+// $('#sequence_manager_prefix_level').on
+
+$('#sequence_manager_counter_level').on('change', function() {
+  if($(this).val() == '') {
+    $('#display_entities_original_counter').hide();
+    $('#display_entities_organisation_counter').hide();
+    $('#display_entities_facility_counter').hide();
+    $('#display_entities_region_counter').hide();
+    $('#display_entities_entity_group_counter').hide();
+  } else {
+    change_counter_name($(this).val());
+    $('#display_entities_original_counter').show();
+    $('#display_entities_organisation_counter').show();
+    $('#display_entities_facility_counter').show();
+    $('#display_entities_region_counter').show();
+    $('#display_entities_entity_group_counter').show();
+  }
+});
+
+$('.original_counter').on('change', function() {
+  var allowed_len = $('#sequence_manager_counter_length').val();
+  var new_counter_id = $(this).attr('id');
+  var new_counter = $(this).val();
+  if(new_counter.length <= parseInt(allowed_len)) {
+    $('#'+new_counter_id+'-error').remove();
+    $('#'+new_counter_id).removeClass('error');
+    var current_counter_id = new_counter_id.replace('_original_', '_current_');
+    var current_counter = $('#'+current_counter_id).val();
+    if(parseInt(new_counter) < parseInt(current_counter)) {
+      if($('#'+new_counter_id).hasClass('error')) {
+        
+      } else {
+        $('#'+new_counter_id).addClass('error');
+        $('#'+new_counter_id).after('<label id="'+new_counter_id+'-error" class="error" for="'+new_counter_id+'">Please enter more than '+ current_counter +'</label>');
+      }
+    } else {
+      // $('#'+current_counter_id).val(new_counter);
+      $('#'+new_counter_id+'-error').remove();
+      $('#'+new_counter_id).removeClass('error');
+    }
+  } else {
+    if($('#'+new_counter_id).hasClass('error')) {
+
+    } else {
+      $('#'+new_counter_id).addClass('error');
+      $('#'+new_counter_id).after('<label id="'+new_counter_id+'-error" class="error" for="'+new_counter_id+'">Counter length exceeded allowed limit('+allowed_len+')</label>');
+    }
+  }
+  
+});
+
+function formatDate(date_format) {
+  var d = new Date(); var final_date = '';
+  month = '' + (d.getMonth() + 1);
+  day = '' + d.getDate();
+  year = d.getFullYear();
+  yy = year  % 100;
+
+  if (month.length < 2) month = '0' + month;
+  if (day.length < 2) day = '0' + day;
+
+  if(date_format == 'DDMMYYYY'){
+    final_date = day+month+year
+  } else if(date_format == 'MMDDYYYY'){
+    final_date = month+day+year
+  } else if(date_format == 'YYYY'){
+    final_date = year
+  } else if(date_format == 'MMYYYY'){
+    final_date = month+year
+  } else if(date_format == 'YYYYMM'){
+    final_date = year+month
+  } else if(date_format == 'YY-YY'){
+    final_date = yy+'-'+(yy+1)
+  } else if(date_format == 'YYYY-YYYY'){
+    final_date = year+'-'+(year+1)
+  }
+
+  return final_date;
+}

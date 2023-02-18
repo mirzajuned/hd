@@ -1,0 +1,318 @@
+$(document).ready(function(){
+  $(".edit_patient_info").on('hover', function(){
+    $(this).append("&nbsp;Edit")
+  })
+  $(".edit_patient_info").on('mouseleave', function(){
+    $(this).html("<i class='fa fa-edit'></i>")
+  })
+
+  $("#patient-summary-timeline-link").on('click', function(){
+    var doctor_id = $("#sidebar_doctors_appointment .active").find('a').attr('data-doctor-id')
+    var active_tab = $(".tab_active").find(".active").attr('data-tab-id')
+    var doctors_list = $(".toggle-sidebar-doctors").attr('data-toggle-position')
+    $.ajax({
+      type: "GET",
+      dataType: "script",
+      url: "/patient_summary/<%= @patient.id.to_s %>",
+      data: {
+        appointment_id: "<%= @appointment.id.to_s %>",
+        active_tab: active_tab,
+        active_user: doctor_id,
+        doctors_list: doctors_list,
+        current_date: "<%= @current_date %>",
+        url: "/outpatients/appointment_management"
+      }
+    });
+    history.pushState('', '', '/patient_summary/<%= @patient.id.to_s %>'); // history.pushState([data], [title], [url]);
+  })
+
+  function inves_tab_highlight(){
+  let ophthal_investigations = parseInt("<%= @appointment.case_sheet.ophthal_investigations.
+                                    select{|i| i['investigationstage'] != 'Performed' && i['investigationstage'] != 'Declined' && i['investigationstage'] != 'Reviewed' && i['investigationstage'] != 'Removed'}.count %>")
+  let laboratory_investigation = parseInt("<%= @appointment.case_sheet.laboratory_investigations.
+                                    select{|i| i['investigationstage'] != 'Performed' && i['investigationstage'] != 'Declined' && i['investigationstage'] != 'Reviewed' && i['investigationstage'] != 'Removed'}.count %>")
+  let radiology_investigation = parseInt("<%= @appointment.case_sheet.radiology_investigations.
+                                    select{|i| i['investigationstage'] != 'Performed' && i['investigationstage'] != 'Declined' && i['investigationstage'] != 'Reviewed' && i['investigationstage'] != 'Removed'}.count %>")
+  let all_investigations = ophthal_investigations + laboratory_investigation + radiology_investigation
+  if( all_investigations > 0) {
+    $('.inves-highlight').show()
+  } else {
+    $('.inves-highlight').hide()
+  }
+}
+inves_tab_highlight()
+  // $(".doc_reminder_text").on('focusout',function(e){
+  //   $(this).attr('title',$(this).val())
+  //   $.ajax({
+  //     type: "GET",
+  //     url: '/patients/save_doc_reminder_note',
+  //     data: {
+  //       reminder_text: $(this).val(),
+  //       patient_id:'<%#= @patient.id.to_s %>',
+  //       doctor_id: '<%#= @appointment.doctor.to_s %>',
+  //       remote: "true"
+  //     },
+  //     success: function(res){
+  //     }
+  //   });
+  // })
+  $('.minimize-clinical-box').on('click', function(e){
+    e.preventDefault();
+    $(".clinical-note-section").toggle();
+  })
+
+  $(".expand-last-visits").on('click', function(){
+    if($(this).find('i').hasClass('fa-caret-down')){
+      $(".past-appointment").show()
+      $(this).html('<i class="fa fa-caret-up"></i>')
+    } else {
+      $(".past-appointment").hide()
+      $(".past-appointment").first().show()
+      $(this).html('<i class="fa fa-caret-down"></i>')
+    }
+  })
+
+  $(".expand-previous-diagnosis").on('click', function(){
+    if($(this).find('i').hasClass('fa-caret-down')){
+      $(".previous-diagnosis").show()
+      $(this).html('<i class="fa fa-caret-up"></i>')
+    } else {
+      $(".previous-diagnosis").hide()
+      $(".previous-diagnosis").first().show()
+      $(this).html('<i class="fa fa-caret-down"></i>')
+    }
+  })
+
+  $(".btn-surgery_advised").on('click', function(){
+    var _this = this
+    var appointment_id = $("#appointment_refresher").val();
+    var state = $(this).attr('data-state');
+    $.ajax ({
+      type: "GET",
+      dataType: "json",
+      url: '/opd_appointments/surgery_advised',
+      data: {
+        id: appointment_id,
+        state: state
+      },
+      success: function(res){
+        if(res.surgery_advised == true){
+          $(_this).attr('data-state', false)
+          $(_this).addClass('btn-danger btn-danger-transparent').removeClass('btn-primary btn-primary-transparent')
+          $(_this).html('Cancel Surgery Advised')
+        } else {
+          $(_this).attr('data-state', true)
+          $(_this).addClass('btn-primary btn-primary-transparent').removeClass('btn-danger btn-danger-transparent')
+          $(_this).html('Surgery Advised')
+        }
+      }
+    })
+  })
+
+  $("#btn-investigation-details-refresh").on('click', function(e){
+    var _this = this
+    e.preventDefault()
+    // $(this).attr('disabled', 'disabled')
+    var inv_tab = $(".tab_active_investigation").find(".active").attr('data-tab-id')
+    if($("#investigationWizard").length > 0){
+      $("#investigation-wizard-inhere").html("<div id='investigationWizard' class='basic-wizard' style='border:1px solid #aaa;'><ul class='nav nav-pills nav-justified tab_active_investigation'><% if @appointment.specialty_id == '309988001' %><li role='presentation' class='' data-tab-id='ophthal'><a href='#investigation-ophthal-details' class='investigation-details' data-toggle='tab'>Ophthal (0)</a></li><% end %><li role='presentation' class='' data-tab-id='laboratory'><a href='#investigation-laboratory-details' class='investigation-details' data-toggle='tab'>Laboratory (0)</a></li><li role='presentation' class='' data-tab-id='radiology'><a href='#investigation-radiology-details' class='investigation-details' data-toggle='tab'>Radiology (0)</a></li></ul><div class='tab-content investigation-form-body'><div class='tab-pane active' id='investigation-ophthal-details'><p class='text-center'>Please Wait...</p></div></div></div>")
+    } else {
+      $("#investigation-wizard-inhere").html("<div class='col-md-12'>No Investigation</div>")
+    }
+    $.ajax({
+        url: '/outpatients/refresh_investigation',
+        dataType: 'script',
+        type: 'GET',
+        data: {
+          patient_id: '<%= @patient.id.to_s %>',
+          appointment_id: '<%= @appointment.id.to_s %>',
+          current_date: '<%= params[:current_date] %>',
+          inv_tab: inv_tab
+        },
+        success: function(){
+          // $(_this).removeAttr('disabled')
+        }
+    })
+  })
+
+
+  $("#alert-inv-tech").on('click', function(e){
+    var _this = this
+    e.preventDefault()
+    $(this).attr('disabled', 'disabled')
+    $.ajax({
+        url: '/outpatients/alert_investigation',
+        dataType: 'JSON',
+        type: 'GET',
+        data: {
+          specialty_id: '<%= @appointment.specialty_id %>',
+          patient_id: '<%= @patient.id.to_s %>'
+        },
+        success: function(){
+          $(_this).hide()
+          notice = new PNotify({
+            title: 'Successfully',
+            text: 'Informed Technician',
+            icon: 'fa fa-success',
+            type: 'success'
+          })
+          notice.get().click(function(){ notice.remove() });
+          // $('#btn-investigation-management-refresh').trigger('click')
+        }
+    })
+  })
+
+  $('.appointment_types_dropdown').on('change', function () {
+    var specialty_id = '<%= @appointment.specialty_id %>'
+    get_organisation_sub_appointment_types(specialty_id)
+  }).trigger('change')
+
+  function get_organisation_sub_appointment_types(specialty_id){
+    var appointment_type_id = $(".appointment_types_dropdown").val();
+    $.ajax({
+      type: "GET",
+      dataType: "json",
+      url: "/appointments/get_organisation_sub_appointment_types",
+      data: { specialty_id: specialty_id, appointment_type_id: appointment_type_id },
+      success: function(response){
+        $('.appointment_category_dropdown').children().remove();
+
+        if (response.length == 0){
+          $('.appointment_category_dropdown').append($("<option></option>").attr("value","").text("No Sub Appointment Types Available"));
+          $('.appointment_category_dropdown').trigger('change.select2');
+        }else{
+          $.each(response, function(key, value) {
+            if(value[2] == undefined){
+              text_value = value[0]
+            } else {
+              text_value = value[0] + " | " + value[2]
+            }
+            $('.appointment_category_dropdown').append($("<option></option>").attr("value",value[1]).text(text_value)).trigger('change.select2');
+          });
+        }
+
+        $('.appointment_category_dropdown').siblings(".select2").children().children().css("background-color",'rgb(247, 232, 225)')
+        setTimeout(function(argument) {
+          $('.appointment_category_dropdown').siblings(".select2").children().children().css("background-color",'')
+        }, 300)
+      }
+    });
+  }
+
+
+  $(".btn-save-appointment-type").on('click', function(){
+    var appointment_type_id = $(".appointment_types select").val();
+    var appointmenttype     =  $("input[class='appointmenttype']:checked").val();
+    var appointment_category_id    = $("#appointment_appointment_category_id").val();
+    if(appointment_type_id == undefined){
+      $(".error-box").html("<b style='color:#a94442;'>AppointmentType Cant be Blank</b>")
+    } else {
+      $(this).attr('disabled', true)
+      $(this).html('Please wait');
+      mark_arrived = $("#mark-arrived").is(":checked")
+      $.ajax({
+        type: "GET",
+        dataType: "SCRIPT",
+        data: {
+          appointment_type_id: appointment_type_id,
+          appointmenttype: appointmenttype,
+          appointment_category_id: appointment_category_id,
+          mark_arrived: mark_arrived,
+          id: "<%= @appointment.id.to_s %>" // Appointment Id
+        },
+        url: '/appointments/update_appointment_type',
+        success: function(){
+          var doctor_id = $("#sidebar_doctors_appointment .active").find('a').attr('data-doctor-id')
+          if(mark_arrived){
+            active_tab = "my_queue"
+          } else if('<%= @appointment_list_view&.current_state %>' == 'Engaged') {
+            active_tab = "all"
+          } else {
+            active_tab = "not_arrived"
+          }
+          refresh_appointment_management(doctor_id, active_tab, "<%= @appointment.id.to_s %>", "<%= @appointment.appointmentdate %>")
+        }
+      })
+    }
+    return false;
+  })
+})
+
+
+
+$(".link-to-ot").on('click', function(e){
+  e.preventDefault();
+  var current_date = $(this).attr("data-ot-date")
+  var active_user = $("#sidebar_doctors_appointment .active").find('a').attr('data-doctor-id')
+  var ot_id = $(this).attr("data-ot-id")
+  var active_tab = "Scheduled"
+  $('#modalCalendarAppointmentDetails').modal('hide')
+  $.ajax({
+    type: "GET",
+    dataType: "script",
+    data: {
+      active_tab: active_tab,
+      current_date: current_date,
+      active_user: active_user,
+      ot_id: ot_id,
+      message: "From OPD"
+    },
+    url: "/inpatients/ot_management",
+    success: function(){
+      if($('.departments_button').length > 0){
+        $('.departments_button').html("<span class='fa-color departments_span'><i class= 'fa  fa-heartbeat' style='font-size:15px;'><strong> OT </strong><span class='caret fa-color'></span></span>")
+      }
+      else{
+        $("#appointment-management").removeClass("activate")
+        $("#ot-management").addClass("activate")
+      }
+    }
+  })
+  history.pushState('', '', '/inpatients/ot_management'); // history.pushState([data], [title], [url]);
+})
+
+$(".undo-state").on('click',function(e){
+  e.preventDefault()
+  $(this).attr('disabled','disabled').html("Please Wait...")
+  $.ajax({
+    data: {appointment_id: '<%= @appointment.id.to_s%>',from: "<%= @user_role %>"},
+    url:  "/opd_clinical_workflow/undo_state"
+  })
+})
+
+
+$('.btn-reschedule').on('click', function(){
+  if ($(".ui-pnotify").length > 0) { $(".ui-pnotify").remove() }
+
+  if('<%= @appointment_list_view&.current_state %>' == 'Completed'){
+    message = "Patient is already completed, cannot reschedule the appointment."
+  } else {
+    message = "Patient is already engaged please COMPLETE this appointment and make a New Appointment."
+  }
+  notice = new PNotify({
+    title: 'Warning',
+    text: message,
+    icon: 'fa fa-warning',
+    type: 'warning'
+  })
+  notice.get().click(function(){ notice.remove() });
+})
+
+$('.btn-cancel').on('click', function(){
+  if ($(".ui-pnotify").length > 0) { $(".ui-pnotify").remove() }
+
+  if('<%= @appointment_list_view&.current_state %>' == 'Completed'){
+    message = "Patient is already completed, cannot cancel the appointment."
+  } else if('<%= @appointment_list_view&.current_state %>' != 'Completed' || '<%= @appointment_list_view&.current_state %>' != 'Scheduled'){
+    message = "Patient is already engaged, cannot cancel the appointment."
+  } else {
+    message = "Patient's Invoice/OPD Template Created, Can't Be Cancelled"
+  }
+  notice = new PNotify({
+    title: 'Error',
+    text: message,
+    icon: 'fa fa-error',
+    type: 'error'
+  })
+  notice.get().click(function(){ notice.remove() });
+})

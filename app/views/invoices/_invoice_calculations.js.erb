@@ -1,0 +1,275 @@
+//this javascript is for the calculations in edit and create of invoice
+jQuery("#total-invoice-fields").on('keyup',"[id^=invoice_services_attributes_][id$=unit_price]",calculate_all_totals)
+jQuery("#total-invoice-fields").on('change',"[id^=invoice_services_attributes_][id$=total_units]",calculate_all_totals)
+jQuery("#total-invoice-fields").on('keyup',"[id^=invoice_services_attributes_][id$=total_units]",calculate_all_totals)
+jQuery("#invoice_tax").on("keyup",calculate_all_totals)
+jQuery("#invoice_discount").on("keyup",calculate_all_totals)
+jQuery("#total-invoice-fields").on('keyup',"[id^=invoice_services_attributes_][id$=label]",clear_invoice_values)
+
+jQuery("#total-invoice-fields").on('click',"#add_invoice_item",function(e){
+
+	var total_rows = jQuery("#total_invoice_row_count").val()
+
+    // <input name="invoice[services_attributes][row_count][service_id]" id="invoice_services_attributes_row_count_service_id" type="hidden" value="">
+    // service_id --> AUTO COMPLETE SERVICE ID SELECTED DURING INVOICE CREATION. invoice[services_attributes][row_count][service_id]
+    var single_row_html = '<div class="row form-group invoice_renumber">' +
+        '<div class="col-sm-3">' +
+        '<input class="form-control services-label-validation" id="invoice_services_attributes_row_count_label" name="invoice[services_attributes][row_count][label]" type="text">' +
+        '<input name="invoice[services_attributes][row_count][service_id]" id="invoice_services_attributes_row_count_service_id" type="hidden" value="">' +
+        '</div>' +
+        '<div class="col-sm-2 ">' +
+        '<input class="form-control services-unit-price-validation" id="invoice_services_attributes_row_count_unit_price" name="invoice[services_attributes][row_count][unit_price]" type="text">' +
+        '</div>' +
+        '<div class="col-sm-2">' +
+        '<input class="form-control services-total-units-validation" id="invoice_services_attributes_row_count_total_units" min="1" name="invoice[services_attributes][row_count][total_units]" type="number">' +
+        '</div>' +
+        '<div class="col-sm-2">' +
+        '<input class="form-control total" disabled="disabled" id="total_row_count" name="total_row_count" type="text" value="0">' +
+        '</div>' +
+        '<div class="col-sm-1 ckbox ckbox-primary">' +
+        '<input name="invoice[services_attributes][row_count][is_advance]" type="hidden" value="N">' +
+        '<input class="services_is_advance text-center" id="invoice_services_attributes_row_count_is_advance" type="checkbox" value="Y" name="invoice[services_attributes][row_count][is_advance]">' +
+        '<label for="invoice_services_attributes_row_count_is_advance">' +
+        '</label>' +
+        '</div>' +
+        '<div class="col-sm-2"style="margin-top:5px;">' +
+        '<span id="add_invoice_item" class="btn btn-xs btn-primary btn-square glyphicon glyphicon-plus-sign mr5">' +
+        '</span>' +
+        '<span id="remove_invoice_item_row_count" class="btn btn-xs btn-primary btn-danger glyphicon glyphicon-remove">' +
+        '</span>' +
+        '</div>' +
+        '</div>' +
+        '</div>'
+
+	single_row_html = single_row_html.replace(/row_count/g,total_rows)
+	jQuery("#total_invoice_row_count").val(+total_rows+1)
+
+	jQuery(single_row_html).appendTo("#total-invoice-fields")
+	autocomplete_bind()
+})
+
+//jQuery("#total-invoice-fields").on('click',"[id^=remove_invoice_item_]",function(e) {
+//	var id = e.currentTarget.id
+//	jQuery("#"+id).parent().parent().remove()
+//  calculate_all_totals()
+//})
+
+
+jQuery("#total-invoice-fields").on('click',"[id^=remove_invoice_item_]",function(e){
+  var id = e.currentTarget.id
+  var index = id.replace('remove_invoice_item_', '');
+
+
+    if (jQuery("input[name='invoice[services_attributes][" + index + "][id]']").length) {
+      service_list = []
+      if (jQuery("#invoice_services_for_delete").val() != "") {
+        service_list = jQuery("#invoice_services_for_delete").val().split(',')
+      }
+      service_list.push(jQuery("input[name='invoice[services_attributes][" + index + "][id]']").val())
+      jQuery("#invoice_services_for_delete").val(service_list.join(","))
+    }
+    jQuery("#" + id).parent().parent().remove()
+  calculate_all_totals()
+})
+
+
+
+
+var service_type = $("#patient-type").val()
+function autocomplete_bind(){
+	jQuery("[id^=invoice_services_attributes_][id$=label]").autocomplete({
+	  minLength: 2,
+      source: function(request, response) {
+        jQuery.ajax({
+            dataType: "json",
+            type : 'get',
+            url: '/services/findmatchingservice',
+            //data: {searchpatient: params, remote: "true" },
+          data: {q: request.term, patient_service_type: service_type, remote: "true"},
+            success: function(data) {
+              //jQuery('#searchpatientkeyword').removeClass('ui-autocomplete-loading')
+              response( data)
+
+            },
+          error: function(data) {
+              //jQuery('#searchpatientkeyword').removeClass('ui-autocomplete-loading');
+          }
+        })
+      },
+      select: function( event, ui ) {
+      		var params = { id: ui.item["id"] }
+      		jQuery.ajax({
+                  type: "GET",
+                  dataType: "script",
+                  url: "/services/populateservicedetails",
+                  data: {populateservicedetails: params, remote: "true",target_id: event.target.id,prefix: "invoice_services_attributes_"}
+            })
+      },
+      close: function() {
+
+      }
+	})
+
+	jQuery("[id^=invoice_services_attributes_][id$=label]").autocomplete( "option", "appendTo", "#new_invoice" )
+}
+
+function _split_underscore_from_id_attr(id, splitposition) {
+    return id.split("_")[splitposition];
+}
+
+jQuery(".advance_payment_is_settled").on("click", function() {
+    var counter = _split_underscore_from_id_attr(jQuery(this).attr('id'), 4);
+
+    // is_settled and is_refund radio
+    var advance_payment_is_settled_radio_id = "invoice_advance_payment_attributes_" + counter + "_is_settled_radio";
+    var advance_payment_is_refunded_radio_id = "invoice_advance_payment_attributes_" + counter + "_is_refunded_radio";
+
+    // is_settled and is_refund textbox
+    var advance_payment_is_settled_id = "invoice_advance_payment_attributes_" + counter + "_is_settled";
+    var advance_payment_is_refunded_id = "invoice_advance_payment_attributes_" + counter + "_is_refunded";
+
+    // advance payment textbox
+    var advance_payment_id = "advance_payment_"+ counter;
+
+    // setting is_settled to Y
+    jQuery("#"+advance_payment_is_settled_id).val("Y");
+    jQuery("#"+advance_payment_is_settled_radio_id).val("Y");
+
+    // disabling the radio button
+    jQuery("#"+advance_payment_is_settled_radio_id).attr("disabled", true);
+    jQuery("#"+advance_payment_is_refunded_radio_id).attr("disabled", true);
+
+    calculate_all_totals();
+});
+
+function calculate_all_totals() {
+    var advancepayments_row_count = jQuery("#advancepayments_row_count").val();
+    var total_invoice_row_count = jQuery("#total_invoice_row_count").val();
+    var total_invoice_price = 0
+    for(var row_count=0;row_count<total_invoice_row_count;row_count++) {
+        if(jQuery("#invoice_services_attributes_"+row_count+"_total_units").length > 0) {
+            var total_price = (jQuery("#invoice_services_attributes_"+row_count+"_total_units").val() * jQuery("#invoice_services_attributes_"+row_count+"_unit_price").val())
+          jQuery("#total_"+row_count).val(total_price.toFixed(2))
+            total_invoice_price += total_price
+        }
+    }
+
+    total_invoice_price += (total_invoice_price*$("#invoice_tax").val()/100)
+    total_invoice_price -= ($("#invoice_discount").val())
+
+    for(var row_count=0;row_count<advancepayments_row_count;row_count++) {
+
+        // is_settled and is_refund radio
+        var advance_payment_is_settled_radio_id = "invoice_advance_payment_attributes_" + row_count + "_is_settled_radio";
+        var advance_payment_is_refunded_radio_id = "invoice_advance_payment_attributes_" + row_count + "_is_refunded_radio";
+
+        // is_settled and is_refund textbox
+        var advance_payment_is_settled_id = "invoice_advance_payment_attributes_" + row_count + "_is_settled";
+        var advance_payment_is_refunded_id = "invoice_advance_payment_attributes_" + row_count + "_is_refunded";
+
+        var advance_payment_id = "advance_payment_"+ row_count;
+
+        if ( jQuery("#"+advance_payment_is_settled_radio_id).is(":checked") ) {
+            var advance_payment_value = jQuery("#"+advance_payment_id).val();
+            total_invoice_price -= advance_payment_value;
+        }
+        /*if ( jQuery("#"+advance_payment_is_settled_id).is(":checked") ) {
+            var advance_payment_value = jQuery("#"+advance_payment_id).val();
+            total_invoice_price -= advance_payment_value;
+        }*/
+    }
+
+    if (jQuery("#invoice_advance_payment").length > 0) {
+        var advance_payment_value = jQuery("#invoice_advance_payment").val();
+        total_invoice_price -= advance_payment_value;
+    }
+
+    jQuery("#invoice_total").val(total_invoice_price.toFixed(2))
+  jQuery("#paid_via_cash").val(total_invoice_price.toFixed(2))
+  jQuery("#paid_via_card").val(total_invoice_price.toFixed(2))
+
+  var cash = jQuery("#paid_via_both_cash").val()
+  var card = jQuery("#paid_via_both_card").val()
+
+}
+
+function clear_invoice_values() {
+    var row_count = _split_underscore_from_id_attr(jQuery(this).attr('id'), 4);
+    jQuery("#invoice_services_attributes_"+row_count+"_service_id").val("")
+    jQuery("#invoice_services_attributes_"+row_count+"_unit_price").val("")
+    jQuery("#invoice_services_attributes_"+row_count+"_total_units").val("")
+    jQuery("#invoice_services_attributes_"+row_count+"_total_units").change()
+    //calculate_all_totals();
+}
+
+
+
+calculate_all_totals()
+autocomplete_bind()
+//test
+
+
+function invoice_page() {
+
+  $("#new_invoice").validate({
+      rules: {
+        "mop": {
+          required: true,
+        },
+      },
+      messages: {
+        "mop": {
+          required: "Please select Mode of Payment."
+        },
+      },
+  });
+
+  $("#edit_invoice_form").validate({
+    rules: {
+      "mop": {
+        required: true,
+      },
+    },
+    messages: {
+      "mop": {
+        required: "Please select Mode of Payment."
+      },
+    },
+  });
+
+}
+invoice_page()
+
+
+
+//==== custom validation neccessary for nested attributes -anoop
+
+// alias required to cRequired with new message
+$.validator.addMethod("ItemRequired", $.validator.methods.required,
+    "Item cannot be blank");
+
+$.validator.addMethod("UnitRequired", $.validator.methods.required,
+    "Unit price cannot be blank");
+
+$.validator.addMethod("QuantityRequired", $.validator.methods.required,
+    "Quantity cannot be blank");
+
+$.validator.addMethod("INumber", $.validator.methods.number,
+    "Please enter a number");
+
+
+$.validator.addMethod("discount", function(value, element) {
+  return this.optional(element) || $("#invoice_total").val() >= 0;
+}, "Discount must be less than total amount.");
+
+$.validator.addMethod("cashandcardTotal", function(value, element) {
+  return this.optional(element) || parseFloat($(".invoice_total").val()) == parseFloat($(".paid_via_both_cash").val()) + parseFloat($(".paid_via_both_card").val());
+}, "Sum of cash & card must be equal to total amount.");
+
+$.validator.addClassRules("paid_via_both_card", { cashandcardTotal: true, required: true, INumber:true});
+$.validator.addClassRules("paid_via_both_cash", { required: true, INumber:true});
+$.validator.addClassRules("invoice_discount", { discount: true});
+$.validator.addClassRules("services-label-validation", { ItemRequired: true});
+$.validator.addClassRules("services-unit-price-validation", { UnitRequired: true, INumber: true });
+$.validator.addClassRules("services-total-units-validation", { QuantityRequired: true, INumber: true });
+

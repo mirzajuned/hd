@@ -1,0 +1,286 @@
+<!-- Not in use -->
+<div id="" class="followuppatientform">
+  <%= javascript_include_tag "application-loggedin", "data-turbolinks-track" => true %>
+  <%= form_tag opd_appointments_addfollowupappointment_path, {:method => :post, remote: true, :multipart => true, :class => "followuppatientform", :id=> "followuppatientform"} do %>
+      <div class="row">
+        <div class="col-md-9">
+          <div class="row mb10" style="margin-top:5px;">
+            <div class="col-md-6" style="border-right:1px solid #eee;">
+              <% if !@patient.id.nil? %>
+                <div class="people-item">
+                  <div class="media">
+                    <div class="row">
+                      <div class="col-md-4">
+                        <a href="#" class="pull-left">
+                          <% if @patient.patientassets.present? %>
+                              <%= image_tag @patient.patientassets[@patient.patientassets.size-1].asset_path_url(:thumb), :class => "thumbnail media-object" %>
+                          <% else %>
+                              <%= image_tag "photos/no_picture_available.png", :class => "thumbnail media-object" %>
+                          <% end %>
+                        </a>
+                      </div>
+                      <div class="col-md-8">
+                        <div class="media-body">
+                          <div class="row">
+                            <div class="col-md-12">
+                              <h4 class="person-name"> <%= @patient.fullname %> </h4>
+                              <% if @patient.gender == 'Male' %>
+                                  <div class="text-muted"><i class="fa fa-male"></i> <%= @patient.gender %><%= @patient.age %></div>
+                              <% end %>
+                              <% if @patient.gender == 'Female' %>
+                                  <div class="text-muted"><i class="fa fa-female"></i> <%= @patient.gender %><%= @patient.age %></div>
+                              <% end %>
+                              <div class="text-muted"><i class="fa fa-mobile-phone"></i> <%= @patient.mobilenumber %></div>
+                              <% if @patient_ident.present? %>
+                                <% if @patient_ident.mr_no.present? %>
+                                    <div class="text-muted"><i class="glyphicon glyphicon-record"></i> MR NO: <%= @patient_ident.mr_no %></div>
+                                <% end %>
+                                <% if @patient_ident.ip_no.present? %>
+                                    <div class="text-muted"><i class="glyphicon glyphicon-record"></i> IP NO. <%= @patient_ident.ip_no %></div>
+                                <% end %>
+                              <% end %>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              <% end %>
+
+            </div>
+            <div class="col-md-6">
+              <%= hidden_field_tag "patient_id", @patient.id, {:maxlength => 15, :size => 15, :class => 'form-control patient_id'}%>
+              <%= hidden_field_tag "department-filter", current_user.department_id%>
+              <%= hidden_field_tag "departmenttype", "440655000" %>
+              <div class="row" style="margin-bottom:15px;">
+              </div>
+              <div class="row" style="margin-bottom:10px;">
+                <div class="col-md-5">
+                  <label>Location</label>
+                </div>
+                <div class="col-md-7">
+                  <% if @facilities.count > 1 %>
+                    <%= render 'appointment_facilities_dropdown' %>
+                  <% else %>
+                    <%= hidden_field_tag "appointment-facility-filter", @facilities.first.id.to_s %>
+                    <%= @facilities.first.name %>
+                  <% end %>
+                </div>
+              </div>
+              <div class="row" style="margin-bottom:10px;">
+                <div class="col-md-5">
+                  <label>Doctor</label>
+                </div>
+                <div class="col-md-7">
+                  <%= render 'doctors_dropdown' %>
+                </div>
+              </div>
+              <div class="row mb10">
+                <div class="col-md-5">
+                  <label>Appointment Date</label>
+                </div>
+                <div class="col-md-7">
+                  <div class="input-group">
+                    <span class="input-group-addon"><i class="glyphicon glyphicon-calendar"></i></span>
+                    <%= text_field_tag "followupappointmentdate", nil, {:class => 'form-control followupappointmentdate', :id => "followupappointmentdate", style: "cursor:default;background:#fff;", :placeholder => "dd/mm/yyyy", :readonly => true } %>
+                  </div>
+                </div>
+              </div>
+              <div class="row mb10">
+                <div class="col-md-5">
+                  <label>Appointment Time</label>
+                </div>
+                <div class="col-md-7">
+                  <div class="input-group mb15">
+                    <span class="input-group-addon"><i class="glyphicon glyphicon-time"></i></span>
+                    <div class="bootstrap-timepicker timepicker">
+                      <%= text_field_tag "followupappointmenttime", @start_time, {:class => 'form-control followupappointmenttime', :id => "followupappointmenttime" } %>
+                      <%= hidden_field_tag "end_time", @end_time %>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="row mb10">
+                <div class="col-md-5">
+                  <label class="control-label">Visit Type <span style="font-size:12px;color:#a94442;">(Required)</span></label>
+                </div>
+                <div class="col-md-7">
+                  <% @appointment_types.each do |appointment_type| %>
+                    <label for="patientvisittype-fresh-radioselectlabel"><%= radio_button_tag :appointment_type_id, appointment_type.id,appointment_type.is_default %> <%= appointment_type.label %></label>
+                  <% end %>
+                </div>
+              </div>
+
+              <%if Appointment.where(patient_id: @patient.id , :appointmentdate.lt => Date.current).order('appointmentdate desc')[0].present? && Appointment.where(patient_id: @patient.id, :appointmentdate.lt => Date.current).order('appointmentdate desc')[0].appointmentdate %>
+                  <div>
+                    <%@lastvisitappointment = Appointment.where(patient_id: @patient.id , :appointmentdate.lt => Date.current).order('appointmentdate desc')[0].present? && Appointment.where(patient_id: @patient.id, :appointmentdate.lt => Date.current).order('appointmentdate desc')[0]%>
+                    <span>Last visit:</span><strong>
+                    <% appointment_date = Appointment.where(patient_id: @patient.id, :appointmentdate.lt => Date.current).order('appointmentdate desc')[0].appointmentdate %>
+                    <%day =  Time.current.day - appointment_date.day%>
+                    <%month =  Time.current.month - appointment_date.month%>
+                    <%year =  Time.current.year - appointment_date.year%>
+                    <% if day < 0 %>
+                        <%day = appointment_date.end_of_month.day + day %>
+                        <%month = month - 1%>
+                    <%end%>
+
+                    <% if month < 0 %>
+                        <%month = 12 + month %>
+                        <%year = year - 1%>
+                    <%end%>
+
+                    <% if year < 1 %>
+                        <%if month < 1%>
+                            <%= day %> <%if day > 1%>days<%else%>day<%end%> ago (<%= appointment_date.strftime("%b %d") %>)
+                        <%else%>
+                            <%= month %> <%= "month".pluralize(month)%> and <%= day %> <%= "day".pluralize(day)%> ago (<%= appointment_date.strftime("%b %d") %>)
+                        <%end%>
+                    <%else%>
+                        <%= year %> <%= "year".pluralize(year)%> and <%= month %> <%= "month".pluralize(month)%> ago (<%= appointment_date.strftime("%b %d") %>)
+                    <%end%></strong>
+
+                    <strong>
+                    <% if current_facility.clinical_workflow%>
+
+                        <% doctor_id = OpdClinicalWorkflow.find_by(appointment_id: @lastvisitappointment.id.to_s).consultant_ids.last %>
+                        <% if doctor_id %>
+                            <span>seen by Dr. <%=User.find_by(:id=> doctor_id).fullname%></span>
+                        <% else %>
+                            <span>seen by Dr. <%=User.find_by(:id=> @lastvisitappointment.consultant_id).fullname%></span>
+                        <% end %>
+
+                    <%else%>
+                        <span>seen by Dr. <%=User.find_by(:id=> @lastvisitappointment.consultant_id).fullname%></span>
+                    <%end%>
+                    </strong>
+                  </div>
+              <%end%>
+
+            </div>
+          </div>
+          <div class="row mb20">
+            <%= submit_tag "Create Appointment", class: "btn btn-success", remote: true, 'data-disable-with' => "Please wait..", :onclick => 'followuppatient_page()' %>
+            <button aria-hidden="true" class="btn btn-info signup-patient-form-close" data-dismiss="modal">Close</button>
+          </div>
+        </div>
+        <div class="col-md-3" id="booked-appointment-slots" style="background: #fcfcfc;border-left:1px solid #eee;">
+
+          <%=  render partial: '/opd_appointments/available_slot.html.erb' %>
+        </div>
+      </div>
+  <% end %>
+
+</div>
+
+<style>
+input.error, select.error {
+border-color: #b94a48;
+background-image: none;
+}
+input.valid, select.valid {
+border-color: #468847;
+background-image: none;
+}
+</style>
+<script>
+  jQuery('#followupappointmentdate').datepicker({
+    dateFormat: "dd/mm/yy",
+  })
+  jQuery('#followupappointmenttime').timepicker({defaultTIme: false, minuteStep: 5})
+
+
+  jQuery('#doctors-filter').change(function(){
+      doctor_id = this.value
+      date = jQuery('.followupappointmentdate').val()
+      facility_id = jQuery('#appointment-facility-filter').val()
+      $.ajax({
+        url: '/opd_appointments/get_booked_appointments',
+        type: 'get',
+        data: {
+          doctor_id: doctor_id,
+          facility_id: facility_id,
+          date: date,
+        },
+        success: function(res) {
+           // console.log('kfkgkdfj', res);
+        },
+      });
+    })
+    jQuery('.followupappointmentdate').change(function(){
+      date = this.value
+      doctor_id = jQuery('#doctors-filter').val()
+      facility_id = jQuery('#appointment-facility-filter').val()
+      $.ajax({
+        url: '/opd_appointments/get_booked_appointments',
+        type: 'get',
+        data: {
+          doctor_id: doctor_id,
+          date: date,
+          facility_id: facility_id
+        },
+        success: function(res) {
+           // console.log('kfkgkdfj', res);
+        },
+      });
+    })
+    jQuery('#appointment-facility-filter').change(function(){
+      // console.log('sjdkskdjksj')
+      facility_id = this.value
+      // console.log(facility_id)
+      doctor_id = jQuery('#doctors-filter').val()
+      date = jQuery('.appointmentdate').val()
+      $.ajax({
+        url: '/opd_appointments/get_booked_appointments',
+        type: 'get',
+        data: {
+          doctor_id: doctor_id,
+          date: date,
+          facility_id: facility_id
+        },
+        success: function(res) {
+           // console.log('kfkgkdfj', res);
+        },
+      });
+    })
+
+  function followuppatient_page() {
+    jQuery('#followupappointmentdate').datepicker({
+      dateFormat: "dd/mm/yy",
+    })
+    jQuery('#followupappointmenttime').timepicker({defaultTIme: false, minuteStep: 5})
+    $("#followuppatientform").validate({
+      rules: {
+        "followupappointmentdate": {
+          required: true,
+        },
+        "followupappointmenttime": {
+          required: true,
+        },
+      },
+      messages: {
+        "followupappointmentdate": {
+          required: "You are clicking too fast, please select Date."
+        },
+        "followupappointmenttime": {
+          required: "You are clicking too fast, please select Time.",
+        },
+      },
+      errorPlacement: function (error, element) {
+        var name = $(element).attr("name");
+        var $obj = $("#mop_validate");
+        if(name == "invoice_opd[mode_of_payment]"){
+          error.appendTo($obj);
+        } else if(name == "invoice_opd[cash]" || name == "invoice_opd[card]") {
+          error.appendTo($("#cash_card_error"));
+        } else {
+          error.insertAfter(element);
+        }
+      }
+    });
+
+  }
+  followuppatient_page()
+
+</script>

@@ -1,0 +1,398 @@
+$(document).ready(function(){
+  const renderAction = "<%= params[:action] %>"
+  const delete_service_array = []
+
+  $("#services_items_invoice_template").find('.i_description').select2();
+  $('#invoice_template_payer_master_id').select2();
+
+  // Get Insurance Contact Details in case of "insurance"
+  const payerOptions = () => {
+    let payerFields;
+
+    if($('#invoice_template_payer_master_id').val() == 'general'){
+      payerFields = `<option value="general" selected="selected">General</option>`
+    } else if($('#invoice_template_payer_master_id').val() != ''){
+      payerFields = `<option value="${$('#invoice_template_payer_master_id').val()}">${$('option:selected', '#invoice_template_payer_master_id').html()}</option>`
+    } else {
+      payerFields = ``
+    }
+
+    return payerFields
+  }
+
+  // Add New Service
+  $(".add_service_item").on('click', function(e){
+    e.preventDefault();
+    let parentServiceRow = $(this).closest(".service_row_count").find(".service_item_row_count");
+    let item_row_count = $(parentServiceRow).children().length
+
+    let hidden_fields = `
+      <div class="field_for_date">
+        <input type="hidden" name="invoice_template[template_details][${item_row_count}][entry_type]" class="i_entry_type" value="service">
+      </div>`
+
+    let payer_dropdown = `
+      <div class="col-md-2 field_for_payer" style="display: none;">
+        <select class="form-control i_payer_master_id" name="invoice_template[template_details][${item_row_count}][payer_master_id]">
+          ${payerOptions()}
+        </select>
+      </div>`
+
+    let description_dropdown = `
+      <div class="col-md-4 field_for_description">
+        <select class="form-control i_description" name="invoice_template[template_details][${item_row_count}][description]">
+          <option value="">Select Service</option>
+        </select>
+        <input name="invoice_template[template_details][${item_row_count}][service_code]" style="padding:2px 10px; border: none" class="form-control i_service_code" placeholder="Service Code" value="" type="text" readonly="readonly">
+      </div>`
+
+    let quantity_field = `
+      <div class="col-md-2 field_for_quantity">
+        <input name="invoice_template[template_details][${item_row_count}][quantity]" style="padding:5px 10px;" class="form-control i_quantity" placeholder="Quantity" maxlength="4" value="1" type="text">
+      </div>`
+
+    let unit_price_field = `
+      <div class="col-md-2 field_for_unit_price">
+        <input name="invoice_template[template_details][${item_row_count}][unit_price]" style="padding:5px 10px;" class="form-control i_unit_price" placeholder="Unit Price" maxlength="12" type="text">
+        <input name="invoice_template[template_details][${item_row_count}][discount_amount]" class="discount_amount" type="hidden" value="0">
+        <input name="invoice_template[template_details][${item_row_count}][discount_percentage]" class="service_discount_percentage" type="hidden" value="">
+        <input name="invoice_template[template_details][${item_row_count}][net_item_price]" class="net_item_price" type="hidden" value="0">
+      </div>`
+
+    let price_field = `
+      <div class="col-md-2 field_for_price">
+        <input name="invoice_template[template_details][${item_row_count}][price]" style="padding:5px 10px;" class="form-control i_price" id="i_price" placeholder="Total" readonly="readonly" type="text">
+      </div>`
+
+    let service_actions = `
+      <div class="col-md-2">
+        <button class="btn btn-danger btn-xs remove_service" style="padding:0 5px;margin-top:3px;"><i class="fa fa-trash-alt"></i> Remove</button>
+      </div>`
+
+    let newServiceRow = `
+      <div class="invoice_service_item_row row mt5" id="invoice_service_item_row">
+        <div class="col-md-12">
+          ${hidden_fields}
+          ${payer_dropdown}
+          ${description_dropdown}
+          ${quantity_field}
+          ${unit_price_field}
+          ${price_field}
+          ${service_actions}
+        </div>
+      </div>`
+
+    $(parentServiceRow).append(newServiceRow)
+    $(parentServiceRow).find(".i_payer_master_id:last").select2();
+    $(parentServiceRow).find(".i_description:last").select2({matcher: modelMatcher});
+
+    $(parentServiceRow).find(".i_payer_master_id:last").trigger('change')
+
+    // Create Hook To Remove Item Button Of The Newly Created Item
+    get_service_details($(parentServiceRow).find(".i_description:last"));
+  });
+
+  // Add New Surgery Package
+  $(".add_service_package").on('click', function(e){
+    e.preventDefault();
+    let parentServiceRow = $(this).closest(".service_row_count").find(".service_item_row_count");
+    let item_row_count = $(parentServiceRow).children().length
+
+    let hidden_fields = `
+      <div class="field_for_date">
+        <input type="hidden" name="invoice_template[template_details][${item_row_count}][entry_type]" class="i_entry_type" value="surgery_package">
+      </div>`
+
+    let payer_dropdown = `
+      <div class="col-md-2 field_for_payer" style="display: none;">
+        <select class="form-control i_payer_master_id" name="invoice_template[template_details][${item_row_count}][payer_master_id]">
+          ${payerOptions()}
+        </select>
+      </div>`
+
+    let description_dropdown = `
+      <div class="col-md-4 field_for_description">
+        <select class="form-control i_description" name="invoice_template[template_details][${item_row_count}][description]" data-type="surgery_package">
+          <option value="">Select Package</option>
+        </select>
+      </div>`
+
+    let quantity_field = `
+      <div class="col-md-2 field_for_quantity">
+        <input type="text" name="invoice_template[template_details][${item_row_count}][quantity]" style="padding:5px 10px;" class="form-control i_quantity" placeholder="Quantity" maxlength="4" value="1" readonly="readonly">
+      </div>`
+
+    let unit_price_field = `
+      <div class="col-md-2 field_for_unit_price">
+        <input type="text" name="invoice_template[template_details][${item_row_count}][unit_price]" style="padding:5px 10px;" class="form-control i_unit_price" placeholder="Unit Price" maxlength="12" readonly="readonly">
+        <input name="invoice_template[template_details][${item_row_count}][discount_amount]" class="discount_amount" type="hidden" value="0">
+        <input name="invoice_template[template_details][${item_row_count}][discount_percentage]" class="service_discount_percentage" type="hidden" value="">
+        <input name="invoice_template[template_details][${item_row_count}][net_item_price]" class="net_item_price" type="hidden" value="0">
+      </div>`
+
+    let price_field = `
+      <div class="col-md-2 field_for_price">
+        <input type="text" name="invoice_template[template_details][${item_row_count}][price]" style="padding:5px 10px;" class="form-control i_price" id="i_price" placeholder="Total" readonly="readonly">
+      </div>`
+
+    let service_actions = `
+      <div class="col-md-2">
+        <button class="btn btn-danger btn-xs remove_service" style="padding:0 5px;margin-top:3px;"><i class="fa fa-trash-alt"></i> Remove</button>
+      </div>`
+
+    let newPackageRow = `
+      <div class="invoice_service_item_row row mt5" id="invoice_service_item_row">
+        <div class="col-md-12">
+          ${hidden_fields}
+          ${payer_dropdown}
+          ${description_dropdown}
+          ${quantity_field}
+          ${unit_price_field}
+          ${price_field}
+          ${service_actions}
+        </div>
+        <div class="col-md-12 package-breakup"></div>
+      </div>`
+
+    $(parentServiceRow).append(newPackageRow)
+    $(parentServiceRow).find(".i_payer_master_id:last").select2();
+    $(parentServiceRow).find(".i_description:last").select2({matcher: modelMatcher});
+
+    $(".i_payer_master_id:last").trigger("change");
+
+    // Create Hook To Remove Item Button Of The Newly Created Item
+    get_service_details($(parentServiceRow).find(".i_description:last"));
+  });
+
+  // Remove Service
+  $("#services_items_invoice_template").on("click", ".remove_service", function(e){
+    e.preventDefault();
+    $(this).closest(".invoice_service_item_row").remove();
+
+    remove_reset_logic();
+    calculate_total();
+  });
+
+  // Contact Changes
+  $("#services_items_invoice_template").on("change", ".i_payer_master_id", function(){
+    let activeServiceRow = $(this).closest(".invoice_service_item_row")
+
+    let payer_master_id = $(this).val();
+    let service_type = '<%= @service_type.to_s %>'
+    let i_entry_type = $(activeServiceRow).find(".i_entry_type").val()
+    let departmentId = $("#invoice_template_department_id").val()
+    let facilityId = $("#invoice_template_facility_id").val()
+    let specialty_id = $('#invoice_template_specialty_id').val();
+
+    if(payer_master_id != "" && payer_master_id != null){
+      fetch(`/invoice/invoices/set_invoice_pricing_masters?payer_master_id=${payer_master_id}&entry_type=${i_entry_type}&specialty_id=${specialty_id}&department_id=${departmentId}&facility_id=${facilityId}&service_type=${service_type}`)
+            .then(data => data.text())
+            .then(pricingMasterList => $(activeServiceRow).find(".i_description").html(pricingMasterList).trigger("change"))
+    }
+  })
+
+  // Contact Dropdown Changes
+  $("#invoice_template_payer_master_id").on("change", function(){
+    let payerId = $(this).val()
+    let payerName = $('option:selected', this).html();
+
+    $(".invoice_service_item_row:first").siblings(".invoice_service_item_row").remove()
+
+    $(".i_payer_master_id").html(payerOptions()).trigger('change')
+  })
+
+  // Department Dropdown Changes
+  $("#invoice_template_department_id").on("change", function(){
+    $("#invoice_template_payer_master_id").val('').trigger('change')
+  })
+
+  // Facility Dropdown Changes
+  $("#invoice_template_facility_id").on("change", function(){
+    $("#invoice_template_payer_master_id").val('').trigger('change')
+  })
+
+  // Specialty Dropdown Changes
+  $("#invoice_template_specialty_id").on("change", function(){
+    $("#invoice_template_payer_master_id").val('').trigger('change')
+  })
+
+  // Quantity Changes
+  $("#services_items_invoice_template").on("keyup focusout", ".i_quantity", function(){
+    let quantity = $(this).val()
+    let unit_price = $(this).closest(".invoice_service_item_row").find(".i_unit_price").val()
+
+    calculate_price(this, quantity, unit_price)
+  });
+
+  // Unit Price Changes
+  $("#services_items_invoice_template").on("keyup focusout", ".i_unit_price", function(){
+    let unit_price = $(this).val()
+    let quantity = $(this).closest(".invoice_service_item_row").find(".i_quantity").val()
+
+    calculate_price(this, quantity, unit_price)
+  });
+
+  // Calculate Price of Service
+  function calculate_price(_this, quantity=0, unit_price=0) {
+    let price = (quantity * unit_price).toFixed(2);
+
+    $(_this).closest(".invoice_service_item_row").find(".i_price").val(price);
+
+    calculate_total()
+  }
+
+  function calculate_total(){
+    let total = 0
+    for (let i = $('.i_price').length - 1; i >= 0; i--) {
+      total += parseFloat($($('.i_price')[i]).val())
+    }
+    $(".service_total").val(total)
+  }
+
+  // Logic For Remove Reset
+  function remove_reset_logic() {
+    let allServiceRow = $(".invoice_service_item_row")
+    for (let i = 0; i < allServiceRow.length; i++) {
+      $(allServiceRow[i]).find('.i_id').attr('name', 'invoice_template[template_details]['+ i +'][_id]')
+      $(allServiceRow[i]).find('.i_payer_master_id').attr('name', 'invoice_template[template_details]['+ i +'][payer_master_id]')
+      $(allServiceRow[i]).find('.i_description').attr('name', 'invoice_template[template_details]['+ i +'][description]')
+      $(allServiceRow[i]).find('.i_quantity').attr('name', 'invoice_template[template_details]['+ i +'][quantity]')
+      $(allServiceRow[i]).find('.i_unit_price').attr('name', 'invoice_template[template_details]['+ i +'][unit_price]')
+      $(allServiceRow[i]).find('.i_price').attr('name', 'invoice_template[template_details]['+ i +'][price]')
+      $(allServiceRow[i]).find('.i_item_entry_date').attr('name', 'invoice_template[template_details]['+ i +'][item_entry_date]')
+      $(allServiceRow[i]).find('.i_entry_type').attr('name', 'invoice_template[template_details]['+ i +'][entry_type]')
+    }
+  }
+
+  // Service Description Drodpown values
+  function get_service_details(description){
+    $(description).on("change", function(){
+      let description_id = $(this).val();
+      let counter = $(this).attr("name").replace(/[^0-9]/g, '')[0];
+      let service_amount = $("option:selected", this).attr("data-amount");
+      let data_type = $(this).attr("data-type");
+      let activeServiceRow = $(this).closest(".invoice_service_item_row");
+
+      let service_code = $("option:selected", this).attr("data-service_code");
+      $(activeServiceRow).find(".i_quantity").val(1)
+      $(activeServiceRow).find(".i_unit_price").val(service_amount)
+      $(activeServiceRow).find(".i_service_code").val(service_code)
+      $(activeServiceRow).find(".i_non_taxable_amount").val(service_amount)
+      $(activeServiceRow).find(".i_unit_price").trigger("focusout")
+      if(data_type == "surgery_package"){
+        if(description_id != ""){
+          fetch(`/surgery_packages/${description_id}/set_package_services?counter=${counter}&tax_enabled=false`)
+            .then(data => data.text())
+            .then(packageBreakupHtml => $(activeServiceRow).find(".package-breakup").html(packageBreakupHtml))
+        } else {
+          $(activeServiceRow).find(".package-breakup").html("")
+        }
+      }
+    })
+  }
+  for (var i = $(".i_description").length - 1; i >= 0; i--) {
+    get_service_details($(".i_description")[i])
+  }
+
+  // Form Validation
+  function invoice_page(){
+    $("#new_invoice_template").validate({
+      rules: {
+        "invoice_template[name]": {
+          required: true,
+        },
+        "invoice_template[department_id]": {
+          required: true,
+        },
+        "invoice_template[payer_master_id]": {
+          required: true,
+        }
+      },
+      messages: {
+        "invoice_template[name]": {
+          required: "Template Name cannot be blank",
+        },
+        "invoice_template[department_id]": {
+          required: "Select Department",
+        },
+        "invoice_template[payer_master_id]": {
+          required: "Select Contact",
+        }
+      },
+      errorElement: 'div',
+      errorPlacement: function (error, element) {
+        if($(element).hasClass("select2-hidden-accessible")) {
+          element = $(element).siblings(".select2-container");
+        }
+        error.insertAfter(element);
+      }
+    });
+
+    $("#edit_invoice_template").validate({
+      rules: {
+        "invoice_template[name]": {
+          required: true,
+        },
+        "invoice_template[department_id]": {
+          required: true,
+        },
+        "invoice_template[payer_master_id]": {
+          required: true,
+        }
+      },
+      messages: {
+        "invoice_template[name]": {
+          required: "Template Name cannot be blank",
+        },
+        "invoice_template[department_id]": {
+          required: "Select Department",
+        },
+        "invoice_template[payer_master_id]": {
+          required: "Select Contact",
+        }
+      },
+      errorElement: 'div',
+      errorPlacement: function (error, element) {
+        if($(element).hasClass("select2-hidden-accessible")) {
+          element = $(element).siblings(".select2-container");
+        }
+        error.insertAfter(element);
+      }
+    });
+  }
+  invoice_page()
+
+  $.validator.addMethod("ServiceName", $.validator.methods.required,
+    "Service Name cannot be blank");
+
+  $.validator.addMethod("ServiceTotal", $.validator.methods.number,
+    "Amount Should be Number");
+
+  $.validator.addMethod("ServiceTotalPresence", $.validator.methods.required,
+    "Amount cannot be blank");
+
+  $.validator.addMethod("ItemDescription", $.validator.methods.required,
+    "Description cannot be blank");
+
+  $.validator.addMethod("ItemQuantity", $.validator.methods.number,
+    "Quantity Should be Number");
+
+  $.validator.addMethod("ItemQuantityPresence", $.validator.methods.required,
+    "Quantity cannot be blank");
+
+  $.validator.addMethod("ItemUnitPrice", $.validator.methods.number,
+    "Unit Price Should be Number");
+
+  $.validator.addMethod("ItemUnitPricePresence", $.validator.methods.required,
+    "Unit Price cannot be blank");
+
+  $.validator.addMethod("NameRequired", $.validator.methods.required,
+    "Name cannot be blank");
+
+  $.validator.addClassRules("service_name", { ServiceName: true});
+  $.validator.addClassRules("service_total", { ServiceTotal: true, ServiceTotalPresence: true});
+  $.validator.addClassRules("i_description", { ItemDescription: true});
+  $.validator.addClassRules("i_quantity", { ItemQuantity: true, ItemQuantityPresence: true});
+  $.validator.addClassRules("i_unit_price", { ItemUnitPrice: true, ItemUnitPricePresence: true});
+  $.validator.addClassRules("Invoice-name-validation", { NameRequired: true});
+});

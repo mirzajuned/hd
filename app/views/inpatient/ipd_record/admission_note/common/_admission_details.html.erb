@@ -1,0 +1,214 @@
+<div class="row" style="margin: 6px -7px 19px 4px;">
+  <%= adm.hidden_field :patient_arrived, value: true %>
+  <%= adm.hidden_field :admission_stage, value: 'pre_operative' %>
+
+  <!-- Milestones -->
+  <% unless @admission.admission_milestones.find_by(position: 4).present? %>
+    <%= hidden_field_tag "inpatient_ipd_record[admission_attributes][admission_milestones_attributes][0][label]", 'patient_admitted' %>
+    <%= hidden_field_tag "inpatient_ipd_record[admission_attributes][admission_milestones_attributes][0][position]", 4 %>
+    <%= hidden_field_tag "inpatient_ipd_record[admission_attributes][admission_milestones_attributes][0][user_id]", current_user.id %>
+  <% end %>
+
+  <div class="col-md-4">
+    <b>Admission Date :</b>
+    <%= adm.text_field :admissiondate, {class: "form-control", readonly: "readonly", value: @admission.admissiondate.strftime("%d/%m/%Y")} %>
+  </div>
+  <div class="col-md-4">
+    <b>Admission Time :</b>
+    <div class="bootstrap-timepicker timepicker">
+      <%= adm.text_field :display_admissiontime, {class: "form-control", readonly: "readonly", value: @admission.admissiontime.strftime("%I:%M %p")} %>
+      <%= adm.hidden_field :admissiontime, {class: "form-control", readonly: "readonly", value: @admission.admissiontime.strftime("%d/%m/%Y %I:%M %p")} %>
+    </div>
+  </div>
+</div>
+
+<div class="row" style="margin: 6px -7px 19px 4px;">
+  <div class="col-md-4">
+    <b>Location :</b>
+    <% facilities = Facility.where(organisation_id: current_organisation['_id'], is_active: true).sort(name: :asc) %>
+    <%= hidden_field_tag "inpatient_ipd_record[admission_attributes][facility_id]", @admission.facility_id, class: "admission_facility_id", disabled: "disabled" %>
+    <%= select_tag("inpatient_ipd_record[admission_attributes][facility_id]", options_for_select(facilities.map { |facility| [facility.name, facility.id] }, @admission.facility_id), class: "form-control admission_note_facility_id") %>
+  </div>
+  <div class="col-md-4 specialty_dropdown_div">
+    <b>Specialty</b>
+    <%= hidden_field_tag "inpatient_ipd_record[admission_attributes][specialty_id]", @admission.specialty_id, class: "admission_specialty_id", disabled: "disabled" %>
+    <%= select_tag "inpatient_ipd_record[admission_attributes][specialty_id]", options_for_select(@available_specialties, @admission.specialty_id), { class: "form-control admission_note_specialty_id" } %>
+  </div>
+  <div class="col-md-4">
+    <b>Doctor :</b>
+    <%= hidden_field_tag "inpatient_ipd_record[admission_attributes][doctor]", @admission.doctor, class: "admission_doctor" %>
+    <%= select_tag "inpatient_ipd_record[admission_attributes][doctor]", options_for_select(@available_doctors, @admission.doctor), { class: "admitting-doctor admission_note_doctor_id form-control" } %>
+  </div>
+</div>
+
+<div class="row" style="margin: 6px -7px 19px 4px;">
+  <div class="col-md-6">
+    <b>Admission Reason :</b>
+    <%= adm.text_field :admissionreason, {class: "form-control", value: @admission.admissionreason.to_s } %>
+  </div>
+  <div class="col-md-4" style="margin-top: 30px;">
+    <b>Bed Details :</b> &emsp;<span id="bed-details"><%= @bed_details %></span>
+    <% if @ward_count > 0 %>
+      <%= link_to admission_assign_bed_path(admission_id: @admission.id, id: @admission.id),:class => "btn btn-link btn-xs", style: "padding:2px;", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#admission-modal'} do %> <i class="fa fa-edit"></i><% end %>
+      <button class="btn btn-link btn-xs remove-existing-bed-m" style="padding:2px;"><i class="fa fa-times"></i></button>
+    <% end %>
+  </div>
+</div>
+
+<div class="row" style="margin: 6px -7px 19px 4px;">
+  <div class="col-md-6">
+    <b>Management Plans :</b>
+    <%= adm.text_area :managementplan, { class: "form-control", value: @admission.managementplan.to_s } %>
+  </div>
+</div>
+
+<script type="text/javascript">
+  // // datepicker
+  // datepicker_options = {
+  //   changeMonth: true,
+  //   changeYear: true,
+  //   dateFormat: "dd/mm/yy",
+  //   maxDate: 0
+  // };
+
+  // $(".admission-datepicker").datepicker(datepicker_options)
+  // $(".admission-timepicker").timepicker()
+
+  // $("#inpatient_ipd_record_admission_attributes_facility_id").on('change', function(){
+  //   var fac_id = $(this).val();
+
+  //   $.ajax({
+  //     type: "GET",
+  //     dataType: "json",
+  //     url: "/main/get_user_id_admission_list",
+  //     data: { facility_id: fac_id },
+  //     success: function(response){
+  //       $('.admitting-doctor').children().remove();
+  //       $.each(response, function(key, value) {
+  //         $('.admitting-doctor').append($("<option></option>").attr("value",value[1]).text(value[0]));
+  //         $('.admitting-doctor').find("option[value='<%#= @admission.doctor.to_s %>']").attr('selected', 'selected')
+  //       });
+  //     }
+  //   });
+  // }).trigger('change')
+
+  // Change specialties onChange Facility
+  $(".admission_note_facility_id").on('change', function(e){
+    e.preventDefault();
+    var facility_id = $(this).val();
+
+    get_facility_specialties(facility_id)
+  })
+
+  // to get doctors only when specialty dropdown changes
+  $(".admission_note_specialty_id").off('change').on('change', function(e){
+    e.preventDefault();
+    var specialty_id = $(this).val()
+    var facility_id = $(".admission_note_facility_id").val();
+
+    get_specialty_users(facility_id, specialty_id)
+  })
+
+  function toggle_specialty_dropdown(){
+    if($('.admission_note_specialty_id').find('option').length === 1){
+     $(".specialty_dropdown_div").hide();
+    } else {
+      $(".specialty_dropdown_div").show();
+    }
+  }
+  toggle_specialty_dropdown();
+
+  function get_facility_specialties(facility_id){
+    $.ajax({
+      type: "GET",
+      dataType: "json",
+      url: "/admissions/get_facility_specialties",
+      data: {facility_id: facility_id},
+      success: function(response){
+        $('.admission_note_specialty_id').children().remove();
+
+        $.each(response, function(key, value) {
+          $('.admission_note_specialty_id').append($("<option></option>").attr("value",value["_id"]).text(value["name"]));
+        });
+        $('.admission_note_specialty_id').find("option[value='<%= @admission.specialty_id.to_s %>']").attr('selected', 'selected')
+
+        $('.admission_note_specialty_id').css("background-color",'rgb(247, 232, 225)')
+        setTimeout(function(argument) {
+          $('.admission_note_specialty_id').css("background-color",'')
+        }, 300)
+
+        toggle_specialty_dropdown();
+
+        var specialty_id = $('.admission_note_specialty_id').val()
+        get_specialty_users(facility_id, specialty_id)
+      }
+    })
+  }
+
+  function get_specialty_users(facility_id, specialty_id){
+    $.ajax({
+      type: "GET",
+      dataType: "json",
+      url: "/admissions/get_users_from_specialty",
+      data: { facility_id: facility_id, specialty_id: specialty_id },
+      success: function(response){
+        $('.admission_note_doctor_id').children().remove();
+
+        if (response.length == 0){
+          $('.admission_note_doctor_id').append($("<option></option>").attr("value","").text("No Doctors Available for this specialty"));
+        }else{
+          $.each(response, function(key, value) {
+            if(value[2] == undefined){
+              text_value = value[0]
+            } else {
+              text_value = value[0] + " | " + value[2]
+            }
+            $('.admission_note_doctor_id').append($("<option></option>").attr("value",value[1]).text(text_value));
+          });
+        }
+
+        $('.admission_note_doctor_id').find("option[value='<%= @admission.doctor.to_s %>']").attr('selected', 'selected')
+        $('.admission_note_doctor_id').css("background-color",'rgb(247, 232, 225)')
+        setTimeout(function(argument) {
+          $('.admission_note_doctor_id').css("background-color",'')
+        }, 300)
+      }
+    });
+  }
+
+  <% if @admission.daycare %>
+    $(".remove-existing-bed-m").hide()
+  <% end %>
+
+  $(".remove-existing-bed-m").on('click', function(e){
+    e.preventDefault();
+    $.ajax({
+      type: "GET",
+      dataType: "JSON",
+      url: "/admissions/"+ '<%= @admission.id.to_s %>' +"/unassign_bed",
+      data: {
+        id: '<%= @admission.id.to_s %>'
+      },
+      success: function(res){
+        $("#bed-details").html("Daycare")
+        $(".remove-existing-bed").hide()
+        $("#inpatient_ipd_record_ward_id").val("<%= nil %>")
+        $("#inpatient_ipd_record_room_id").val("<%= nil %>")
+        $("#inpatient_ipd_record_bed_id").val("<%= nil %>")
+        $("#inpatient_ipd_record_daycare").val(true)
+      }
+    })
+  })
+
+  <%# if @admission.try(:ipd_templates_count) > 0 %>
+    // $(".admission-datepicker").attr('disabled','disabled')
+    // $(".admission-timepicker").attr('disabled','disabled')
+    $(".admission_note_facility_id").attr('disabled','disabled')
+    $(".admission_note_specialty_id").attr('disabled','disabled')
+    // $(".admission_note_doctor_id").attr('disabled','disabled')
+    $(".admission_facility_id").removeAttr("disabled", "disabled")
+    $(".admission_specialty_id").removeAttr("disabled", "disabled")
+    $(".admission_doctor").removeAttr("disabled", "disabled")
+  <%# end %>
+
+</script>

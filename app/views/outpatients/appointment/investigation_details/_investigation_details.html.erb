@@ -1,0 +1,208 @@
+<!-- Note: Any Changes Here May also be needed in Investigation Module file with the same name -->
+<button class="btn btn-link btn-xs col-md-2" id="btn-investigation-details-refresh"><i class="fa fa-refresh"></i>  Refresh</button>
+<div class="row btn-group no_margin no_padding" style="padding: 5px;">
+  <!--<div class="col-md-1">-->
+  <!--</div>-->
+  <!--<div class="col-md-2">-->
+    <!--<button class="btn btn-xs btn-success btn-success-transparent" id="create-reports"></i> Create Reports</button>-->
+  <div class="btn-group dropdown">
+      <a type="button" title="Counsell or Mark payment taken for multiple investigation" class="btn btn-primary btn-primary-transparent btn-xs tooltip-inner action-investigation-dropdown" data-toggle="dropdown">
+        <span class="">All Investigations</span>&nbsp;
+        <span class="caret fa-color"></span>
+      </a>
+      <ul class="dropdown-menu children dropdown-menu-right action-investigation-dropdown" style="margin-right: -35px;">
+        <%# if @current_user.department_ids.any? { |ele| ['309935007','261904005','309964003'].include?(ele) } %>
+        <% if @appointment.specialty_id == '309988001' || @current_user.role_ids.any? { |ele| [41904004,159282002].include?(ele) } %>
+          <li><a href="#" class=" text-center" id="counsel-all" >Counselled</a></li>
+        <% end %>
+        <li><a href="#" class="  text-center" id="payment-all">Payment Taken</a></li>
+        <% if @current_user.role_ids.include?(158965000) %>
+          <li><a href="#" class="  text-center" id="review-all">Approved</a></li>
+        <% end %>
+      </ul>
+  </div>
+
+
+  <div class="btn-group dropdown">
+    <button type="button" title="Create Combined Report for All Investigation" class="btn btn-primary btn-primary-transparent btn-xs tooltip-inner" data-toggle="dropdown">
+      <span class=""> <i class="fa fa-plus"></i>  All Reports</span>&nbsp;
+      <span class="caret fa-color"></span>
+    </button>
+    <ul class="dropdown-menu children dropdown-menu-right create-investigation-dropdown">
+      <% if @appointment.specialty_id == '309988001' %>
+        <li><a href="#" class="create-all text-center" data-link-id="ophthal">Ophthal</a></li>
+      <% end %>
+      <li><a href="#" class="create-all text-center" data-link-id="laboratory">Laboratory</a></li>
+      <% if ['309988001', '309989009'].include?(@appointment.specialty_id) %>
+        <li><a href="#" class="create-all text-center" data-link-id="radiology">Radiology</a></li>
+      <% end %>
+    </ul>
+  </div>
+  <!--<div class="col-md-2">-->
+
+  <!--</div>-->
+  <!--<div class="col-md-2">-->
+    <% if @patient_investigation_queue.count == 0 && @investigation_present %>
+      <button class="btn btn-xs btn-orange btn-orange-transparent tooltip-inner" id="alert-inv-tech" title="Update Technician Queue" data-remote="true">Inform Technician</button>
+    <% end %>
+  <!--</div>-->
+  <!--<div class="col-md-2 text-right">-->
+    <button class="btn btn-xs btn-primary btn-primary-transparent tooltip-inner  " title="View/Edit All Reports" id="all-reports" ><i class="fa fa-file-alt "></i> View Reports</button>
+  <!--</div>-->
+  <!--<div class="col-md-2 text-right">-->
+  <% unless OrganisationsSetting.find_by(organisation_id: current_user.try(:organisation_id)).try(:disable_default_investigation) %>
+    <div class="btn-group dropdown">
+      <button type="button"  class="btn btn-primary btn-primary-transparent btn-xs" data-toggle="dropdown">
+        <span class="">Add Investigation</span>&nbsp;
+        <span class="caret fa-color"></span>
+      </button>
+      <ul class="dropdown-menu children dropdown-menu-right add-investigation-dropdown">
+        <% if @appointment.specialty_id == '309988001' %>
+          <li><%= link_to new_investigation_investigation_detail_path(patient_id: @patient.id, appointment_id: @appointment.id, flag: 'ophthal', specialty_id: @appointment.specialty_id), :class => "text-center", data: { remote: true, 'toggle': 'modal', 'target': '#investigation-modal' } do %>Ophthal<% end %></li>
+        <% end %>
+        <li><%= link_to new_investigation_investigation_detail_path(patient_id: @patient.id, appointment_id: @appointment.id, flag: 'laboratory', specialty_id: @appointment.specialty_id), :class => "text-center", data: { remote: true, 'toggle': 'modal', 'target': '#investigation-modal' } do %>Laboratory<% end %></li>
+        <li><%= link_to new_investigation_investigation_detail_path(patient_id: @patient.id, appointment_id: @appointment.id, flag: 'radiology', specialty_id: @appointment.specialty_id), :class => "text-center", data: { remote: true, 'toggle': 'modal', 'target': '#investigation-modal' } do %>Radiology<% end %></li>
+      </ul>
+    </div>
+  <% end %>
+</div>
+<div class="row no_margin no_padding" id='investigation-wizard-inhere' style="padding:5px;">
+  <% if @investigation_present %>
+    <%= render partial: 'outpatients/appointment/investigation_details/investigation_details_wizard.html.erb' %>  
+  <% else %>
+    <div class="col-md-12">No Investigation</div>
+  <% end %>
+</div>
+
+<style>
+    .btn-group > .btn-group > .btn.dropdown-toggle {
+        margin-left: 0;
+    .border-radius(0);
+    }
+    .btn-group > .btn-group:last-child > .btn.dropdown-toggle {
+        margin-left: 0;
+    .border-top-right-radius(@baseBorderRadius);
+    .border-bottom-right-radius(@baseBorderRadius);
+        border-left: 1px;
+    }
+    .btn-group > .btn-group:first-child > .btn.dropdown-toggle {
+        margin-right: 0;
+    .border-top-left-radius(@baseBorderRadius);
+    .border-bottom-left-radius(@baseBorderRadius);
+        border-right:1px;
+    }
+    .btn-group.dropdown+.btn-group.dropdown {
+        margin-left: 0;
+    }
+
+</style>
+
+<script>
+    $('#all-reports').on('click',function(event){
+        event.preventDefault();
+        var edit_template = $('.edit-template')
+        var template_ids=[];
+        for (var i=0;i < edit_template.length; i++){
+            var template_id = $(edit_template[i]).attr('data-template-id');
+            template_ids.push(template_id)
+        }
+        $.ajax({
+            data: {template_ids: template_ids,patient_id: '<%= @patient.id.to_s %>'},
+            url: '/ehr_investigation/records/show_all_reports'
+        })
+    })
+
+    $(".create-all").on('click',function(e){
+        e.preventDefault();
+        var tab = $(this).attr('data-link-id')
+        var id = $('*[data-tab-id='+tab+']').children().attr('href')
+        var new_templates = $(id).find('.create-template')
+        var investigation_ids = []
+        for (var i=0;i < new_templates.length; i++){
+            var investigation_id = $(new_templates[i]).attr('data-investigation-id');
+            investigation_ids.push(investigation_id)
+        }
+        $.ajax({
+            data: {investigation_ids: investigation_ids,patient_id: '<%= @patient.id.to_s %>'},
+            url: '/ehr_investigation/records/all_reports_new'
+        })
+    })
+
+    $('.tooltip-inner').tooltip({});
+
+    $("#counsel-all").on('click',function(e){
+        e.preventDefault();
+        var tab = $(".investigation-tab.active").attr("data-tab-id")
+        var id = $('*[data-tab-id='+tab+']').children().attr('href')
+        var counselling_templates = $(id).find('.counselled')
+        var investigation_ids = []
+        for (var i=0;i < counselling_templates.length; i++){
+            var investigation_id = $(counselling_templates[i]).attr('data-investigation-id');
+            investigation_ids.push(investigation_id)
+        }
+
+        $.ajax({
+            data: {investigation_ids: investigation_ids,patient_id: '<%= @patient.id.to_s %>',task: 'counselling'},
+            url: '/investigation/investigation_details/action_on_multiple_investigation'
+        })
+    })
+    $("#payment-all").on('click',function(e){
+        e.preventDefault();
+        var tab = $(".investigation-tab.active").attr("data-tab-id")
+        var id = $('*[data-tab-id='+tab+']').children().attr('href')
+        var payment_templates = $(id).find('.payments')
+        var investigation_ids = []
+        for (var i=0;i < payment_templates.length; i++){
+            var investigation_id = $(payment_templates[i]).attr('data-investigation-id');
+            investigation_ids.push(investigation_id)
+        }
+
+        $.ajax({
+            data: {investigation_ids: investigation_ids,patient_id: '<%= @patient.id.to_s %>',task: 'payments'},
+            url: '/investigation/investigation_details/action_on_multiple_investigation'
+        })
+    })
+    $("#review-all").on('click',function(e){
+        e.preventDefault();
+        var review_templates = $('.reviewed')
+        var investigation_ids = []
+        for (var i=0;i < review_templates.length; i++){
+            var investigation_id = $(review_templates[i]).attr('data-investigation-id');
+            investigation_ids.push(investigation_id)
+        }
+
+        $.ajax({
+            data: {investigation_ids: investigation_ids,patient_id: '<%= @patient.id.to_s %>',task: 'review'},
+            url: '/investigation/investigation_details/action_on_multiple_investigation'
+        })
+    })
+
+
+
+ $("#btn-investigation-details-refresh").on('click', function(e){
+    var _this = this
+    e.preventDefault()
+    // $(this).attr('disabled', 'disabled')
+    var inv_tab = $(".tab_active_investigation").find(".active").attr('data-tab-id')
+    if($("#investigationWizard").length > 0){
+      $("#investigation-wizard-inhere").html("<div id='investigationWizard' class='basic-wizard' style='border:1px solid #aaa;'><ul class='nav nav-pills nav-justified tab_active_investigation'><% if @appointment.specialty_id == '309988001' %><li role='presentation' class='' data-tab-id='ophthal'><a href='#investigation-ophthal-details' class='investigation-details' data-toggle='tab'>Ophthal (0)</a></li><% end %><li role='presentation' class='' data-tab-id='laboratory'><a href='#investigation-laboratory-details' class='investigation-details' data-toggle='tab'>Laboratory (0)</a></li><li role='presentation' class='' data-tab-id='radiology'><a href='#investigation-radiology-details' class='investigation-details' data-toggle='tab'>Radiology (0)</a></li></ul><div class='tab-content investigation-form-body'><div class='tab-pane active' id='investigation-ophthal-details'><p class='text-center'>Please Wait...</p></div></div></div>")
+    } else {
+      $("#investigation-wizard-inhere").html("<div class='col-md-12'>No Investigation</div>")
+    }
+    $.ajax({
+        url: '/outpatients/refresh_investigation',
+        dataType: 'script',
+        type: 'GET',
+        data: {
+          patient_id: '<%= @patient.id.to_s %>',
+          appointment_id: '<%= @appointment.id.to_s %>',
+          current_date: '<%= params[:current_date] %>',
+          inv_tab: inv_tab
+        },
+        success: function(){
+          // $(_this).removeAttr('disabled')
+        }
+    })
+  })
+
+</script>

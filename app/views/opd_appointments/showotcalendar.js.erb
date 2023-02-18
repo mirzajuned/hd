@@ -1,0 +1,310 @@
+jQuery(".pageheader").html("<%= escape_javascript(render 'opd_appointments/showotcalendarpageheader') %>")
+jQuery(".contentpanel").html("<%= escape_javascript(render 'opd_appointments/showotcalendarcontentpanel') %>")
+jQuery('#calendar').fullCalendar({
+			header: {
+				left: 'prev,next today',
+				center: 'title',
+				right: 'month,basicWeek,agendaDay'
+			},
+			minTime: 7,
+			maxTime: 21,
+			selectable: true,
+			editable: true,
+			droppable: true, // this allows things to be dropped onto the calendar !!!
+			drop: function(date, allDay, ui) { // this function is called when something is dropped
+			
+				// retrieve the dropped element's stored Event Object
+				var originalEventObject = jQuery(this).data('eventObject');
+				
+				// we need to copy it, so that multiple events don't have a reference to the same object
+				var copiedEventObject = $.extend({}, originalEventObject);
+				
+				// assign it the date that was reported
+				copiedEventObject.start = date;
+				copiedEventObject.allDay = allDay;
+				// render the event on the calendar
+				// the last `true` argument determines if the event "sticks" (http://arshaw.com/fullcalendar/docs/event_rendering/renderEvent/)
+
+
+				jQuery("td[data-date='" + $.fullCalendar.formatDate(copiedEventObject.start, 'yyyy-MM-dd') + "']").addClass("fc-cell-overlay");
+
+				jQuery('#calendar').fullCalendar('renderEvent', copiedEventObject, true);
+				var params = {eventid: copiedEventObject._id, start: $.fullCalendar.formatDate(copiedEventObject.start, 'dd/MM/yyyy'), allDay: copiedEventObject.allDay };
+				jQuery.ajax({
+                      type: "GET",
+                      dataType: "script",
+                      url: "/opd_appointments/holiday",
+                      data: {appointment: params, remote: "true", toggle: "modal", target: '#appointment-modal' }
+                });			
+				
+			},
+			viewRender: function(view, element) {
+				var start_month_date_array = ($.fullCalendar.formatDate(view.visStart, 'dd/MM/yyyy')).split("/");
+				var end_month_date_array = ($.fullCalendar.formatDate(view.visEnd, 'dd/MM/yyyy')).split("/");
+				
+                var params = { view: view.name, start_date: $.fullCalendar.formatDate(view.visStart, 'dd/MM/yyyy'), stop_end: $.fullCalendar.formatDate(view.visEnd, 'dd/MM/yyyy'), start_month: start_month_date_array[1], end_month: end_month_date_array[1], week_start_date: $.fullCalendar.formatDate(view.visStart, 'dd/MM/yyyy'), week_end_date: $.fullCalendar.formatDate(view.visEnd, 'dd/MM/yyyy') };
+                if (view.name == "month") {                   
+                   jQuery.ajax({
+                      type: "GET",
+                      dataType: "json",
+                      url: "/opd_appointments/month",
+                      data: {appointment: params, remote: "true" }
+                  }).done(function( data ) {
+                  	  jQuery('#calendar').fullCalendar('removeEvents');
+
+                  	  jQuery.each( data, function( key, value ) {
+
+                  	  	  var fc_date_count_array = key.split("##");
+                  	  	  //var fc_day_count_month = jQuery("<div style=\"float:left;\"><div id=\"fc-day-count-month\" class=\"fc-day-count-month\"><span class=\"badge badge-danger\">" + fc_date_count_array[1] + "</span></div></div>");
+                  	  	  var fc_day_count_month = jQuery("<div style=\"float:left;\"><div id=" + fc_date_count_array[2] + " class=\"fc-day-count-month\" data-toggle=\"popover\" rel=\"popover\"><span class=\"badge badge-danger\">" + fc_date_count_array[1] + "</span></div></div>");
+					  	  jQuery("td[data-date='" + fc_date_count_array[0] + "'] > div").prepend(fc_day_count_month);
+
+					  	  jQuery("div.fc-day-count-month").hover(function() {
+                  	  	  		var i = $(this);
+                  	  	  		$(this).popover({ animation: false,
+                  	  	  						  placement : 'bottom',
+                  	  	  						  title : 'appointment title',
+                  	  	  						  html : true,
+                  	  	  						  content : 'Loading'
+                  	  	  						}).popover('show');
+                  
+      	  	  						  		var params = {appointmentdate: this.id };
+				                  	   		jQuery.ajax({
+						                      type: "GET",
+						                      url: "/opd_appointments/daylistjson",
+						                      data: {appointmentdaylist: params, remote: "true" }
+							                }).done(function( data ) {
+							                	//var popover = $(this).data('popover');
+							                    //popover.options.content = data.text;    
+							                    //i.popover('show');
+							                	//return $(this).attr('data-content');
+							                	//$('.popover.in .popover-content').empty();    
+							                	//$(".popover.in .popover-content").html(data);
+							                	//$(this).data.text;
+							                	//return data.text;
+							                	//return data.responseText;
+
+							                	$('.popover.in .popover-content').empty();
+							                	$(".popover.in .popover-content").html(data);    
+							                });
+							                //$('.popover.in .popover-content').empty();    
+							                //
+												
+
+                  	  	  }, function() {
+                  	  	  		$(this).popover('destroy');
+                  	  	  });
+						  
+						  for(i=0; i<value.length; i++) {
+	                        jQuery('#calendar').fullCalendar('renderEvent', value[i]);
+	                      } 
+
+					  });					  
+
+                    });
+                } else if (view.name == "basicWeek") {
+                	jQuery.ajax({
+                      type: "GET",
+                      dataType: "json",
+                      url: "/opd_appointments/week",
+                      data: {appointment: params, remote: "true" }
+                  }).done(function( data ) {
+                  	  jQuery('#calendar').fullCalendar('removeEvents');
+
+                  	  jQuery.each( data, function( key, value ) {
+
+                  	  	   var fc_date_count_array = key.split("##");
+                  	  	   //var fc_day_count_week = jQuery(" <div style=\"float:left;\"><div id=\"fc-day-count-week\" class=\"fc-day-count-week\"><span class=\"badge badge-danger\">" + fc_date_count_array[1] + "</span></div></div>");
+
+                  	  	   var fc_day_count_week = jQuery(" <div style=\"float:left;\"><div id=" + fc_date_count_array[3] + " class=\"fc-day-count-week\" data-toggle=\"popover\" rel=\"popover\"><span class=\"badge badge-danger\">" + fc_date_count_array[1] + "</span></div></div>");
+
+                  	  	   jQuery("th:contains('" + fc_date_count_array[0] + "')").append(fc_day_count_week);
+
+                  	  	  //var fc_date_count_array = key.split("##");
+                  	  	  //var fc_day_count_week = jQuery("<div style=\"float:left;\"><div id=\"fc-day-count-week\" class=\"fc-day-count-week\"><span class=\"badge badge-danger\">" + fc_date_count_array[1] + "</span></div></div>");
+                  	  	  
+                  	  	  //var agendadays_fc_col = jQuery("td.fc-col" + fc_date_count_array[2] + "");
+                  	  	  //var fc_date_count_array_dateposition = jQuery("div.fc-day-content");
+                  	  	  //jQuery("div.fc-view-agendaWeek > table.fc-agenda-days").find(agendadays_fc_col).find(fc_date_count_array_dateposition).prepend(fc_day_count_week);
+                  	  	  //jQuery("div.fc-view-agendaWeek > table.fc-agenda-days").find(agendadays_fc_col).prepend(fc_day_count_week);
+                  	  	  
+
+                  	  	  jQuery("div.fc-day-count-week").hover(function() {
+                  	  	  		var i = $(this);
+                  	  	  		$(this).popover({ animation: false,
+                  	  	  						  placement : 'bottom',
+                  	  	  						  title : 'appointment title',
+                  	  	  						  html : true,
+                  	  	  						  content : 'Loading'
+                  	  	  						}).popover('show');
+                  
+      	  	  						  		var params = {appointmentdate: this.id };
+				                  	   		jQuery.ajax({
+						                      type: "GET",
+						                      url: "/opd_appointments/daylistjson",
+						                      data: {appointmentdaylist: params, remote: "true" }
+							                }).done(function( data ) {
+							                	//var popover = $(this).data('popover');
+							                    //popover.options.content = data.text;    
+							                    //i.popover('show');
+							                	//return $(this).attr('data-content');
+							                	//$('.popover.in .popover-content').empty();    
+							                	//$(".popover.in .popover-content").html(data);
+							                	//$(this).data.text;
+							                	//return data.text;
+							                	//return data.responseText;
+
+							                	$('.popover.in .popover-content').empty();
+							                	$(".popover.in .popover-content").html(data);    
+							                });
+							                //$('.popover.in .popover-content').empty();    
+							                //
+												
+
+                  	  	  }, function() {
+                  	  	  		$(this).popover('destroy');
+                  	  	  });
+
+                  	  	  /*	
+	                  	   jQuery("div.fc-day-count-week").hover(function() {
+	                  	   		var params = {appointmentdate: this.id };
+	                  	   		jQuery.ajax({
+			                      type: "GET",
+			                      dataType: "script",
+			                      url: "/opd_appointments/daylisthoverin",
+			                      data: {appointmentdaylist: params, remote: "true" }
+				                });						  	 
+						   }, function() {
+						   		jQuery.ajax({
+			                      type: "GET",
+			                      dataType: "script",
+			                      url: "/opd_appointments/daylisthoverout",
+			                      data: {appointmentdaylist: params, remote: "true" }
+				                });
+						   }); */
+							
+						  for(i=0; i<value.length; i++) {
+	                        jQuery('#calendar').fullCalendar('renderEvent', value[i]);
+	                      } 
+
+	                      /*
+	                      jQuery("div.fc-view-agendaWeek > table.fc-agenda-days").find(agendadays_fc_col).find("div.fc-day-count-week").hover(function() {
+					  	  });*/
+
+					  });
+					  
+					  
+
+                    });
+                }
+
+            },
+            dayClick: function(date, jsEvent, view) {
+            	//calendarday("/opd_appointments/showday");            	
+            	jQuery.ajax({
+                      type: "GET",
+                      dataType: "script",
+                      url: "/opd_appointments/showday"
+                });
+		    }
+});
+jQuery("input[name='radio']").on('change', function() {	
+	var calendarView = jQuery('#calendar').fullCalendar('getView');
+	var start_month_date_array = (jQuery.fullCalendar.formatDate(calendarView.visStart, 'dd/MM/yyyy')).split("/");
+	var end_month_date_array = (jQuery.fullCalendar.formatDate(calendarView.visEnd, 'dd/MM/yyyy')).split("/");			
+    var params = { view: calendarView.name, start_date: jQuery.fullCalendar.formatDate(calendarView.visStart, 'dd/MM/yyyy'), stop_end: jQuery.fullCalendar.formatDate(calendarView.visEnd, 'dd/MM/yyyy'), start_month: start_month_date_array[1], end_month: end_month_date_array[1], week_start_date: jQuery.fullCalendar.formatDate(calendarView.visStart, 'dd/MM/yyyy'), week_end_date: jQuery.fullCalendar.formatDate(calendarView.visEnd, 'dd/MM/yyyy'), doctor: jQuery("input[name='radio']:checked").val() };
+    if (calendarView.name == "month") {                   
+	      	jQuery.ajax({
+	          type: "GET",
+	          dataType: "json",
+	          url: "/opd_appointments/month",
+	          data: {appointment: params, remote: "true" }
+	      	}).done(function( data ) {
+	      	  jQuery('#calendar').fullCalendar('removeEvents');
+		      	  jQuery.each( data, function( key, value ) {
+		      	  	
+		      	  	  var fc_date_count_array = key.split("##");                  	  
+		      	  	  var fc_day_count_month = jQuery("<div style=\"float:left;\"><div id=" + fc_date_count_array[2] + " class=\"fc-day-count-month\" data-toggle=\"popover\" rel=\"popover\"><span class=\"badge badge-danger\">" + fc_date_count_array[1] + "</span></div></div>");
+				  	  jQuery("td[data-date='" + fc_date_count_array[0] + "'] > div").prepend(fc_day_count_month);
+
+				  	  jQuery("div.fc-day-count-month").hover(function() {
+		      	  	  		var i = $(this);
+		      	  	  		$(this).popover({ animation: false,
+		      	  	  						  placement : 'bottom',
+		      	  	  						  title : 'appointment title',
+		      	  	  						  html : true,
+		      	  	  						  content : 'Loading'
+		      	  	  						}).popover('show');
+		      
+		  	  						  		var params = {appointmentdate: this.id };				                  	   	
+			                  	   		jQuery.ajax({
+					                      type: "GET",
+					                      url: "/opd_appointments/daylistjson",
+					                      data: {appointmentdaylist: params, remote: "true" }
+						                }).done(function( data ) {
+						                	$('.popover.in .popover-content').empty();
+						                	$(".popover.in .popover-content").html(data);    
+						                });
+
+		      	  	  }, function() {
+		      	  	  		$(this).popover('destroy');
+		      	  	  });
+					  
+					  for(i=0; i<value.length; i++) {
+		                jQuery('#calendar').fullCalendar('renderEvent', value[i]);
+		              } 
+
+				  });
+	        });
+    } 
+    else if (calendarView.name == "basicWeek") {
+	    	jQuery.ajax({
+	          type: "GET",
+	          dataType: "json",
+	          url: "/opd_appointments/week",
+	          data: {appointment: params, remote: "true" }
+	        }).done(function( data ) {
+		      	  jQuery('#calendar').fullCalendar('removeEvents');
+		      	  jQuery.each( data, function( key, value ) {
+
+		      	  	   var fc_date_count_array = key.split("##");
+		      	  	   var fc_day_count_week = jQuery(" <div style=\"float:left;\"><div id=" + fc_date_count_array[3] + " class=\"fc-day-count-week\" data-toggle=\"popover\" rel=\"popover\"><span class=\"badge badge-danger\">" + fc_date_count_array[1] + "</span></div></div>");
+		      	  	   jQuery("th:contains('" + fc_date_count_array[0] + "')").append(fc_day_count_week);
+
+		      	  	   jQuery("div.fc-day-count-week").hover(function() {
+		      	  	  		var i = $(this);
+		      	  	  		$(this).popover({ animation: false,
+		      	  	  						  placement : 'bottom',
+		      	  	  						  title : 'appointment title',
+		      	  	  						  html : true,
+		      	  	  						  content : 'Loading'
+		      	  	  						}).popover('show');
+		      
+		  	  						  		var params = {appointmentdate: this.id };
+			                  	   		
+			                  	   		jQuery.ajax({
+					                      type: "GET",
+					                      url: "/opd_appointments/daylistjson",
+					                      data: {appointmentdaylist: params, remote: "true" }
+						                }).done(function( data ) {							                	
+						                	$('.popover.in .popover-content').empty();
+						                	$(".popover.in .popover-content").html(data);    
+						                });
+
+		      	  	  }, function() {
+		      	  	  		$(this).popover('destroy');
+		      	  	  });
+
+						
+					  for(i=0; i<value.length; i++) {
+		                jQuery('#calendar').fullCalendar('renderEvent', value[i]);
+		              } 
+
+				  });
+            });
+    }
+	
+});
+function calendarday(url) {
+	pushPageState(null, "Loading...", url);
+}

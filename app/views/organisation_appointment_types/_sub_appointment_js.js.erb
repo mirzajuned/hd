@@ -1,0 +1,171 @@
+var pallette_array = [
+  "rgb(0, 0, 0)", "rgb(67, 67, 67)","rgb(152, 0, 0)", "rgb(255, 0, 0)",
+  "rgb(255, 153, 0)", "rgb(255, 255, 0)", "rgb(0, 255, 0)",
+  "rgb(0, 255, 255)", "rgb(74, 134, 232)", "rgb(0, 0, 255)", "rgb(153, 0, 255)", "rgb(255, 0, 255)",
+  "rgb(204, 65, 37)", "rgb(224, 102, 102)", "rgb(246, 178, 107)", "rgb(255, 217, 102)", "rgb(147, 196, 125)",
+  "rgb(118, 165, 175)", "rgb(109, 158, 235)", "rgb(111, 168, 220)", "rgb(142, 124, 195)", "rgb(194, 123, 160)",
+  "rgb(166, 28, 0)", "rgb(204, 0, 0)", "rgb(230, 145, 56)", "rgb(241, 194, 50)", "rgb(106, 168, 79)",
+  "rgb(69, 129, 142)", "rgb(60, 120, 216)", "rgb(61, 133, 198)", "rgb(103, 78, 167)", "rgb(166, 77, 121)",
+  "rgb(91, 15, 0)", "rgb(102, 0, 0)", "rgb(120, 63, 4)", "rgb(127, 96, 0)", "rgb(39, 78, 19)",
+  "rgb(12, 52, 61)", "rgb(28, 69, 135)", "rgb(7, 55, 99)", "rgb(32, 18, 77)", "rgb(76, 17, 48)"
+]
+
+function sub_init_color_picker() {
+  $("[id^=sub_appointment_type][id$=_background]").spectrum({
+    showInput: true,
+    className: "full-spectrum",
+    showInitial: true,
+    showPalette: true,
+    showSelectionPalette: true,
+    maxSelectionSize: 10,
+    preferredFormat: "hex",
+    localStorageKey: "spectrum.healthgraph  ",
+    move: function (color) {
+
+    },
+    show: function () {
+
+    },
+    beforeShow: function () {
+
+    },
+    hide: function (color) {
+      var find_color      =  color.toRgbString();
+      var current_element =  $(this);
+      var random_r        =  Math.floor((Math.random() * 255) + 0);
+      var random_g        =  Math.floor((Math.random() * 255) + 0);
+      var random_b        =  Math.floor((Math.random() * 255) + 0);
+
+      // current_element.spectrum("set",pallette_array[random])
+      var counter = 0;
+      $("#appointment_types .sp-preview-inner").each(function(index, element){
+        if($(this).css('background-color') === find_color){
+          counter = counter + 1;
+        }
+        if(counter >= 2){
+          PNotify.removeAll()
+          new PNotify({ title: 'Error !', text: 'Color is already selected. Please select a different color', type: 'error'});
+          current_element.spectrum("set","rgb("+random_r+"," +random_g+", "+random_b+")");
+          counter = 0;
+          return false;
+        }
+      })
+      return false;
+    },
+    change: function(color) {
+
+    },
+    palette: pallette_array
+  });
+}
+sub_init_color_picker();
+
+$("#add_new_appointment_type").on('click', function(e){
+  e.preventDefault();
+  appointment_type_page()
+})
+
+function appointment_type_page() {
+  $("#sub_appointment_types").validate({
+
+    errorElement: 'div',
+    errorPlacement: function (error, element) {
+      error.insertAfter(element);
+    }
+  });
+}
+appointment_type_page()
+
+// alias required to cRequired with new message
+$.validator.addMethod("LabelRequired", $.validator.methods.required, "Label cannot be blank");
+$.validator.addMethod("SpecialtyRequired", $.validator.methods.required, "Specialty required !!");
+$.validator.addMethod("AppointmentTypeRequired", $.validator.methods.required, "Appointment type required !!");
+$.validator.addClassRules("appointment-label-validation", { LabelRequired: true});
+$.validator.addClassRules("specialty_ids_dropdown", { SpecialtyRequired: true});
+$.validator.addClassRules("organisation_appointment_type_ids_dropdown", { AppointmentTypeRequired: true});
+
+$(".save-appointment-type").on('click',function(e){
+  e.preventDefault();
+  var validate_form = $("#appointment_types").validate();
+})
+
+$('.active_deactive').on('click', function(){
+
+  if($(this).hasClass('is_active')){
+    var change_current_checked_radio = $(this).closest('.appointment_type_row').find('.default_radio_btn');
+    if(change_current_checked_radio.is(':checked')){
+      new PNotify({title: 'Error !',text: 'Please select a different default before disabling current appointment type',type: 'error'});
+    }else{
+      $(this).removeClass('btn-danger');
+      $(this).removeClass('is_active');
+      $(this).addClass('btn-success');
+      $(this).addClass('is_deactive');
+      $(this).html('Activate');
+      $(this).parent(".active_deactive_wrap").find('.is_active_deactive').val('false');
+      $(this).closest('.appointment_type_row').find('.updated_check').val('true');
+      change_current_checked_radio.prop('disabled',true);
+    }
+  }else{
+    $(this).removeClass('btn-success');
+    $(this).removeClass('is_deactive');
+    $(this).addClass('btn-danger');
+    $(this).addClass('is_active');
+    $(this).html('Deactivate');
+    $(this).parent(".active_deactive_wrap").find('.is_active_deactive').val('true');
+    $(this).closest('.appointment_type_row').find('.updated_check').val('true');
+    var change_current_checked_radio = $(this).closest('.appointment_type_row').find('.default_radio_btn');
+    change_current_checked_radio.prop('disabled',false);
+  }
+});
+
+$(document).on('change','.appointment_type_row *',function(e){
+  $(this).parent('.appointment_type_row').find('.updated_check').val('true');
+})
+
+$("#add_new_appointment_type").on('click', function(e){
+  $('.none_appointment_type_row').hide()
+  var total_rows = $(".appointment_type_row").length;
+  var random_color = pallette_array[Math.floor(Math.random()*pallette_array.length)]
+
+  var specialty_values = <%= raw @available_specialties %>;
+  var appointment_type_values = <%= raw @available_organisation_appointment_types %>;
+  var specialty_options_arr = []
+  $.each(specialty_values, function(index, value) { specialty_options_arr.push('<option value="'+ specialty_values[index][1] +'">'+ specialty_values[index][0] +'</option>') })
+
+  var appointment_type_options_arr = []
+  $.each(appointment_type_values, function(index, value) { appointment_type_options_arr.push('<option value="'+ appointment_type_values[index][1] +'">'+ appointment_type_values[index][0] +'</option>') })
+
+  var hidden_fields = '<input id="sub_appointment_types_row_count_user_id" name="sub_appointment_types[' + total_rows + '][user_id]" type="hidden" value="<%= current_user.id.to_s %>"><input id="sub_appointment_types_row_count_is_updated" name="sub_appointment_types[' + total_rows + '][is_updated]" type="hidden" value="true">'
+
+  var specialty_div = '<div class="col-md-3" style=""><select class="form-control specialty_ids_dropdown" multiple="multiple" style="max-height:34px;" name="sub_appointment_types['+ total_rows +'][specialty_ids][]">'+ specialty_options_arr + '</select></div>'
+
+  var appointment_type_div = '<div class="col-md-4" style=""><select class="form-control organisation_appointment_type_ids_dropdown" multiple="multiple" style="max-height:34px;" name="sub_appointment_types['+ total_rows +'][organisation_appointment_type_ids][]">'+ appointment_type_options_arr + '</select></div>'
+
+  var single_row_html = '<div class="col-md-2"><input class="form-control appointment-label-validation" id="sub_appointment_types_row_count_label" name="sub_appointment_types[' + total_rows + '][label]" type="text" maxlength="15"></div><div class="col-md-1"><input class="form-control" id="sub_appointment_types_row_count_background" name="sub_appointment_types[' + total_rows + '][background]" type="text" value="'+ random_color +'"></div> '+ specialty_div + appointment_type_div +' <div class="col-md-1" style=""><span id="remove_sub_appointment_type_row_count" class="btn btn-sm btn-primary btn-danger glyphicon glyphicon-remove"></span></div>';
+
+  var final_row = '<div class="row form-group appointment_type_row text-center">' + hidden_fields + single_row_html + '</div>'
+
+  $("#sub_full-appointment-types").find('.append-row-below').after(final_row);
+  $('.specialty_ids_dropdown').select2();
+  $('.organisation_appointment_type_ids_dropdown').select2();
+  sub_init_color_picker()
+})
+
+$(".remove_sub_appointment_type_row_count").on('click', function(e){
+  var data_deactivate = $(this).attr('data-deactivate');
+  var specialty_id = $(".specialty_dropdown").val();
+
+  if(data_deactivate != "undefined" && data_deactivate != ''){
+    $.ajax({
+      url: '/organisation_appointment_types/deactivate_sub_appointment_type',
+      method: 'GET',
+      data: { id: data_deactivate, specialty_id: specialty_id }
+    })
+  }
+});
+
+$("#sub_appointment_types").on('click', "[id^='remove_sub_appointment_type_']", function(e){
+  var elemet = $(this).parents('div.row.form-group');
+  elemet.remove();
+})
+

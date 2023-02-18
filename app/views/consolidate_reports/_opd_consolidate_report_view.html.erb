@@ -1,0 +1,20 @@
+<% @facility = report.facility_id%>
+<% @flag = 'view'%>
+<% @opdrecord = OpdRecord.find_by(id: report.links[:opdrecord][:_id])%>
+<% @medication_groups = @opdrecord.treatmentmedication.group_by(&:status) %>
+<% @appointment = Appointment.find_by(id: @opdrecord.appointmentid)%>
+<% @case_sheet = CaseSheet.find_by(id: @opdrecord.case_sheet_id) %>
+<%# @templatetype = report.links[:opdrecord][:record_histories][0][:template_type] %>
+<% @templatetype = (report.links['opdrecord']['record_histories'].present? && report.links['opdrecord']['record_histories'].count > 0) ? report.links[:opdrecord][:record_histories][0][:template_type] : @opdrecord.record_histories[0][:template_type] rescue nil %>
+<% @speciality = report.links[:opdrecord][:specalityid]%>
+<% @user = User.where(specialty_ids: @speciality, :facility_ids.in => [@facility_id])%>
+<% @rules_file = TemplatesHelper.defined_rules_files(@speciality_folder_name, @templatetype) rescue nil%>
+<h3 class="text-center" style="border-bottom: 2px solid #000;border-top: 2px solid #000; padding: 2px;">
+  <%= @templatetype.try(:upcase) %> TEMPLATE
+  <span style="font-size: 13px;">
+	created <%= "by " + @opdrecord.consultant_name.to_s if @opdrecord.consultant_name.present?%>
+	at <%= @opdrecord.created_at.strftime("%I:%M %p")%>
+  </span >
+</h3>
+
+<%= render partial: "/opd_records/#{@speciality_folder_name}_notes/opd_partials/opd_summary_form", locals: { opdrecord: @opdrecord, medication_groups: @medication_groups, rules_file: @rules_file }%>

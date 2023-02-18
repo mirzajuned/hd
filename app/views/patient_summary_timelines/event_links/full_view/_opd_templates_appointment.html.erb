@@ -1,0 +1,20 @@
+<% Global.send(@specialty_folder_name.to_s).send('opdtemplates').each do |opd_template_name| %>
+  <% next if current_facility.country_id != 'KH_039' && opd_template_name['templatename'] == 'vision' %>
+  <!-- Skip Refraction in Case of non-Vietnam Facilities -->
+  <% next if current_facility.country_id == 'KH_039' && opd_template_name['templatename'] != 'vision' %>
+  <% next if current_facility.country_id != 'VN_254' && opd_template_name['templatename'] == 'refraction' %>
+  <% next if !current_user.role_ids.include?(28221005) && opd_template_name['templatename'] == 'ar_nct' %>
+  <% next if @enabled_templates&.exclude?(opd_template_name['templatename']) %>
+  <% @opd_record = OpdRecord.where(appointmentid: @appointment.id.to_s, templatetype: opd_template_name['templatename']) %>
+  <% @opd_record_count = @opd_record.length %>
+  <% if @opd_record.present? && (opd_template_name['templatename'] == "optometrist" || opd_template_name['templatename'] == "biometry") %>
+    <li><% @edit_opd_link = 'edit_opd_records_' + @specialty_folder_name + "_note_path('#{@opd_record[0].id}',:opdrecordid => '#{@opd_record[0].id}', :patientid => '#{@appointment.patient_id}', :appointmentid => '#{@appointment.id}', case_sheet_id: '#{@appointment.case_sheet_id}', :templatetype => '#{opd_template_name['templatename']}', :viewmode => @mode)" %>
+    <%= link_to eval(@edit_opd_link), class: 'timeline-viewsummary-html', title: 'Edit OPD Summary', data: { :remote => true, 'toggle' => 'modal', 'target' => '#templates-modal', method: :get } do %><i class="fa fa-file-alt"></i> <%= opd_template_name['displayname'] %><% end %></li>
+  <% else %>
+    <% @opd_record_link = 'new_opd_records_' + @specialty_folder_name + "_note_path(:patientid => @appointment.patient_id, :appointmentid => @appointment.id, :templatetype => '#{opd_template_name['templatename']}', case_sheet_id: '#{@appointment.case_sheet_id}', :viewmode => @mode)" %>
+    <li><%= link_to eval(@opd_record_link), data_templatetype: opd_template_name['templatename'].to_s, data: { :remote => true, 'toggle' => 'modal', 'target' => '#templates-modal' } do %> <i class="fa fa-file"></i> <%= opd_template_name['displayname'] %> <% unless @opd_record_count < 1 %> <label class="badge"><%= @opd_record_count %></label> <% end %><% end %></li>
+  <% end %>
+<% end %>
+<% if @specialty_folder_name == 'ophthalmology' && (@enabled_templates.nil? || @enabled_templates&.include?('blank_form')) %>
+  <li><%= link_to opd_records_print_blank_opd_record_path(patientid: @appointment.patient_id, appointmentid: @appointment.id, templatetype: 'blank_report', specality: @specialty_folder_name, format: :pdf), target: '_blank', data: { method: :get } do %> <i class="fa fa-print"></i> Blank Form <% end %></li>
+<% end %>

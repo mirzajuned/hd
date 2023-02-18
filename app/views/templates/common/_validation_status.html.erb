@@ -1,0 +1,927 @@
+<% r_file = YAML.load_file("#{Rails.root}/app/views/#{rules_file}") rescue nil %>
+<% if r_file.present? && r_file["#{templatetype}template"].present? %>
+  <div class="col-md-12 div-height">
+    <ul class="list-inline" id='ul_validation_steps'>
+      <% r_file["#{templatetype}template"].each.with_index(1) do |field_title, i| %>
+        <% tab_id = field_title[1]['tab_id'] rescue '' %>
+        <% second_tab_id = field_title[1]['second_tab_id'] rescue '' %>
+        <%
+        li_class = field_title[1]['step_id']
+        if tab_id.present? && second_tab_id.present?
+          li_class = "#{tab_id}_#{second_tab_id}"
+        elsif tab_id.present?
+          li_class = "#{field_title[1]['step_id']}_#{tab_id}"
+        end
+        %>
+        <li id="<%=field_title[0]%>" class="<%=li_class%> btn-pointer" onclick="jump_to_step('<%=field_title[1]['step_id']%>', '<%=tab_id%>', '<%=second_tab_id%>')"><i class="fa"></i>&nbsp;&nbsp;<%= field_title[1]['display_name'] %><input type="hidden" name="opdrecord[<%=field_title[0]%>]" id="opdrecord_<%=field_title[0]%>"></li>
+      <% end %>
+      <li class="horizontal">&nbsp;</li>
+      <li><i class="fa fa-lightbulb" style="color: #fd7e14" title="Click on the status to jump to respective sections"></i></li>
+      <li style="font-weight: bolder; color: #777"><i class="fa fa-exclamation-triangle" style=""></i>&nbsp;Not Filled</li>
+      <li style="font-weight: bolder; color: #1c9806"><i class="fa fa-check-circle" style=""></i>&nbsp;Filled</li>
+      <% if @specalityid == 309988001 && @organisations_setting.mandatory_opd_templates == true %>
+        <li style="font-weight: bolder; color: #ff0000a1;"><i class="fa fa-exclamation-triangle"></i>&nbsp;Mandatory</li>
+      <% end %>
+    </ul>
+  </div>
+
+  <script type="text/javascript">
+    // change color, if field is empty
+    <% r_file["#{templatetype}template"].each.with_index(1) do |field_title, i| %>
+      var default_validation_count = 0;
+      <% field_title[1]['fields'].each do |field| %>
+
+        if( "<%= @specalityid %>" == "309988001"){
+          if("<%= @organisations_setting.try(:mandatory_opd_templates) %>" == "true"){
+            if("<%=current_facility.country_id%>" == "VN_254"){
+              if($('#opdrecord_templatetype').val() == 'pmt' || $('#opdrecord_templatetype').val() == 'postop'){
+                $('#iop_is_valid').hide()
+              }
+            }
+            if('<%=field_title[1]['perform_validation']%>' == 'true' && $("#<%=field%>").val() == ""){
+              add_danger("<%=field_title[0]%>");
+            }
+            if('<%=field_title[1]['step_id']%>' == 'none'){
+              add_dark('<%=field_title[1]['field_name']%>')
+            }
+
+          } else {
+            if($('#opdrecord_templatetype').val() == 'ar_nct' || $('#opdrecord_templatetype').val() == 'nursing'){
+              $('#ul_validation_steps').hide()
+            } else {
+              $('.refraction_step_vision').hide()
+              $('.refraction_step_iop').hide()
+              $('.history_step').hide()
+            }
+            $('<%=field_title[1]['perform_validation']%>').val('false')
+          }
+        }
+
+        var field_id = $("#<%=field%>").attr('id');
+        if( $("#<%=field%>").prop('tagName') == 'TBODY' && $("#<%=field%> tr").length > 0 && check_first_td_of_table(field_id) > 0) {
+          default_validation_count = default_validation_count + 1;
+        } else if(($("#<%=field%>").prop('tagName') == 'INPUT' || $("#<%=field%>").prop('tagName') == 'TEXTAREA')) {
+          if(field_id == 'free_procedure') {
+            if($.trim($("#"+field_id).code()) == '' || $("#"+field_id).code() == '<br>') {
+              default_validation_count = default_validation_count - 1;
+            } else {
+              default_validation_count = default_validation_count + 1;
+            }
+          } else if($("#<%=field%>").val() != '') {
+            default_validation_count = default_validation_count + 1;
+          }
+        }
+
+        if(default_validation_count > 0) {
+          add_success("<%=field_title[0]%>");
+        } else {
+          add_warning("<%=field_title[0]%>");
+        }
+        if($("#<%=field_title[1]['step_id']%>").hasClass('active') == true){
+          if($('#opdrecord_templatetype').val() != 'express' && $('#ul_clinical').length == 0){
+            add_dark('<%=field_title[1]['field_name']%>')
+          }
+        }
+      <% end %>
+    <% end %>
+
+    function check_history_status(){
+      let chief_compaints_checkbox = $('#opdrecord_no_chief_complaints_advised').is(':checked')
+      let chief_complaints = $('#opdrecord_complaints').val()
+      let opthalmic_history_checkbox = ""
+      let systemic_history_checkbox = ""
+      let all_allergies_checkbox = ""
+      let opthalmic_history = ""
+      let systemic_history = ""
+      let drug_allergies = ""
+      let contact_allergies = ""
+      let food_allergies = ""
+      let drug_allergies_comment = ""
+      let contact_allergies_comment = ""
+      let food_allergies_comment = ""
+      if('<%= params[:action] %>' == "new"){
+        opthalmic_history_checkbox = "<%= @patient.try(:no_opthalmic_history_advised) %>"
+        systemic_history_checkbox = "<%= @patient.try(:no_systemic_history_advised) %>"
+        all_allergies_checkbox = "<%= @patient.try(:no_allergy_advised) %>"
+        opthalmic_history = "<%= @patient.speciality_histories %>"
+        systemic_history = "<%= @patient.personal_histories %>"
+        drug_allergies = "<%= @patient.drug_allergies %>"
+        contact_allergies = "<%= @patient.contact_allergies %>"
+        food_allergies = "<%= @patient.food_allergies %>"
+        drug_allergies_comment = "<%= @patient.drug_allergies_comment %>"
+        contact_allergies_comment = "<%= @patient.contact_allergies_comment %>"
+        food_allergies_comment = "<%= @patient.food_allergies_comment %>"
+      } else {
+        opthalmic_history_checkbox = "<%= @opdrecord.try(:no_opthalmic_history_advised) %>"
+        systemic_history_checkbox = "<%= @opdrecord.try(:no_systemic_history_advised) %>"
+        all_allergies_checkbox = "<%= @opdrecord.try(:no_allergy_advised) %>"
+        opthalmic_history = $('#opdrecord_speciality_histories').val()
+        systemic_history = $('#opdrecord_personal_histories').val()
+        drug_allergies = $('#opdrecord_drug_allergies').val()
+        contact_allergies = $('#opdrecord_contact_allergies').val()
+        food_allergies = $('#opdrecord_food_allergies').val()
+        drug_allergies_comment = $('#opdrecord_drug_allergies_comment').val()
+        contact_allergies_comment = $('#opdrecord_contact_allergies_comment').val()
+        food_allergies_comment = $('#opdrecord_food_allergies_comment').val()
+      }
+      if((chief_compaints_checkbox || chief_complaints != "") && (opthalmic_history_checkbox == "true" || opthalmic_history) && (systemic_history_checkbox == "true" || systemic_history) && (all_allergies_checkbox == "true" || drug_allergies || contact_allergies || food_allergies || drug_allergies_comment != "" || contact_allergies_comment != "" || food_allergies_comment != "")){
+        add_success('history_is_valid')
+        $("#history_is_valid").addClass('my-success-dark');
+      } else {
+        add_danger('history_is_valid')
+        add_warning('history_is_valid')
+        $("#history_is_valid").addClass('my-error-dark');
+      }
+    }
+
+    function check_vision_status(){
+      let r_visualacuity_unaided = $('#opdrecord_r_visualacuity_unaided').val()
+      let l_visualacuity_unaided = $('#opdrecord_l_visualacuity_unaided').val()
+      let r_visualacuity_ua_near = $('#opdrecord_r_visualacuity_ua_near').val()
+      let l_visualacuity_ua_near = $('#opdrecord_l_visualacuity_ua_near').val()
+      let r_visualacuity_pinhole = $('#opdrecord_r_visualacuity_pinhole').val()
+      let r_visualacuity_glasses = $('#opdrecord_r_visualacuity_glasses').val()
+      let r_visualacuity_near = $('#opdrecord_r_visualacuity_near').val()
+      let r_visualacuity_lens = $('#opdrecord_r_visualacuity_lens').val()
+      let l_visualacuity_pinhole = $('#opdrecord_l_visualacuity_pinhole').val()
+      let l_visualacuity_glasses = $('#opdrecord_l_visualacuity_glasses').val()
+      let l_visualacuity_near = $('#opdrecord_l_visualacuity_near').val()
+      let l_visualacuity_lens = $('#opdrecord_l_visualacuity_lens').val()
+      let right_va_checkbox = $('#opdrecord_no_right_va_advised').is(':checked')
+      let left_va_checkbox = $('#opdrecord_no_left_va_advised').is(':checked')
+      let templatename = $('#opdrecord_templatetype').val()
+      if((right_va_checkbox || r_visualacuity_unaided != "" || r_visualacuity_ua_near != "" || r_visualacuity_pinhole != "" || r_visualacuity_glasses != "" || r_visualacuity_near != "" || r_visualacuity_lens != "") && (left_va_checkbox || l_visualacuity_unaided != "" || l_visualacuity_ua_near != "" || l_visualacuity_pinhole != "" || l_visualacuity_glasses != "" || l_visualacuity_near != "" || l_visualacuity_lens != "")){
+        add_success('vision_is_valid')
+        check_refraction_tab_active()
+        if(r_visualacuity_unaided != "" || r_visualacuity_ua_near != "" || r_visualacuity_pinhole != "" || r_visualacuity_glasses != "" || r_visualacuity_near != "" || r_visualacuity_lens != ""){
+          $('#opdrecord_no_right_va_advised').prop("checked", false);
+          $('#opdrecord_no_right_va_advised').prop("disabled", true);
+          $('#opdrecord_no_right_va_advised').val(false);
+          $('.r_va').prop("disabled", false);
+        } else {
+          if(!right_va_checkbox){
+            $('#opdrecord_no_right_va_advised').prop("disabled", true);
+            $('#opdrecord_no_right_va_advised').val(false);
+            $('.r_va').prop("disabled", false);
+          } else if(right_va_checkbox){
+            $('#opdrecord_no_right_va_advised').prop("disabled", false);
+            $('#opdrecord_no_right_va_advised').val(true);
+            $('.r_va').prop("disabled", true);
+          }
+        }
+
+        if(l_visualacuity_unaided != "" || l_visualacuity_ua_near != "" || l_visualacuity_pinhole != "" || l_visualacuity_glasses != "" || l_visualacuity_near != "" || l_visualacuity_lens != ""){
+          $('#opdrecord_no_left_va_advised').prop("checked", false);
+          $('#opdrecord_no_left_va_advised').prop("disabled", true);
+          $('#opdrecord_no_left_va_advised').val(false);
+          $('.l_va').prop("disabled", false);
+        } else{
+            if(!left_va_checkbox){
+            $('#opdrecord_no_left_va_advised').prop("disabled", true);
+            $('#opdrecord_no_left_va_advised').val(false);
+            $('.l_va').prop("disabled", false);
+          } else if(left_va_checkbox){
+            $('#opdrecord_no_left_va_advised').prop("disabled", false);
+            $('#opdrecord_no_left_va_advised').val(true);
+            $('.l_va').prop("disabled", true);
+          }
+        }
+        in_edit_disable_va_checkbox()
+      } else{
+        add_danger('vision_is_valid')
+        add_warning("vision_is_valid")
+        check_refraction_tab_active()
+        if(r_visualacuity_unaided != "" || r_visualacuity_ua_near != "" || r_visualacuity_pinhole != "" || r_visualacuity_glasses != "" || r_visualacuity_near != "" || r_visualacuity_lens != ""){
+          $('#opdrecord_no_right_va_advised').prop("checked", false);
+          $('#opdrecord_no_right_va_advised').prop("disabled", true);
+          $('#opdrecord_no_right_va_advised').val(false);
+          $('.r_va').prop("disabled", false);
+        } else if(right_va_checkbox){
+          $('#opdrecord_no_right_va_advised').prop("disabled", false);
+          $('#opdrecord_no_right_va_advised').val(true);
+          $('.r_va').prop("disabled", true);
+        } else {
+          $('#opdrecord_no_right_va_advised').prop("disabled", false);
+          $('.r_va').prop("disabled", false);
+          $('#opdrecord_no_right_va_advised').val(false);
+        }
+
+        if(l_visualacuity_unaided != "" || l_visualacuity_ua_near != "" || l_visualacuity_pinhole != "" || l_visualacuity_glasses != "" || l_visualacuity_near != "" || l_visualacuity_lens != ""){
+          $('#opdrecord_no_left_va_advised').prop("checked", false);
+          $('#opdrecord_no_left_va_advised').prop("disabled", true);
+          $('#opdrecord_no_left_va_advised').val(false);
+          $('.l_va').prop("disabled", false);
+        } else if(left_va_checkbox){
+          $('#opdrecord_no_left_va_advised').prop("disabled", false);
+          $('#opdrecord_no_left_va_advised').val(true);
+          $('.l_va').prop("disabled", true)
+        } else {
+          $('#opdrecord_no_left_va_advised').prop("disabled", false);
+          $('.l_va').prop("disabled", false);
+          $('#opdrecord_no_left_va_advised').val(false);
+        }
+        in_edit_disable_va_checkbox()
+      }
+    }
+
+    function check_iop_status(){
+      let r_intraocularpressure = $('#opdrecord_r_intraocularpressure').val()
+      let l_intraocularpressure = $('#opdrecord_l_intraocularpressure').val()
+      let right_iop_checkbox = $('#opdrecord_no_right_iop_advised').is(':checked')
+      let left_iop_checkbox = $('#opdrecord_no_left_iop_advised').is(':checked')
+      let templatename = $('#opdrecord_templatetype').val()
+      if((right_iop_checkbox || r_intraocularpressure != "") && (left_iop_checkbox || l_intraocularpressure != "")){
+        add_success('iop_is_valid')
+        if($('#iop_is_valid').hasClass('none')){
+          $("#iop_is_valid").addClass('my-success-dark');
+        }
+        check_refraction_tab_active()
+        if(r_intraocularpressure != ""){
+          $('#opdrecord_no_right_iop_advised').prop("checked", false);
+          $('#opdrecord_no_right_iop_advised').prop("disabled", true);
+          $('#opdrecord_no_right_iop_advised').val(false);
+          $('.right_iop_row').show()
+        } else{
+          if(!right_iop_checkbox){
+            $('#opdrecord_no_right_iop_advised').prop("disabled", true);
+            $('#opdrecord_no_right_iop_advised').val(false);
+            $('.right_iop_row').show()
+          } else if(right_iop_checkbox){
+            $('#opdrecord_no_right_iop_advised').prop("disabled", false);
+            $('#opdrecord_no_right_iop_advised').val(true);
+            $('.right_iop_row').hide()
+          }
+        }
+
+        if(l_intraocularpressure != ""){
+          $('#opdrecord_no_left_iop_advised').prop("checked", false);
+          $('#opdrecord_no_left_iop_advised').prop("disabled", true);
+          $('#opdrecord_no_left_iop_advised').val(false);
+          $('.left_iop_row').show()
+        } else{
+          if(!left_iop_checkbox){
+            $('#opdrecord_no_left_iop_advised').prop("disabled", true);
+            $('#opdrecord_no_left_iop_advised').val(false);
+            $('.left_iop_row').show()
+          } else if(left_iop_checkbox){
+            $('#opdrecord_no_left_iop_advised').prop("disabled", false);
+            $('#opdrecord_no_left_iop_advised').val(true);
+            $('.left_iop_row').hide()
+          }
+        }
+      } else {
+        add_danger('iop_is_valid')
+        add_warning("iop_is_valid")
+        if($('#iop_is_valid').hasClass('none')){
+          $("#iop_is_valid").addClass('my-error-dark');
+        }
+        check_refraction_tab_active()
+        if(r_intraocularpressure != ""){
+          $('#opdrecord_no_right_iop_advised').prop("checked", false);
+          $('#opdrecord_no_right_iop_advised').prop("disabled", true);
+          $('#opdrecord_no_right_iop_advised').val(false);
+          $('.right_iop_row').show()
+        } else if(right_iop_checkbox){
+          $('#opdrecord_no_right_iop_advised').prop("disabled", false);
+          $('#opdrecord_no_right_iop_advised').val(true);
+          $('.right_iop_row').hide()
+        } else {
+          $('#opdrecord_no_right_iop_advised').prop("disabled", false);
+          $('#opdrecord_no_right_iop_advised').val(false);
+          $('.right_iop_row').show()
+        }
+
+        if(l_intraocularpressure != ""){
+          $('#opdrecord_no_left_iop_advised').prop("checked", false);
+          $('#opdrecord_no_left_iop_advised').prop("disabled", true);
+          $('#opdrecord_no_left_iop_advised').val(false);
+          $('.left_iop_row').show()
+        } else if(left_iop_checkbox){
+          $('#opdrecord_no_left_iop_advised').prop("disabled", false);
+          $('#opdrecord_no_left_iop_advised').val(true);
+          $('.left_iop_row').hide()
+        } else{
+          $('#opdrecord_no_left_iop_advised').prop("disabled", false);
+          $('#opdrecord_no_left_iop_advised').val(false);
+          $('.left_iop_row').show()
+        }
+      }
+    }
+
+    function check_refraction_tab_active(){
+      if($('#refraction_step').hasClass('active')){
+        if($("#vision_is_valid").hasClass("my-success")) {
+          $("#vision_is_valid").addClass('my-success-dark');
+        } else if($("#vision_is_valid").hasClass("my-error")) {
+          $("#vision_is_valid").addClass('my-error-dark');
+        }
+        if($("#iop_is_valid").hasClass("my-success")) {
+          $("#iop_is_valid").addClass('my-success-dark');
+        } else if($("#iop_is_valid").hasClass("my-error")) {
+          $("#iop_is_valid").addClass('my-error-dark');
+        }
+      }
+
+      if($('#iop_is_valid').hasClass('none')){
+        if($("#iop_is_valid").hasClass("my-success")) {
+          $("#iop_is_valid").addClass('my-success-dark');
+        } else if($("#iop_is_valid").hasClass("my-error")) {
+          $("#iop_is_valid").addClass('my-error-dark');
+        }
+      }
+
+      if($('#vision_is_valid').hasClass('none')){
+        if($("#vision_is_valid").hasClass("my-success")) {
+          $("#vision_is_valid").addClass('my-success-dark');
+        } else if($("#vision_is_valid").hasClass("my-error")) {
+          $("#vision_is_valid").addClass('my-error-dark');
+        }
+      }
+    }
+
+    function clear_right_iop_val(){
+      deselected_checkboxbutton("r_visualacuity_unaided_p", "opdrecord_r_visualacuity_unaided_p", "");
+      deselected_checkboxbutton("r_visualacuity_pinhole_p", "opdrecord_r_visualacuity_pinhole_p", "");
+      deselected_checkboxbutton("r_visualacuity_glasses_p", "opdrecord_r_visualacuity_glasses_p", "");
+      deselected_checkboxbutton("r_visualacuity_lens_p", "opdrecord_r_visualacuity_lens_p", "");
+      deselected_checkboxbutton("r_visualacuity_near_p", "opdrecord_r_visualacuity_near_p", "");
+      deselected_checkboxbutton("r_visualacuity_ua_near_p", "opdrecord_r_visualacuity_ua_near_p", "");
+      deselected_checkboxbutton("r_visualacuity_pinhole_ni", "opdrecord_r_visualacuity_pinhole_ni", "");
+      $('#opdrecord_r_visualacuity_ua_s').val('')
+      $('#opdrecord_r_visualacuity_ua_i').val('')
+      $('#opdrecord_r_visualacuity_ua_n').val('')
+      $('#opdrecord_r_visualacuity_ua_t').val('')
+    }
+
+    function clear_left_iop_val(){
+      deselected_checkboxbutton("l_visualacuity_unaided_p", "opdrecord_l_visualacuity_unaided_p", "");
+      deselected_checkboxbutton("l_visualacuity_pinhole_p", "opdrecord_l_visualacuity_pinhole_p", "");
+      deselected_checkboxbutton("l_visualacuity_glasses_p", "opdrecord_l_visualacuity_glasses_p", "");
+      deselected_checkboxbutton("l_visualacuity_lens_p", "opdrecord_l_visualacuity_lens_p", "");
+      deselected_checkboxbutton("l_visualacuity_near_p", "opdrecord_l_visualacuity_near_p", "");
+      deselected_checkboxbutton("l_visualacuity_ua_near_p", "opdrecord_l_visualacuity_ua_near_p", "");
+      deselected_checkboxbutton("l_visualacuity_pinhole_ni", "opdrecord_l_visualacuity_pinhole_ni", "");
+      $('#opdrecord_l_visualacuity_ua_s').val('')
+      $('#opdrecord_l_visualacuity_ua_i').val('')
+      $('#opdrecord_l_visualacuity_ua_n').val('')
+      $('#opdrecord_l_visualacuity_ua_t').val('')
+    }
+
+    function deselected_checkboxbutton(fieldname, input_fieldname, value){
+      jQuery.each(jQuery("." + fieldname), function(index, button) {
+        if (jQuery(button).attr("input-value") === value) {
+          jQuery(button).addClass("btn-darkblue");
+          jQuery("#" + input_fieldname).val(value);
+        } else {
+          jQuery(button).removeClass("btn-darkblue");
+          jQuery("#" + input_fieldname).val(value);
+        }
+      });
+    }
+
+    function in_edit_disable_va_checkbox(){
+      let r_visualacuity_unaided = $('#opdrecord_r_visualacuity_unaided').val()
+      let l_visualacuity_unaided = $('#opdrecord_l_visualacuity_unaided').val()
+      let r_visualacuity_ua_near = $('#opdrecord_r_visualacuity_ua_near').val()
+      let l_visualacuity_ua_near = $('#opdrecord_l_visualacuity_ua_near').val()
+      let r_visualacuity_pinhole = $('#opdrecord_r_visualacuity_pinhole').val()
+      let r_visualacuity_glasses = $('#opdrecord_r_visualacuity_glasses').val()
+      let r_visualacuity_near = $('#opdrecord_r_visualacuity_near').val()
+      let r_visualacuity_lens = $('#opdrecord_r_visualacuity_lens').val()
+      let l_visualacuity_pinhole = $('#opdrecord_l_visualacuity_pinhole').val()
+      let l_visualacuity_glasses = $('#opdrecord_l_visualacuity_glasses').val()
+      let l_visualacuity_near = $('#opdrecord_l_visualacuity_near').val()
+      let l_visualacuity_lens = $('#opdrecord_l_visualacuity_lens').val()
+      if('<%= params[:action] %>' == 'edit'){
+        if($(".showview_toggle_va_r").closest('.showview_full_r').css('display') == "block" && $(".showview_toggle_va_l").closest('.showview_full_l').css('display') == "block"){
+          $('#opdrecord_no_right_va_advised').prop("disabled", true);
+          $('#opdrecord_no_left_va_advised').prop("disabled", true);
+        }
+
+        if('<%= @opdrecord.record_type == 'clone' %>') {
+          $('#opdrecord_no_right_va_advised').prop("disabled", false);
+          $('#opdrecord_no_left_va_advised').prop("disabled", false);
+        }
+
+        let va_edit_toggle = $('.l-answersforvisualacuity').find('.editViewActivate_l')
+        $(va_edit_toggle).on('click',() => {
+          let right_va_checkbox = $('#opdrecord_no_right_va_advised').is(':checked')
+          let left_va_checkbox = $('#opdrecord_no_left_va_advised').is(':checked')
+          if(right_va_checkbox){
+            $('#opdrecord_no_right_va_advised').prop("disabled", false);
+            $('.r_va').prop("disabled", true);
+          } else {
+            if(r_visualacuity_unaided != "" || r_visualacuity_ua_near != "" || r_visualacuity_pinhole != "" || r_visualacuity_glasses != "" || r_visualacuity_near != "" || r_visualacuity_lens != ""){
+              $('#opdrecord_no_right_va_advised').prop("disabled", true);
+              $('.r_va').prop("disabled", false);
+            } else{
+              $('#opdrecord_no_right_va_advised').prop("disabled", false);
+              $('.r_va').prop("disabled", false);
+            }
+          }
+          if(left_va_checkbox){
+            $('#opdrecord_no_left_va_advised').prop("disabled", false);
+            $('.l_va').prop("disabled", true);
+          } else {
+            if(l_visualacuity_unaided != "" || l_visualacuity_ua_near != "" || l_visualacuity_pinhole != "" || l_visualacuity_glasses != "" || l_visualacuity_near != "" || l_visualacuity_lens != ""){
+              $('#opdrecord_no_left_va_advised').prop("disabled", true);
+              $('.l_va').prop("disabled", false);
+            } else {
+              $('#opdrecord_no_left_va_advised').prop("disabled", false);
+              $('.l_va').prop("disabled", false);
+            }
+          }
+        });
+      }
+    }
+
+    function check_investigation_status(){
+      let all_investigations_count = $("#opthalinvestigations-added tr").length ||  $("#laboratoryinvestigations-added tr").length || $("#investigations-added tr").length
+      if($('#opdrecord_no_investigation_advised').is(':checked')){
+        $('.investigation_comment_row').css("margin-top", "100px");
+        $('.opthal_tab_row').hide()
+        $('.radio_tab_row').hide()
+        $('.lab_tab_row').hide()
+        $('#opdrecord_no_investigation_advised').val(true)
+        add_success('investigation_is_valid');
+      } else if(all_investigations_count > 0){
+        $('.opthal_tab_row').show()
+        $('.radio_tab_row').show()
+        $('.lab_tab_row').show()
+        $('#opdrecord_no_investigation_advised').prop('disabled', true)
+        $('#opdrecord_no_investigation_advised').val(false)
+        add_success('investigation_is_valid');
+      } else{
+        $('.opthal_tab_row').show()
+        $('.radio_tab_row').show()
+        $('.lab_tab_row').show()
+        $('#opdrecord_no_investigation_advised').prop('disabled', false)
+        $('#opdrecord_no_investigation_advised').val(false)
+        if($('#opdrecord_templatetype').val() != 'postop') {
+          add_danger('investigation_is_valid');
+        }
+        add_warning('investigation_is_valid');
+      }
+    }
+
+    function check_diagnosis_status(){
+      let all_diagnosis_count = ""
+      if($('#opdrecord_templatetype').val() == "express"){
+        all_diagnosis_count = "<%= @opdrecord.diagnosislist.count  %>"
+      } else {
+        all_diagnosis_count = "<%= @opdrecord.diagnosislist.count  %>" + $('#opdrecord_provisional_diagnosis').val().length
+      }
+      if(all_diagnosis_count > 0){
+        //$('#opdrecord_no_diagnosis_advised').prop('disabled', true)
+        $('.diagnosis_tab_row').show()
+        $('#div_provisional_diagnosis').show()
+        $('#opdrecord_no_diagnosis_advised').val(false)
+        add_success('diagnosis_is_valid');
+      }else{
+        $('.diagnosis_tab_row').show()
+        $('#div_provisional_diagnosis').show()
+        $('#opdrecord_no_diagnosis_advised').prop('disabled', false)
+        $('#opdrecord_no_diagnosis_advised').val(false)
+        if($('#opdrecord_templatetype').val() != 'postop') {
+          add_danger('diagnosis_is_valid');
+        }
+        add_warning('diagnosis_is_valid');
+      }
+    }
+
+    function check_medications_status(){
+      let all_medication_count = 0
+      $('#tbody_medication tr').each(function() {
+        if($(this).find('td').find('input:text').val() != ''){
+          all_medication_count = all_medication_count + 1;
+        }
+      });
+      if($('#opdrecord_no_medications_advised').is(':checked')){
+        $('#opdrecord_no_medications_advised').val(true)
+        $('.medication_comment_row').css("margin-top", "120px");
+        $('.medication_tab_row').hide()
+        add_success('medications_is_valid');
+      } else if(all_medication_count > 0){
+        $('.medication_tab_row').show()
+        $('#opdrecord_no_medications_advised').val(false)
+        $('#opdrecord_no_medications_advised').prop('disabled', true)
+        add_success('medications_is_valid');
+      } else{
+        $('.medication_tab_row').show()
+        $('#opdrecord_no_medications_advised').val(false)
+        $('#opdrecord_no_medications_advised').prop('disabled', false)
+        if($('#opdrecord_templatetype').val() != 'postop') {
+          add_danger('medications_is_valid');
+        }
+        add_warning('medications_is_valid');
+      }
+    }
+
+    function check_procedures_status(){
+      let all_procedure_count = $("#procedure-added tr").length
+      if($('#opdrecord_no_procedure_advised').is(':checked')){
+        $('#opdrecord_no_procedure_advised').val(true)
+        $('.procedure_comment_row').css("margin-top", "116px");
+        $('.procedure_tab_row').hide()
+        add_success('procedure_is_valid');
+      } else if(all_procedure_count > 0){
+        $('.procedure_tab_row').show()
+        $('#opdrecord_no_procedure_advised').prop('disabled', true)
+        $('#opdrecord_no_procedure_advised').val(false)
+        add_success('procedure_is_valid');
+      } else{
+        $('.procedure_tab_row').show()
+        $('#opdrecord_no_procedure_advised').prop('disabled', false)
+        $('#opdrecord_no_procedure_advised').val(false)
+        if($('#opdrecord_templatetype').val() != 'postop') {
+          add_danger('procedure_is_valid');
+        }
+        add_warning('procedure_is_valid');
+      }
+    }
+
+    function check_adv_status(li_id, validation_count){
+      if(li_id == "investigation_is_valid"){
+        if(!$('#opdrecord_no_investigation_advised').is(':checked')){
+          if($('#opdrecord_templatetype').val() != 'postop') {
+            add_danger(li_id);
+          }
+        } else{
+          add_success(li_id);
+        }
+      } else if(li_id == "diagnosis_is_valid"){
+        if(validation_count < 1){
+          if($('#opdrecord_templatetype').val() != 'postop') {
+            add_danger(li_id);
+          }
+        } else{
+          add_success(li_id);
+        }
+      } else if(li_id == "medications_is_valid"){
+        if(!$('#opdrecord_no_medications_advised').is(':checked')){
+          if($('#opdrecord_templatetype').val() != 'postop') {
+            add_danger(li_id);
+          }
+        } else{
+          add_success(li_id);
+        }
+      } else if(li_id == "procedure_is_valid"){
+        if(!$('#opdrecord_no_procedure_advised').is(':checked')){
+          if($('#opdrecord_templatetype').val() != 'postop') {
+            add_danger(li_id);
+          }
+        } else{
+          add_success(li_id);
+        }
+      }
+    }
+
+    function jump_to_step(step_id, tab_id, second_tab_id) {
+      if(step_id != '') {
+        $('#'+step_id).trigger('click');
+      }
+      if(tab_id != '') {
+        $('a[href="#'+tab_id+'"]').trigger('click');
+      }
+      if(second_tab_id != '') {
+        $('a[href="#'+second_tab_id+'"]').trigger('click');
+      }
+    }
+
+    function check_glass_prescription_status() {
+      let all_glass_presc = ['opdrecord_r_glassesprescriptions_distant_sph', 'opdrecord_r_glassesprescriptions_distant_cyl', 'opdrecord_r_glassesprescriptions_distant_axis', 'opdrecord_r_glassesprescriptions_distant_vision', 'opdrecord_r_glassesprescriptions_add_sph', 'opdrecord_r_glassesprescriptions_add_vision', 'opdrecord_r_glassesprescriptions_near_sph', 'opdrecord_r_glassesprescriptions_near_cyl', 'opdrecord_r_glassesprescriptions_near_axis', 'opdrecord_r_glassesprescriptions_near_vision', 'opdrecord_l_glassesprescriptions_distant_sph', 'opdrecord_l_glassesprescriptions_distant_cyl', 'opdrecord_l_glassesprescriptions_distant_axis', 'opdrecord_l_glassesprescriptions_distant_vision', 'opdrecord_l_glassesprescriptions_add_sph', 'opdrecord_l_glassesprescriptions_add_vision', 'opdrecord_l_glassesprescriptions_near_sph', 'opdrecord_l_glassesprescriptions_near_cyl', 'opdrecord_l_glassesprescriptions_near_axis', 'opdrecord_l_glassesprescriptions_near_vision', 'opdrecord_r_intermediate_glasses_prescriptions_distant_sph', 'opdrecord_r_intermediate_glasses_prescriptions_distant_cyl', 'opdrecord_r_intermediate_glasses_prescriptions_distant_axis', 'opdrecord_r_intermediate_glasses_prescriptions_distant_vision', 'opdrecord_r_intermediate_glasses_prescriptions_add_sph', 'opdrecord_r_intermediate_glasses_prescriptions_add_vision', 'opdrecord_r_intermediate_glasses_prescriptions_near_sph', 'opdrecord_r_intermediate_glasses_prescriptions_near_cyl', 'opdrecord_r_intermediate_glasses_prescriptions_near_axis', 'opdrecord_r_intermediate_glasses_prescriptions_near_vision', 'opdrecord_l_intermediate_glasses_prescriptions_distant_sph', 'opdrecord_l_intermediate_glasses_prescriptions_distant_cyl', 'opdrecord_l_intermediate_glasses_prescriptions_distant_axis', 'opdrecord_l_intermediate_glasses_prescriptions_distant_vision', 'opdrecord_l_intermediate_glasses_prescriptions_add_sph', 'opdrecord_l_intermediate_glasses_prescriptions_add_vision', 'opdrecord_l_intermediate_glasses_prescriptions_near_sph', 'opdrecord_l_intermediate_glasses_prescriptions_near_cyl', 'opdrecord_l_intermediate_glasses_prescriptions_near_axis', 'opdrecord_l_intermediate_glasses_prescriptions_near_vision']
+      let glass_presc = ''
+      let glass_empty_count = 0
+      for(glass_presc of all_glass_presc){
+        if($('#'+ glass_presc).val() == ""){
+          glass_empty_count = glass_empty_count - 1
+        } else {
+          glass_empty_count = glass_empty_count + 1
+        }
+      }
+      if(glass_empty_count == -40 ){
+        add_warning('glasses_is_valid');
+      } else if(($('#opdrecord_templatetype').val() == "lens" || "<%=current_facility.country_id%>" == "VN_254") && glass_empty_count == 0){
+        add_warning('glasses_is_valid');
+      } else {
+        add_success('glasses_is_valid');
+      }
+    }
+
+    function check_validation_status(ele, li_id, li_class, is_id=true, sibling_fields='', ele_count=1) {
+      _this = ele;
+      let speciality = $('#opdrecord_specalityname').val();
+      var validation_count = 0;
+      var ele_id = $(_this).attr('id');
+      var ele_type = $(_this).prop('tagName');
+      if(ele_type == 'TBODY') {
+        if($("#"+ele_id+" tr").length > 0 && check_first_td_of_table(ele_id) > 0) {
+          validation_count = validation_count + 1;
+        } else {
+          validation_count = validation_count - 1;
+        }
+      } else if(ele_type == 'INPUT' || ele_type == 'TEXTAREA') {
+        if(is_id == true && ele_id == 'free_procedure') {
+          // var docDesc1 = $("#"+ele_id).val().replace(/(<br ?\/?>)*/g,"");
+          //  || docDesc1 == ''
+          if($.trim($("#"+ele_id).code()) == '' || $("#"+ele_id).code() == '<br>') {
+            validation_count = validation_count - 1;
+          } else {
+            validation_count = validation_count + 1;
+          }
+          //console.log('validation_count == ' + validation_count);
+        } else if(is_id == true) {
+          if($.trim($("#"+ele_id).val()) == '') {
+            validation_count = validation_count - 1;
+          } else {
+            validation_count = validation_count + 1;
+          }
+        } else {
+          ele_cls_cnt = 0;
+          for(var i=0; i < _this.length; i++){
+            if($(_this[i]).val() != '')
+              ele_cls_cnt = ele_cls_cnt + 1;
+          }
+          if(ele_cls_cnt != 0)
+            validation_count = 1;
+        }
+      }
+      if(validation_count > 0) {
+        add_success(li_id);
+      } else if($('li.'+li_class).hasClass("my-success") && sibling_fields != '' && check_valid_sibling(sibling_fields, is_id, ele_count) > 0) {
+        add_success(li_id);
+      } else {
+        add_warning(li_id);
+        if(speciality == 'ophthalmology' && "<%= @organisations_setting.try(:mandatory_opd_templates) %>" == "true") {
+          check_adv_status(li_id, validation_count)
+        }
+      }
+      if(speciality == 'ophthalmology' && "<%= @organisations_setting.try(:mandatory_opd_templates) %>" == "true")  {
+        if(li_id == 'investigation_is_valid'){
+          toggle_inves_adv_checkbox(li_id)
+        }
+        if(li_id == 'diagnosis_is_valid'){
+          toggle_diagnosis_adv_checkbox(li_id)
+        }
+        if(li_id == 'medications_is_valid'){
+          toggle_medications_adv_checkbox(li_id)
+        }
+        if(li_id == 'procedure_is_valid'){
+          toggle_procedure_adv_checkbox(li_id)
+        }
+      }
+    }
+
+    function toggle_procedure_adv_checkbox(li_id){
+      if($('#'+li_id).hasClass("my-success")){
+        $('#opdrecord_no_procedure_advised').prop("disabled", true);
+        $('#opdrecord_no_procedure_advised').val(false);
+      } else{
+        $('#opdrecord_no_procedure_advised').removeAttr('disabled');
+        $('#opdrecord_no_procedure_advised').prop("disabled", false);
+        $('#opdrecord_no_procedure_advised').val(false);
+      }
+    };
+
+    function toggle_medications_adv_checkbox(li_id){
+      if($('#'+li_id).hasClass("my-success")){
+        $('#opdrecord_no_medications_advised').prop("disabled", true);
+        $('#opdrecord_no_medications_advised').val(false);
+      } else{
+        $('#opdrecord_no_medications_advised').removeAttr('disabled');
+        $('#opdrecord_no_medications_advised').prop("disabled", false);
+        $('#opdrecord_no_medications_advised').val(false);
+      }
+    };
+
+    function toggle_diagnosis_adv_checkbox(li_id){
+      if($('#'+li_id).hasClass("my-success")){
+        $('#opdrecord_no_diagnosis_advised').val(false);
+      } else{
+        $('#opdrecord_no_diagnosis_advised').val(false);
+      }
+    };
+
+    function toggle_inves_adv_checkbox(li_id){
+      if($('#'+li_id).hasClass("my-success")){
+        $('#opdrecord_no_investigation_advised').prop("disabled", true);
+        $('#opdrecord_no_investigation_advised').val(false);
+      }  else{
+        $('#opdrecord_no_investigation_advised').removeAttr('disabled');
+        $('#opdrecord_no_investigation_advised').prop("disabled", false);
+        $('#opdrecord_no_investigation_advised').val(false);
+      }
+    }
+
+    function add_danger(ele_id){
+      if($("#"+ele_id).hasClass("my-success")) {
+        $("#"+ele_id).removeClass('my-success');
+        $("#"+ele_id).removeClass('my-success-dark');
+      }
+      $("#"+ele_id).addClass('my-danger');
+    }
+
+    function add_dark(ele_id){
+      if($("#"+ele_id).hasClass("my-success")) {
+        $("#"+ele_id).addClass('my-success-dark');
+      } else if($("#"+ele_id).hasClass("my-error")) {
+        $("#"+ele_id).addClass('my-error-dark');
+      }
+    }
+
+    function add_warning(ele_id) {
+      $("#"+ele_id).removeClass('my-success');
+      $("#"+ele_id+" > i").removeClass('fa-check-circle');
+      $("#"+ele_id).addClass('my-error');
+      if($("#"+ele_id).hasClass("my-success-dark")) {
+        $("#"+ele_id).removeClass('my-success-dark');
+        $("#"+ele_id).addClass('my-error-dark');
+      }
+      $("#"+ele_id+" > i").addClass('fa-exclamation-triangle');
+      $("#opdrecord_"+ele_id).val(0);
+    }
+
+    function add_success(ele_id) {
+      $("#"+ele_id).removeClass('my-error');
+      $("#"+ele_id).removeClass('my-danger');
+      $("#"+ele_id+" > i").removeClass('fa-exclamation-triangle');
+      $("#"+ele_id).addClass('my-success');
+      if($("#"+ele_id).hasClass("my-error-dark")) {
+        $("#"+ele_id).removeClass('my-error-dark');
+        $("#"+ele_id).addClass('my-success-dark');
+      }
+      $("#"+ele_id+" > i").addClass('fa-check-circle');
+      $("#opdrecord_"+ele_id).val(1);
+    }
+
+    function check_first_td_of_table(t_body_id) {
+      var filled_cells = 0;
+      if($('#'+t_body_id+' tr').find('input:text').length > 0) {
+        $('#'+t_body_id+' tr').each(function(index, tr) {
+          if($(this).find('td').find('input:text').val() != '')
+            filled_cells = filled_cells + 1;
+        });
+      } else {
+        filled_cells = filled_cells + 1;
+      }
+      return filled_cells;
+    }
+
+    function check_valid_sibling(ele_id, is_id, ele_count) {
+      var sibling_validation_count = 0;
+      var cls_validation_cnt = 0;
+      var sibling_ele = ele_id.split(',');
+
+      if(is_id == true) {
+        for(var i=0; i < sibling_ele.length; i++){
+          var sibling_ele_type = $('#'+sibling_ele[i]).prop('tagName');
+          if(sibling_ele_type == 'TBODY' && $("#"+sibling_ele[i]+" tr").length > 0) {
+            sibling_validation_count = sibling_validation_count + 1;
+          } else if(sibling_ele_type == 'INPUT' && $("#"+sibling_ele[i]).val() != '') {
+            sibling_validation_count = sibling_validation_count + 1;
+          }
+        }
+      } else {
+        for(var i=0; i < sibling_ele.length; i++){
+          var count = $('.'+sibling_ele[i]).not(function() {
+            return this.value;
+          }).length;
+          cls_validation_cnt = cls_validation_cnt + count;
+        }
+
+        if(cls_validation_cnt < ele_count) {
+          sibling_validation_count = sibling_validation_count + 1;
+        } else {
+          sibling_validation_count = sibling_validation_count - 1;
+        }
+      }
+      return sibling_validation_count;
+    }
+
+    function toggle_btn(ele_class, prefix='') {
+      $(".list-inline li").removeClass('my-error-dark');
+      $(".list-inline li").removeClass('my-success-dark');
+      if(ele_class != '') {
+        var element_cls = ele_class;
+        if(prefix != '') {
+          element_cls = prefix + ele_class;
+        }
+        if(element_cls == "refraction_step"){
+          if($('#vision_is_valid').hasClass("my-success")) {
+            $('#vision_is_valid').addClass('my-success-dark');
+          } else if($('#vision_is_valid').hasClass("my-error")) {
+            $('#vision_is_valid').addClass('my-error-dark');
+          }
+          if($('#glasses_is_valid').hasClass("my-success")) {
+            $('#glasses_is_valid').addClass('my-success-dark');
+          } else if($('#glasses_is_valid').hasClass("my-error")) {
+            $('#glasses_is_valid').addClass('my-error-dark');
+          }
+          if($('#iop_is_valid').hasClass("my-success")) {
+            $('#iop_is_valid').addClass('my-success-dark');
+          } else if($('#iop_is_valid').hasClass("my-error")) {
+            $('#iop_is_valid').addClass('my-error-dark');
+          }
+        } else {
+          if($('li.'+element_cls).hasClass("my-success")) {
+            $("li."+element_cls).addClass('my-success-dark');
+          } else if($('li.'+element_cls).hasClass("my-error")) {
+            $("li."+element_cls).addClass('my-error-dark');
+          }
+        }
+      }
+    }
+
+    function prefix_and_toggle(li_id, tab_name) {
+      var speciality = $('#opdrecord_specalityname').val();
+      var form_type = $('#opdrecord_templatetype').val();
+      var prefix = '';
+      if(form_type == 'express' && speciality == 'orthopedics') {
+        prefix = 'exp_'+tab_name+'_step_';
+      } else if(form_type == 'freeform') {
+        prefix = 'advicetab_';
+      } else if(form_type == 'trauma' && speciality == 'orthopedics') {
+        prefix = 'trauma_'+tab_name+'_step_';
+      } else {
+        prefix = tab_name+'_step_';
+      }
+      toggle_btn(li_id, prefix);
+    }
+  </script>
+<% end %>
+
+<style type="text/css">
+  .btn-pointer {
+    cursor: pointer;
+  }
+
+  .btn-pointer:focus {
+    outline: none;
+  }
+
+  .my-error {
+    font-weight: bolder;
+    color: #777;
+    background-color: #ededed;
+    border-color: #777;
+  }
+
+  .my-error-dark {
+    font-weight: bolder;
+    color: #777;
+    background-color: #ddd;
+    border-color: #777;
+    padding-top: 5px !important;
+    height: 30px;
+  }
+
+  .my-warning {
+    font-weight: bolder;
+    color: #c47709;
+    background-color: #fce6c6;
+    border-color: #f49917;
+  }
+
+  .my-warning-dark {
+    font-weight: bolder;
+    color: #c47709;
+    background-color: #fce6c6;
+    border-color: #dbc8ac;
+    padding-top: 5px !important;
+    height: 30px;
+  }
+
+  .my-danger {
+    font-weight: bolder;
+    color: #fff;
+    background-color: #d9534f;
+    border-color: #d43f3a;
+  }
+
+  .my-success {
+    font-weight: bolder;
+    color: #1c9806;
+    background-color: #bcfcb1;
+    border-color: #23bf08;
+  }
+
+  .my-success-dark {
+    font-weight: bolder;
+    color: #1c9806;
+    background-color: #b1e2a8;
+    border-color: #23bf08;
+    padding-top: 5px !important;
+    height: 30px;
+  }
+
+  .div-height {
+    width: 100%;
+    height: 50px;
+  }
+
+  .horizontal {
+    border-left: 2px solid;
+    margin-left: 20px !important;
+    margin-right: -5px !important;
+  }
+</style>

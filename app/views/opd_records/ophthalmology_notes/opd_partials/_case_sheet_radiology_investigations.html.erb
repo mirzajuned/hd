@@ -1,0 +1,136 @@
+<div class="col-md-12 other-radiology-list">
+  <strong style="color:#428bca;text-decoration:underline;font-size:15px;">Other Investigation within this Case</strong>
+  <table class="table table-bordered">
+    <tbody id='radiology_investigation-present' class='radiology_investigation-present'>
+      <input type="hidden" name="opdrecord[disabled_radiology_codes]" class="disabled_radiology_codes" value="<%= @opdrecord.try(:disabled_radiology_codes).to_s %>">
+      <% counter = 0 %>
+      <% @case_sheet.radiology_investigations.where(:record_id.nin => [@opdrecord.id], is_performed: false, is_disabled: false).group_by{ |ri| [ri.investigation_id] }.each do |investigation_args, radiology_investigations| %>
+        <tr class="case-radiology">
+          <input type="hidden" class="investigation_name" value="<%= radiology_investigations[0].investigationname %>">
+          <input type="hidden" class="order_item_advised_id" value="<%= radiology_investigations[0].order_item_advised_id.to_s %>">
+          <input type="hidden" class="investigation_id" value="<%= radiology_investigations[0].investigation_id %>">
+          <input type="hidden" class="investigation_type" value="<%= radiology_investigations[0].investigation_type %>">
+          <td style="line-height: 1;">
+            <b><span id="radiology_investigation_stage_<%= counter %>_p" style='color: #c9302c'><%= radiology_investigations[0].investigationstage.to_s + " - " %></span> <%= radiology_investigations[0].investigationname.to_s %><%= (', ' + radiology_investigations[0].get_label_for_radiology_option(radiology_investigations[0].radiologyoptions)) if radiology_investigations[0].radiologyoptions.present?  %> </b><br/>
+            <span style="font-size: 10px;"><%= radiology_investigations[0].advised_by %> on <%= radiology_investigations[0].advised_datetime.try(:strftime, "%d/%m/%Y") %> </span>
+          </td>
+          <td style="width:30%;">
+            <button class="btn btn-primary btn-re-advice-radiology btn-xs">Re-Advice</button>
+            <!-- <button class="btn btn-danger btn-disable-radiology btn-xs">Disable</button> -->
+          </td>
+        </tr>
+        <% counter += 1 %>
+      <% end %>
+      <% @case_sheet.radiology_investigations.where(:record_id.nin => [@opdrecord.id], is_performed: true).each_with_index do |radiology_investigation, j| %>
+        <tr class="case-radiology performed-radiology">
+          <input type="hidden" class="investigation_name" value="<%= radiology_investigation.investigationname %>">
+          <input type="hidden" class="order_item_advised_id" value="<%= radiology_investigation.order_item_advised_id.to_s %>">
+          <input type="hidden" class="investigation_id" value="<%= radiology_investigation.investigation_id %>">
+          <input type="hidden" class="investigation_type" value="<%= radiology_investigation.investigation_type %>">
+          <td style="line-height: 1;">
+            <b><span id="radiology_investigation_stage_<%= j %>_p" style='color: #1caf9a'><%= radiology_investigation.investigationstage.to_s + " - " %></span> <%= radiology_investigation.investigationname.to_s %><%= (', ' + radiology_investigation.get_label_for_radiology_option(radiology_investigation.radiologyoptions)) if radiology_investigation.radiologyoptions.present? %></b><br/>
+            <span style="font-size: 10px;">A: <%= radiology_investigation.advised_by %> on <%= radiology_investigation.advised_datetime.try(:strftime, "%d/%m/%Y") %> </span><br/>
+            <span style="font-size: 10px;">P: <%= radiology_investigation.performed_by %> on <%= radiology_investigation.performed_datetime.try(:strftime, "%d/%m/%Y") %> </span>
+          </td>
+          <td style="width:30%;">
+            <button class="btn btn-primary btn-re-advice-radiology btn-xs">Re-Advice</button>
+          </td>
+        </tr>
+        <% if radiology_investigation.template_created %>
+          <tr class="performed-readings">
+            <td colspan="3" style="padding:5px;">
+              <table class="table table-bordered" style="margin:0px;">
+                <thead>
+                  <tr>
+                    <th style="padding:0px;text-align:center;font-size:12px;">Findings</th>
+                    <th style="padding:0px;text-align:center;font-size:12px;">Remark</th>
+                    <th style="padding:0px;text-align:center;font-size:12px;">Doctor's Remark</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style="padding:0px;text-align:center;font-size:12px;"><%= radiology_investigation.investigation_val %></td>
+                    <td style="padding:0px;text-align:center;font-size:12px;"><%= radiology_investigation.investigation_comment %></td>
+                    <td style="padding:0px;text-align:center;font-size:12px;"><%= radiology_investigation.doctors_remark %></td>
+                  </tr>
+                </tbody>
+              </table>
+            </td>
+          </tr>
+        <% elsif radiology_investigation.performed_comment.present? %>
+          <tr class="performed-readings">
+            <td colspan="3" style="padding:5px;">
+              <table class="table table-bordered" style="margin:0px;">
+                <thead>
+                  <tr>
+                    <th style="padding:0px;text-align:center;font-size:12px;">Findings</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style="padding:0px;text-align:center;font-size:12px;"><%= radiology_investigation.performed_comment %></td>
+                  </tr>
+                </tbody>
+              </table>
+            </td>
+          </tr>
+        <% end %>
+      <% end %>
+    </tbody>
+  </table>
+</div>
+
+<script type="text/javascript">
+  $(".btn-re-advice-radiology").on('click', function(e){
+    e.preventDefault();
+    var case_radiology = $(this).closest(".case-radiology")
+    var fieldcounter = jQuery(".investigations-added > .investigationlist").length;
+    var investigation_name = $(case_radiology).find('.investigation_name').val()
+    var investigation_id = $(case_radiology).find('.investigation_id').val()
+    var investigation_type = $(case_radiology).find('.investigation_type').val()
+    var order_item_advised_id = $(case_radiology).find('.order_item_advised_id').val()
+    var radiology_type = investigation_name.split(",")[0]
+    if(investigation_type == "RadiologyInvestigationData"){
+      var url = "/opd_records/append_radiology_investigation"
+    } else if(investigation_type == "CustomRadiologyInvestigation") {
+      var url = "/opd_records/append_custom_radiology_investigation"
+    }
+    $.ajax({
+      dataType: "script",
+      type: "GET",
+      url: url,
+      data: { order_item_advised_id: order_item_advised_id, investigation_id: investigation_id, radiology_type: radiology_type, row_count: fieldcounter},
+      success: function(response){
+        jQuery('#opdrecord_xraysmrictothersinvestigations option:selected').removeAttr('selected');
+        if($(case_radiology).hasClass("performed-radiology")){
+
+        } else {
+          $(case_radiology).hide()
+          if($(".case-radiology:visible").length <= 0){
+            $(".other-radiology-list").hide()
+          }
+        }
+      }
+    })
+  })
+
+  $(".btn-disable-radiology").on('click', function(e){
+    e.preventDefault()
+    var case_radiology = $(this).closest(".case-radiology")
+    var code = $(case_radiology).find('.investigation_id').val()
+    var disabled_radiology_codes = $(".disabled_radiology_codes").val()
+    if(disabled_radiology_codes == ""){
+      final_disabled_radiology_codes = code
+    } else {
+      final_disabled_radiology_codes = disabled_radiology_codes + "," + code
+    }
+
+    $(".disabled_radiology_codes").val(final_disabled_radiology_codes)
+
+    $(case_radiology).hide()
+
+    if($(".case-radiology:visible").length <= 0){
+      $(".other-radiology-list").hide()
+    }
+  })
+</script>

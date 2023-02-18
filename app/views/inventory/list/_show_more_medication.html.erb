@@ -1,0 +1,113 @@
+
+<!--remove--><% @items.to_a.each do |item| %>
+  <tr>
+    <td><%= item.item_code %></td>
+    <td><%= item.description %></td>
+    <td><%= item.dosage %></td>
+    <td><%= item.dispensing_unit %></td>
+    <td><%= item.sub_units %></td>
+    <%item_oldest_lots= item.lots.where('stock' => {'$gte' => 1},is_deleted: false).order(created_at: "ASC")[0]%>
+    <% if item_oldest_lots.try(:list_price) %>
+        <td class="text-right">&#x20B9 <%= item_oldest_lots.list_price.round(2) %></td>
+    <% else %>
+        <td class="text-right">NA</td>
+    <% end %>
+    <td><%= item.stock %></td>
+    <% if item_oldest_lots.try(:expiry) %>
+        <td><%= item_oldest_lots.expiry %></td>
+    <% else %>
+        <td>NA</td>
+    <% end %>
+    <td>      
+      <% if @current_inventory == '334046963' %>
+        <a href="/inventory/items/<%=item.id%>" data-remote="true" class="btn btn-primary btn-xs"> Details</a>
+      <% end %>
+      <% if @current_inventory == '50121007' || @current_inventory == '284748001'%>
+        <% if item.stock.present? && item.stock > 0 %>
+          <a href="/inventory/department/items/<%=item.id%>" data-remote="true" class="btn btn-primary btn-xs"> Details</a>
+          <%if item.in_cart == false%>
+            <button class="btn btn-xs btn-primary btnItemToFreeInvoice btnAddItemToFreeInvoice" data-model="<%= item.id %>" id=""><i class="fa fa-plus"></i> Free Receipt</button>
+          <%else%>
+            <button class="btn btn-xs btn-warning btnItemToFreeInvoice btnRemoveItemToFreeInvoice" data-model="<%= item.id %>" id=""><i class="fa fa-minus"></i> Free Receipt</button>
+          <%end%>
+        <% else %>
+          <button class="btn btn-xs btn-primary" disabled="disabled" data-model="<%= item.id %>" id="">Out of Stock</button>
+        <% end %> 
+      <% else %>
+        <% if item.checkoutable %>
+          <% if item.stock.present? && item.stock > 0 %>
+            <%if item.in_cart == false%>
+              <button class="btn btn-xs btn-primary btnItemToCart btnAddItemToCart" data-model="<%= item.id %>" id=""><i class="fa fa-plus"></i> Cart</button>
+            <%else%>
+              <button class="btn btn-xs btn-warning btnItemToCart btnRemoveItemFromCart" data-model="<%= item.id %>" id=""><i class="fa fa-minus"></i> Cart</button>
+            <%end%>
+          <% else %>
+            <button class="btn btn-xs btn-primary" disabled="disabled" data-model="<%= item.id %>" id="">Out of Stock</button>
+          <% end %> 
+        <% end %>
+      <% end %>
+    </td>
+  </tr>
+<% end %>
+<script>
+  $(".btnItemToCart").unbind();
+  $(".btnItemToCart").on("click",function(){
+    var item_id = $(this).attr("data-model")
+    var in_cart
+    if ($(this).hasClass("btnAddItemToCart")) {
+      in_cart = "true"
+    }
+    else {
+      in_cart = "false"
+    }
+    $.ajax({
+      type: "GET",
+      data: {
+        item_id: item_id,
+        in_cart: in_cart
+      },
+      url: "inventory/items/update_cart",
+      success: function(data) {
+        $("#items_checkout_collection").find(".badge").text(data.cart_count)
+      }
+    })
+    $(this).toggleClass("btnAddItemToCart btnRemoveItemFromCart");
+    $(this).find('i').toggleClass('fa-plus fa-minus')
+    $(this).toggleClass("btn-primary btn-warning")
+    $("#items_checkout_collection").find(".fa-shopping-bag").addClass('hvr-push');
+    setTimeout(function() {
+      return $("#items_checkout_collection").find(".fa-shopping-bag").removeClass('hvr-push');
+    }, 400);
+  //  $("#items_checkout_collection").find(".badge").text($(".btnRemoveItemFromCart").length)
+  })
+
+  
+$(".btnItemToFreeInvoice").unbind();
+$(".btnItemToFreeInvoice").on("click",function(){
+  var item_id = $(this).attr("data-model")
+  var department_id = $('#inventory_controller_department').val()
+  var in_cart
+  if ($(this).hasClass("btnAddItemToFreeInvoice")) {
+    in_cart = "true"
+  }
+  else {
+    in_cart = "false"
+  }
+  $.ajax({
+    type: "GET",
+    data: {
+      item_id: item_id,
+      in_cart: in_cart,
+      department_id: department_id
+    },
+    url: "/inventory/department/item/update_cart",
+    success: function(data) {
+      $("#free_invoice_item_count").text(data.cart_count)
+    }
+  })
+  $(this).toggleClass("btnAddItemToFreeInvoice btnRemoveItemToFreeInvoice");
+  $(this).find('i').toggleClass('fa-plus fa-minus')
+  $(this).toggleClass("btn-primary btn-warning")
+
+})
+</script>

@@ -1,0 +1,69 @@
+<!-- Patient Info -->
+<% @w = Ward.find_by(id: @admission.try(:ward_id)) %>
+<% unless @w.nil? %><% @wr = @w.rooms.find_by(id: @admission.try(:room_id)) %><% else %><% @wr = nil %><% end %>
+<% unless @wr.nil? %><% @wrb = Ward.find_by(id: @admission.ward_id).rooms.find_by(id: @admission.room_id).beds.find_by(id: @admission.bed_id) %><% else %><% @wrb = nil %><% end %>
+
+<% template_fields = OrganisationsSetting.find_by(organisation_id: @current_facility.organisation_id).custom_template_header_options[:ipd_settings][:templates][0].select{ |key, value| value == true } %>
+<% fields_names = OrganisationSettingsHelper.get_data('ipd_templates', template_fields).keys %>
+
+<div class="mb10 mt10" style="border: 1px solid #A9A9A9;padding-left: 9px;padding-bottom: 2px;">
+  <div class="row">
+  <% template_fields.each_with_index do |(key, value), i| %>
+    <% field_name = fields_names[i] %>
+
+    <% if key == 'fullname' %>
+      <% field_value = "<b>#{@patient.fullname.to_s.upcase}</b>" %>
+
+    <% elsif key == 'admitting_doctor' %>
+      <% field_value = "<b>Dr. #{User.find_by(id: @admission.try(:doctor)).try(:fullname).try(:upcase)}</b>" %>
+
+    <% elsif key == 'display_id' %>
+      <% field_value = @admission.try(:display_id) %>
+    
+    <% elsif key == 'facility_name' %>
+    <% field_value = @admission.try(:facility).try(:name) %>
+
+    <% elsif key == 'calculate_age_gender' %>
+      <% field_value = @patient.calculate_age.present? || @patient.gender.present? ? @patient.calculate_age.to_s + '/' + @patient.gender.to_s : 'Unavailable' %>
+
+    <% elsif key == 'ward_bed_code' %>
+      <% field_value = @wrb.try(:code) %>
+
+    <% elsif key == 'admission_date' %>
+      <% field_value = @admission.try(:admissiondate).present? ? @admission.try(:admissiondate).strftime("%d %b'%y") : '-' %>
+
+    <% elsif key == 'referring_doctor' %>
+      <% field_value = @referral.try(:sub_referral_type).try(:name) %>
+
+    <% elsif key == 'mr_no' %>
+      <% field_value = @poi.present? && @poi.mr_no.present? ? @poi.mr_no : '' %>
+
+    <% elsif key == 'mobilenumber' %>
+      <% field_value = @patient.mobilenumber %>
+
+    <% elsif key == 'patient_identifier' %>
+      <% field_value = PatientIdentifier.find_by(patient_id: @patient.id.to_s).try(:patient_org_id) %>
+
+    <% elsif key == 'patient_type' %>
+      <% field_value = @patient.patient_type.try(:label) %>
+
+    <% elsif key == 'address' %>
+      <% if @patient.address_1.present? || @patient.address_2.present? || @patient.city.present? || @patient.state.present? %>
+        <% field_value = @patient.patient_full_address %>
+      <% else %>
+        <% field_value = "Unavailable" %>
+      <% end %>
+    <% end %>
+
+    <% if field_name.present? && field_value.present? %>
+      <div class="col-xs-2" style="text-overflow: ellipsis; white-space: normal; word-wrap: break-word;padding: 0px 2px;">
+        <b><%= field_name %></b>&nbsp;:
+      </div>
+      <div class="col-xs-4" style="text-overflow: ellipsis; white-space: normal; word-wrap: break-word;padding: 0px 2px;">
+        <%= field_value.try(:html_safe) %>
+      </div>
+    <% end %>
+  <% end %>
+  </div>
+</div>
+<!-- Patient Info Ends -->

@@ -1,0 +1,104 @@
+<div class="row" style="margin:20px 0 50px;">
+  <%= adm.hidden_field :patient_arrived,value: true %>
+  <div class="col-md-2">
+    Admission Date & Time :
+  </div>
+  <div class="col-md-2">
+    <%= adm.text_field :admissiondate, {class: "form-control admission-datepicker picker", readonly: "readonly", value: @admission.admissiondate.strftime("%d/%m/%Y")} %>
+  </div>
+  <div class="col-md-2">
+    <div class="bootstrap-timepicker timepicker">
+      <%= adm.text_field :admissiontime, {class: "form-control admission-timepicker picker", value: @admission.admissiontime.strftime("%I:%M %p")} %>
+    </div>
+  </div>
+  <div class="col-md-1">
+    Location :
+  </div>
+  <div class="col-md-2">
+    <%= select_tag("inpatient_ipd_record[admission_attributes][facility_id]", options_for_select(current_user.organisation.facilities.where(:organisation_id => current_user.organisation_id,:is_active => true).map { |facility| [facility.name, facility.id] }, @admission.facility_id),:class=> "form-control") %>
+  </div>
+  <div class="col-md-1">
+    Doctor :
+  </div>
+  <div class="col-md-2">
+    <%= select_tag "inpatient_ipd_record[admission_attributes][doctor]", options_for_select(""), { class: "admitting-doctor form-control" } %>
+  </div>
+</div>
+<div class="row" style="margin:20px 0 50px;">
+  <div class="col-md-2">
+    Admission Reason :
+  </div>
+  <div class="col-md-4">
+    <%= adm.text_field :admissionreason, {class: "form-control", value: @admission.admissionreason.to_s } %>
+  </div>
+  <div class="col-md-6">
+    Bed Details : &emsp;<span id="bed-details"><%= @bed_details %></span>
+    <% if @ward_count > 0 %>
+        <%= link_to admission_assign_bed_path(admission_id: @admission.id, id: @admission.id),:class => "btn btn-link btn-xs", style: "padding:2px;", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#admission-modal'} do %> <i class="fa fa-edit"></i><% end %>
+        <button class="btn btn-link btn-xs remove-existing-bed-m" style="padding:2px;"><i class="fa fa-times"></i></button>
+    <% end %>
+  </div>
+</div>
+<div class="row" style="margin:20px 0 50px;">
+  <div class="col-md-2">
+    Management Plans :
+  </div>
+  <div class="col-md-6">
+    <%= adm.text_area :managementplan, { class: "form-control", value: @admission.managementplan.to_s } %>
+  </div>
+</div>
+
+<script type="text/javascript">
+    // datepicker
+    datepicker_options = {
+        changeMonth: true,
+        changeYear: true,
+        dateFormat: "dd/mm/yy",
+        maxDate: 0
+    };
+
+    $(".admission-datepicker").datepicker(datepicker_options)
+    $(".admission-timepicker").timepicker()
+
+    $("#inpatient_ipd_record_admission_attributes_facility_id").on('change', function(){
+        var fac_id = $("#inpatient_ipd_record_admission_attributes_facility_id").val();
+        $.ajax({
+            type: "GET",
+            dataType: "json",
+            url: "/main/get_user_id_admission_list",
+            data: {facility_id: fac_id},
+            success: function(response){
+                $('.admitting-doctor').children().remove();
+                $.each(response, function(key, value) {
+                    $('.admitting-doctor').append($("<option></option>").attr("value",value[1]).text(value[0]));
+                    $('.admitting-doctor').find("option[value='<%= @admission.doctor.to_s %>']").attr('selected', 'selected')
+                });
+            }
+        });
+    })
+    $("#inpatient_ipd_record_admission_attributes_facility_id").trigger('change')
+
+    <% if @admission.daycare %>
+    $(".remove-existing-bed-m").hide()
+    <% end %>
+
+    $(".remove-existing-bed-m").on('click', function(e){
+        e.preventDefault();
+        $.ajax({
+            type: "GET",
+            dataType: "JSON",
+            url: "/admissions/"+ '<%= @admission.id.to_s %>' +"/unassign_bed",
+            data: {
+                id: '<%= @admission.id.to_s %>'
+            },
+            success: function(res){
+                $("#bed-details").html("Daycare")
+                $(".remove-existing-bed").hide()
+                $("#inpatient_ipd_record_ward_id").val("<%= nil %>")
+                $("#inpatient_ipd_record_room_id").val("<%= nil %>")
+                $("#inpatient_ipd_record_bed_id").val("<%= nil %>")
+                $("#inpatient_ipd_record_daycare").val(true)
+            }
+        })
+    })
+</script>

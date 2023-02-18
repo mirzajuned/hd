@@ -1,0 +1,205 @@
+jQuery("#email_tracker_cc_mail").select2({
+  tags: true,
+  tokenSeparators: [',', ';'],
+  theme: "bootstrap",
+  minimumInputLength: 1,
+  multiple: true,
+  allowClear: true
+});
+
+$(".email_tracker_cc_mail").on('change', function(ev){
+  ev.preventDefault()
+  lis = $(ev.currentTarget).parent().find("ul.select2-selection__rendered li");
+  
+  var final_tags_array = []
+  for(i = 0; i < lis.length; i++){
+  var title = $(lis[i]).attr("title")
+    if (title != undefined) {
+      final_tags_array.push(title)
+    }
+  }
+  $('.email_tracker_selectedtagnames').val(final_tags_array)
+});
+
+jQuery('.select2_selectedtags').on('select2:select', function(e) {
+  sel = $(e.currentTarget).parent().find("ul.select2-selection__rendered li");
+  var final_tags_array = []
+  for(i = 0; i < sel.length; i++){
+  var title = $(sel[i]).attr("title")
+    if (title != undefined) {
+      final_tags_array.push(title)
+    }
+  }
+});
+
+var summernote_options = {
+  toolbar: [
+    ['style', ['bold', 'italic', 'underline', 'clear']],
+    ['fontsize', ['fontsize']],
+    ['height', ['height']],
+    ['fontname', ['fontname']],
+    ['para', ['ul', 'ol', 'paragraph']],
+  ],height: 200,
+  insertTableMaxSize: {col: 5,row: 7},
+  focus: true,
+  callbacks: {
+    onBlur: "lasttext=this"
+  }
+
+};
+if($(".mail_text").length > 0 ){
+  $('.mail_text').summernote(summernote_options);
+  $(".mail_text").on("summernote.change", function (event) {});
+}
+
+jQuery(".save_set").on('click', function(event) {
+  event.preventDefault();
+  jQuery(".save_set").addClass("disabled");
+  if (jQuery('.popover-save-mail-set').length) {
+    jQuery('.popover-save-mail-set').popover('destroy');
+  }
+  
+  jQuery(this).popover({
+    placement : 'right',
+    title : 'New Mail Set',
+    html : true,
+    style: 'padding-top:-170px',
+    content : function(){
+      jQuery.ajax({
+        type: "GET",
+        url: "/mail_record_trackers/new_mail_set_popup",
+        data: {remote: "true" }
+      }).done(function( data ) {
+        jQuery('.popover.in .popover-content').empty();
+        jQuery(".popover.in .popover-content").html(data);
+        jQuery(".popover.in").css("top","50px")
+      });
+    },
+    template : '<div class="popover popover-save-mail-set" role="tooltip" style="width: 700px"><div class="arrow"></div><h5 class="popover-title"></h5><div class="popover-content"></div></div>'
+  }).popover('show');
+});
+
+$('.default_message').on('click', function(e){
+  e.preventDefault();
+  $(".mail_text").code("<%= raw @message %>")
+})
+
+$(".record_mailer_sets").on('change', function(e){
+  e.preventDefault();
+  var text = $(".record_mailer_sets option:selected").val()
+  $(".mail_text").code(text)
+})
+
+function isValidEmail(emailText) {
+  // var pattern = new RegExp(/^((([a-z]|\d|[!#\$%&'\*\+\-\/=\?\^_`{\|}~]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])+(\.([a-z]|\d|[!#\$%&'\*\+\-\/=\?\^_`{\|}~]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])+)*)|((\x22)((((\x20|\x09)*(\x0d\x0a))?(\x20|\x09)+)?(([\x01-\x08\x0b\x0c\x0e-\x1f\x7f]|\x21|[\x23-\x5b]|[\x5d-\x7e]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(\\([\x01-\x09\x0b\x0c\x0d-\x7f]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF]))))*(((\x20|\x09)*(\x0d\x0a))?(\x20|\x09)+)?(\x22)))@((([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])*([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])))\.)+(([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])*([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])))\.?$/i);
+  // return pattern.test(emailText);
+  // return (/^[A-Za-z0-9._-]+@[A-Za-z0-9._-]+\.[A-Za-z]{2,6}$/.test(emailText));
+  var pattern = /^[A-Za-z0-9._-]+@[A-Za-z0-9._-]+\.[A-Za-z]{2,6}$/;
+  return pattern.test(emailText);
+};
+
+$('.email_error').hide()
+$('.subject_error').hide()
+$('.submit_btn').on('click', function(e){
+  validate_mail_form(e)
+  validate_cc_mail_form(e)
+  if ($('.subject_field').val() == ""){
+    $('.subject_error').show()
+    return false;
+  }
+
+  var flag = true;
+  var email_names = $('.email_tracker_selectedtagnames').val();
+  var email_array = email_names.split(",");
+
+  if (email_array.length > 0 && email_array != ""){
+    for(i = 0; i < email_array.length; i++){
+      valid_email = isValidEmail(email_array[i])
+      flag = flag && valid_email
+    }
+  }
+  if (flag == false) {
+    if ($(".ui-pnotify").length > 0) { $(".ui-pnotify").remove() }
+    notice = new PNotify({
+      title: 'Error',
+      text: ' The address in the "Cc" field was not recognized. Please make sure that all addresses are properly formed.',
+      icon: 'fa fa-error',
+      type: 'error'
+    })
+    notice.get().click(function(){ notice.remove() });
+    return false;
+  }
+})
+
+function find_atpos_counts(str, char) {
+  var val = str.match(/@/g) || []
+  return val.length
+}
+
+function validate_mail_form(e, show_error = false) {
+  if (show_error == true) {
+    $('.error-email-receiver-input').show();
+    e.preventDefault();
+    return false;
+  } else {
+    var emails = $('.patient_email').val().trim()
+    if (emails.length > 0) {
+      emails = emails.split(",")
+      if (emails.filter(onlyUnique).length == emails.length) {
+        $.each(emails, function( index, email ) {
+          if (/^[A-Za-z0-9._-]+@[A-Za-z0-9._-]+\.[A-Za-z]{2,6}$/.test(email) == false) {
+            $('.error-email-receiver-input').show();
+            e.preventDefault();
+            return false;
+          } else {
+            $('.error-email-receiver-input').hide();
+          }
+        });
+        $('.dup-error-email-receiver-input').hide();
+      } else {
+        $('.dup-error-email-receiver-input').show();
+        e.preventDefault();
+        return false; 
+      }
+    } else {
+      $('.error-email-receiver-input').show();
+      e.preventDefault();
+      return false;
+    }
+  }
+  
+}
+
+function validate_cc_mail_form(e, show_error = false) {
+  if(show_error == true) {
+    $('.error-email-cc-receiver-input').show();
+    e.preventDefault();
+    return false;
+  } else {
+    var emails = $(".email_tracker_cc_mail").val().trim()
+    if (emails.length > 0) {
+      emails = emails.split(",")
+      if (emails.filter(onlyUnique).length == emails.length){
+        $.each(emails, function( index, email ) {
+          if (/^[A-Za-z0-9._-]+@[A-Za-z0-9._-]+\.[A-Za-z]{2,6}$/.test(email) == false) {
+            $('.error-email-cc-receiver-input').show();
+            e.preventDefault();
+            return false;
+          } else {
+            $('.error-email-cc-receiver-input').hide();
+          }
+        });
+        $('.dup-error-email-cc-receiver-input').hide();
+      } else {
+        $('.dup-error-email-cc-receiver-input').show();
+        e.preventDefault();
+        return false; 
+      }
+    }
+  }
+  
+}
+
+function onlyUnique(value, index, self) {
+  return self.indexOf(value) === index;
+}

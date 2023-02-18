@@ -1,0 +1,648 @@
+<!-- ui_updates -->
+<h4>Intra Facility <span style="font-size: small;">(Within The Same Location)</span></h4>
+<div class="intra_facility_referral_added">
+
+  <%#= hidden_field_tag "opdrecord_intra_referral_specialty_id", @appointment.specialty_id, { class: 'form-control intra_referral_specialty_id' } %>
+  <% referral_specialties = Specialty.where(:id.in => current_facility.specialty_ids) %>
+  <% if opdrecord.has_intra_facility_referral? %>
+    <% opdrecord.intra_facility_referral.each_with_index do |elem, i| %>
+      <div class="intra-facility-referral-minimized intra_facility_referral_minimized_<%=i%>" >
+        <h5 style="display: inline" >Visit <strong>Dr. <%=User.find(elem.to_user).fullname.upcase%></strong> at <strong><%= Facility.find(elem.facility_id).name.titlecase %></strong> on <strong><%= "#{Date.strptime("#{elem.read_attribute(:referraldate)}", "%Y-%m-%d").strftime('%a %b %d, %Y')}" %></strong> at <strong><%= "#{Time.strptime("#{elem.referraltime}", "%Y-%m-%d %H:%M:%S").strftime("%I:%M %p")}" %></strong></h5>
+        <span style="display: inline;"><a id="edit_intra_facility_referral_<%=i%>" class="btn btn-xs btn-primary btn-square pull-right edit_intra_facility_referral" style=" padding: 0px 10px;" href="javascript:;" name="edit_intra_facility_referral" ><span class="glyphicon glyphicon-pencil"></span>Edit</a></span>
+        <% if elem.referralnote.present? %> <h5>Note: <span style="white-space: pre-line"><%= elem.referralnote %></span></h5> <%end%>
+      </div>
+
+      <!-- new_ui_start -->
+      <div class="intra-facility-referral intra_facility_referral_<%=i%>" style="display:none;">
+        <div class="row">
+          <div class="col-md-12 col-xs-12 col-md-12 clearfix">
+            <div class="col-md-1 pull-right">
+              <a id="delete_intra_facility_referral_<%=i%>" class="btn btn-xs btn-warning btn-square pull-right delete_intra_facility_referral" style=" padding: 0px 10px;" href="javascript:;" name="delete_intra_facility_referral" ><span class="glyphicon glyphicon-trash"></span>Delete</a>
+            </div>
+          </div>
+        </div> <!-- row_end -->
+        <div class="row mb10">
+          <%= hidden_field_tag "opdrecord[intra_facility_referral_attributes][#{i}][id]", elem.id, {:class => 'form-control id' } %>
+          <%= hidden_field_tag "opdrecord[intra_facility_referral_attributes][#{i}][facility_id]",elem.facility_id ? elem.facility_id : @current_facility.id %>
+          <%= hidden_field_tag "opdrecord[intra_facility_referral_attributes][#{i}][_destroy]", "0", {:class => 'form-control' } %>
+
+          <div class="col-md-3 col-sm-3 col-xs-6">
+            <%= hidden_field_tag "opdrecord[intra_facility_referral_attributes][#{i}][referraldate]","#{Date.strptime("#{elem.read_attribute(:referraldate)}", "%Y-%m-%d").strftime('%d/%m/%Y')} #{Time.strptime("#{elem.referraltime}", "%Y-%m-%d %H:%M:%S").strftime("%I:%M %p")}", class: 'form-control intra-referraldate' %>
+            <div class="col-md-12">
+              <b>Date</b>
+            </div>
+            <div class="col-md-12">
+              <%= text_field_tag "intra_facility_referral[#{i}][referraldate]","#{Date.strptime("#{elem.read_attribute(:referraldate)}", "%Y-%m-%d").strftime('%d/%m/%Y')}", class: 'form-control intra-referraldate-datepicker full_width',readonly: 'readonly' %>
+            </div>
+          </div>
+
+          <div class="col-md-3 col-sm-3 col-xs-6">
+            <div class="col-md-12 col-xs-12 col-lg-12">
+              <%= hidden_field_tag "opdrecord[intra_facility_referral_attributes][#{i}][referraltime]","#{Date.strptime("#{elem.read_attribute(:referraldate)}", "%Y-%m-%d").strftime('%d/%m/%Y')} #{Time.strptime("#{elem.referraltime}", "%Y-%m-%d %H:%M:%S").strftime("%I:%M %p")}", class: 'form-control intra-referraltime '%>
+              <b>Time</b>
+            </div>
+            <div class="col-md-12 col-xs-12 col-lg-12">
+              <div class="bootstrap-timepicker timepicker" style="position: absolute; width: 100%;">
+                <% @referral_time = ("#{elem.referraltime.strftime("%I:%M %p")}" if ("#{elem.referraltime}").present?  ) || Time.current.strftime("%I:%M %p") %>
+                <%= text_field_tag "intra_facility_referral[#{i}][referraltime]", @referral_time, class: 'form-control intra-referraltime-timepicker full_width' %>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-3 col-sm-3 col-xs-6">
+            <div class="col-md-12">
+              <b>Referred From (Doctor)</b>
+            </div>
+            <div class="col-md-12">
+              <%= select_tag("opdrecord[intra_facility_referral_attributes][#{i}][from_user]", options_for_select(@intra_referral_doctors.map { |ele| [ele.fullname, ele.id] }, elem.from_user ? elem.from_user : @current_user.id),{:class => 'form-control user_ddapt', :style => 'width: 100%'}) %>
+            </div>
+          </div>
+
+          <div class="col-md-3 col-sm-3 col-xs-6">
+            <div class="col-md-12 col-xs-12 col-lg-12">
+              <b>Referred To (Doctor) </b>
+            </div>
+            <div class="col-md-12 col-xs-12 col-lg-12">
+              <% @referred_to_doctor_array = @intra_referral_doctors.pluck(:fullname, :id).reject{ |ele| ele[1] == @current_user.id } %>
+              <%= select_tag("opdrecord[intra_facility_referral_attributes][#{i}][to_user]", options_for_select(@referred_to_doctor_array, elem.to_user),{:class => 'form-control user_ddapt to-user-intra-referral', :style => 'width: 100%'}) %>
+            </div>
+          </div>
+        </div> <!-- row end -->
+
+        <div class="row mb10">
+
+          <% if referral_specialties.count > 1 %>
+            <div class="col-md-3 col-sm-3 col-xs-6">
+              <div class="col-md-12">
+                <b>Specialty</b>
+              </div>
+              <div class="col-md-12">
+                <%= select_tag("opdrecord[intra_facility_referral_attributes][#{i}][specialty_id]", options_for_select(referral_specialties.pluck(:name, :id), @appointment.specialty_id), class: "form-control full_width referral_specialty_dropdown")%>
+              </div>
+            </div>
+          <% else %>
+            <%= hidden_field_tag "opdrecord[intra_facility_referral_attributes][#{i}][specialty_id]", @appointment.specialty_id, { class: 'form-control' } %>
+          <% end %>
+
+          <div class="col-md-3 col-sm-3 col-xs-6 appointment_type_div_<%= i %>">
+            <div class="col-md-12 col-lg-12 col-xs-12">
+              <b>Appointment Type <span class="required_field">Required</span> </b>
+            </div>
+            <div class="col-md-12 col-lg-12 col-xs-12">
+              <% @referral_appointment_type = AppointmentType.where(facility_id: elem.facility_id, specialty_ids: @appointment.specialty_id, is_active: true) %>
+              <!-- appointment_type_partial -->
+              <%= render partial: 'opd_records/ophthalmology_notes/appointment_type_partial', locals: {
+              name_attr:"opdrecord[intra_facility_referral_attributes][#{i}][referral_appointment_type_id]", option_values: @referral_appointment_type, selected: "#{elem.read_attribute(:referral_appointment_type_id)}".to_s } %>
+            </div>
+          </div>
+
+          <div class="col-md-3 col-sm-3 col-xs-6">
+            <% @sub_appointment_types = OrganisationAppointmentCategoryType.where(organisation_id: @current_user.organisation_id, specialty_ids: @appointment.specialty_id, is_active: true).order(created_at: :desc) %>
+            <div class="col-md-12 col-xs-12 col-lg-12 col-sm-12">
+              <b>Appointment Category</b>
+            </div>
+            <div  class="col-md-12 col-xs-12 col-lg-12 col-sm-12">
+              <%= select_tag("opdrecord[intra_facility_referral_attributes][#{i}][referral_appointment_category_id]", options_for_select(@sub_appointment_types.map {|apt_cat| [apt_cat.label, apt_cat.id ]}, elem.try(:referral_appointment_category_id)), prompt: 'Appointment Category', class: "form-control full_width")%>
+            </div>
+          </div>
+
+          <div class="col-md-3 col-sm-3 col-xs-6">
+            <div class="col-md-12 col-lg-12 col-xs-12">
+              &nbsp;
+            </div>
+            <div class="col-md-12 col-lg-12 col-xs-12">
+              <div class="ckbox ckbox-primary margin10">
+                <% if elem.bookreferredappointment == false %>
+                  <%= check_box "opdrecord[intra_facility_referral_attributes][#{i}]", 'bookreferredappointment', {:class => "myclass", :checked => false}, 'true', 'false' %>
+                  <label for="opdrecord_intra_facility_referral_attributes_<%=i%>_bookreferredappointment">Make Appointment**</label>
+                <% elsif elem.bookreferredappointment == true %>
+                  <%= check_box"opdrecord[intra_facility_referral_attributes][#{i}]", 'bookreferredappointment', {:class => "myclass", :checked => true}, 'true', 'false' %>
+                  <label for="opdrecord_intra_facility_referral_attributes_<%=i%>_bookreferredappointment">Make Appointment**</label>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        </div> <!-- row end -->
+
+        <div class="row mb10">
+          <div class="col-md-6">
+            <div class="col-md-12 col-lg-12 col-xs-12 col-sm-12">
+              <b>Referral Note</b>
+            </div>
+            <div class="col-md-12 col-lg-12 col-xs-12 col-sm-12">
+              <%= text_area_tag "opdrecord[intra_facility_referral_attributes][#{i}][referralnote]","#{elem.read_attribute(:referralnote)}", class: 'form-control referralnote ', style: "width: 100%", :rows => 2, :cols => 60, id: "referralnote" %>
+            </div>
+          </div>
+        </div>
+      </div> <!-- div wrapper end -->
+    <%end%>
+    <a id="add_intra_facility_referral" class="btn btn-xs btn-primary btn-square" href="javascript:;" name="add_intra_facility_referral" ><span class="glyphicon glyphicon-plus-sign"></span>Add</a>
+  <% else %>
+    <!-- new_ui_start -->
+    <div class="intra-facility-referral intra_facility_referral_0">
+      <div class="row mb10">
+        <div class="col-md-3 col-sm-3 col-xs-6">
+          <%= hidden_field_tag "opdrecord[intra_facility_referral_attributes][0][referraldate]","", class: 'form-control intra-referraldate' %>
+          <%= hidden_field_tag "opdrecord[intra_facility_referral_attributes][0][facility_id]", @current_facility.id %>
+          <%= hidden_field_tag "opdrecord[intra_facility_referral_attributes][0][_destroy]", "0", { class: 'form-control' } %>
+
+          <div class="col-md-12">
+            <b>Date</b>
+            <a href="" id="intra_facility_referral_0_clear_referraldate" style="font-size: 10px;margin-top: -7px;">Clear</a>
+          </div>
+          <div class="col-md-12">
+            <%= text_field_tag "intra_facility_referral[0][referraldate]", nil, class: 'form-control intra-referraldate-datepicker full_width',readonly: true %>
+          </div>
+        </div>
+
+        <div class="col-md-3 col-xs-6 col-sm-3">
+          <%= hidden_field_tag "opdrecord[intra_facility_referral_attributes][0][referraltime]","", class: 'form-control intra-referraltime '%>
+          <div class="col-md-12">
+            <b>Time</b>
+          </div>
+          <div class="col-md-12">
+            <div class="bootstrap-timepicker timepicker" style="position: absolute; width: 100%;">
+              <%= text_field_tag "intra_facility_referral[0][referraltime]", Time.current.strftime("%I:%M %p"), { style: 'cursor: pointer;background-color: white;', class: 'form-control intra-referraltime-timepicker full_width'} %>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-3 col-sm-3 col-xs-6">
+          <div class="col-md-12">
+            <b>Referred From (Doctor)</b>
+          </div>
+          <div class="col-md-12">
+            <%= select_tag("opdrecord[intra_facility_referral_attributes][0][from_user]", options_for_select(@intra_referral_doctors.map { |ele| [ele.fullname, ele.id] }, @current_user.id),{:class => 'form-control user_ddapt', :style => 'width: 100%'}) %>
+          </div>
+        </div>
+
+        <div class="col-md-3 col-xs-6 col-sm-3">
+          <div class="col-md-12">
+            <b>Referred To (Doctor) </b>
+          </div>
+          <div class="col-md-12">
+            <% @referred_to_doctor_array = @intra_referral_doctors.pluck(:fullname, :id).reject{ |ele| ele[1] == @current_user.id } %>
+            <%= select_tag("opdrecord[intra_facility_referral_attributes][0][to_user]", options_for_select(@referred_to_doctor_array),{:class => 'form-control user_ddapt to-user-intra-referral', :style => 'width: 100%'}) %>
+          </div>
+        </div>
+      </div> <!-- row end -->
+
+      <div class="row mb10">
+        <% if referral_specialties.count > 1 %>
+          <div class="col-md-3 col-sm-3 col-xs-6">
+            <div class="col-md-12">
+              <b>Specialty</b>
+            </div>
+            <div class="col-md-12">
+              <%= select_tag("opdrecord[intra_facility_referral_attributes][0][specialty_id]", options_for_select(referral_specialties.pluck(:name, :id), @appointment.specialty_id), class: "form-control full_width referral_specialty_dropdown")%>
+            </div>
+          </div>
+        <% else %>
+          <%= hidden_field_tag "opdrecord[intra_facility_referral_attributes][0][specialty_id]", @appointment.specialty_id, { class: 'form-control' } %>
+        <% end %>
+
+        <div class="col-md-3 col-sm-3 col-xs-6 appointment_type_div_0">
+          <div class="col-md-12">
+            <b>Appointment Type <span class="required_field">Required</span> </b>
+          </div>
+          <div class="col-md-12">
+            <!-- appointment_type_partial -->
+            <% @referral_appointment_type = AppointmentType.where(facility_id: current_facility.id, specialty_ids: @appointment.specialty_id, is_active: true) %>
+            <%= render partial: 'opd_records/ophthalmology_notes/appointment_type_partial', locals: {
+              name_attr:"opdrecord[intra_facility_referral_attributes][0][referral_appointment_type_id]", option_values: @referral_appointment_type, selected: ""} %>
+          </div>
+        </div>
+
+        <% @sub_appointment_types = OrganisationAppointmentCategoryType.where(organisation_id: @current_user.organisation_id, specialty_ids: @appointment.specialty_id, is_active: true).order(created_at: :desc) %>
+        <div class="col-md-3 col-sm-3 col-xs-6">
+          <div class="col-md-12">
+            <b>Appointment Category</b>
+          </div>
+          <div class="col-md-12">
+            <%= select_tag("opdrecord[intra_facility_referral_attributes][0][referral_appointment_category_id]", options_for_select(@sub_appointment_types.map {|apt_cat| [apt_cat.label, apt_cat.id ]}), prompt: 'Appointment Category', class: "form-control full_width")%>
+          </div>
+        </div>
+
+        <div class="col-md-3 col-sm-3 col-xs-6">
+          <div class="col-md-12">
+            &nbsp;
+          </div>
+          <div class="col-md-12">
+            <div class="ckbox ckbox-primary margin10">
+             <%= check_box 'opdrecord[intra_facility_referral_attributes][0]', 'bookreferredappointment', {:class => "myclass", :checked => false}, 'true', 'false' %>
+             <label for="opdrecord_intra_facility_referral_attributes_0_bookreferredappointment">Make Appointment**</label>
+           </div>
+          </div>
+        </div>
+      </div> <!-- row end -->
+
+      <div class="row mb10">
+        <div class="col-md-6">
+          <div class="col-md-12 col-xs-12 col-sm-12">
+            <label>Referral Note</label>
+          </div>
+          <div class="col-md-12 col-xs-12 col-sm-12">
+            <%= text_area_tag "opdrecord[intra_facility_referral_attributes][0][referralnote]","", class: 'form-control referralnote ', style: "width: 100%", :rows => 2, :cols => 60, id: "referralnote" %>
+          </div>
+        </div>
+      </div>
+    </div> <!-- div wrapper -->
+    <a id="add_intra_facility_referral" class="btn btn-xs btn-primary btn-square" href="javascript:;" name="add_intra_facility_referral" ><span class="glyphicon glyphicon-plus-sign"></span>Add</a>
+  <% end %>
+</div>
+
+<div class="intra_facility_referral_removed" style="display:none;">
+  <%= text_field_tag "opdrecord[intra_facility_referral_removed_id]", "", {:class => 'form-control' } %>
+</div>
+
+<div id="dialog-confirm-delete-referral" title="Are you sure ?" class="hidden">
+  <p><span class="ui-icon ui-icon-alert" style="float:left; margin:12px 12px 20px 0;"></span>Delete this referral. </p>
+</div>
+
+<style type="text/css">
+  .full_width{
+    width: 100% !important;
+  }
+  .required_field{
+    font-size:12px;
+    color:#a94442;
+  }
+  .margin10{
+    margin-top: 10px;
+  }
+</style>
+<script type="text/javascript">
+
+  jQuery(document).ready(function() {
+    $('.intra-referraltime-timepicker').timepicker({minuteStep: 5});
+    var datepicker_options = {
+      dateFormat: "dd/mm/yy",
+      minDate: 0
+    };
+    jQuery('.intra-referraldate-datepicker').datepicker(datepicker_options);
+
+    $(".intra-referraldate-datepicker").on('change', function(){
+      var timestamp = $(this).val() + " " + $(this).parents('.intra-facility-referral').find('.intra-referraltime-timepicker').val()
+      $(this).parents('.intra-facility-referral').find('.intra-referraldate').attr("value", timestamp)
+      $(this).parents('.intra-facility-referral').find('.intra-referraltime').attr("value", timestamp)
+    })
+
+    $(".intra-referraltime-timepicker").on('change', function(){
+      var timestamp = $(this).parents('.intra-facility-referral').find(".intra-referraldate-datepicker").val() + " " + $(this).val()
+      $(this).parents('.intra-facility-referral').find('.intra-referraldate').attr("value", timestamp)
+      $(this).parents('.intra-facility-referral').find('.intra-referraltime').attr("value", timestamp)
+    })
+
+
+
+
+    //to clear the specialstatus
+    //    if ($('input[name="opdrecord[referral_type]"]:checked').val() == undefined){
+    //      $("#clear_referral_status").hide()
+    //    }
+    //    else{
+    //      $("#clear_referral_status").show()
+    //    }
+    //
+    //    jQuery("input[name='opdrecord[referral_type]']").on("click",function(){
+    //      $('input[name="opdrecord[referral_type]"]:checked').siblings("label").removeClass('changed');
+    //
+    //      $(this).val($(this).attr("class"))
+    //
+    //      setTimeout(function(){
+    //        if ($('input[name="opdrecord[referral_type]"]:checked').val() == undefined){
+    //          $("#clear_referral_status").hide()
+    //        }
+    //        else{
+    //          $("#clear_referral_status").show()
+    //        }
+    //      }, 200);
+    //    });
+    //    $("#clear_referral_status").on("click",function(){
+    //      $('input[name="opdrecord[referral_type]"]:checked').val("");
+    //      $('input[name="opdrecord[referral_type]"]:checked').siblings("label").addClass('changed');
+    //
+    //      jQuery("#within_facility").hide();
+    //      $("#within_facility *").prop('disabled',true);
+    //
+    //      jQuery("#outside_facility").hide();
+    //      $("#outside_facility *").prop('disabled',true);
+    //
+    //      jQuery("#outside_organisation").hide();
+    //      $("#outside_organisation *").prop('disabled',true);
+    //
+    //      $("#clear_referral_status").hide()
+    //    });
+    //
+    //
+    //    jQuery("#within_facility").hide();
+    //    $("#within_facility *").prop('disabled',true);
+    //
+    //    jQuery("#outside_facility").hide();
+    //    $("#outside_facility *").prop('disabled',true);
+    //
+    //    jQuery("#outside_organisation").hide();
+    //    $("#outside_organisation *").prop('disabled',true);
+    //
+    //
+    //    if (jQuery("input[name='opdrecord[referral_type]']").val() != ""){
+    //      var referral_type = jQuery("input[name='opdrecord[referral_type]']:checked").val();
+    //      hide_show_referral(referral_type)
+    //    }
+    //
+    //    jQuery("input[name='opdrecord[referral_type]']").on('click', function () {
+    //      var referral_type = jQuery("input[name='opdrecord[referral_type]']:checked").val();
+    //      hide_show_referral(referral_type)
+    //    });
+    //    function hide_show_referral(referral_type){
+    //      if (referral_type == 'within_facility') {
+    //        jQuery("#within_facility").show();
+    //        jQuery("#outside_facility").hide();
+    //        jQuery("#outside_organisation").hide();
+    //
+    //        $("#within_facility *").prop('disabled',false);
+    //        $("#outside_facility *").prop('disabled',true);
+    //        $("#outside_organisation *").prop('disabled',true);
+    //
+    //      }
+    //      else if (referral_type == 'outside_facility') {
+    //        jQuery("#within_facility").hide();
+    //        jQuery("#outside_facility").show();
+    //        jQuery("#outside_organisation").hide();
+    //
+    //        $("#within_facility *").prop('disabled',true);
+    //        $("#outside_facility *").prop('disabled',false);
+    //        $("#outside_organisation *").prop('disabled',true);
+    //      }
+    //      else if (referral_type == 'outside_organisation') {
+    //        jQuery("#within_facility").hide();
+    //        jQuery("#outside_facility").hide();
+    //        jQuery("#outside_organisation").show();
+    //
+    //        $("#within_facility *").prop('disabled',true);
+    //        $("#outside_facility *").prop('disabled',true);
+    //        $("#outside_organisation *").prop('disabled',false);
+    //      }
+    //    }
+
+
+
+    jQuery('.intra_facility_referral_added').on('click', "a[name*='edit_intra_facility_referral']", function() {
+      var counter = $(this).attr("id").match(/\d+/)[0]
+      $('.intra_facility_referral_minimized_'+counter).hide()
+      $('.intra_facility_referral_'+counter).show()
+
+    });
+
+    jQuery('.intra_facility_referral_added').on('click', "a[name*='min_intra_facility_referral']", function() {
+      var counter = $(this).attr("id").match(/\d+/)[0]
+      $('.intra_facility_referral_minimized_'+counter).show()
+      $('.intra_facility_referral_'+counter).hide()
+    });
+
+
+    jQuery('.intra_facility_referral_added').on('click', "a[name*='delete_intra_facility_referral']",function(e){
+      e.preventDefault();
+      var fieldcounter = $(this).attr('id').slice(-1);
+
+      if ($(this).hasClass('cancel_intra_facility_referral')) {
+        delete_intra_facility_referral(fieldcounter)
+      } else {
+        $('#dialog-confirm-delete-referral').removeClass("hidden")
+        var dialog = $('#dialog-confirm-delete-referral').dialog({
+          resizable: false,
+          height: "auto",
+          width: 400,
+          modal: true,
+          buttons: {
+            "Yes": function() {
+              delete_intra_facility_referral(fieldcounter)
+              dialog.dialog('close');
+            },
+            "No":  function() {
+              dialog.dialog('close');
+            }
+          }
+        });
+        $('.ui-dialog-titlebar-close').addClass("fa fa-close")
+
+      }
+    })
+
+    function delete_intra_facility_referral(counter){
+      event.preventDefault();
+      var referral_removed_div_html;
+      var fieldcounter = counter;
+      var referral_div_array = jQuery('#delete_intra_facility_referral_'+fieldcounter).parents('.intra-facility-referral').find(".id");
+
+      if (referral_div_array.length > 0) {
+          intra_referral_list = []
+          if (jQuery("#opdrecord_intra_facility_referral_removed_id").val() != "") {
+            intra_referral_list = jQuery("#opdrecord_intra_facility_referral_removed_id").val().split(',')
+          }
+          intra_referral_list.push(jQuery("input[name='opdrecord[intra_facility_referral_attributes][" + fieldcounter + "][id]']").val())
+          jQuery("#opdrecord_intra_facility_referral_removed_id").val(intra_referral_list.join(","))
+
+        jQuery('.intra_facility_referral_minimized_'+fieldcounter).remove()
+
+        jQuery('#delete_intra_facility_referral_'+fieldcounter).parents('.intra-facility-referral').find("input[name*='_destroy']").val("1");
+        referral_removed_div_html = jQuery('#delete_intra_facility_referral_'+fieldcounter).parents('.intra-facility-referral').wrap('<p/>').parent().html();
+        jQuery('#delete_intra_facility_referral_'+fieldcounter).parents('.intra-facility-referral').unwrap();
+        jQuery('.intra_facility_referral_removed').append(referral_removed_div_html);
+        jQuery('#delete_intra_facility_referral_'+fieldcounter).parents('.intra-facility-referral').remove();
+        _renumber_after_remove("div.intra_facility_referral_added", "div.intra_facility_referral_removed")
+        _renumber_min_after_remove("div.intra_facility_referral_added")
+      } else {
+        jQuery('#delete_intra_facility_referral_'+fieldcounter).parents('.intra-facility-referral').remove();
+        _renumber_after_remove("div.intra_facility_referral_added", "div.intra_facility_referral_removed")
+      }
+      //      _add_button_at_last()
+    }
+
+    jQuery('.intra_facility_referral_added').on('click', "a[name*='add_intra_facility_referral']", function() {
+      var fieldcounter;
+      var specialty_id = '<%= @appointment.specialty_id %>'
+      if (jQuery(".intra_facility_referral_added> .intra-facility-referral").length == 0){
+        fieldcounter = 0;
+      } else {
+        fieldcounter = jQuery(".intra_facility_referral_added > .intra-facility-referral").length;
+      }
+      var params = { counter: fieldcounter, specialty_id: specialty_id };
+      jQuery.ajax({
+        type: "GET",
+        dataType: "script",
+        url: "/opd_referrals/add_intra_facility_referral",
+        data: {ajax: params, remote: "true" },
+        async: false,
+        success: function(){
+        }
+      });
+      _renumber_after_remove("div.intra_facility_referral_added", "div.intra_facility_referral_removed");
+    });
+
+    function _renumber_min_after_remove(added, removed) {
+      var counter = 0;
+      jQuery(added).find(".intra-facility-referral-minimized").each(function () {
+        var oldattrclass = ($(this).attr('class').split(' ')[1])
+        var newattrclass = oldattrclass.replace(/\_[0-9]/g, '_' + counter)
+        jQuery(this).removeClass(oldattrclass)
+        jQuery(this).addClass(newattrclass)
+
+        jQuery(this).find("a").each(function (index, element) {
+          var idattr;
+          idattr = element.id.replace(/[0-9]/g, counter);
+          jQuery(this).attr('id', idattr);
+        });
+        counter++;
+      });
+    };
+
+    function _renumber_after_remove(added, removed) {
+      var counter = 0;
+
+      jQuery(added).find(".intra-facility-referral").each(function() {
+        var oldattrclass = ($(this).attr('class').split(' ')[1])
+        var newattrclass = oldattrclass.replace(/\_[0-9]/g, '_'+counter)
+        jQuery(this).removeClass(oldattrclass)
+        jQuery(this).addClass(newattrclass)
+
+        jQuery(this).find(".row").each(function() {
+          jQuery(this).find("a").each(function(index, element) {
+            var idattr;
+            idattr = element.id.replace(/[0-9]/g, counter);
+            jQuery(this).attr('id', idattr);
+          });
+          jQuery(this).find("input").each(function(index, element) {
+            var nameattr, idattr;
+            nameattr = element.name.replace(/\[[0-9]+\]/g, '['+counter+']');
+            idattr = element.id.replace(/\_[0-9]+\_/g, '_'+counter+'_');
+            jQuery(this).attr('name', nameattr);
+            jQuery(this).attr('id', idattr);
+          });
+
+          jQuery(this).find("textarea").each(function(index, element) {
+            var nameattr, idattr;
+            nameattr = element.name.replace(/\[[0-9]+\]/g, '['+counter+']');
+            idattr = element.id.replace(/\_[0-9]+\_/g, '_'+counter+'_');
+            jQuery(this).attr('name', nameattr);
+            jQuery(this).attr('id', idattr);
+          });
+
+          jQuery(this).find("select").each(function(index, element) {
+            var nameattr, idattr;
+            nameattr = element.name.replace(/\[[0-9]+\]/g, '['+counter+']');
+            idattr = element.id.replace(/\_[0-9]+\_/g, '_'+counter+'_');
+            jQuery(this).attr('name', nameattr);
+            jQuery(this).attr('id', idattr);
+          });
+        });
+        counter++;
+      });
+      jQuery(removed).find(".intra-facility-referral").each(function() {
+        var oldattrclass = ($(this).attr('class').split(' ')[1])
+        var newattrclass = oldattrclass.replace(/\_[0-9]/g, '_'+counter)
+        jQuery(this).removeClass(oldattrclass)
+        jQuery(this).addClass(newattrclass)
+
+
+        jQuery(this).find(".row").each(function() {
+          jQuery(this).find("a").each(function(index, element) {
+            var idattr;
+            idattr = element.id.replace(/[0-9]/g, counter);
+            jQuery(this).attr('id', idattr);
+          });
+          jQuery(this).find("input").each(function(index, element) {
+            var nameattr, idattr;
+            nameattr = element.name.replace(/\[[0-9]+\]/g, '['+counter+']');
+            idattr = element.id.replace(/\_[0-9]+\_/g, '_'+counter+'_');
+            jQuery(this).attr('name', nameattr);
+            jQuery(this).attr('id', idattr);
+          });
+
+          jQuery(this).find("textarea").each(function(index, element) {
+            var nameattr, idattr;
+            nameattr = element.name.replace(/\[[0-9]+\]/g, '['+counter+']');
+            idattr = element.id.replace(/\_[0-9]+\_/g, '_'+counter+'_');
+            jQuery(this).attr('name', nameattr);
+            jQuery(this).attr('id', idattr);
+          });
+
+          jQuery(this).find("select").each(function(index, element) {
+            var nameattr, idattr;
+            nameattr = element.name.replace(/\[[0-9]+\]/g, '['+counter+']');
+            idattr = element.id.replace(/\_[0-9]+\_/g, '_'+counter+'_');
+            jQuery(this).attr('name', nameattr);
+            jQuery(this).attr('id', idattr);
+          });
+
+        });
+        counter++;
+      });
+    }
+
+    function get_specialty_data(specialty_id, counter) {
+      $.ajax({
+        type: "GET",
+        dataType: "json",
+        url: "/opd_referrals/specialty_data",
+        data: { specialty_id: specialty_id },
+        success: function(response){
+
+          $('#opdrecord_intra_facility_referral_attributes_'+ counter +'_to_user').children().remove();
+          $('.appointment_type_div_'+ counter).find('.opdrecord_appointment_type').children().remove();
+          $('#opdrecord_intra_facility_referral_attributes_'+ counter +'_referral_appointment_category_id').children().remove();
+          var reject_id = '<%= current_user.id %>'
+
+          if (response["doctors"].length == 0){
+            $('#opdrecord_intra_facility_referral_attributes_'+ counter +'_to_user').append($("<option></option>").attr("value","").text("No Doctors Available"));
+          }else{
+            $.each(response["doctors"], function(key, value) {
+              if (value[1] != reject_id) {
+                $('#opdrecord_intra_facility_referral_attributes_'+ counter +'_to_user').append($("<option></option>").attr("value", value[1]).text(value[0]));
+              }
+            });
+          }
+
+          if (response["appointment_types"].length == 0){
+            $('.appointment_type_div_'+ counter).find('.opdrecord_appointment_type').append($("<option></option>").attr("value","").text("No Appointment types Available"));
+          }else{
+            $.each(response["appointment_types"], function(key, value) {
+              $('.appointment_type_div_'+ counter).find('.opdrecord_appointment_type').append($("<option></option>").attr("value", value[1]).text(value[0]));
+            });
+          }
+
+          if (response["sub_appointment_types"].length == 0){
+            $('#opdrecord_intra_facility_referral_attributes_'+ counter +'_referral_appointment_category_id').append($("<option></option>").attr("value","").text("No Appointment types Available"));
+          }else{
+            $.each(response["sub_appointment_types"], function(key, value) {
+              $('#opdrecord_intra_facility_referral_attributes_'+ counter +'_referral_appointment_category_id').append($("<option></option>").attr("value", value[1]).text(value[0]));
+            });
+          }
+
+        }
+      });
+    }
+
+    $('.referral_specialty_dropdown').on('change', function(argument) {
+      var specialty_id = this.value
+      var counter = $(this).attr("id").match(/\d+/)
+
+      get_specialty_data(specialty_id, counter)
+    })
+  });
+  $('[data-toggle="tooltip"]').tooltip();
+
+  $('#intra_facility_referral_0_clear_referraldate').on('click', function(e) {
+    e.preventDefault();
+    $('#intra_facility_referral_0_referraldate').val("");
+    $('#opdrecord_intra_facility_referral_attributes_0_referraldate').val("");
+  });
+</script>
+
+<style type="text/css">
+  [data-toggle='tooltip'] + .tooltip > .tooltip-inner {
+    background: black;
+    color:#ffffff;
+    border: 1px solid #000000;
+  }
+</style>

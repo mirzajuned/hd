@@ -1,0 +1,85 @@
+<table cellspacing="10" cellpadding="0">
+  <tr>
+    <th>SR No</th>
+    <th>Facility</th>
+    <th>Visit Type</th>
+    <th>Date & Time</th>
+    <th>Name</th>
+    <th>AGE</th>
+    <th>Mobile</th>
+    <th>Email</th>
+    <th>Seen By</th>
+    <th>Referred By</th>
+    <th>Diagnosis</th>
+    <th>Procedure Advised</th>
+    <th>Reason</th>
+    <th>F/U Plan</th>
+    <th>Remark</th>
+  </tr>
+  <% @appointments.each_with_index do |appointment,i| %>
+      <% patient = Patient.find_by(id: appointment.patient_id)%>
+      <% doctor = User.find_by(id: appointment.consultant_id) %>
+      <% last_opdrecord = OpdRecord.find_by(appointmentid: appointment.id.to_s)%>
+      <%  appointment_type = AppointmentType.find_by(id: appointment.appointment_type_id).try(:label)%>
+      <tr>
+        <!--index-->
+        <td><%= i+1%></td>
+        <td><%= appointment.facility.name %></td>
+        <td><%=  appointment_type%></td>
+        <!--Date & TIme-->
+        <td><%= appointment.appointmentdate.strftime("%d/%m/%y")%>,<%= appointment.start_time.strftime("%I:%M%p")%></td>
+        <!--Patient Name-->
+        <td><%= patient.fullname.capitalize%></td>
+        <!--Patient age-->
+        <td>
+          <% if patient.gender.present? and patient.age.present?%>
+              <%= patient.gender%>/<%= patient.age%>Y
+          <% elsif patient.age.present?%>
+              <%= patient.age%>Y
+          <% elsif patient.gender.present?%>
+              <%= patient.gender%>
+          <%end%>
+        </td>
+        <!--Patient Mobilenumber-->
+        <td><%= patient.mobilenumber%></td>
+        <!--Patient Email-->
+        <td><%= patient.email%></td>
+        <!--Seen by doctor-->
+        <td>Dr. &nbsp;<%= doctor.try(:fullname).try(:capitalize)%></td>
+        <!--Referral-->
+        <td>
+          <% referral = appointment.try(:patient_referral_type) %>
+          <% if referral.present? && !referral.try(:is_deleted) %>
+            <%= referral.try(:referral_type).try(:name).to_s %> - <%= referral.try(:sub_referral_type).try(:name).to_s %>
+          <% end %>
+        </td>
+        <% if last_opdrecord%>
+            <% if last_opdrecord.templatetype == "freeform"%>
+                <!--Freeform Daignosis-->
+                <td>
+                  <%= render partial: "/opd_appointments/print_diagnosis_list_xls.html.erb", locals: { diagnosis: last_opdrecord } %>
+                  <%= last_opdrecord.diagnosiscomments.html_safe()%>
+                </td>
+                <!--Freeform Examination-->
+                <% if last_opdrecord.free_procedure.present? %>
+                  <td><%= last_opdrecord.free_procedure.html_safe()%></td>
+                <% end %>
+            <%else%>
+                <td><%#= last_opdrecord.diagnosislist.split(",").join(",")%></td>
+            <%end%>
+            <td><%= last_opdrecord.advicemanagementplan%></td>
+        <%end%>
+        <td>
+          <% if last_opdrecord%>
+              <% if last_opdrecord.advice.read_attribute(:opdfollowupdate).present?  %>
+                  Fu on <%= Date.parse("#{last_opdrecord.advice.read_attribute(:opdfollowupdate)}").strftime('%d/%m/%y') %> <%= last_opdrecord.advice.read_attribute(:opdfollowuptime)  %>
+              <%end%>
+          <%end%>
+        </td>
+    <td></td>
+      </tr>
+  <%end%>
+</table>
+<style>
+    table {border: none;}
+</style>

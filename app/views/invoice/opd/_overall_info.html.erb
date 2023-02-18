@@ -1,0 +1,81 @@
+<% if invoice.payer_master_id.present? %>
+  <% payer_master = PayerMaster.find_by(id: invoice.payer_master_id) %>
+  <% payer_display_name = payer_master.display_name if payer_master.present? %>
+<% end %>
+<% template_fields = OrganisationsSetting.find_by(organisation_id: current_user.organisation_id).custom_template_header_options[:opd_settings][:invoices][0].select { |_key, value| value == true } %>
+<% fields_names = OrganisationSettingsHelper.get_data('opd_invoices', template_fields).keys %>
+
+<div class="appointment-patient-details mb10 mt10" style="border: 1px solid #666;padding: 2px;">
+  <div class="row">
+    <% template_fields.each_with_index do |(key, value), i| %>
+      <% field_name = fields_names[i] %>
+
+      <% if key == 'fullname' %>
+        <% field_value = "<b>#{patient.fullname.to_s.upcase}</b>" %>
+
+      <% elsif key == 'doctor_name' %>
+        <% field_value = "<b>Dr. #{User.find_by(id: appointment.consultant_id).fullname.to_s.upcase}</b>" rescue "N.A" %>
+
+      <% elsif key == 'facility_name' %>
+        <% field_value = appointment&.facility&.name %>
+
+      <% elsif key == 'calculate_age_gender' %>
+        <% field_value = patient.calculate_age.present? || patient.gender.present? ? patient.calculate_age.to_s + '/' + patient.gender.to_s : 'Unavailable' %>
+
+      <% elsif key == 'display_id' %>
+        <% field_value = appointment&.display_id %>
+
+      <% elsif key == 'created_at' %>
+        <% field_value = invoice.created_at.strftime("%d %b'%y, %I:%M %p") %>
+
+      <% elsif key == 'mr_no' %>
+        <% field_value = patient.patient_mrn %>
+
+      <% elsif key == 'appointment_date' %>
+        <% field_value = appointment&.appointmentdate&.strftime("%d %b'%y") %>
+
+      <% elsif key == 'mobilenumber' %>
+        <% field_value = patient.mobilenumber %>
+
+      <% elsif key == 'patient_identifier' %>
+        <% field_value = patient.patient_identifier_id %>
+
+      <% elsif key == 'bill_number' %>
+        <% field_value = invoice.bill_number %>
+
+      <% elsif key == 'patient_type' %>
+        <% field_value = patient.patient_type.try(:label) %>
+
+      <% elsif key == 'bill_type' %>
+        <% field_value = invoice.invoice_type.to_s.titleize %>
+      <% elsif key == 'address' %>
+        <% if patient.address_1.present? || patient.address_2.present? || patient.city.present? || patient.state.present? %>
+          <% field_value = patient.patient_full_address %>
+        <% else %>
+          <% field_value = 'Unavailable' %>
+        <% end %>
+      <%elsif key == 'claim_processor' %>
+        <% field_value = payer_display_name if payer_display_name.present? %>
+      <%elsif key == 'insurer' %>
+        <% field_value = PayerMaster.find(invoice.insurer_id).try(:display_name) if invoice.try(:insurer_id).present?%>
+      <% end %>
+
+      <% if field_name.present? && field_value.present? %>
+        <div class="col-xs-2" style="text-overflow: ellipsis; white-space: normal; word-wrap: break-word;padding: 0px 2px;">
+          <b><%= field_name %></b>&nbsp;:
+        </div>
+        <div class="col-xs-4" style="text-overflow: ellipsis; white-space: normal; word-wrap: break-word;padding: 0px 2px;">
+          <%= field_value.try(:html_safe) %>
+        </div>
+      <% end %>
+    <% end %>
+    <% if @payment_received.present? %>
+      <div class="col-xs-2" style="text-overflow: ellipsis; white-space: normal; word-wrap: break-word;padding: 0px 2px;">
+        <b>Receipt No</b>&nbsp;:
+      </div>
+      <div class="col-xs-4" style="text-overflow: ellipsis; white-space: normal; word-wrap: break-word;padding: 0px 2px;">
+        <%= @payment_received.try(:receipt_id) %>
+      </div>
+    <% end %>
+  </div>
+</div>

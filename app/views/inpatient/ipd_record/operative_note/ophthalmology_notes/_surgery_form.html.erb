@@ -1,0 +1,397 @@
+<% @time_zone = current_facility.time_zone %>
+<% ot_procedure_sort_order = OrganisationsSetting.find_by(organisation_id: current_user.organisation_id.to_s).try(:ot_procedure_sort_order).to_s %>
+<div class="row mb20" style="margin-top:20px;">
+  <div class="col-md-2 ">
+    Type Of Surgery :
+  <small style="cursor: pointer;color: rgb(66, 139, 202);display: inline;border: 1px solid rgb(66, 139, 202);border-radius: 2px;" id="clear_surgerytype">clear</small>
+  </div>
+  <div class="col-md-2">
+    <%= f.input :surgerytype, wrapper_html: { class: 'routine-emergency' }, collection: ['Elective', 'Emergency'], as: :hg_radio_button, label: false, required: false, class: 'btn btn-xs btn-white surgerytype', style: 'margin-top:-2px;', input_html: {}, checked: @operative_note.read_attribute(:surgerytype) %>
+  </div>
+  <div class="col-md-2 ">
+    Anesthesia :
+  </div>
+  <div class="col-md-4">
+    <%= f.input :anesthesia, wrapper_html: { class: 'anesthesia' }, collection: ['GA', 'EA', 'SA', 'LA', 'Sedation', 'Topical', 'Sub-tenon\'s', 'Sub conjunctival'], as: :hg_checkbox, label: false, required: false, class: 'btn btn-xs btn-white', style: 'margin-top:-2px;', input_html: {}, checked: @operative_note.checkboxes_checked(@operative_note.read_attribute(:anesthesia)) %>
+  </div>
+</div>
+<div class="row mb20">
+  <div class="col-md-2 ">
+    Pre-Operative Diagnosis :
+  </div>
+
+  <div class="col-md-9">
+    <% if @ipdrecord.diagnosislist.where(is_disabled: false).try(:length) > 0 %>
+      <% @ipdrecord.diagnosislist.where(is_disabled: false).group_by(&:icddiagnosiscode).each do |icddiagnosiscode, diagnoses| %>
+        <% if diagnoses[0][:created_from] == "migration" %>
+          <li style="margin-left: 10px"> <%= diagnoses[0][:diagnosisname].capitalize %></li>
+        <% else %>
+          <% if diagnoses[0].icd_type == 'TranslatedIcdDiagnosis' %>
+            <li style="margin-left: 10px"> <%= diagnoses[0][:diagnosisname].capitalize %>- <b><%= diagnoses[0][:icddiagnosiscode].upcase.insert(3, '.') %></b></li>
+          <% else %>
+            <li style="margin-left: 10px"> <%= diagnoses[0][:diagnosisoriginalname].capitalize %>- <b><%= diagnoses[0][:icddiagnosiscode].upcase.insert(3, '.') %></b></li>
+          <% end %>
+        <% end %>
+      <% end %>
+    <% end %>
+    <% if @case_sheet.free_form_diagnoses.count > 0 %>
+      <% if @case_sheet.free_form_diagnoses[@ipdrecord.id.to_s].present? %>
+        <% if @case_sheet.free_form_diagnoses[@ipdrecord.id.to_s][:content].present? && @case_sheet.free_form_diagnoses[@ipdrecord.id.to_s][:content] != "<br>" %>
+          <div class="row" style="font-size:12px;">
+            <div class="col-md-12" style="text-decoration: underline;"><b>DIAGNOSES <% if @ipdrecord.diagnosislist.where(is_disabled: false).try(:length) > 0 %>TEXT<% end %></b></div>
+            <div class="col-md-12">
+              <span><b style="color: #333;"><%= @case_sheet.free_form_diagnoses[@ipdrecord.id.to_s][:content].to_s.html_safe %></b></span>
+            </div>
+          </div>
+        <% end %>
+      <% else %>
+        <% uniq_array = [] %>
+        <div class="row" style="font-size:12px;">
+          <div class="col-md-12" style="text-decoration: underline;"><b>DIAGNOSES <% if @ipdrecord.diagnosislist.where(is_disabled: false).try(:length) > 0 %>TEXT<% end %></b></div>
+          <% @case_sheet.free_form_diagnoses.each do |key, diagnosis| %>
+            <% unless uniq_array.include?(diagnosis[:content].to_s.html_safe()) %>
+              <% if diagnosis[:content].present? && diagnosis[:content] != "<br>" %>
+                <div class="col-md-12">
+                  <span><b style="color: #333;"><%= diagnosis[:content].to_s.html_safe %></b></span>
+                </div>
+                <% uniq_array << diagnosis[:content].to_s.html_safe %>
+              <% end %>
+            <% end %>
+          <% end %>
+        </div>
+      <% end %>
+    <% end %>
+    <% if @ipdrecord.diagnosislist.where(is_disabled: false).try(:count) == 0 && @case_sheet.free_form_diagnoses.count == 0 %>
+      None
+    <% end %>
+  </div>
+</div>
+<%= f.hidden_field :ot_note_procedures, value: (@operative_note.procedures.try(:count) + @ipdrecord.procedure.where(procedurestage: 'P', :operative_note_id.in => [nil, '']).count) %>
+<input type="hidden" name="hdn_operative_note_id" id="hdn_operative_note_id" value="<%= @operative_note.id.to_s %>">
+<input type="hidden" name="hdn_ipd_record_id" id="hdn_ipd_record_id" value="<%= @ipdrecord.id.to_s %>">
+
+<input type="hidden" name="hdn_by" id="hdn_by" value="<%= current_user.try(:fullname) %>">
+<input type="hidden" name="hdn_by_id" id="hdn_by_id" value="<%= current_user.id.to_s %>">
+<input type="hidden" name="hdn_at_facility" id="hdn_at_facility" value="<%= current_facility.try(:name) %>">
+<input type="hidden" name="hdn_at_facility_id" id="hdn_at_facility_id" value="<%= current_facility.id.to_s %>">
+<input type="hidden" name="hdn_datetime" id="hdn_datetime" value="<%= Time.current %>">
+<div class="row mb20">
+  <% if false #Huzi Out %>
+    <div class="col-md-2">
+      Procedure Performed (OPD/Admission Note) :
+      <input type="text" class="form-control ui-autocomplete-input" id="search_procedure_keyword" placeholder="Search Procedure" style="width: 80%;" autocomplete="off">
+      <span id="error_procedure_performed"></span>
+    </div>
+    <div class="col-md-5 all-procedures">
+      <div class="col-md-10">
+        <table class="table table-bordered">
+          <tbody id='procedure-added' class='procedure-added'>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/soap_assessment_tab_procedures', locals: { procedures: @procedure, source: 'inpatient_ipd_record' } %>
+          </tbody>
+        </table>
+        <div class="procedure-removed" style="display:none;">
+        </div>
+      </div>
+    </div>
+  <% end %>
+  <div class="col-md-2">
+    Procedures :
+  </div>
+  <div class="col-md-10">
+    <% @ipd_record_procedures = @ipdrecord.procedure.where(has_declined: false, is_removed: false) %>
+    <% if @ipd_record_procedures.count > 0 %>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Performed</th>
+            <th style="width:20%;">Performed By</th>
+            <th style="width:20%;">Performed At</th>
+            <th>Name</th>
+            <th>Order Display ID</th>
+            <th>Advised</th>
+            <th>State</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% counter = 0 %>
+          <% @ipd_record_procedures.where(is_performed: false, performed_inline: false).order(advised_datetime: ot_procedure_sort_order).group_by { |p| [p.procedurefullcode, p.procedureside] }.each do |procedure_args, procedures| %>
+            <tr>
+              <td>
+                <% order_procedure = Order::Advised.find(procedures[0].order_advised_id.to_s) %>
+                <%= hidden_field_tag "ipd_record[procedure][#{counter}][order_item_advised_id]", procedures[0].order_item_advised_id.to_s %>
+
+                <%= hidden_field_tag "ipd_record[procedure][#{counter}][id]", procedures[0].id %>
+                <%= hidden_field_tag "ipd_record[procedure][#{counter}][order_advised_id]", procedures[0].order_advised_id.to_s %>
+                <div class="ckbox ckbox-primary mb5">
+                  <% if procedures[0].is_performed && (procedures[0].performed_note_id.to_s != @operative_note.id.to_s) %>
+                    <%= hidden_field_tag "ipd_record[procedure][#{counter}][is_performed]", true %>
+                    <%= hidden_field_tag "ipd_record[procedure][#{counter}][procedure_cnt]", counter %>
+                    <%= check_box_tag "ipd_record[procedure][#{counter}][is_performed]", true, procedures[0].is_performed, id: "is_performed_#{counter}", disabled: 'disabled', class: 'chk_ipd_procedure' %>
+                    <label for="is_performed_<%= counter %>"></label>
+                  <% else %>
+                    <%= hidden_field_tag "ipd_record[procedure][#{counter}][is_performed]", false %>
+                    <%= hidden_field_tag "ipd_record[procedure][#{counter}][procedure_cnt]", counter %>
+                    <%= check_box_tag "ipd_record[procedure][#{counter}][is_performed]", true, procedures[0].is_performed, id: "is_performed_#{counter}", class: 'chk_ipd_procedure' %>
+                    <label for="is_performed_<%= counter %>"></label>
+                  <% end %>
+                </div>
+              </td>
+              <td>
+                <% if procedures[0].is_performed && (procedures[0].performed_note_id.to_s != @operative_note.id.to_s) %>
+                  <%= hidden_field_tag "ipd_record[procedure][#{counter}][performed_by]", procedures[0].performed_by_id %>
+                  <span><%= procedures[0].performed_by %></span>
+                <% else %>
+                  <% @doctors = User.where(facility_ids: current_facility.id, role_ids: 158965000, is_active: true) %>
+                  <%= select_tag("ipd_record[procedure][#{counter}][performed_by]", options_for_select(@doctors.map { |doctor| [doctor.fullname, doctor.id] }, procedures[0].performed_by_id), include_blank: 'Select', class: 'form-control p3_10') %>
+                <% end %>
+              </td>
+              <td>
+                <% if procedures[0].is_performed && (procedures[0].performed_note_id.to_s != @operative_note.id.to_s) %>
+                  <% performed_date = procedures[0].try(:performed_date) || procedures[0].performed_datetime.to_date %>
+                  <% performed_time = procedures[0].try(:performed_time) || procedures[0].performed_datetime.noon %>
+                  <%= hidden_field_tag "ipd_record[procedure][#{counter}][performed_datetime]", procedures[0].performed_datetime %>
+                  <span><%= procedures[0].try(:performed_datetime).strftime('%d/%m/%Y') %></span>
+                <% else %>
+                  <% performed_date = procedures[0].try(:performed_datetime).to_date rescue Date.current %>
+                  <% performed_time = procedures[0].try(:performed_datetime).noon rescue Time.current %>
+                  <%= text_field_tag "ipd_record[procedure][#{counter}][performed_datetime]", procedures[0].performed_datetime.try(:strftime, '%d/%m/%Y') || Time.current.strftime('%d/%m/%Y'), class: 'form-control p3_10 ipd_record_performed_datetime', readonly: 'readonly', style: 'background:#fff;cursor:pointer;' %>
+                <% end %>
+                <%= hidden_field_tag "ipd_record[procedure][#{counter}][performed_date]", performed_date, class: 'ipd_record_performed_date' %>
+                <%= hidden_field_tag "ipd_record[procedure][#{counter}][performed_time]", performed_time.strftime('%Y-%m-%d %H:%M:%S %:z'), class: 'ipd_record_performed_time' %>
+              </td>
+              <td>
+                <span><%= procedures[0].procedurename.to_s + ', ' + procedures[0].get_label_for_procedure_side(procedures[0].procedureside) %></span>
+              </td>
+              <td>
+                <span><%= order_procedure&.display_id %></span>
+              </td>
+              <td>
+                <span><%= procedures[0].advised_by %> - <%= procedures[0].try(:advised_datetime).try(:strftime, '%d/%m/%Y') %></span>
+              </td>
+              <td>
+                <span><%= procedures[0].procedurestage %></span>
+              </td>
+            </tr>
+            <% counter += 1 %>
+          <% end %>
+          <% @ipd_record_procedures.where(is_performed: true).each_with_index do |procedure, i| %>
+            <tr>
+              <td>
+                <% order_procedure = Order::Advised.find(procedure.order_advised_id.to_s) %>
+                <%= hidden_field_tag "ipd_record[procedure][#{counter}][id]", procedure.id %>
+                <%= hidden_field_tag "ipd_record[procedure][#{counter}][order_item_advised_id]", procedure.order_item_advised_id.to_s %>
+                
+                <%= hidden_field_tag "ipd_record[procedure][#{counter}][order_advised_id]", procedure.order_advised_id.to_s %>
+                <div class="ckbox ckbox-primary mb5">
+                  <% if procedure.is_performed && (procedure.performed_note_id.to_s != @operative_note.id.to_s) %>
+                    <%= hidden_field_tag "ipd_record[procedure][#{counter}][is_performed]", true %>
+                    <%= hidden_field_tag "ipd_record[procedure][#{counter}][procedure_cnt]", counter %>
+                    <%= check_box_tag "ipd_record[procedure][#{counter}][is_performed]", true, procedure.is_performed, id: "is_performed_#{counter}", disabled: 'disabled', class: 'chk_ipd_procedure' %>
+                    <label for="is_performed_<%= counter %>"></label>
+                  <% else %>
+                    <%= hidden_field_tag "ipd_record[procedure][#{counter}][is_performed]", false %>
+                    <%= hidden_field_tag "ipd_record[procedure][#{counter}][procedure_cnt]", counter %>
+                    <%= check_box_tag "ipd_record[procedure][#{counter}][is_performed]", true, procedure.is_performed, id: "is_performed_#{counter}", class: 'chk_ipd_procedure' %>
+                    <label for="is_performed_<%= counter %>"></label>
+                  <% end %>
+                </div>
+              </td>
+              <td>
+                <% if procedure.is_performed && (procedure.performed_note_id.to_s != @operative_note.id.to_s) %>
+                  <%= hidden_field_tag "ipd_record[procedure][#{counter}][performed_by]", procedure.performed_by_id %>
+                  <span><%= procedure.performed_by %></span>
+                <% else %>
+                  <% @doctors = User.where(facility_ids: current_facility.id, role_ids: 158965000) %>
+                  <%= select_tag("ipd_record[procedure][#{counter}][performed_by]", options_for_select(@doctors.map { |doctor| [doctor.fullname, doctor.id] }, procedure.performed_by_id), include_blank: 'Select', class: 'form-control p3_10') %>
+                <% end %>
+              </td>
+              <td>
+                <% if procedure.is_performed && (procedure.performed_note_id.to_s != @operative_note.id.to_s) %>
+                  <% performed_date = procedure.try(:performed_date) || procedure.try(:performed_datetime).try(:to_date) %>
+                  <% performed_time = procedure.try(:performed_time) || procedure.try(:performed_datetime).try(:noon) %>
+                  <%= hidden_field_tag "ipd_record[procedure][#{counter}][performed_datetime]", procedure.performed_datetime %>
+                  <span><%= procedure.try(:performed_datetime).try(:strftime, '%d/%m/%Y') %></span>
+                <% else %>
+                  <% performed_date = procedure.try(:performed_datetime).try(:to_date) || Date.current %>
+                  <% performed_time = procedure.try(:performed_datetime).try(:noon) || Time.current %>
+                  <%= text_field_tag "ipd_record[procedure][#{counter}][performed_datetime]", procedure.performed_datetime.try(:strftime, '%d/%m/%Y') || Time.current.strftime('%d/%m/%Y'), class: 'form-control p3_10 ipd_record_performed_datetime', readonly: 'readonly', style: 'background:#fff;cursor:pointer;' %>
+                <% end %>
+                <%= hidden_field_tag "ipd_record[procedure][#{counter}][performed_date]", performed_date, class: 'ipd_record_performed_date' %>
+                <%= hidden_field_tag "ipd_record[procedure][#{counter}][performed_time]", performed_time.strftime('%Y-%m-%d %H:%M:%S %:z'), class: 'ipd_record_performed_time' %>
+              </td>
+              <td>
+                <span><%= procedure.procedurename.to_s + ', ' + procedure.get_label_for_procedure_side(procedure.procedureside) %></span>
+              </td>
+              <td>
+                <span><%= order_procedure&.display_id %></span>
+              </td>
+              <td>
+                <span><%= procedure.advised_by %> - <%= procedure.try(:advised_datetime).try(:strftime, '%d/%m/%Y') %></span>
+              </td>
+              <td>
+                <span><%= procedure.procedurestage %></span>
+              </td>
+            </tr>
+            <% counter += 1 %>
+          <% end %>
+        </tbody>
+      </table>
+    <% end %>
+    <% if @case_sheet.free_form_procedures.count > 0 %>
+      <div class="row" style="font-size:12px;">
+        <%# if @ipd_record_procedures.count > 0 %>
+          <!-- <div class="col-md-12" style="text-decoration: underline;"><b>PROCEDURES TEXT</b></div> -->
+        <%# end %>
+        <% if @case_sheet.free_form_procedures[@ipdrecord.id.to_s].present? %>
+          <% if @case_sheet.free_form_procedures[@ipdrecord.id.to_s][:content].present? && @case_sheet.free_form_procedures[@ipdrecord.id.to_s][:content] != "<br>" %>
+            <div class="col-md-12" style="text-decoration: underline;"><b>PROCEDURES TEXT</b></div>
+            <div class="col-md-12">
+              <span><b style="color: #333;"><%= @case_sheet.free_form_procedures[@ipdrecord.id.to_s][:content].to_s.html_safe %></b></span>
+            </div>
+          <% end %>
+        <% else %>
+          <% uniq_array = [] %>
+          <% @case_sheet.free_form_procedures.each do |key, procedure| %>
+            <% if procedure[:content] == "<br>" %>
+              <% unless uniq_array.include?(procedure[:content].to_s.html_safe()) %>
+                <div class="col-md-12">
+                  <span><b style="color: #333;"><%= procedure[:content].to_s.html_safe %></b></span>
+                </div>
+                <% uniq_array << procedure[:content].to_s.html_safe %>
+              <% end %>
+            <% end %>
+          <% end %>
+        <% end %>
+      </div>
+    <% end %>
+    <% if @ipd_record_procedures.count == 0 && @case_sheet.free_form_procedures.count == 0 %>
+      None
+    <% end %>
+    <ul>
+      <li style="color: red">Check-out "Complications" tab to add complications</li>
+    </ul>
+  </div>
+</div>
+<div class="row mb20" style="margin-left: 193px"></div>
+
+<div class="row mb20 mb10">
+  <% if @theatre.present? %>
+  <div class='col-md-2'>Theatre </div>
+  <div class='col-md-3'>
+    <%= f.select :theatre_name, @theatre, { include_blank: 'Select theatre' }, class: 'form-control', id: 'theatre', style: 'width: 60%;' %>
+  </div>
+    <div class="col-md-1"></div>
+  <% end %>
+
+  <div class="col-md-2">Case No.</div>
+  <div class="col-md-3"><%= f.text_field :case_no, value: @case_sheet.try(:case_id), style: 'padding: 2%;', readonly: 'readonly' %> </div>
+  <div class="col-md-1"> </div>
+</div>
+
+<div class="row mb20 mb10">
+  <div class="col-md-2">
+    Section
+    <small style="cursor: pointer;color: rgb(66, 139, 202);display: inline;border: 1px solid rgb(66, 139, 202);border-radius: 2px;" id="clear_section">clear</small>
+  </div>
+  <div class="col-md-3">
+    <%= f.input :theatre_section, wrapper_html: { class: 'section' }, collection: ['Corneal', 'Limbal', 'Scleral'], as: :hg_radio_button, label: false, required: false, class: 'btn btn-xs btn-white section', style: 'margin-top:-2px;', input_html: {}, checked: @operative_note.read_attribute(:theatre_section) %>
+  </div>
+  <div class="col-md-1"> </div>
+
+  <div class="col-md-2">
+    Site
+    <small style="cursor: pointer;color: rgb(66, 139, 202);display: inline;border: 1px solid rgb(66, 139, 202);border-radius: 2px;" id="clear_site">clear</small>
+  </div>
+  <div class="col-md-3">
+    <%= f.input :site, wrapper_html: { class: 'site' }, collection: ['Superior', 'Temporal', 'LRI'], as: :hg_radio_button, label: false, required: false, class: 'btn btn-xs btn-white site', style: 'margin-top:-2px;', input_html: {}, checked: @operative_note.read_attribute(:site) %>
+  </div>
+  <div class="col-md-1"> </div>
+</div>
+
+<div class="row mb20 mb10">
+
+  <div class="col-md-2">
+    Capsulotomy
+    <small style="cursor: pointer;color: rgb(66, 139, 202);display: inline;border: 1px solid rgb(66, 139, 202);border-radius: 2px;" id="clear_capsulotomy">clear</small>
+  </div>
+  <div class="col-md-3">
+    <%= f.input :capsulotomy, wrapper_html: { class: 'capsulotomy' }, collection: ['Can opener', 'CCC', 'Envelope'], as: :hg_radio_button, label: false, required: false, class: 'btn btn-xs btn-white capsulotomy', style: 'margin-top:-2px;', input_html: {}, checked: @operative_note.read_attribute(:capsulotomy) %>
+  </div>
+  <div class="col-md-1"> </div>
+
+  <div class="col-md-2">
+    Iridectomy
+    <small style="cursor: pointer;color: rgb(66, 139, 202);display: inline;border: 1px solid rgb(66, 139, 202);border-radius: 2px;" id="clear_iridectomy">clear</small>
+  </div>
+  <div class="col-md-3">
+    <%= f.input :iridectomy, wrapper_html: { class: 'Iridectomy' }, collection: ['NIL', 'PI', 'SI', 'ST'], as: :hg_radio_button, label: false, required: false, class: 'btn btn-xs btn-white iridectomy', style: 'margin-top:-2px;', input_html: {}, checked: @operative_note.read_attribute(:iridectomy) %>
+  </div>
+  <div class="col-md-1"> </div>
+  <div class="col-md-2">
+    IOL
+    <small style="cursor: pointer;color: rgb(66, 139, 202);display: inline;border: 1px solid rgb(66, 139, 202);border-radius: 2px;" id="clear_iol">clear</small>
+  </div>
+  <div class="col-md-3">
+    <%= f.input :iol, wrapper_html: { class: 'iol' }, collection: ['In bag', 'Sulcus', 'IF IOL', 'SF IOL', 'NIL'], as: :hg_radio_button, label: false, required: false, class: 'btn btn-xs btn-white iol', style: 'margin-top:-2px;', input_html: {}, checked: @operative_note.read_attribute(:iol) %>
+  </div>
+  <div class="col-md-1"> </div>
+</div>
+
+<div class="row mb20 timer_row mb10">
+  <div class='col-md-2 '>
+    Patient Entry Time :
+  </div>
+  <div class='col-md-3 timer_field bootstrap-timepicker timepicker'>
+    <%= f.hidden_field :patient_entry_time, class: 'feed_time patient_entry_time', style: 'margin-top:-2px;text-align:center;', readonly: 'readonly' %>
+    <input type="text" class="feed_time_view patient_entry_time surgery_timepicker" style="margin-top:-2px;text-align:center;" value="<% unless @operative_note.read_attribute(:patient_entry_time).blank? %><%= @operative_note.read_attribute(:patient_entry_time).in_time_zone(@time_zone).strftime('%I:%M %p') %><% end %>">
+    <button class="btn btn-primary btn-xs set_time" style="padding: 0 7px;"><i class="fa fa-clock-o fa-lg"></i></button>
+  </div>
+  <div class="col-md-1"></div>
+  <div class='col-md-2 '>
+    Patient Exit Time :
+  </div>
+  <div class='col-md-3 timer_field bootstrap-timepicker timepicker'>
+    <%= f.hidden_field :patient_exit_time, class: 'feed_time patient_exit_time', style: 'margin-top:-2px;text-align:center;', readonly: 'readonly' %>
+    <input type="text" class="feed_time_view patient_exit_time surgery_timepicker" style="margin-top:-2px;text-align:center;" value="<% unless @operative_note.read_attribute(:patient_exit_time).blank? %><%= @operative_note.read_attribute(:patient_exit_time).in_time_zone(@time_zone).strftime('%I:%M %p') %><% end %>">
+    <button class="btn btn-primary btn-xs set_time" style="padding: 0 7px;"><i class="fa fa-clock-o fa-lg"></i></button>
+  </div>
+</div>
+
+<div class="row mb20 timer_row mb10">
+  <div class='col-md-2 '>
+    Anesthesia Start :
+  </div>
+  <div class='col-md-3 timer_field bootstrap-timepicker timepicker'>
+    <%= f.hidden_field :anesthesia_start_time, class: 'feed_time anesthesia_start_time', style: 'margin-top:-2px;text-align:center;', readonly: 'readonly' %>
+    <input type="text" class="feed_time_view anesthesia_start_time surgery_timepicker" style="margin-top:-2px;text-align:center;" value="<% unless @operative_note.read_attribute(:anesthesia_start_time).blank? %><%= @operative_note.read_attribute(:anesthesia_start_time).in_time_zone(@time_zone).strftime('%I:%M %p') %><% end %>">
+    <button class="btn btn-primary btn-xs set_time" style="padding: 0 7px;"><i class="fa fa-clock-o fa-lg"></i></button>
+  </div>
+  <div class="col-md-1"></div>
+  <div class='col-md-2'>
+    Anesthesia End :
+  </div>
+  <div class='col-md-3 timer_field bootstrap-timepicker timepicker'>
+    <%= f.hidden_field :anesthesia_end_time, class: 'feed_time anesthesia_end_time', style: 'margin-top:-2px;text-align:center;', readonly: 'readonly' %>
+    <input type="text" class="feed_time_view anesthesia_end_time surgery_timepicker" style="margin-top:-2px;text-align:center;" value="<% unless @operative_note.read_attribute(:anesthesia_end_time).blank? %><%= @operative_note.read_attribute(:anesthesia_end_time).in_time_zone(@time_zone).strftime('%I:%M %p') %><% end %>">
+    <button class="btn btn-primary btn-xs set_time" style="padding: 0 7px;"><i class="fa fa-clock-o fa-lg"></i></button>
+  </div>
+</div>
+<div class="row mb20 timer_row mb10">
+  <div class='col-md-2 '>
+    Surgery Start :
+  </div>
+  <div class='col-md-3 timer_field bootstrap-timepicker timepicker'>
+    <%= f.hidden_field :surgery_start_time, class: 'feed_time surgery_start_time', style: 'margin-top:-2px;text-align:center;', readonly: 'readonly' %>
+    <input type="text" class="feed_time_view surgery_start_time surgery_timepicker" style="margin-top:-2px;text-align:center;" value="<% unless @operative_note.read_attribute(:surgery_start_time).blank? %><%= @operative_note.read_attribute(:surgery_start_time).in_time_zone(@time_zone).strftime('%I:%M %p') %><% end %>">
+    <button class="btn btn-primary btn-xs set_time" style="padding: 0 7px;"><i class="fa fa-clock-o fa-lg"></i></button>
+  </div>
+  <div class="col-md-1"></div>
+  <div class='col-md-2 '>
+    Surgery End :
+  </div>
+  <div class='col-md-3 timer_field bootstrap-timepicker timepicker'>
+    <%= f.hidden_field :surgery_end_time, class: 'feed_time surgery_end_time', style: 'margin-top:-2px;text-align:center;', readonly: 'readonly' %>
+    <input type="text" class="feed_time_view surgery_end_time surgery_timepicker" style="margin-top:-2px;text-align:center;" value="<% unless @operative_note.read_attribute(:surgery_end_time).blank? %><%= @operative_note.read_attribute(:surgery_end_time).in_time_zone(@time_zone).strftime('%I:%M %p') %><% end %>">
+    <button class="btn btn-primary btn-xs set_time" style="padding: 0 7px;"><i class="fa fa-clock-o fa-lg"></i></button>
+  </div>
+</div>

@@ -1,0 +1,112 @@
+<% @speciality_folder_name ||= specalityfoldername %>
+<% if opdrecord.send("#{@flag}_advice_flag").blank? || opdrecord.send("#{@flag}_advice_flag") == "1" %>
+<% font = text_font_size%>
+  <div class="replace_medication" style="<%= font %>" >
+    <% if opdrecord.has_treatmentmedication? || opdrecord.medicationcomments.present? %>
+      <br>
+      <div class="row">
+        <span class="medication_title"><strong style="<%= font %>">ADVICE : </strong></span>
+        <% if mail_job == false %>
+          <% unless params[:action] == "print_opd_record" || params[:action] == "print_medication" %>
+            <div class="btn-group pull-right" style="margin-top:-8px;">
+              <% if Authorization::PolicyHelper.verification(current_user.id ,"HGP-101-111-101") %>
+                <%= link_to new_mail_record_tracker_path(record_name: 'Medication Prescription', patient_id: patient.id, record_id: opdrecord._id, record_model: 'OpdRecord', appointment_id: appointment.id.to_s, speciality: specalityfoldername), class: 'btn btn-xs btn-primary', data: { :remote => true, 'disable-with' => 'Please Wait...' } do %> <i class="fa fa-print"></i> Email<% end %>
+              <% end %>
+              <% if @mode != "tabview" %>
+                <% if Authorization::PolicyHelper.verification(current_user.id ,"HGP-101-111-100") %>
+                  <% if @print_settings.count > 1 %>
+                    <div class="btn-group">
+                      <button type="button" class="btn btn-primary btn-xs dropdown-toggle" data-toggle="dropdown"><i class="fa fa-print mr5"></i> Print <i class="fa fa-caret-down"></i></button>
+                      <ul class="dropdown-menu dropdown-left-manual" role="menu" aria-labelledby="summary-print-dropdown" style="">
+                        <% @print_settings.each do |print_setting| %>
+                          <li style="text-align:left" class="multi-print">
+                            <%= link_to opd_records_print_medication_path(opdrecordid: opdrecord._id, patientid: patient.id, appointmentid: appointment.id, templatetype: templatetype, specality: specalityfoldername, print_setting_id: print_setting.id, format: :pdf), class: 'full_print', style: 'color: #d9534f;', target: '_blank', data: { method: :get } do %> <i class="fa fa-print mr5"></i> <%= print_setting.name %> <% end %>
+                          </li>
+                        <% end %>
+                      </ul>
+                    </div>
+                  <% else %>
+                    <%= link_to opd_records_print_medication_path(opdrecordid: opdrecord._id, patientid: patient.id, appointmentid: appointment.id, templatetype: templatetype, specality: specalityfoldername, print_setting_id: @print_settings[0]&.id, format: :pdf), class: 'btn btn-primary btn-xs full_print', target: '_blank', data: { method: :get } do %> <i class="fa fa-print mr5"></i> Print <% end %>
+                  <% end %>
+                <% end %>
+              <% end %>
+            </div>
+          <% end %>
+        <% end %>
+        <div class="summary-line-border"></div>
+      </div>
+    <% end %>
+    <% if opdrecord.has_treatmentmedication? %>
+      <div class="row"><div class="medication_heading"><strong  style="<%= font %>"><%= LanguageHelper.translation('medication', translated_language) %></strong></div></div>
+      <% [nil, 'C', 'D'].each do |mg| %>
+        <% if medication_groups.to_h[mg] %>
+          <div class="medication_heading"><strong><%= OpdRecordsHelper.translate_medication_status(mg, translated_language) %>:</strong></div>
+          <div class="mb10 check_font">
+            <table class="table table-bordered">
+              <thead>
+                <tr>
+                  <th nowrap><%= LanguageHelper.translation('sr_no', translated_language) %></th>
+                  <th nowrap><%= LanguageHelper.translation('name', translated_language) %></th>
+                  <th class="text-center" nowrap><%= LanguageHelper.translation('quantity', translated_language) %></th>
+                  <th class="text-center" nowrap>
+                    <%= LanguageHelper.translation('frequency', translated_language) %>
+                  </th>
+                  <th nowrap><%= LanguageHelper.translation('duration', translated_language) %></th>
+                  <th nowrap><%= LanguageHelper.translation('eye', translated_language) %></th>
+                  <th nowrap><%= LanguageHelper.translation('instruction', translated_language) %></th>
+                </tr>
+              </thead>
+              <tbody>
+              <% medication_groups.to_h[mg].each_with_index do |medication,i| %>
+                <%= render partial: "opd_records/#{@speciality_folder_name}_notes/opd_partials/summary/opd_summary_form_medication_row.html.erb", locals: { medication: medication, translated_language: translated_language, current_facility: current_facility, i: i } %>
+                <% unless medication.taper_id == "0" || medication.taper_id == nil || medication.taper_id == "" %>
+                  <%= render partial: "opd_records/#{@speciality_folder_name}_notes/opd_partials/summary/opd_summary_form_medication_taper.html.erb", locals: { medication: medication, current_facility: current_facility, i: i, translated_language: translated_language } %>
+                <% end %>
+              <% end %>
+              </tbody>
+            </table>
+          </div>
+        <% end %>
+      <% end %>
+    <% end %>
+    <% if opdrecord.medicationcomments.present? %>
+      <span style="white-space: pre-line"><%= opdrecord.medicationcomments %></span>
+    <% end %>
+  </div>
+<% end %>
+<style type="text/css">
+/*  <% if mail_job == false %>
+    <% if params[:action] == "print_opd_record" || params[:action] == "print_medication" %>
+      .check_font * {
+        font-size: 9px;
+      }
+      .medication_title {
+        font-size: 9px;
+      }
+    <% else %>
+      .check_font * {
+        font-size: 12px;
+      }
+      .medication_title {
+        font-size: 14px;
+      }
+    <% end %>
+  <% elsif mail_job == true %>
+   .check_font * {
+      font-size: 9px;
+    }
+    .medication_title {
+      font-size: 9px;
+    }
+  <% end %>*/
+  .check_font table tr th {
+    padding: 2px 5px;
+  }
+
+  .check_font table tr td {
+    padding: 2px 5px;
+  }
+
+  thead { display: table-header-group }
+  tr { page-break-inside: avoid }
+</style>

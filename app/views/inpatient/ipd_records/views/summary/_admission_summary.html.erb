@@ -1,0 +1,133 @@
+<% admission_summary_counter = 0 %>
+<% diagnosis_from_opd = Inpatient::Diagnosis.where(ipdrecord_id: ipdrecord.id)%>
+<% all_procedure = Inpatient::Procedure.where(ipdrecord_id: ipdrecord.id)%>
+<% procedure = all_procedure.where(procedurestatus: "Pre-Operative")%>
+<% performed_procedures = all_procedure.where(:procedurestatus.in =>["Performed"]).order("created_at DESC")%>
+<% if ipdrecord.admissionreason.present? || ipdrecord.expected_length_of_stay? || ipdrecord.expected_discharge_date.present? || ipdrecord.provision_diagnosis.present? || ipdrecord.care_plan.present? || ipdrecord.ipd_payment_type.present? || ipdrecord.ipd_billing_category.present? || ipdrecord.medico_legal_case.present? || ipdrecord.insurance_name.present? || ipdrecord.tpa_name.present? || ipdrecord.govt_scheme.present? || @tpa.bracket_amount.present? || @tpa.approved_amount.present? %>
+  <% admission_summary_counter = admission_summary_counter + 1 %>
+<% end %>
+
+<% if admission_summary_counter > 0 %>
+  <div class="row mb10">
+    <div class="col-md-12">
+      <% if ipdrecord.admissionreason.present? || ipdrecord.expected_discharge_date.present? || ipdrecord.expected_length_of_stay.present? %>
+        <div class="row mb20">
+        <% if ipdrecord.admissionreason.present? %>
+          <div class="col-md-6">
+            <b>Reason For Admission :</b> <%= ipdrecord.admissionreason %>
+          </div>
+        <% end %>
+        <% if ipdrecord.expected_discharge_date.present? || ipdrecord.expected_length_of_stay.present? %>
+          <div class="col-md-6">
+            <% if ipdrecord.expected_length_of_stay.present? %>
+              <b>Expected Stay :</b> <%= ipdrecord.expected_length_of_stay %><br>
+            <% end %>
+            <% if ipdrecord.expected_discharge_date.present? %>
+              <b>Expected Discharge Date:</b> <%= ipdrecord.expected_discharge_date %>
+            <% end %>
+          </div>
+        <% end %>
+        </div>
+      <% end %>
+      <% if ipdrecord.ipd_payment_type.present? || ipdrecord.ipd_billing_category.present? || ipdrecord.medico_legal_case.present? %>
+        <div class="row mb20">
+          <% if ipdrecord.ipd_payment_type.present? %>
+            <div class="col-md-4">
+              <b>Payment Type :</b> <%= ipdrecord.ipd_payment_type %>
+            </div>
+          <% end %>
+          <% if ipdrecord.ipd_billing_category.present? %>
+            <div class="col-md-4">
+              <b>Billing Category :</b> <%= ipdrecord.ipd_billing_category %>
+            </div>
+          <% end %>
+          <% if ipdrecord.medico_legal_case.present? %>
+            <div class="col-md-4">
+              <b>Medico-Legal Case :</b> <%= ipdrecord.medico_legal_case %>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+      <% if ipdrecord.insurance_name.present? || ipdrecord.tpa_name.present? || ipdrecord.govt_scheme.present? || @tpa.bracket_amount.present? || @tpa.approved_amount.present? %>
+        <div class="row mb20">
+          <% if ipdrecord.insurance_name.present? %>
+            <div class="col-md-4">
+              <b>Insurance Name :</b> <%= ipdrecord.insurance_name %>
+            </div>
+          <% end %>
+          <% if ipdrecord.tpa_name.present? %>
+            <div class="col-md-4">
+              <b>TPA Provider Name :</b> <%= ipdrecord.tpa_name %>
+            </div>
+          <% end %>
+          <% if ipdrecord.govt_scheme.present? %>
+            <div class="col-md-4">
+              <b>Government Scheme :</b> <%= ipdrecord.govt_scheme %>
+            </div>
+          <% end %>
+          <% if @tpa.is_insured? %>
+            <% if @tpa.bracket_amount.present? %>
+              <div class="col-md-4">
+                <b>Bracket Amount :</b> <%= @tpa.bracket_amount %>
+              </div>
+            <% end %>
+            <% if @tpa.approved_amount.present? %>
+              <div class="col-md-4">
+                <b>Approved Amount :</b> <%= @tpa.approved_amount %>
+              </div>
+            <% end %>
+          <% end %>
+        </div>
+      <% end %>
+      <% if diagnosis_from_opd.try(:count) > 0%>
+        <div class="row mb20">
+              <div class="col-md-12">
+                <b>Diagnosis:</b>
+                <%= render partial: 'inpatient/ipd_records/common/diagnosis_output.html.erb',locals: {diagnosis: diagnosis_from_opd}%>
+              </div>
+        </div>
+      <% end %>
+      <div class="row mb20">
+            <% if procedure.count > 0%>
+                <div class="col-md-12">
+                  <b>Care Plan:</b>
+                  <% procedure.each do |i| %>
+                      <li style="margin-left: 10px"><%= i.procedurename + ',' + i.get_label_for_procedure_side(i.procedureside)%> </li>
+                  <%end%>
+                </div>
+            <%end%>
+      </div>
+      <% if performed_procedures.count > 0 %>
+          <div class="row mb20">
+            <div class="col-md-3 ">
+              <b> Procedure Performed:</b>
+            </div>
+            <div class="col-md-8">
+              <table class="table table-bordered">
+                <tr>
+                  <th>Name Of Surgery</th>
+                  <th>Eye Operated</th>
+                  <th>Date of Surgery</th>
+                </tr>
+
+                <% performed_procedures.each_with_index do |i|%>
+                    <tr>
+                      <td><%= i.procedurename%></td>
+                      <% if i.procedureside == "8966001" %>
+                          <td>Left Eye</td>
+                      <% elsif i.procedureside == "18944008" %>
+                          <td>Right Eye</td>
+                      <% elsif i.procedureside == "40638003" %>
+                          <td>Both Eyes</td>
+                      <%end%>
+                      <td><%= i.surgerydate%></td>
+                    </tr>
+                <%end%>
+
+              </table>
+            </div>
+          </div>
+      <% end %>
+    </div>
+  </div>
+<% end %>

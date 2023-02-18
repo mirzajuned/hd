@@ -1,0 +1,247 @@
+$(".edit_patient_info").on('hover', function(){
+  $(this).append("&nbsp;Edit")
+})
+$(".edit_patient_info").on('mouseleave', function(){
+  $(this).html("<i class='fa fa-edit'></i>")
+})
+
+$(".assign-bed").on('hover', function(){
+  $(this).append("&nbsp;Assign Bed")
+})
+$(".assign-bed").on('mouseleave', function(){
+  $(this).html("<i class='fa fa-edit'></i>")
+})
+
+$(".edit_existing_bed").on('hover', function(){
+  $(this).append("&nbsp;Change Bed")
+})
+$(".edit_existing_bed").on('mouseleave', function(){
+  $(this).html("<i class='fa fa-edit'></i>")
+})
+
+$(".remove-existing-bed").on('hover', function(){
+  $(this).append("&nbsp;Remove Bed")
+})
+$(".remove-existing-bed").on('mouseleave', function(){
+  $(this).html("<i class='fa fa-times'></i>")
+})
+
+// Visit Patient Summary
+$("#patient-summary-timeline-link").on('click', function(){
+  var doctor_id = $("#sidebar_doctors_admission .active").find('a').attr('data-user-id')
+  var active_tab = $(".tab_active").find(".active").attr('data-tab-id')
+  var users_list = $(".toggle-sidebar-users").attr('data-toggle-position')
+  $.ajax({
+    type: "GET",
+    dataType: "script",
+    url: "/patient_summary/<%= @patient.id.to_s %>",
+    data: {
+      admission_id: "<%= @admission.id.to_s %>",
+      active_tab: active_tab,
+      active_doctor: doctor_id,
+      users_list: users_list,
+      current_date: "<%= @current_date %>",
+      url: "/inpatients/admission_management"
+    }
+  });
+  history.pushState('', '', '/patient_summary/<%= @patient.id.to_s %>'); // history.pushState([data], [title], [url]);
+})
+
+$(".ipd_invoice_action").on('click', function(e){
+  e.preventDefault();
+  var _this = this;
+  $.ajax({
+    url: $(_this).attr('data-path'),
+    dataType: 'script',
+    data: {
+      type: $(_this).attr('data-type'),
+      cash_register_template: $(_this).attr('data-cash-register-template'),
+      typeid: $(_this).attr('data-typeid'),
+      admissionid: "<%= @admission.id %>",
+      admission_id: "<%= @admission.id %>"
+    }
+  })
+})
+
+// $(".doc_reminder_text").on('focusout',function(e){
+//   $(this).attr('title',$(this).val())
+//   $.ajax({
+//     type: "GET",
+//     url: '/patients/save_doc_reminder_note',
+//     data: {
+//       reminder_text: $(this).val(),
+//       patient_id:'<%= @admission.patient.id.to_s %>',
+//       doctor_id: '<%= @admission.doctor.to_s %>',
+//       remote: "true"
+//     },
+//     success: function(res){
+//     }
+//   });
+// })
+
+$("#mark-patient-admitted").on('click', function(){
+  $.ajax({
+    type: "GET",
+    dataType: "json",
+    url: "/admissions/"+ '<%= @admission.id.to_s %>' +"/patient_arrived",
+    data: {
+      id: '<%= @admission.id.to_s %>'
+    },
+    success: function(res){
+      if($(".admission-panel").length > 0){
+        $("#modalCalendarAdmissionDetails").modal("hide")
+        var doctor_id = $("#sidebar_doctors_admission .active").find('a').attr('data-user-id')
+        refresh_admission_management(doctor_id,"Admitted",'<%= @admission.id.to_s %>')
+      } else if($(".admission-calendar-panel").length > 0){
+        $("#ipd-calendar").fullCalendar("refetchEvents")
+      }
+    }
+  })
+})
+
+$("#btn-cancel_discharge").on('click', function(){
+  $.ajax({
+    type: "GET",
+    dataType: "json",
+    url: "/admissions/"+ '<%= @admission.id.to_s %>' +"/cancel_discharge",
+    data: {
+      id: '<%= @admission.id.to_s %>'
+    },
+    success: function(res){
+      if($(".admission-panel").length > 0){
+        var doctor_id = $("#sidebar_doctors_admission .active").find('a').attr('data-user-id')
+        refresh_admission_management(doctor_id,"Admitted",'<%= @admission.id.to_s %>')
+      } else if($(".admission-calendar-panel").length > 0){
+        $("#ipd-calendar").fullCalendar("refetchEvents")
+      }
+    }
+  })
+})
+
+$(".mark-not-arrived").on('click', function(){
+  if((parseInt("<%= @engage_ots.count %>") <= 0) && (parseInt("<%= @completed_ots.count %>") <= 0)){
+    $.ajax({
+      type: "GET",
+      dataType: "JSON",
+      url: "/admissions/"+ '<%= @admission.id.to_s %>' +"/mark_not_arrived",
+      data: {
+        id: '<%= @admission.id.to_s %>'
+      },
+      success: function(res){
+        if($(".admission-panel").length > 0){
+          var doctor_id = $("#sidebar_doctors_admission .active").find('a').attr('data-user-id')
+          refresh_admission_management(doctor_id,"Scheduled",'<%= @admission.id.to_s %>',"<%= @admission.admissiondate %>")
+        } else if($(".admission-calendar-panel").length > 0){
+        $("#ipd-calendar").fullCalendar("refetchEvents")
+        }
+      }
+    })
+  } else {
+    if(parseInt("<%= @engage_ots.count %>") > 0 && parseInt("<%= @completed_ots.count %>") > 0){
+      engage_completed_ot_restriction()
+    } else if(parseInt("<%= @engage_ots.count %>") > 0){
+      engage_ot_restriction()
+    } else if(parseInt("<%= @completed_ots.count %>") > 0) {
+      complete_ot_restriction()
+    }
+  }
+})
+
+$(".restrict-discharge-btn").on('click', function(){
+  ot_restriction()
+})
+
+
+$(".link-to-ot").on('click', function(e){
+  e.preventDefault();
+  var current_date = $(this).attr("data-ot-date")
+  var active_doctor = $("#sidebar_doctors_admission .active").find('a').attr('data-user-id')
+  var ot_id = $(this).attr("data-ot-id")
+  if($(this).siblings().html()  == "OT Done"){
+    var active_tab = "Completed"
+  } else if($(this).siblings().html()  == "OT Engaged"){
+    var active_tab = "Engaged"
+  } else {
+    var active_tab = $(this).attr('data-ot-state')
+  }
+  $('#modalCalendarAdmissionDetails').modal('hide')
+  $.ajax({
+    type: "GET",
+    dataType: "script",
+    data: {
+      active_tab: active_tab,
+      current_date: current_date,
+      active_doctor: active_doctor,
+      ot_id: ot_id,
+      message: "From IPD"
+    },
+    url: "/inpatients/ot_management",
+    success: function(){
+      if($('.departments_button').length > 0){
+        $('.departments_button').html("<span class='fa-color departments_span'><i class='fa fa-heartbeat' style='font-size:15px;'><strong> OT </strong><span class='caret fa-color'></span></span>")
+      }
+      else{
+        $("#admission-management").removeClass("activate")
+        $("#ot-management").addClass("activate")
+      }
+    }
+  })
+  history.pushState('', '', '/inpatients/ot_management'); // history.pushState([data], [title], [url]);
+})
+
+// Minimize Patient Note Box
+$('.minimize-box').on('click', function(e){
+    e.preventDefault();
+    $(".patient-note-section").toggle();
+})
+
+$(".btn-initial-more-detail").on('click', function(){
+  if($(this).html() == "More"){
+    $(this).html("Less")
+    $("#initial-more-detail").show()
+  } else {
+    $(this).html("More")
+    $("#initial-more-detail").hide()
+  }
+})
+
+function engage_ot_restriction(){
+  if ($(".ui-pnotify").length > 0) { $(".ui-pnotify").remove() }
+  notice = new PNotify({
+    title: 'Error',
+    text: 'Cannot Change Status as One or Multiple OTs for this admission are ENGAGED.<br><% @engaged_time.each do |e| %><%= e %><br><% end %>',
+    type: 'error'
+  })
+  notice.get().click(function(){ notice.remove() });
+}
+
+function complete_ot_restriction(){
+  if ($(".ui-pnotify").length > 0) { $(".ui-pnotify").remove() }
+  notice = new PNotify({
+    title: 'Error',
+    text: 'Cannot Change Status as One or Multiple OTs for this admission are COMPLETED.',
+    type: 'error'
+  })
+  notice.get().click(function(){ notice.remove() });
+}
+
+function engage_completed_ot_restriction(){
+  if ($(".ui-pnotify").length > 0) { $(".ui-pnotify").remove() }
+  notice = new PNotify({
+    title: 'Error',
+    text: 'Cannot Change Status as OTs for this admission are ENGAGED & COMPLETED.<br>ENGAGED OTs :<br><% @engaged_time.each do |e| %><%= e %><br><% end %>',
+    type: 'error'
+  })
+  notice.get().click(function(){ notice.remove() });
+}
+
+
+function ot_restriction(){
+  if ($(".ui-pnotify").length > 0) { $(".ui-pnotify").remove() }
+  notice = new PNotify({
+    title: 'Error',
+    text: 'Cannot Change Status as OTs for this ADMISSION are Still Not COMPLETED.<br>Please Delete/Unlink/Complete them.',
+    type: 'error'
+  })
+  notice.get().click(function(){ notice.remove() });
+}

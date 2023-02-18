@@ -1,0 +1,97 @@
+<div class="modal-dialog" style="width:40%;">
+
+  <!-- Modal content-->
+  <div class="modal-content">
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal">&times;</button>
+      <h4 class="modal-title"><% if @type == "unlink_store" %>Un<% end %>Link <%= @store.name%> to other stores</h4>
+    </div><br>
+    <div class="row" style="margin-right: 10px;">
+      <div class="col-md-4"></div>
+      <div class="col-md-4">
+        <b>Facility</b>
+        <% @facilities = @facilities << ['All', 'all'] %>
+        <%= select_tag('', options_for_select(@facilities, (@facility_id || 'all')), class: 'form-control facility-dropdown-filter p7_10', include_blank: true) %>
+      </div>
+      <div class="col-md-4">
+        <b>Store Type</b>
+        <% @departments = @departments << ['All', 'all'] %>
+        <%= select_tag('', options_for_select(@departments, (@department_id || 'all')), class: 'form-control store-type-dropdown-filter p7_10', include_blank: true) %>
+      </div>
+    </div>
+    <%= form_tag("/inventory/stores/save_link_unlink_multiple_stores", method: "patch", remote: true, id: 'save_link_unlink_multiple_stores') do %>
+        <%= hidden_field_tag :store_id, @store_id %>
+        <%= hidden_field_tag :type, @type %>
+        <%= hidden_field_tag :store_type, @store_type %>
+        <div class="modal-body">
+          <div class="row">
+            <div class="col-sm-12">
+              <strong>Select Store</strong><br>
+              <%= select_tag :store_ids, options_for_select(@stores.pluck(:name, :id)), { class: 'form-control', multiple: true} %>
+            </div>
+          </div>
+
+          <div class="row" style="padding-top: 35px;">
+            <div class="col-sm-12" style="text-decoration: underline;">
+              <strong>Currently <%= @type&.split('_')[0] %>ed stores</strong>
+            </div>
+
+            <div class="col-sm-12">
+              <% if @other_stores.present? %>
+                <% @other_stores.each do |store| %>
+                  <div style="margin: 7px;">
+                    <i class="fa fa-arrow-right"></i> <%= store.name.upcase %><br>
+                  </div>
+                <% end %>
+              <% else %>
+                <div style="margin: 7px;font-style: italic;"><strong>No <%= @type&.split('_')[0] %>ed stores existed</strong></div>
+              <% end %>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <%= submit_tag "Save", class: 'btn btn-success', onclick: 'link_unlink_store()' %>
+          <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+        </div>
+    <% end %>
+  </div>
+</div>
+
+<script type="text/javascript">
+  $('.facility-dropdown-filter').on('change', function() {
+    var facility_id = $(this).val()
+    var department_id = $('.store-type-dropdown-filter').val()
+    var store_id = '<%= params[:store_id] %>'
+    var type = '<%= params[:type] %>'
+    $.ajax({
+      type : 'get',
+      url: '/inventory/stores/filter_index',
+      data: {
+        facility_id: facility_id,
+        department_id: department_id,
+        store_id: store_id,
+        store_type: 'central_hub',
+        type: type,
+        remote: 'true'
+      },
+    })
+  })
+
+  $('.store-type-dropdown-filter').on('change', function() {
+    var department_id = $(this).val()
+    var store_id = '<%= params[:store_id] %>'
+    var facility_id = $('.facility-dropdown-filter').val()
+    var type = '<%= params[:type] %>'
+    $.ajax({
+      type : 'get',
+      url: '/inventory/stores/filter_index',
+      data: {
+        facility_id: facility_id,
+        department_id: department_id,
+        store_id: store_id,
+        type: type,
+        remote: 'true'
+      },
+    })
+  })
+</script>

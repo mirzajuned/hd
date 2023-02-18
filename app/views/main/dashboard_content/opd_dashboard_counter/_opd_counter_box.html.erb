@@ -1,0 +1,66 @@
+<div class="panel panel-success">
+  <div class="panel-heading" style="border-bottom:1px solid #fff;border-color: rgba(255, 255, 255, 0.2) !important;padding-top:8px;padding-bottom:8px;">
+    <div class="row">
+      <div class="col-sm-2" style="display:inline;">
+      <h4 class="panel-title" style="display:inline;">OPD</h4>
+      </div>
+      <div class="col-sm-10" style="text-align:right;display:inline;">
+
+          <%= hidden_field_tag "facilitylistopd", current_facility.id %>
+
+        <% if current_user.has_role?(:nurse) || current_user.has_role?(:receptionist) %>
+          <span style="font-size:10px;">U:</span>
+          <%= select_tag "userlistopd", options_for_select(""), { :class=> "userlistopd form-control" } %>
+        <% end %>
+      </div>
+    </div>
+  </div><!-- panel-heading -->
+
+  <div class="panel-body panel-stat" id="opd_dashboard_counter" style="background:#1CAF9A; padding:15px;min-height: 92px;">
+    <%= render partial: "main/dashboard_content/opd_dashboard_counter/opd_counter"%>
+  </div>
+
+  <% if current_user.role_ids[0] != 6868009 %>
+    <div class="panel-footer" style="padding: 5px 10px;"> 
+      <div class="pull-right">
+        <%= link_to opd_appointments_newappointment_path(:appointmentdate => "#{Date.current}"), :class => "btn btn-sm btn-darkblue new-event hg-tooltip", :title => "New Appointment", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#appointment-modal', method: :post } do %> <i class="fa fa-plus"></i><% end %>
+        <%= link_to "/outpatients/appointment_management", :data => {:remote => true}, :class => "ps btn btn-sm btn-darkblue hg-tooltip", :title => "Link to OPD", :id => "navigate_opd" do %><i class="fa fa-stethoscope"></i><% end %>
+      </div>                                                      
+    </div>
+  <% end %>
+
+</div><!-- panel -->
+<style type="text/css">
+#facilitylistopd, #userlistopd {
+  width:37%;
+  display: inline-block;
+}
+</style>
+
+<script>
+jQuery(document).ready(function(){
+  jQuery('#facilitylistopd').on("change",function(){
+    var fac_id = jQuery("#facilitylistopd").val();
+    //load users
+    jQuery.ajax({
+      type: "GET",
+      dataType: "json",
+      url: "/main/get_user_id_appointment_count",
+      data: {facility_id: fac_id},
+      success: function(response){
+        jQuery('#userlistopd').children().remove();
+        jQuery('#userlistopd').append(jQuery("<option></option>").attr("value",0).text("All User"));
+        jQuery.each(response, function(key, value) {  
+          jQuery('#userlistopd').append(jQuery("<option></option>").attr("value",value[1]).text(value[0]));
+        });
+        loadFacilityCount(fac_id, jQuery("#userlistopd").val(),"/main/get_opd_appointment_count");
+      }
+    });
+  });
+
+  jQuery('#userlistopd').on("change",function(){
+    loadFacilityCount(jQuery("#facilitylistopd").val(), jQuery("#userlistopd").val(),"/main/get_opd_appointment_count");
+  });
+  jQuery('#facilitylistopd').trigger("change");
+});
+</script>

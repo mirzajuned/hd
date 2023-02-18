@@ -1,0 +1,210 @@
+<% currency_symbol = (@inventory_invoice.try(:currency_symbol) || current_facility.try(:currency_symbol)) %>
+<div class="row invoice-information">
+  <div class="col-sm-7 font-size">
+    <div class="row">
+
+      <div class="col-md-6">
+        <%= f.text_area :comments, class: 'form-control', placeholder: 'Comments' %>
+      </div>
+      <div class="col-md-6">
+        <div id='tax-cage' class="col-sm-12"></div>
+      </div>
+    </div>
+
+    <div class="row" <% if @inventory_store.department_id != '50121007' %>style="display: none"<% end %>>
+      <div class="col-md-4">
+        <label>Delivery: </label>
+      </div>
+      <div class="rdio rdio-primary col-md-4">
+        <%= f.radio_button "delivered", false, {:class => 'delivery_status', :id => "delivery_pending"} %>
+        <label for="delivery_pending">Pending</label>
+      </div>
+      <div class="rdio rdio-primary col-md-4">
+        <%= f.radio_button "delivered", true, {:class => 'delivery_status', :id => "delivery_completed"} %>
+        <label for="delivery_completed">Completed</label>
+        <%= f.hidden_field :delivery_date, {value: Time.current.strftime("%d/%m/%Y"), class: 'form-control p7_10 fullname invoice-delivery-datepicker', placeholder: "Date of transition", readonly: 'readonly' } %>
+      </div>
+    </div>
+
+    <div class="row delivery-status-form" style="display: none">
+      <div class="pending-payment">
+        <div class="rdio rdio-primary col-md-4">
+          <%= f.radio_button "advance_taken", true, {:class => 'paymenttype', :id => "advancepaymentform"} %>
+          <label for="advancepaymentform">Advance Payment</label>
+        </div>
+        <div class="rdio rdio-primary col-md-4">
+          <%= f.radio_button "advance_taken", false, {:class => 'paymenttype', :id => "fullpaymentform"} %>
+          <label for="fullpaymentform">Full Payment</label>
+        </div>
+      </div>
+      <div class="ckbox ckbox-primary col-md-4">
+        <%= f.check_box :fitting_required , { checked: false }, 'true', 'false'  %>
+        <label style=" " for="invoice_inventory_invoice_fitting_required">Fitting Required</label>
+      </div>
+      <div class="ckbox ckbox-primary col-md-4">
+        <%= f.check_box :home_delivery , { checked: false }, 'true', 'false'  %>
+        <label style=" " for="invoice_inventory_invoice_home_delivery">Home Delivery</label>
+      </div>
+    </div>
+    <div class="fitting-fields" style="display: none">
+
+      <div class="col-sm-6 font_size">
+        <b>Fitter</b>
+      </div>
+      <div class="col-sm-2 text-center font_size">
+        :
+      </div>
+      <div class="col-sm-3 font_size">
+        <%= f.select :fitter_id, @fitter, { :prompt => 'Select' } ,{ :class=> "form-control mop_field" } %>
+        <%= f.hidden_field :fitter_name, { id: 'fitter_name' } %>
+      </div>
+
+      <div class="col-sm-6 font_size">
+        <b>Est. Ready date</b>
+      </div>
+      <div class="col-sm-2 text-center font_size">
+        :
+      </div>
+      <div class="col-sm-3 font_size">
+        <%= f.text_field :estimated_ready_date, { class: 'form-control p7_10 fullname invoice-delivery-datepicker', placeholder: "Date of Order Ready", readonly: 'readonly' } %>
+      </div>
+    </div>
+    <div class="delivery-status-form" style="display: none">
+
+      <div class="col-sm-6 font_size">
+        <b>Est. Delivery date</b>
+      </div>
+      <div class="col-sm-2 text-center font_size">
+        :
+      </div>
+      <div class="col-sm-3 font_size">
+        <%= f.text_field :estimated_delivery_date, { class: 'form-control p7_10 fullname invoice-delivery-datepicker', placeholder: 'Date of transition', readonly: 'readonly' } %>
+      </div>
+    </div>
+  </div>
+
+
+  <div class="col-sm-5 text-right">
+
+
+
+
+    <!-- <div class="col-sm-6 font_size">
+      <b>Tax</b>
+    </div>
+    <div class="col-sm-2 text-center font_size">
+      :
+    </div> -->
+    <!-- <div class="col-sm-2 font_size" id="sub_total_tax" style="background-color: lightgrey; margin-left: 16px; width: 18%; margin-bottom: 2px">
+      0
+    </div> -->
+
+    <div class="col-sm-6 font_size">
+      <b>Gross Amount</b>
+    </div>
+    <div class="col-sm-2 text-center font_size">
+      :
+    </div>
+    <div class="col-sm-3 font_size">
+      <%= f.text_field :total, class: 'fi_input_style', id: 'total_wt', placeholder: 'Amount', style: 'background-color:lightgrey; width: 92%', :readonly => true %>
+    </div>
+
+    <div class="col-sm-6 font_size">
+      <b>Discount</b>
+    </div>
+    <div class="col-sm-2 text-center font_size">
+      :
+    </div>
+    <div class="col-sm-3 font_size" id="discount">
+      <%= f.text_field :additional_discount, class: 'fi_input_style', id: 'invoice_discount', placeholder: 'Amount', style: 'width:92%;' %>
+    </div>
+    <div class="col-sm-6 font_size">
+      <b>Net Amount</b>
+    </div>
+    <div class="col-sm-2 text-center font_size">
+      :
+    </div>
+    <div class="col-sm-3 font_size">
+      <%= f.text_field :net_amount, class: 'fi_input_style', id: 'grand_total_inc_discount', placeholder: 'Amount', style: 'width:92%', readonly: true, value: 0, style: 'background-color:lightgrey; width: 92%' %>
+    </div>
+
+    <div class="advance_payment_fields" style="display: none">
+      <!-- <div class="col-sm-6 font_size">
+        <b>Advance Amount</b>
+      </div>
+      <div class="col-sm-2 text-center font_size">
+        :
+      </div>
+      <div class="col-sm-3 font_size">
+        <%#= f.text_field :advance_payment, :class => "fi_input_style", :placeholder => 'Advance Payment', :style=>"width:92%", :value => 0, readonly: true %>
+      </div> -->
+
+      <%= f.hidden_field :amount_remaining, :class => "fi_input_style", :placeholder => 'Amount Remaining', :style=>"width:92%", :readonly => true, :value => 0 %>
+      <%=  f.hidden_field :checkout_date, value: Time.current %>
+      <%=  f.hidden_field :invoice_payment_type, :placeholder => 'invoice_payment_type' %>
+      <%=  f.hidden_field :invoice_payment_type, :placeholder => 'invoice_payment_type' %>
+      <%=  f.hidden_field :payment_received, :placeholder => 'Payment Received' %>
+      <%=  f.hidden_field :payment_pending, :placeholder => 'Payment Pending' %>
+    </div>
+
+  </div>
+</div>
+
+<div class="row payment-details-section mb5" style="border-bottom:1px solid #eee;border-top:1px solid #eee; margin-top: 5px;">
+  <div class="row">
+    <div class="col-md-8">
+      <h5>PAYMENT DETAILS</h5>
+    </div>
+    <div class="col-md-2 mb5">
+      <b style="color: red">Balance/Pending</b><br>
+      <input type="text" name="invoice_total_payment_remaining" class="form-control invoice_total_payment_remaining p3_10" id="invoice_total_payment_remaining" value="0" readonly="readonly">
+    </div>
+    <div class="col-md-2 mb5">
+      <b style="color: green">Received</b><br>
+      <input type="text" name="invoice_total_payment" class="form-control invoice_total_payment p3_10" id="invoice_total_payment" value="<%= @inventory_invoice.net_amount || 0 %>" readonly="readonly">
+    </div>
+  </div>
+  <div id="payment-details" style="border: 1px solid #aaa;padding: 20px;">
+    <%# if @inventory_store.department_id == '50121007' %>
+      <div id="advance-payment-form">
+        <%= render partial: 'invoice/inventory_invoices/advance_payment_details_v1.html.erb' %>
+      </div>
+    <%# end %>
+    <div id="payment-received-form">
+      <%= render partial: 'invoice/inventory_invoices/received_payment_details.html.erb' %>
+    </div>
+    <% if @inventory_store.department_id == '284748001' %>
+      <div id="payment-pending-form">
+        <%= render partial: 'invoice/inventory_invoices/pending_payment_details.html.erb', locals: {currency_symbol: currency_symbol} %>
+      </div>
+    <% end %>
+  </div>
+</div>
+<div class="row mb5" style="border-bottom:1px solid #eee;border-top:1px solid #eee; margin-top: 5px;">
+  <div class="row pending-advance-payment-content" style="display: none;">
+    <div class="col-md-8">
+      <h5>PAYMENT DETAILS</h5>
+    </div>
+    <div class="col-md-2 mb5">
+      <b style="color: red">Balance/Pending</b><br>
+      <input type="text" class="form-control invoice_total_payment_remaining p3_10" id="pending_invoice_total_payment_remaining" value="0" readonly="readonly">
+    </div>
+    <div class="col-md-2 mb5">
+      <b style="color: green">Received</b><br>
+      <input type="text" class="form-control p3_10" id="pending_invoice_advanced" value="0" readonly="readonly">
+    </div>
+  </div>
+  <div class="pending-advance-payment">
+    <%= render partial: 'invoice/inventory_invoices/advance_payment_details_v2', locals: { f: f } %>
+  </div>
+</div>
+<style type="text/css">
+  .font_size {
+    font-size: 13px;
+  }
+  .pending-advance-payment{
+    display: none;
+    border: 1px solid #aaa;
+    padding: 20px;
+  }
+</style>

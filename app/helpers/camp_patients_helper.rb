@@ -1,0 +1,2 @@
+module CampPatientsHelper
+end

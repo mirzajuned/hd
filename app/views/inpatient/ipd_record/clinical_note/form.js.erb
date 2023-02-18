@@ -1,0 +1,423 @@
+jQuery("#ipdrecord-modal").html("<%= escape_javascript(render 'inpatient/ipd_record/clinical_note/form') %>")
+jQuery("#ipdrecord-modal").modal("show")
+
+<%= render partial: 'templates/common/js/constants'%>
+<%= render partial: 'templates/common/js/common_functions'%>
+<%= render partial: 'inpatient/ipd_records/diagnosis_table_append'%>
+
+jQuery('.diagnosis-added').on('click', "a[name*='removediagnosisbutton']", function() {
+  event.preventDefault();
+  var diagnosislist_removed_tr_html;
+  var fieldcounter;
+  fieldcounter = jQuery(this).attr('id').slice(-1);
+  var diagnosislist_tr_array = jQuery(this).parents('.diagnosislist').find(".id");
+  if (diagnosislist_tr_array.length > 0) {
+    jQuery(this).parents('.diagnosislist').find("input[name*='_destroy']").val("1");
+    diagnosislist_removed_tr_html = jQuery(this).parents('.diagnosislist').wrap('<p/>').parent().html();
+    jQuery(this).parents('.diagnosislist').unwrap();
+    jQuery('.diagnosis-removed').append(diagnosislist_removed_tr_html);
+    jQuery(this).parents('.diagnosislist').remove();
+    _renumber_id_after_remove("tbody.diagnosis-added", "div.diagnosis-removed");
+  } else {
+    jQuery(this).parents('.diagnosislist').remove();
+    _renumber_id_after_remove("tbody.diagnosis-added", "div.diagnosis-removed");
+  }
+});
+
+$('.procedure-added').on('click', "a[name*='removeprocedurebutton']", function(e) {
+  e.preventDefault();
+  var fieldcounter = $(this).attr('id').slice(-1);
+  var procedurelist_tr_array = $(this).parents('.table-row-procedure').find(".id");
+  if (procedurelist_tr_array.length > 0) {
+    $(this).parents('.table-row-procedure').find("input[name*='_destroy']").val("1");
+    var procedurelist_removed_tr_html = $(this).parents('.table-row-procedure').wrap('<p/>').parent().html();
+    $(this).parents('.table-row-procedure').unwrap();
+    $('.procedure-removed').append(procedurelist_removed_tr_html);
+    $(this).parents('.table-row-procedure').remove();
+    _renumber_id_after_remove("tbody.procedure-added", "div.procedure-removed");
+  } else {
+    $(this).parents('.table-row-procedure').remove();
+    _renumber_id_after_remove("tbody.procedure-added", "div.procedure-removed");
+  }
+});
+
+$('.ophthal-investigations-added').on('click', "a[name*='removeophthalinvestigationbutton']", function(e) {
+  e.preventDefault();
+  var fieldcounter = $(this).attr('id').slice(-1);
+  var ophthal_investigation_list_removed_tr_html = $(this).parents('.table-row-ophthals').find(".id");
+  if (ophthal_investigation_list_removed_tr_html.length > 0) {
+    $(this).parents('.table-row-ophthals').find("input[name*='_destroy']").val("1");
+    var ophthal_inv_removed_tr_html = $(this).parents('.table-row-ophthals').wrap('<p/>').parent().html();
+    $(this).parents('.table-row-ophthals').unwrap();
+    $('.procedure-removed').append(ophthal_inv_removed_tr_html);
+    $(this).parents('.table-row-ophthals').remove();
+    _renumber_id_after_remove("tbody.ophthal-investigations-added", "div.procedure-removed");
+  } else {
+    $(this).parents('.table-row-ophthals').remove();
+    _renumber_id_after_remove("tbody.ophthal-investigations-added", "div.procedure-removed");
+  }
+});
+
+$('.radiology-investigations-added').on('click', "a[name*='removeradiologyinvestigationbutton']", function(e) {
+  e.preventDefault();
+  var fieldcounter = $(this).attr('id').slice(-1);
+  var radiology_investigation_list_removed_tr_html = $(this).parents('.table-row-radiology').find(".id");
+  if (radiology_investigation_list_removed_tr_html.length > 0) {
+    $(this).parents('.table-row-radiology').find("input[name*='_destroy']").val("1");
+    var radiology_list_removed_tr_html = $(this).parents('.table-row-radiology').wrap('<p/>').parent().html();
+    $(this).parents('.table-row-radiology').unwrap();
+    $('.radiology-investigations-removed').append(radiology_list_removed_tr_html);
+    $(this).parents('.table-row-radiology').remove();
+    _renumber_id_after_remove("tbody.radiology-investigations-added", "div.radiology-investigations-removed");
+  } else {
+    $(this).parents('.table-row-radiology').remove();
+    _renumber_id_after_remove("tbody.radiology-investigations-added", "div.radiology-investigations-removed");
+  }
+});
+
+$('.laboratory-investigations-added').on('click', "a[id*='removelaboratoryinvestigationbutton']", function(e) {
+  e.preventDefault();
+  var fieldcounter = $(this).attr('id').slice(-1);
+  var laboratory_investigation_list_removed_tr_html = $(this).parents('.table-row-laboratory').find(".id");
+  if (laboratory_investigation_list_removed_tr_html.length > 0) {
+    $(this).parents('.table-row-laboratory').find("input[name*='_destroy']").val("1");
+    var laboratory_list_removed_tr_html = $(this).parents('.table-row-laboratory').wrap('<p/>').parent().html();
+    $(this).parents('.table-row-laboratory').unwrap();
+    $('.laboratory-investigations-removed').append(laboratory_list_removed_tr_html);
+    $(this).parents('.table-row-laboratory').remove();
+    _renumber_id_after_remove("tbody.laboratory-investigations-added", "div.laboratory-investigations-removed");
+  } else {
+    $(this).parents('.table-row-laboratory').remove();
+    _renumber_id_after_remove("tbody.laboratory-investigations-added", "div.laboratory-investigations-removed");
+  }
+});
+
+
+var datepicker_options = {
+  dateFormat: 'dd/mm/yy'
+}
+
+$(".note-created-date").datepicker(datepicker_options)
+
+$(".note-created-date").on('change', function(e){
+  e.preventDefault()
+  var date = $(this).val()
+  var time = $('.note-created-time').val()
+  $("#inpatient_ipd_record_note_created_at").val(date + " " + time)
+}).trigger('change')
+
+$(".select-opdrecord").on("change",function(){
+  var opdpatient = $(".select-opdrecord option:selected").val()
+  if (opdpatient == 'none'){
+    blank_clinical_info()
+  }
+  else{
+    fetch_data_from_opd(opdpatient)
+  }
+  show_diagnosis_procedure_helper()
+});
+
+function field_html(e){
+  return ( e || "________________________________________")+'&nbsp; &nbsp;<i class="fa fa-edit edit-para" style="cursor: pointer;color: #3a87ad"></i>'
+}
+
+function edit_button_click(){
+  $('.edit-para').on('click',function(){
+//            console.log('asasas')
+    $(this).parent().hide();
+    $(this).parent().siblings().show()
+
+  })
+}
+
+$('.edit-para').on('click',function(){
+//    console.log('asasas')
+  $(this).parent().hide();
+  $(this).parent().siblings().show()
+
+})
+
+$(".edit-saved-procedure-btn").on('click', function(e){
+  e.preventDefault();
+  var table_row = $(this).closest('.table-row-procedure')
+  var counter = $(this).attr('id').slice(-1)
+  $(this).attr('disabled', 'disabled');
+
+  // Params
+
+  var id = $(table_row).find('#inpatient_ipd_record_procedure_attributes_' + counter + '_id').val()
+  var code = $(table_row).find('#inpatient_ipd_record_procedure_attributes_' + counter + '_procedurefullcode').val()
+  var status = $(table_row).find('#inpatient_ipd_record_procedure_attributes_' + counter + '_procedurestage').val()
+  var side_id = $(table_row).find('#inpatient_ipd_record_procedure_attributes_' + counter + '_procedureside').val()
+  var procedure_comment = $(table_row).find('#inpatient_ipd_record_procedure_attributes_' + counter + '_procedure_comment').val()
+  var users_comment = $(table_row).find('#inpatient_ipd_record_procedure_attributes_' + counter + '_users_comment').val()
+  var performed_by_id = $(table_row).find('#inpatient_ipd_record_procedure_attributes_'+counter+'_performed_by_id').val()
+  var procedure_type = $(table_row).find('#inpatient_ipd_record_procedure_attributes_'+counter+'_procedure_type').val()
+  var data = {id: id, procedure_type: procedure_type, code: code, procedure_code: code, counter: counter, status: status, side_id: side_id, procedure_comment: procedure_comment, users_comment: users_comment,source: 'inpatient_ipd_record',admission_id: '<%= @admission.id.to_s %>', flag: 'edit',performed_by_id: performed_by_id,remote: true}
+  get_procedure_details('edit', data, $(this))
+})
+
+function get_procedure_details(flag, data, _this){
+
+  $.ajax({
+    dataType: "script",
+    type: 'get',
+    url: '/common_procedures/get_procedure_details',
+    data: data,
+    success: function(){
+      $(_this).removeAttr('disabled')
+    }
+  });
+}
+
+function blank_clinical_info(){
+  $(".r_hpi").text('');
+  $(".r_hpi").siblings().html(field_html('________________________________________'));
+  $(".r_refraction").text('');;
+  $(".r_refraction").siblings().html(field_html('________________________________________'));
+  $(".l_refraction").text('');
+  $(".l_refraction").siblings().html(field_html('________________________________________'));
+  $(".r_iop").text('');;
+  $(".r_iop").siblings().html(field_html('________________________________________'));
+  $(".l_iop").text('');;
+  $(".l_iop").siblings().html(field_html('________________________________________'));
+  $(".r_appendages").text('');;
+  $(".r_appendages").siblings().html(field_html('________________________________________'));
+  $(".l_appendages").text('');;
+  $(".l_appendages").siblings().html(field_html('________________________________________'));
+  $(".r_anterior").text('');;
+  $(".r_anterior").siblings().html(field_html('________________________________________'));
+  $(".l_anterior").text('');;
+  $(".l_anterior").siblings().html(field_html('________________________________________'));
+  $(".r_posterior").text('');;
+  $(".r_posterior").siblings().html(field_html('________________________________________'));
+  $(".l_posterior").text('');;
+  $(".l_posterior").siblings().html(field_html('________________________________________'));
+  $(".r_eom").text('');;
+  $(".r_eom").siblings().html(field_html('________________________________________'));
+  $(".l_eom").text('');;
+  $(".l_eom").siblings().html(field_html('________________________________________'));
+  $(".investigation").text('');;
+  $(".investigation").siblings().html(field_html('________________________________________'));;
+  show_diagnosis_procedure_helper()
+}
+
+function fetch_data_from_opd(opdpatient){
+  var opdpatientarray =  opdpatient.split("_")
+  var opdrecord_id = opdpatientarray[0]
+  var patientid = opdpatientarray[1]
+  $.ajax({
+    url: "/inpatient/ipd_record/clinical_notes/get_opd_data",
+    dataType: 'json',
+    data: {
+      opdrecord_id: opdrecord_id,
+      patientid: patientid,
+      admission_id: "<%= @admission.id.to_s%>",
+      templatetype: "admissionnote",
+
+    },
+    success: function(res) {
+      var fullhistory = ''
+      var full_r_anterior = ''
+      var full_l_anterior = ''
+      var opthal_inv = ''
+      var radio_inv = ''
+      var lab_inv = ''
+      $(".selected_opdrecord").val(res.id)
+      for (i = 0; i < res.history.length; i++) {
+        fullhistory += res.history[i] + "\n"
+      }
+      $(".r_hpi").text(fullhistory)
+      $(".r_hpi").siblings().html(field_html(fullhistory))
+      $(".r_refraction").text(res.r_refraction);
+      $(".r_refraction").siblings().html(field_html(res.r_refraction))
+      $(".l_refraction").text(res.l_refraction);
+      $(".l_refraction").siblings().html(field_html(res.l_refraction))
+      $(".r_iop").text(res.r_iop);
+      $(".r_iop").siblings().html(field_html(res.r_iop))
+      $(".l_iop").text(res.l_iop);
+      $(".l_iop").siblings().html(field_html(res.l_iop))
+      $(".r_appendages").text(res.r_appendage);
+      $(".r_appendages").siblings().html(field_html(res.r_appendage))
+      $(".l_appendages").text(res.l_appendage);
+      $(".l_appendages").siblings().html(field_html(res.l_appendage))
+      for (i = 0; i < res.r_anterior_segment.length; i++) {
+        full_r_anterior += res.r_anterior_segment[i] + "\n"
+      }
+      for (i = 0; i < res.l_anterior_segment.length; i++) {
+        full_l_anterior += res.l_anterior_segment[i] + "\n"
+      }
+      $(".r_anterior").text(full_r_anterior);
+      $(".r_anterior").siblings().html(field_html(full_r_anterior))
+      $(".l_anterior").text(full_l_anterior);
+      $(".l_anterior").siblings().html(field_html(full_l_anterior))
+      $(".r_posterior").text(res.r_posterior_segment);
+      $(".r_posterior").siblings().html(field_html(res.r_posterior_segment))
+      $(".l_posterior").text(res.l_posterior_segment);
+      $(".l_posterior").siblings().html(field_html(res.l_posterior_segment))
+      $(".r_eom").text(res.r_eom);
+      $(".r_eom").siblings().html(field_html(res.r_eom))
+      $(".l_eom").text(res.l_eom);
+      $(".l_eom").siblings().html(field_html(res.l_eom))
+      $(".first_opd_visit").val(res.encounterdate);
+      // for (i = 0; i < res.investigation["ophthal"].length; i++) {
+      //     opthal_inv += res.investigation["ophthal"][i] + "\n"
+      // }
+      // for (i = 0; i < res.investigation["radio"].length; i++) {
+      //     radio_inv += res.investigation["radio"][i] + "\n"
+      // }
+      // for (i = 0; i < res.investigation["lab"].length; i++) {
+      //     lab_inv += res.investigation["lab"][i] + "\n"
+      // }
+      // $(".investigation").text(opthal_inv + radio_inv + lab_inv);
+      // $(".investigation").siblings().html(field_html(opthal_inv + radio_inv + lab_inv));
+      if (res.department == "orthopedics") {
+        console.log(res.freeform)
+        $(".history").text(res.freeform["history"].replace(/(<([^>]+)>)/g, "").replace(/&nbsp;/gi, ''))
+        $(".examination").text(res.freeform["examination"].replace(/(<([^>]+)>)/g, "").replace(/&nbsp;/gi, ''))
+        $(".procedure").text(res.freeform["procedure"].replace(/(<([^>]+)>)/g, "").replace(/&nbsp;/gi, ''))
+        if (res.freeform["radiology_investigation"]!=null)
+          $(".radiology_investigation").text(res.freeform["radiology_investigation"].replace(/(<([^>]+)>)/g, "").replace(/&nbsp;/gi, ''))
+        if (res.freeform["laboratory_investigation"]!=null)
+          $(".laboratory_investigation").text(res.freeform["laboratory_investigation"].replace(/(<([^>]+)>)/g, "").replace(/&nbsp;/gi, ''))
+        if (res.freeform["investigation"]!=null)
+          $(".investigation").text(res.freeform["investigation"].replace(/(<([^>]+)>)/g, "").replace(/&nbsp;/gi, ''))
+        if (res.freeform["diagnosis"]!=null)
+          $(".diagnosis").text(res.freeform["diagnosis"].replace(/(<([^>]+)>)/g, "").replace(/&nbsp;/gi, ''))
+      }
+      else if (res.department == "ophthalmology") {
+        $.ajax({
+
+          url: "/inpatient/ipd_records/get_opd_data",
+          dataType: 'script',
+          data: {
+            opdrecord_id: opdrecord_id,
+            patientid: patientid,
+            admission_id: "<%= @admission.id.to_s%>",
+            templatetype: "admissionnote",
+
+          },
+          success: function (res) {
+            //                edit_button_click
+          },
+          error: function (err) {
+          }
+        })
+      }
+    },
+    error: function(err){
+    }
+  })
+}
+
+// CASE CODE REPLACED HUZI OUT
+// $('#search_procedure_keyword').autocomplete({
+//     minLength: 2,
+//     source: function(request, response) {
+//         $.ajax({
+//             dataType: "json",
+//             type: 'get',
+//             url: '/common_procedures/search',
+//             data: {
+//                 search: request.term,
+//                 speciality_id: '309988001',
+//                 remote: "true" },
+//             success: function(data) {
+//                 response(data);
+//             },
+//             error: function(data) {
+//             }
+//         });
+//     },
+//     select: function( event, ui ) {
+//         var data = {code: ui.item['code'], procedure_type: ui.item['procedure_type'], flag: 'new',source:'inpatient_ipd_record', remote: "true"}
+//         get_procedure_details('new', data)
+//         setTimeout(function() {
+//             $("#search-procedure").val("")
+//         }, 50);
+//     },
+//     create: function () {
+//         $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+//                 return $('<li>')
+//                     .append('<a>' + item.label  + '&nbsp; &nbsp; &nbsp;' + "<span class=\"badge pull-right\">" + item.procedure_type_label + "</span>" + '</a>')
+//                     .appendTo(ul);
+//         };
+//     },
+// });
+
+function show_diagnosis_procedure_helper(){
+  if (<%= @diagnosislist.size == 0 %>){
+    // $(".diagnosis-added").html('<p class="diagnosis-tooltip" style="margin-top: 12px;"><i class="fa fa-long-arrow-left">&nbsp;&nbsp;ADD Diagnosis From Here</i></p>')
+  }
+  if (<%= @procedure.size == 0 %>){
+    // $(".procedure-added").html('<p class="diagnosis-tooltip" style="margin-top: 12px;"><i class="fa fa-long-arrow-left">&nbsp;&nbsp;ADD Procedure From Here</i></p>')
+  }
+  if (<%= @ophthal_investigations.size == 0 %>){
+    // $('.ophthal_investigations_table').find('.ophthal-investigations-added').html('<p class="text-center" style="margin-top: 12px;"><i class="fa fa-long-arrow-up">&nbsp;&nbsp;Select Opd Record to insert investigations</i></p>')
+  }
+  if (<%= @radiology_investigations.size == 0 %>){
+    // $('.radiology_investigations_table').find('.radiology-investigations-added').html('<p class="text-center" style="margin-top: 12px;"><i class="fa fa-long-arrow-up">&nbsp;&nbsp;Select Opd Record to insert investigations</i></p>')
+  }
+  if (<%= @laboratory_investigations.size == 0 %>){
+    // $('.laboratory_investigations_table').find('.laboratory-investigations-added').html('<p class="text-center" style="margin-top: 12px;"><i class="fa fa-long-arrow-up">&nbsp;&nbsp;Select Opd Record to insert investigations</i></p>')
+  }
+}
+
+show_diagnosis_procedure_helper();
+
+
+$('.add-new-ophthal-inv').on('click', function (e) {
+  e.preventDefault()
+  var total_rows = $('#ophthal-investigations-added').children('.table-row-ophthals').length
+
+  $.ajax({
+    url: "/inpatient/ipd_record/clinical_notes/add_new_investigation",
+    dataType: 'script',
+    data: {
+      total_rows: total_rows,
+      investigation_type: "ophthal",
+    },
+    success: function (res) {
+      //                edit_button_click
+    },
+    error: function (err) {
+    }
+  })
+})
+
+$('.add-new-radiology-inv').on('click', function (e) {
+  e.preventDefault()
+  var total_rows = $('.radiology-investigations-added').children('.table-row-ophthals').length
+  $.ajax({
+    url: "/inpatient/ipd_record/clinical_notes/add_new_investigation",
+    dataType: 'script',
+    data: {
+      total_rows: total_rows,
+      investigation_type: "radiology",
+    },
+    success: function (res) {
+      //                edit_button_click
+    },
+    error: function (err) {
+    }
+  })
+})
+
+$('.add-new-laboratory-inv').on('click', function (e) {
+  e.preventDefault()
+  var total_rows = $('.laboratory-investigations-added').children('.table-row-laboratory').length
+
+  $.ajax({
+    url: "/inpatient/ipd_record/clinical_notes/add_new_investigation",
+    dataType: 'script',
+    data: {
+      total_rows: total_rows,
+      investigation_type: "laboratory",
+    },
+    success: function (res) {
+      //                edit_button_click
+    },
+    error: function (err) {
+    }
+  })
+})

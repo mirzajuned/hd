@@ -1,0 +1,257 @@
+<% country_id = current_facility.country_id %>
+<% if @case_sheet.present? %>
+  <% if @current_user.role_ids.include?(158965000) %>
+    <div class="row no_margin mb10">
+      <div class="col-sm-3">
+        <h4 class="" style="display: inline">Case Details</h4>
+      </div>
+      <div class="col-sm-3">
+        <% if Authorization::PolicyHelper.verification(current_user.id, "HGP-102-108-100") %>
+          <%= link_to edit_case_sheet_path(@case_sheet), data: { remote: true, toggle: 'modal', target: '#case-modal' }, class: 'btn btn-primary btn-xs btn-case-details' do %>
+            <%= @case_sheet.case_name.present? ? @case_sheet.case_name.titleize.to_s : '(Click to Add Name)' %> - <%= @case_sheet.case_id %>
+          <% end %>
+        <% else %>
+          <a class='btn btn-primary btn-xs btn-case-details disabled' style='cursor:not-allowed;pointer-events:all' title='Not Authorized'> <%= @case_sheet.case_name.present? ? @case_sheet.case_name.titleize.to_s : '(Click to Add Name)' %> - <%= @case_sheet.case_id %> </a>
+        <% end %>
+      </div>
+      <% if @case_sheet.case_switchable_opd[@appointment.id.to_s].present? && @case_sheet.case_switchable_opd[@appointment.id.to_s][:case_switchable] %>
+        <div class="col-sm-6 text-right">
+          <% if Authorization::PolicyHelper.verification(current_user.id, "HGP-102-108-100") %>
+            <%= link_to case_sheets_path(active_case_id: @case_sheet.id, patient_id: @patient.id), data: { remote: true, toggle: 'modal', target: '#case-modal' }, class: 'btn btn-link btn-xs btn-all-case' do %>All Cases<% end %>
+          <% else %>
+            <a class="btn btn-xs disabled" style="pointer-events: all" title="Not Authorized">All Cases</a>
+          <% end %>
+          <%= link_to new_case_sheet_path(active_case_id: @case_sheet.id, patient_id: @patient.id, appointment_id: @appointment.id), data: { remote: true, toggle: 'modal', target: '#case-modal' }, class: 'btn btn-link btn-xs btn-change-case' do %>Change Case<% end %>
+        </div>
+        <div class="col-md-12 mt10">
+          <label class="label label-danger">Note: If Counsellor Note or Admission/OT is created case cannot be changed.</label>
+        </div>
+      <% else %>
+        <div class="col-sm-6 text-right">
+          <%= link_to case_sheets_path(active_case_id: @case_sheet.id, patient_id: @patient.id, appointment_id: @appointment.id), data: { remote: true, toggle: 'modal', target: '#case-modal' }, class: 'btn btn-link btn-xs btn-all-case' do %>All Cases<% end %>
+        </div>
+        <div class="col-md-12 text-right">
+          <span style="color:#428bca;opacity:.65;font-size:10px;">Change Case DISABLED as data has changed.</span>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+<% end %>
+
+<div class="row no_margin mb10">
+  <div class="col-sm-3">
+    <h4 style="display: inline;">Template Details</h4>
+  </div>
+  <% if (@appointment.appointmentdate.to_date == Date.today.to_date) || !@nabh_setting.try(:enabled) %>
+    <% if @clinical_workflow.try(:state) != "not_arrived" || !@clinical_workflow_present %>
+      <div class="col-sm-6">
+        <% if (@clinical_workflow.try(:user_id) == @current_user.id.to_s || !@clinical_workflow_present) && (['check_out', 'call', 'away', 'complete'].exclude? @clinical_workflow&.state) %>
+          <% if Authorization::PolicyHelper.verification(current_user.id,"HGP-102-106-100") %>
+            <button class="btn btn-primary btn-primary-transparent btn-xs" id="opd-templates" data-toggle="dropdown"><i class="fa fa-plus"></i> New&nbsp;&nbsp;<i class="fa fa-caret-down"></i></button>
+            <ul class="dropdown-menu" role="menu" aria-labelledby="opd-templates-dropdown">
+              <% if @current_user.role_ids.include?(28221005) %>
+                <% @opd_templates.each do |opd_template_name| %>
+                  <% next if opd_template_name['templatename'] != 'ar_nct' %>
+                  <% next if @enabled_templates&.exclude?(opd_template_name['templatename']) %>
+                  <% opd_record = @appointment_opd_records.where(templatetype: opd_template_name['templatename'].to_s) %>
+                  <% opd_record_count = opd_record.length %>
+                  <% if opd_record_count > 0 %>
+                    <li><% @edit_opd_link = 'edit_opd_records_' + @speciality_folder_name + "_note_path('#{opd_record[0].id}',:opdrecordid => '#{opd_record[0].id}', :patientid => '#{@appointment.patient_id}', :appointmentid => '#{@appointment.id}', :templatetype => '#{opd_template_name['templatename']}', case_sheet_id: '#{@case_sheet.id}')" %>
+                    <%= link_to eval(@edit_opd_link), class: 'timeline-viewsummary-html', title: 'Edit OPD Summary', data: { :remote => true, 'toggle' => 'modal', 'target' => '#templates-modal', method: :get } do %><i class="fa fa-file-alt"></i> <%= opd_template_name['displayname'] %><% end %></li>
+                  <% else %>
+                    <% @department_link = 'new_opd_records_' + @speciality_folder_name + "_note_path(:patientid => @patient.id, :appointmentid => @appointment.id, :templatetype => '#{opd_template_name['templatename']}', case_sheet_id: @case_sheet.id)" %>
+                    <li><%= link_to eval(@department_link), data_templatetype: opd_template_name['templatename'].to_s, data: { :remote => true, 'toggle' => 'modal', 'target' => '#templates-modal' } do %> <i class="fa fa-file"></i> <%= opd_template_name['displayname'] %> <% unless opd_record_count < 1 %> <label class="badge"><%= opd_record_count %></label>  <% end %><% end %></li>
+                  <% end %>
+                <% end %>
+              <% else %>
+                <% @opd_templates.each do |opd_template_name| %>
+                  <% next if country_id != 'KH_039' && opd_template_name['templatename'] == 'vision' %>
+                  <% next if country_id == 'KH_039' && opd_template_name['templatename'] != 'vision' %>
+                  <!-- Skip Refraction in Case of non-Vietnam Facilities -->
+                  <% next if country_id != 'VN_254' && opd_template_name['templatename'] == 'refraction' %>
+                  <% next if !@current_user.role_ids.include?(28221005) && opd_template_name['templatename'] == 'ar_nct' %>
+                  <% next if @enabled_templates&.exclude?(opd_template_name['templatename']) %>
+                  <% opd_record = @appointment_opd_records.where(templatetype: opd_template_name['templatename'].to_s) %>
+                  <% opd_record_count = opd_record.length %>
+                  <% if opd_record_count > 0 && ["optometrist", "nursing", "refraction", "biometry"].include?(opd_template_name['templatename']) %>
+                    <li><% @edit_opd_link = 'edit_opd_records_' + @speciality_folder_name + "_note_path('#{opd_record[0].id}',:opdrecordid => '#{opd_record[0].id}', :patientid => '#{@appointment.patient_id}', :appointmentid => '#{@appointment.id}', :templatetype => '#{opd_template_name['templatename']}', case_sheet_id: '#{@case_sheet.id}')" %>
+                    <%= link_to eval(@edit_opd_link), class: 'timeline-viewsummary-html', title: 'Edit OPD Summary', data: { :remote => true, 'toggle' => 'modal', 'target' => '#templates-modal', method: :get } do %><i class="fa fa-file-alt"></i> <%= opd_template_name['displayname'] %><% unless opd_record_count < 1 %> <label class="badge"><%= opd_record_count %></label>  <% end %><% end %></li>
+                  <% else %>
+                    <% @department_link = 'new_opd_records_' + @speciality_folder_name + "_note_path(:patientid => @patient.id, :appointmentid => @appointment.id, :templatetype => '#{opd_template_name['templatename']}', case_sheet_id: @case_sheet.id)" %>
+                    <li><%= link_to eval(@department_link), data_templatetype: opd_template_name['templatename'].to_s, data: { :remote => true, 'toggle' => 'modal', 'target' => '#templates-modal' } do %> <i class="fa fa-file"></i> <%= opd_template_name['displayname'] %> <% unless opd_record_count < 1 %> <label class="badge"><%= opd_record_count %></label>  <% end %><% end %></li>
+                  <% end %>
+                <% end %>
+              <% end %>
+              <% if @speciality_folder_name == "ophthalmology" && (@enabled_templates.nil? || @enabled_templates&.include?('blank_form')) %>
+                <li class="dropdown-submenu">
+                <!--  <%= link_to opd_records_print_blank_opd_record_path(patientid: @patient.id, appointmentid: @appointment.id, templatetype: 'blank_report', specality: @speciality_folder_name, format: :pdf), target: '_blank', data: { method: :get } do %> <i class="fa fa-print"></i> Blank Form <% end %> -->
+                  <a class="test" tabindex="-1" href="#">Blank Form <span class="caret"></span></a>
+                    <ul class="dropdown-menu blank_menu">
+                      <li><%= link_to opd_records_print_blank_opd_record_path(patientid: @patient.id, appointmentid: @appointment.id, templatetype: 'blank_report', specality: @speciality_folder_name, format: :pdf), target: '_blank', data: { method: :get } do %> <i class="fa fa-print"></i> Default<% end %></li>
+                      <% @print_settings.each do |print_setting| %>
+                      <li><%= link_to opd_records_print_blank_opd_record_path(patientid: @patient.id, appointmentid: @appointment.id, templatetype: 'blank_report', specality: @speciality_folder_name, print_setting: print_setting, format: :pdf), target: '_blank', data: { method: :get } do %> <i class="fa fa-print"></i> <%= print_setting.name %> <% end %> </li>
+
+                      <% end %>
+                    </ul>
+                </li>
+              <% end %>
+            </ul><!--
+            <button class="btn btn-primary btn-primary-transparent btn-xs" id="consolidate-report"><i class="fa fa-file"></i> Consolidate Report</button> -->
+          <% else %>
+            <a class="btn btn-primary disabled btn-xs disabled" style="text-decoration: line-through; pointer-events: all" title="Not Authorized"><i class="fa fa-plus"></i> New&nbsp;&nbsp;</a>
+          <% end %>
+        <% else %>
+          <i>'Check-In' to create 'New' templates.</i>
+        <% end %>
+      </div>
+    <% end %>
+  <% end %>
+
+  <div class="col-sm-3">
+    <div class="text-right">
+      <% if @patient_self_histories.present? %>
+        <%= link_to patient_self_histories_index_path(patient_id: @patient.id), id: 'patient-self-history', class: 'btn btn-primary btn-primary-transparent btn-xs', data: { :remote => true, 'toggle' => 'modal', 'target' => '#templates-modal' } do %><i class="fa fa-file-text"></i> Patient Self History <% end %>
+      <% end %>
+
+      <div class="consolidate-reports-section">
+        <div class="col-sm-2">
+          <% if Authorization::PolicyHelper.verification(current_user.id, "HGP-102-107-100") %>              
+            <% if @org_specialties.count > 1 %>
+              <button class="btn btn-primary btn-primary-transparent btn-xs" data-toggle="dropdown"> Consolidate Reports &nbsp;&nbsp;<i class="fa fa-caret-down"></i></button>
+              <ul class="dropdown-menu" role="menu" aria-labelledby="consolidate-reports-dropdown">
+                <% @org_specialties.each do |specialty| %>
+                  <li><%= link_to consolidate_reports_index_path(patient_id: @patient.id, specialty_id: specialty.id), data: { :remote => true, 'toggle' => 'modal', 'target' => '#templates-modal' } do %> <i class="fa fa-file-text"></i>&nbsp;&nbsp;<%= specialty.name.capitalize %> <% end %></li>
+                <% end %>
+              </ul>
+            <% else %>
+              <%= link_to consolidate_reports_index_path(patient_id: @patient.id, specialty_id: @org_specialties[0].id), class: 'btn btn-xs btn-primary btn-primary-transparent', data: { :remote => true, 'toggle' => 'modal', 'target' => '#templates-modal' } do %> <i class="fa fa-file-text"></i>&nbsp;&nbsp;Consolidate Reports <% end %>
+            <% end %>
+          <% else %>
+            <button class="btn btn-primary btn-xs disabled" style="pointer-events: all; text-decoration: line-through" title="Not Authorized"> Consolidate Reports &nbsp;&nbsp;<i class="fa fa-caret-down"></i></button>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<% if @clinical_workflow.try(:state) != "not_arrived" || !@clinical_workflow_present %>
+  <% if @appointment_opd_records.size > 0 %>
+    <div class="row no_margin yes_padding" id="appointment-opd-templates" style="margin-top: 5px;margin-left:10px;">
+      <div class="col-sm-3 no_padding text-left">Today's Templates</div>
+      <div class="col-sm-8 no_padding">
+        <% @appointment_opd_records.order(created_at: :desc).each do |appointment_record| %>
+          <% if appointment_record.templatetype == "optometrist" || appointment_record.templatetype == "refraction" || appointment_record.templatetype == "biometry" %>
+            <% fullname = appointment_record.optometrist_name.to_s %>
+          <% elsif appointment_record.templatetype == "vision" %>
+            <% fullname = appointment_record.consultant_name.to_s %>
+          <% elsif appointment_record.templatetype == "ar_nct" %>
+            <% fullname = appointment_record.ar_nct_name.to_s %>
+          <% elsif appointment_record.templatetype == "nursing" %>
+            <% fullname = appointment_record.nurse_name.to_s %>
+          <% else %>
+            <% fullname = 'Dr.' + appointment_record.consultant_name.to_s %>
+          <% end %>
+          <%= link_to opd_records_view_opd_summary_path(opdrecordid: appointment_record.id, patientid: @patient.id, appointmentid: @appointment.id, specality: appointment_record.specalityid, templatetype: appointment_record.templatetype, showclone: false), class: 'btn btn-primary btn-primary-transparent btn-xs mb3', id: 'timeline-viewsummary-html', title: fullname, data: { :remote => true, 'toggle' => 'tooltip', 'target' => '#templates-modal' } do %><i class="fa fa-file-alt"></i> <%= appointment_record.templatetype.split('_').join(' ').capitalize %> | <%= fullname.split(' ')[0] %><% end %>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+<% end %>
+
+<% if @old_opd_records.size > 0 %>
+  <div class="row no_margin yes_padding" style="margin-top: 5px;margin-left:10px;">
+    <div class="col-sm-3 no_padding text-left">Old Templates</div>
+  </div>
+  <div class="row no_margin yes_padding" style="margin-top: 5px;margin-left:10px;">
+    <% @old_opd_records.each do |old_record| %>
+      <% options = { templatetype: old_record.templatetype } %>
+      <% options = options.merge(consultant_id: old_record.consultant_id) if old_record.consultant_id.present? %>
+      <% opd_record = @appointment_opd_records.find_by(options) %>
+
+      <% old_record_6_weeks = (DateTime.now - 42.days) >= old_record.created_at %>
+
+      <div class="col-sm-4 no_padding text-center">
+        <button class="btn btn-primary btn-primary-transparent btn-xs" id="opd-templates" title="<%= old_record&.consultant_name || old_record&.optometrist_name %>" data-toggle="dropdown"><i class="fa fa-file-alt"></i>  <%= old_record.templatetype.split('_').map(&:capitalize).join(' ') %> (<%= old_record.created_at.strftime('%d%b%y') %>)&nbsp;&nbsp;<i class="fa fa-caret-down"></i></button>
+        <ul class="dropdown-menu" role="menu" aria-labelledby="opd-templates-dropdown" style="padding: 0px;margin-left: 20px;">
+          <li class="text-center">
+            <%= link_to opd_records_view_opd_summary_path(opdrecordid: old_record.id, patientid: @patient.id, appointmentid: old_record.appointmentid, specality: old_record.specalityid, templatetype: old_record.templatetype), id: 'timeline-viewsummary-html', title: 'View Latest Template', data: { :remote => true, 'toggle' => 'tooltip', 'target' => '#templates-modal' } do %>View <% end %>
+          </li>
+          <hr style="padding: 0px; margin: 0px;">
+          <% if @enabled_templates.nil? || @enabled_templates&.include?(old_record.templatetype) %>
+            <% if old_record.templatetype != "vitalsign" && old_record.templatetype != "biometry" %>
+              <% if opd_record %>
+                <li class="text-center"><a title="Only One Template For One Day" style="cursor: not-allowed;text-decoration: line-through;">Clone</a></li>
+              <% else %>
+                <li class="text-center">
+                  <% if current_facility.country_id == "KH_039" || old_record.specalityid != "309988001" || old_record.templatetype == "vision" %>
+                    <% @clone_link = 'new_opd_records_' + @speciality_folder_name + "_note_path(patientid: old_record.patientid, :appointmentid => @appointment.id, :templatetype => '#{old_record.templatetype}',:flag=>'clone',:opd_record_id=> old_record.id)" %>
+                    <%= link_to eval(@clone_link), data: { :remote => true, 'toggle' => 'modal', 'target' => '#templates-modal' } do %>Clone<% end %>
+                  <% elsif old_record_6_weeks %>
+                    <% unless @organisations_setting.disable_clone_old_template %>
+                      <a class="clone-btn" href="#" data-toggle="modal" data-target="#confirm-modal-clone" data-opdrecordid="<%= old_record.id %>" data-patientid="<%= @patient.id %>" data-appointmentid="<%= old_record.appointmentid.to_s %>" data-specality="<%= old_record.specalityid %>" data-templatetype="<%= old_record.templatetype %>" data-current_appointment="<%= @appointment.id %>"> Clone </a>
+                    <% else %>
+                      <a title="Cannot clone templates which are 6 weeks older" style="cursor: not-allowed;text-decoration: line-through;">Clone</a>
+                    <% end %>
+                  <% else %>
+                    <%= link_to opd_records_view_opd_summary_path(opdrecordid: old_record.id, patientid: @patient.id, appointmentid: old_record.appointmentid, specality: old_record.specalityid, templatetype: old_record.templatetype, showclone: true, current_appointment: @appointment.id), id: 'timeline-viewsummary-html', title: 'Clone the Template', data: { :remote => true, 'toggle' => 'tooltip', 'target' => '#templates-modal' } do %> Clone <% end %>
+                  <% end %>
+                </li>
+              <% end %>
+            <% end %>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+  </div>
+<% end %>
+
+<script>
+
+$(document).ready(function(){
+  $('.dropdown-submenu a.test').on("click", function(e){
+    $(this).next('ul').toggle();
+    e.stopPropagation();
+    e.preventDefault();
+  });
+});
+
+
+  $('.clone-btn').click(function(){
+    let url = "/opd_records/view_opd_summary?current_appointment="+$(this).data('current_appointment')+"&patientid="+$(this).data('patientid')+"&opdrecordid="+$(this).data('opdrecordid')+"&appointmentid="+$(this).data('appointmentid')+"&specality="+$(this).data('specality')+"&templatetype="+$(this).data('templatetype')+"&showclone=true";
+
+    $('#confirm-modal-clone').html(`
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal">&times;</button>
+            <h4 class="modal-title">Are You Sure?</h4>
+          </div>
+          <div class="modal-body" style="font-weight: bold;">
+            <p class="text-danger">This template is more than six weeks old. Are you sure you want to clone it? </p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default close-clone-confirmation-modal" data-dismiss="modal">Close</button>
+            <a class="btn btn-danger" data-remote="true" data-dismiss="modal" data-target="#templates-modal" href= ${url} >Confirm</a>
+          </div>
+        </div>
+      </div>
+      `)
+  })
+
+</script>
+
+
+<style type="text/css">
+  .dropdown-submenu {
+    position: relative;
+  }
+
+  .blank_menu {
+    top: 30px !important;
+    margin-top: -1px;
+    left: 0% !important;
+    width: auto; !important;
+  }
+
+</style>

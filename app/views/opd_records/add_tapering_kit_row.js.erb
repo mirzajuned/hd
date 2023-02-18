@@ -1,0 +1,92 @@
+jQuery(".tapering-kit-table-body-added").append('<%= escape_javascript(render partial: "templates/common/tapering_row_added", locals: { i: @counter, duration: @durationtype, last_date: @last_row_date }) %>')
+
+let taper_by = "<%= params[:ajax][:taperby] %>"
+if(taper_by == "Dosage"){
+  $('.dosage_col').show()
+  $('.freq_col').hide()
+} else{
+  $('.freq_col').show()
+  $('.dosage_col').hide()
+}
+
+$('.timepicker_start_time').timepicker({minuteStep: 5});
+$('.timepicker_end_time').timepicker({minuteStep: 5});
+
+jQuery('.tapering-kit-table-body-added').on('click', "a[name*='removetaperingrowbutton']", function(e) {
+  e.preventDefault();
+  var tapering_removed_tr_html;
+  var fieldcounter;
+  fieldcounter = jQuery(this).attr('id').slice(-1);
+  var tapering_tr_array = jQuery(this).parents('.taper_row').find(".id");
+  // console.log(tapering_tr_array);
+  if (tapering_tr_array.length > 0) {
+    jQuery(this).parents('.taper_row').find("input[name*='_destroy']").val("1");
+    tapering_removed_tr_html = jQuery(this).parents('.taper_row').wrap('<p/>').parent().html();
+    jQuery(this).parents('.taper_row').unwrap();
+    jQuery('.tapering-kit-table-body-removed').append(tapering_removed_tr_html);
+    jQuery(this).parents('.taper_row').remove();
+    //_renumber_id_after_remove("tbody.tapering-kit-table-body-added", "div.tapering-kit-table-body-removed");
+  } else {
+    jQuery(this).parents('.taper_row').remove();
+    //_renumber_id_after_remove("tbody.tapering-kit-table-body-added", "div.tapering-kit-table-body-removed");
+  }
+  if ($('.tapering-kit-table-body-added').find('.removetaperingrowbutton').length == 1){
+    $('.tapering-kit-table-body-added').find('.removetaperingrowbutton').hide()
+  }
+  _add_button_at_last_taper_row()
+});
+
+if ($('.tapering-kit-table-body-added').find('.removetaperingrowbutton').length == 1){
+  $('.tapering-kit-table-body-added').find('.removetaperingrowbutton').hide()
+}
+
+//for adding close button on last row
+function _add_button_at_last_taper_row() {
+  $('#tapering_table').find('removetaperingrowbutton').addClass("hidden")
+  $('#tapering_table').find('removetaperingrowbutton').last().removeClass("hidden")
+}
+_add_button_at_last_taper_row()
+
+Date.prototype.toInputFormat = function(x = 0) {
+  var yyyy = this.getFullYear().toString();
+  var mm = (this.getMonth()+1).toString();
+  var dd  = this.getDate().toString();
+  if(x==1){
+    return ((''+dd).length<2 ? '0' : '') + dd + '/' + ((''+mm).length<2 ? '0' : '') + mm + '/' + yyyy
+  } else {
+    return ((''+mm).length<2 ? '0' : '') + mm + '/' + ((''+dd).length<2 ? '0' : '') + dd + '/' + yyyy
+  }
+};
+
+//function for calculating sart and end date on change of number of row
+$(".medicineduration_row").on("change", function(){
+  let sr_no = $(this).parents('.taper_row').find('.number_of_rows').val()
+  sr_no = sr_no - 1;
+  calculate_end_date(this)
+  calculate_full_rows(sr_no)
+});
+
+//for calculating all rows end date and start date
+function calculate_full_rows(){
+  let end_date = jQuery(".tapering-kit-table-body-added").find('.end_date');
+  for (let i = 0; i < end_date.length; i++) {
+    if(i > 0){
+      let end_date_prev = $(end_date[i-1]).val()
+      end_date_prev = new Date(end_date_prev.split("/")[1] +'/'+ end_date_prev.split("/")[0] +'/'+  end_date_prev.split("/")[2]);
+      end_date_prev = new Date(end_date_prev.toInputFormat());
+      end_date_prev.setDate(end_date_prev.getDate() + 1);
+      $(end_date[i]).parents('.taper_row').find('.start_date').val(end_date_prev.toInputFormat(1));
+    }
+    calculate_end_date(end_date[i]);
+  }
+}
+calculate_full_rows()
+
+//for calculating single row end date
+function calculate_end_date(_this){
+  let start_date = $(_this).parents('.taper_row').find('.start_date').val()
+  start_date = new Date(start_date.split("/")[1] +'/'+ start_date.split("/")[0] +'/'+  start_date.split("/")[2]);
+  let no_of_days = parseInt($(_this).parents('.taper_row').find('.medicineduration_row').val()) - 1;
+  start_date.setDate(start_date.getDate() + no_of_days);
+  $(_this).parents('.taper_row').find(".end_date").attr('value', start_date.toInputFormat(1));
+}

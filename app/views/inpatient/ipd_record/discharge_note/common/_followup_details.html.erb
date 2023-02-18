@@ -1,0 +1,338 @@
+<div class="row">
+  <div class="col-md-9">
+
+    <div class="row mb20">
+      <div class="col-md-2 text-right">
+        Management Plan:<br>(This will not appear in print)
+      </div>
+      <div class="col-md-4">
+        <%= f.text_area :advicemanagementplan, class: "advicemanagementplan form-control",:value => @discharge_note.read_attribute(:advicemanagementplan) %>
+      </div>
+
+      <div class="col-md-1">
+      </div>
+
+      <% if (@admission.try(:organisation_id).to_s == '5e21ffd6cd29ba0ce0bf5a1e') && @admission.try(:created_from) == 'Integration' %>
+        <div style="display: none">
+          <%= f.check_box :bookappointment, {:class => "myclass",:id => "bookappointment-integration", :checked => false}, "true", "false" %>
+        </div>
+      <% else %>
+        <div class="col-md-5 ckbox ckbox-primary">
+          <% if @discharge_note.read_attribute(:bookappointment).nil? %>
+            <%= f.check_box :bookappointment, {:class => "myclass",:id => "bookappointment", :checked => false}, "true", "false" %>
+            <label for="bookappointment">Make Appointment**</label>
+          <% elsif @discharge_note.bookappointment == 'false' %>
+            <%= f.check_box :bookappointment, {:class => "myclass",:id => "bookappointment", :checked => false }, "true", "false" %>
+            <label for="bookappointment">Make Appointment**</label>
+          <% elsif @discharge_note.bookappointment == 'true' %>
+            <%= f.check_box :bookappointment, {:class => "myclass",:id => "bookappointment", :checked => true} , "true", "false" %>
+            <label for="bookappointment">Make Appointment**</label>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="row mb20">
+      <div class="col-md-4 col-lg-4 col-xs-12 col-sm-4">
+        <div class="col-md-12">
+            <b>Date</b>
+        </div>
+        <div class="col-md-12">
+          <%= f.text_field :followup_date, { class: "datepicker_followup form-control",:value => @discharge_note.read_attribute(:followup_date), readonly: 'readonly'} %>
+        </div>
+      </div>
+      <div class="col-md-4 col-lg-4 col-xs-12 col-sm-4">
+        <div class="col-md-12">
+          <b>Time</b>
+        </div>
+        <div class="col-md-12 discharge-time">
+          <div class="bootstrap-timepicker timepicker">
+            <% @followup_time = (@discharge_note.read_attribute(:followup_time) if @discharge_note.read_attribute(:followup_time).present?) || Time.current.strftime("%I:%M %p") %>
+            <%= f.text_field :followup_time, { class: "timepicker followup_time_timepicker form-control",:value => @followup_time } %>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4 col-lg-4 col-xs-12 col-sm-4">
+        <div class="col-md-12">
+          <b>Consultant</b>
+        </div>
+        <div class="col-md-12">
+          <% user_org = User.where(facility_ids: current_facility.id, role_ids: 158965000, specialty_ids: @admission.specialty_id, is_active: true).pluck(:fullname, :id) %>
+          <%= f.select(:followup_doctor_id, user_org.collect {|t| [t[0], t[1]]}, {}, {class: "followup_doctor form-control"} ) %>
+        </div>
+      </div>
+    </div>
+
+    <div class="row mb20">
+      <div class="col-md-4 col-lg-4 col-xs-12 col-sm-4">
+        <div class="col-md-12">
+          <b>Location</b>
+        </div>
+        <div class="col-md-12">
+          <% facilities_array = Common.new.fetch_facilities(user: current_user).map { |facility| [facility.name, facility.id] } %>
+          <%# selected_facility = @admission.facility_id.present? ? @admission.facility_id : current_facility.id %>
+          <% selected_facility = @ipdrecord.discharge_note.try(:followup_facility) || current_facility.id %>
+          <% if facilities_array.count >1 %>
+            <%= select_tag("inpatient_ipd_record[discharge_note_attributes][followup_facility]", options_for_select(facilities_array, selected_facility), {:class => 'form-control', style: "width: 100%"}) %>
+          <% else %>
+            <input type="hidden" name="followup_facility" id="inpatient_ipd_record_discharge_note_attributes_followup_facility" value="<%= current_facility.id %>">
+          <% end %>
+        </div>
+      </div>
+
+      <div class="col-md-4 col-lg-4 col-xs-6 col-sm-4 specialty_dropdown_div">
+        <div class="col-md-12">
+          <b>Location's Specialty</b>
+        </div>
+        <div class="col-md-12">
+          <% selected_specialty = @ipdrecord.discharge_note.try(:specalityid) || @admission.specialty_id %>
+          <% referred_from_specialties = Specialty.where(:id.in => [selected_specialty]).pluck(:name, :id) %>
+          <%= select_tag("inpatient_ipd_record[discharge_note_attributes][specialty_id]", options_for_select(referred_from_specialties, @ipdrecord.discharge_note.try(:specalityid)), {:class => 'form-control specialty_dropdown', style: "width: 100%" }) %>
+        </div>
+      </div>
+
+      <div class="col-md-4 col-lg-4 col-xs-12 col-sm-4">
+        <div class="col-md-12">
+          <b>Appointment Type <span style="color: red">Required</span></b>
+        </div>
+        <div class="col-md-12">
+          <div class="col-md-12 ipd_appointment_types">
+            <% appointment_types = AppointmentType.where(facility_id: current_facility.id, specialty_ids: @admission.specialty_id, is_active: true) %>
+            <% if @discharge_note.read_attribute(:appointment_type_id).nil? %>
+              <% selected_appt_type = '' %>
+            <% else %>
+              <% selected_appt_type = @discharge_note.read_attribute(:appointment_type_id) %>
+            <% end %>
+            <%= render partial: "inpatient/ipd_record/discharge_note/#{@speciality_folder_name}_notes/appointment_type_partial", locals: {
+                  name_attr: "inpatient_ipd_record[discharge_note_attributes][appointment_type_id]", option_values: appointment_types, selected: selected_appt_type } %>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row mb20">
+      <div class="col-md-4 col-lg-4 col-xs-12 col-sm-4">
+        <% sub_appointment_types = OrganisationAppointmentCategoryType.where(organisation_id: current_user.organisation_id, specialty_ids: @admission.specialty_id, is_active: true).order(created_at: :desc) %>
+        <% if sub_appointment_types.present? %>
+          <div class="col-md-12">
+            <b>Appointment Category</b>
+          </div>
+          <div class="col-md-12">
+           <%= select_tag("inpatient_ipd_record[discharge_note_attributes][appointment_category_id]", options_for_select(sub_appointment_types.map {|apt_cat| [apt_cat.label, apt_cat.id ]}, @discharge_note.try(:appointment_category_id)), prompt: 'Appointment Category', class: "form-control full_width ipd_record_appointment_category") %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+    <br>
+
+    <div class="row">
+      <div class="col-md-2 text-right">
+        Terms & Condition :
+      </div>
+      <div class="col-md-8">
+        <%= f.text_area :terms, {style: "height: 125px", class: "form-control", value: @discharge_note.read_attribute(:terms)} %>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3" id="booked-appointment-slots" style="background: #fcfcfc;border-left:1px solid #eee;">
+    <%= render partial: '/opd_appointments/available_slot.html.erb' %>
+  </div>
+</div>
+
+<style type="text/css">
+  .datepicker_followup {
+    background-color: #fff !important;
+    cursor: pointer !important;
+  }
+ [data-toggle='tooltip'] + .tooltip > .tooltip-inner {
+    background: black;
+    color:#ffffff;
+    border: 1px solid #000000;
+  }
+</style>
+
+<script type="text/javascript">
+  <% if @discharge_note.read_attribute(:followup_date).present? %>
+    $('#clear_followup_date').fadeIn()
+  <% end %>
+
+  $('.datepicker_followup').on('change', function(){
+    $('#clear_followup_date').fadeIn()
+  })
+
+  $('#clear_followup_date').on('click', function(){
+    $(this).fadeOut();
+    $('.datepicker_followup').attr("value", "")
+  })
+
+  datepicker_options = {
+    minDate: 0,
+    dateFormat: "dd/mm/yy"
+  }
+
+  function get_booked_appointments(date, doctor_id, facility_id, specialty_id) {
+    $.ajax({
+      url: '/opd_appointments/get_booked_appointments',
+      type: 'get',
+      data: {
+        doctor_id: doctor_id,
+        date: date,
+        facility_id: facility_id,
+        specialty_id: specialty_id
+      },
+      success: function(res) {
+      },
+    });
+  }
+
+  function toggle_specialty_dropdown(){
+    if($('#inpatient_ipd_record_discharge_note_attributes_specialty_id').find('option').length === 1){
+     $(".specialty_dropdown_div").hide();
+    } else {
+      $(".specialty_dropdown_div").show();
+    }
+  }
+  toggle_specialty_dropdown();
+
+  function get_facility_specialties(facility_id, doctor_id, date) {
+    $.ajax({
+      type: "GET",
+      dataType: "json",
+      url: "/main/get_facility_specialties",
+      data: { facility_id: facility_id },
+
+      success: function (response) {
+        jQuery('.specialty_dropdown').children().remove();
+        var validate_specialty_id = '<%= @admission.specialty_id %>'
+
+        jQuery.each(response, function (key, value) {
+          if (validate_specialty_id == value["_id"]) {
+            jQuery('.specialty_dropdown').append($("<option></option>").attr("value", value["_id"]).text(value["name"]));
+          }
+        });
+
+        $('.specialty_dropdown').css("background-color",'rgb(247, 232, 225)')
+        setTimeout(function(argument) {
+          $('.specialty_dropdown').css("background-color",'')
+        }, 300)
+
+        var specialty_id = jQuery('.specialty_dropdown').val()
+        // get_specialty_doctors(facility_id, specialty_id, date)
+        get_booked_appointments(date, doctor_id, facility_id, specialty_id)
+
+        toggle_specialty_dropdown();
+      }
+    });
+  }
+
+  // initial loadup for get booked appointments
+  doctor_id = jQuery('.followup_doctor').val()
+  date = jQuery('#inpatient_ipd_record_discharge_note_attributes_followup_date').val()
+  facility_id = jQuery("#inpatient_ipd_record_discharge_note_attributes_followup_facility").val();
+  specialty_id = "<%= @admission.specialty_id %>"
+  let department_id = '485396012';
+  get_booked_appointments(date, doctor_id, facility_id, specialty_id)
+  check_time_slots(doctor_id, facility_id, department_id, true);
+
+  // case when specialty dropdown changes
+  $('.specialty_dropdown').on("change", function(){
+    var specialty_id = this.value
+    var doctor_id = jQuery('.followup_doctor').val()
+    var date = jQuery('#inpatient_ipd_record_discharge_note_attributes_followup_date').val()
+    var facility_id = jQuery("#inpatient_ipd_record_discharge_note_attributes_followup_facility").val();
+
+    // get_specialty_doctors(facility_id, specialty_id, date)
+    get_booked_appointments(doctor_id, facility_id, specialty_id, date, "dateselect")
+  })
+
+  jQuery('#inpatient_ipd_record_discharge_note_attributes_followup_date').on('change',function(){
+    date = this.value
+    doctor_id = jQuery('.followup_doctor').val();
+    facility_id = jQuery('#inpatient_ipd_record_discharge_note_attributes_followup_facility').val();
+    specialty_id = "<%= @admission.specialty_id %>";
+    get_booked_appointments(date, doctor_id, facility_id, specialty_id)
+    check_time_slots(doctor_id, facility_id, department_id);
+  })
+
+  jQuery('#inpatient_ipd_record_discharge_note_attributes_followup_facility').on("change",function(){
+    var facility_id = jQuery(this).val();
+    var doctor_id = jQuery('.followup_doctor').val()
+    var date = jQuery('#inpatient_ipd_record_discharge_note_attributes_followup_date').val()
+
+    get_facility_specialties(facility_id, doctor_id, date)
+    check_time_slots(doctor_id, facility_id, department_id);
+  });
+
+  jQuery('.followup_doctor').change(function(){
+    doctor_id = this.value
+    specialty_id = $('.specialty_dropdown').val()
+    date = jQuery('#inpatient_ipd_record_discharge_note_attributes_followup_date').val()
+    facility_id = jQuery('#inpatient_ipd_record_discharge_note_attributes_followup_facility').val()
+
+    get_booked_appointments(date, doctor_id, facility_id, specialty_id)
+    check_time_slots(doctor_id, facility_id, department_id);
+  })//.trigger('change');
+
+  $(".datepicker_followup").datepicker(datepicker_options);
+  <% unless @discharge_note.read_attribute(:followup_date).present? %>
+    $(".datepicker_followup").datepicker();
+  <% end %>
+  $(".followup_time_timepicker").timepicker({minuteStep: 5});
+
+  $('[data-toggle="tooltip"]').tooltip();
+
+  function check_time_slots(doctor_id, facility_id, department_id, is_first_time=false){
+    // Check TimeSlot
+    $.ajax({
+      type: 'GET',
+      dataType: 'json',
+      url: "/admissions/user_time_slot_check",
+      data: { doctor_id, facility_id, department_id },
+      success: function(response) {
+        if (response) {
+          $('.datepicker_followup').datepicker('destroy');
+          $('#inpatient_ipd_record_discharge_note_attributes_followup_date').removeClass('datepicker_followup').removeClass('hasDatepicker');
+          $('.discharge-time').html(`
+            <div class="bootstrap-timepicker timepicker">
+              <input class="timepicker followup_time_timepicker form-control" value="<%= @discharge_note.try(:followup_time) ? @discharge_note.try(:followup_time) : '' %>" type="text" name="inpatient_ipd_record[discharge_note_attributes][followup_time]" readonly="readonly" id="inpatient_ipd_record_discharge_note_attributes_followup_time">
+            </div>
+          `)
+          if ('<%= params[:action] %>' ==  'new' || ('<%= params[:action] %>' ==  'edit' && is_first_time == false)) {
+            $('#inpatient_ipd_record_discharge_note_attributes_followup_date').val('');
+            $('#inpatient_ipd_record_discharge_note_attributes_followup_time').val('');
+          }
+        } else {
+          $('#inpatient_ipd_record_discharge_note_attributes_followup_date').addClass('datepicker_followup');
+          $("#inpatient_ipd_record_discharge_note_attributes_followup_date").attr("readonly", true); 
+          $('.datepicker_followup').datepicker({minDate: 0, dateFormat: "dd/mm/yy"});
+          $("#inpatient_ipd_record_discharge_note_attributes_followup_time").attr("readonly", true);
+          $('#inpatient_ipd_record_discharge_note_attributes_followup_time').timepicker({minuteStep: 5});
+        }
+      }
+    });
+  }
+
+  $('#inpatient_ipd_record_discharge_note_attributes_followup_date').on('click', function() {
+    if (!$(this).hasClass('datepicker_followup')) {
+      ipdMainCalendarModal();
+    }
+  });
+
+  const ipdMainCalendarModal = () => {
+    let doctor_id = $('.followup_doctor').val();
+    let facility_id = $('#inpatient_ipd_record_discharge_note_attributes_followup_facility').val();
+    let department_id = '485396012'
+    let is_discharge = true
+    let date = jQuery('#inpatient_ipd_record_discharge_note_attributes_followup_date').val()
+    let specialty_id = $('.specialty_dropdown').val()
+
+    $.ajax({
+      type: 'GET',
+      dataType: 'script',
+      url: "/main/calendar_time_slot",
+      data: { doctor_id, facility_id, department_id, is_discharge, date, specialty_id },
+      success: function(response) {
+      }
+    });
+  }
+</script>

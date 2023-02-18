@@ -1,0 +1,289 @@
+<% if mail_job == true %>
+  <% @department = department %>
+  <% @pharmacy_log = pharmacy_log %>
+  <% @invoice_setting = invoice_setting %>
+<% end %>
+
+<% template_fields = OrganisationsSetting.find_by(organisation_id: current_user.organisation_id).custom_template_header_options[:pharmacy_settings][:invoices][0].select{ |key, value| value == true } %>
+<% fields_names = OrganisationSettingsHelper.get_data('pharmacy_invoices', template_fields).keys %>
+
+<div style="border:1px solid #ccc;">
+  <div class="row" style="border-bottom:1px solid #ccc;">
+    <div class="col-md-3 text-left">
+      <% if @department.asset_path.url %>
+        <% unless @department.asset_path.url.split('/').last == '_old_' %>
+            <img width="80" height="80" src="<%= @department.asset_path.url %>">
+        <% end %>
+      <%end%>
+    </div>
+    <div class="col-sm-6 text-center">
+      <% if @department.name ==nil || @department.name == "" || @department.shop_name == 'org-name' %>
+        <h3 style="margin:0px"><%= current_facility.name %></h3>
+      <%else%>
+          <h3 style="margin:0px"><%= @department.shop_name %></h3>
+      <%end%>
+    </div>
+    <div class="col-sm-3 text-right">
+      <% unless @department.shop_address == 'org-address' %>
+        <h5 style="margin: 0px"><%= @department.shop_address %></h5>
+      <%end%>
+      <% if @department.email.present? %>
+        <p> <h5 style="margin: 0px"><%= @department.email %></h5> </p>
+      <%end%>
+      <% if @department.contact.present? %>
+        <p> <h5 style="margin: 0px"><%= @department.contact %></h5> </p>
+      <%end%>
+    </div>
+
+    <div class="row">
+      <div class="col-sm-12 text-center">
+        <b>PHARMACY BILL</b>
+      </div>
+    </div>
+  </div>
+
+  <div class="row mb5">
+    <% template_fields.each_with_index do |(key, value), i| %>
+      <% field_name = fields_names[i] %>
+
+      <% if key == 'recipient' %>
+        <% field_value = @pharmacy_log.recipient.upcase %>
+
+      <% elsif key == 'doctor_name' %>
+        <% field_value = @pharmacy_log.doctor_name.upcase %>
+
+      <% elsif key == 'bill_number' %>
+        <% field_value = @pharmacy_log.bill_number.present? ? @pharmacy_log.bill_number : '-' %>
+
+      <% elsif key == 'mr_no' %>
+        <% field_value = @mr_no.present? ? @mr_no : 'NA' %>
+
+      <% elsif key == 'date_time' %>
+        <% field_value = Time.current.strftime("%d %b'%y, %I:%M %p") %>
+
+      <% elsif key == 'patient_identifier' %>
+        <% field_value = @pharmacy_log.patient_identifier %>
+      <% end %>
+
+      <% if field_name.present? %>
+        <div class="col-sm-2 font_size">
+          <b><%= field_name %></b>
+        </div>
+        <div class="col-sm-4 font_size">
+          : &nbsp; <%= field_value.try(:html_safe) %>
+        </div>
+      <% end %>
+    <% end %>
+  </div><!-- row -->
+
+  <div class="row" style="border-bottom:1px solid #ccc;border-top:1px solid #ccc;">
+    <div class="col-sm-4">
+      <div class="col-sm-2 font_size">
+        <b>S.No</b>
+      </div>
+
+      <div class="col-sm-8 font_size">
+        <b>Description</b>
+      </div>
+      <div class="col-sm-2 font_size">
+        <b>QTY</b>
+      </div>
+
+    </div>
+    <div class="col-sm-8">
+      <div class="col-sm-4 font_size">
+        <b>Batch No.</b>
+      </div>
+      <div class="col-sm-3 font_size">
+        <b>Exp.Date</b>
+      </div>
+      <div class="col-sm-2 font_size" style="padding-right: 0px;padding-left: 0px">
+        <b>U.Price</b>
+      </div>
+      <div class="col-sm-2 col-sm-3-shared font_size">
+        <% if @invoice_setting.show_tax_in_print %><b>Tax</b><% end %>
+      </div>
+      <div class="col-sm-2 col-sm-3-shared font_size text-right">
+        <b>Total(&#8377;)</b>
+      </div>
+    </div>
+  </div><!--row-->
+  <div id="pharmacy_items">
+    <% grand_total_price = 0 %>
+    <% grand_total_tax = 0 %>
+    <% if @pharmacy_log.discount %>
+      <% discount = @pharmacy_log.discount %>
+    <% else %>
+      <% discount = 0 %>
+    <% end %>
+
+    <% if @pharmacy_log.advance_payment %>
+      <% advance_payment = @pharmacy_log.advance_payment %>
+    <% else %>
+      <% advance_payment = 0 %>
+    <% end %>
+    <%@item_arr = []%>
+    <% @pharmacy_log.items.each.with_index do |item, i| %>
+      <%if item.try(:quantity).to_i > 0%>
+        <%@item_arr << item%>
+      <%end%>
+    <% end %>
+
+    <%@item_arr.each.with_index do |item,i|%>
+      <div class="row">
+        <div class="col-sm-4">
+          <div class="col-sm-2 font_size">
+            <%= i+1 %>
+          </div>
+
+          <div class="col-sm-8 font_size">
+            <%= item.description %>
+          </div>
+          <div class="col-sm-2 font_size">
+            <%= item.quantity %>
+          </div>
+
+        </div>
+        <div class="col-sm-8">
+          <div class="col-sm-4 font_size">
+            <%= item.batch_no %>
+          </div>
+          <div class="col-sm-3 font_size">
+            <% if item.expiry.present? %><%= Time.zone.parse(item.expiry).strftime("%d/%m/%Y") %><% end %>
+          </div>
+          <div class="col-sm-2 font_size">
+            <%= item.list_price%>
+          </div>
+          <div class="col-sm-2 col-sm-3-shared font_size">
+            <% if @invoice_setting.show_tax_in_print %><%= number_with_precision(item.taxable_amount, precision: 2) %><% end %>
+          </div>
+          <div class="col-sm-2 col-sm-3-shared font_size text-right">
+            <%if item.tax_group_id.present? %>
+              <%= total_with_tx = (item.taxable_amount.to_f + item.non_taxable_amount.to_f).round(2)%>
+              <% grand_total_price = grand_total_price + total_with_tx%>
+            <%else%>
+              <%= total_with_tx= (item.list_price.to_f * item.quantity.to_i).round(2)%>
+              <% grand_total_price = grand_total_price + total_with_tx%>
+            <%end%>
+          </div>
+        </div>
+      </div>
+    <%end%>
+  </div>
+
+  <div class="row mb5" style="border-bottom:1px solid #ccc;">
+  </div>
+  <% if @invoice_setting.show_tax_in_print %>
+    <div class="row">
+      <% if @pharmacy_log.try(:tax_breakup).count > 0 %>
+        <div class="col-sm-6 col-sm-offset-6 text-right">
+          <div class="col-sm-6 font_size">
+            <b>Non-Taxable Amount</b>
+          </div>
+          <div class="col-sm-3 text-center font_size">
+            :
+          </div>
+          <div class="col-sm-3 font_size">
+            <%= number_with_precision(@pharmacy_log.non_taxable_amount, precision: 2) %>
+          </div>
+        </div>
+        <div class="col-sm-6 col-sm-offset-6 text-right">
+          <% @pharmacy_log.tax_breakup.try(:each) do |tax_breakup| %>
+            <div class="col-sm-6 font_size">
+              <b><%= tax_breakup[:name] %></b>
+            </div>
+            <div class="col-sm-3 text-center font_size">
+              :
+            </div>
+            <div class="col-sm-3 font_size">
+              <%= number_with_precision(tax_breakup[:amount], precision: 2) %>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+    <hr style="padding: 0px;margin: 0px;">
+  <% end %>
+  <div class="row mb5">
+    <div class="col-sm-offset-6 col-sm-6 text-right">
+
+      <div class="col-sm-6 font_size">
+        <b>Total Amt Including Tax</b>
+      </div>
+      <div class="col-sm-3 text-center font_size">
+        :
+      </div>
+      <div class="col-sm-3 font_size">
+        <%= grand_total_price.round(2) %>
+      </div>
+
+      <% if @pharmacy_log.discount.present? %>
+          <div class="col-sm-6 font_size">
+            <b>Discount</b>
+          </div>
+          <div class="col-sm-3 text-center font_size">
+            :
+          </div>
+          <div class="col-sm-3 font_size">
+            <%= discount.round(2) || 0 %>
+          </div>
+      <%end%>
+
+      <div class="col-sm-6 font_size">
+        <b>Net Amount</b>
+      </div>
+      <div class="col-sm-3 text-center font_size">
+        :
+      </div>
+      <div class="col-sm-3 font_size">
+        <%= (grand_total_price - discount).round(2) %>
+      </div>
+
+    </div>
+    <% unless @pharmacy_log.note.nil? or @pharmacy_log.note.empty? %>
+      <div class="col-md-12 text-center mt10" style="background-color:#eee;padding:0 auto">
+        <span style="font-size:11px;"><b>Additional Note:</b> <%= @pharmacy_log.note %></span>
+      </div>
+    <% end %>
+  </div><!--row-->
+  <div class="row" style="margin-top:50px;">
+    <div class="col-sm-offset-10 col-sm-2 font_size text-center">
+    <b>___________________</b><br>
+    <b>Q. P Signature</b>
+    </div>
+  </div>
+</div>
+
+<div>
+  <div class="row" style="border-bottom:1px solid #ccc;">
+    <div class="col-md-4 font_size">
+      <p>PHARMACIST : <b><% if @department.username %><%= @department.try(:username) %><% else %> <%= current_user.name %><% end %></b></p>
+    </div>
+    <div class="col-md-4 font_size text-center">
+
+      <p>DL NO : <b><%if @department.dl_number %><%= @department.dl_number %><% else %>__-___-_______,______,______<% end %></b></p>
+    </div>
+    <div class="col-md-4 font_size text-center">
+      <%if @department.gst.present? %><p>GST NO : <b><%= @department.gst %></b></p><% end %>
+    </div>
+  </div>
+  <div clas="row">
+    <div class="col-md-12">
+      <ul class="med_rules">
+        <li>ALL DISPUTES SUBJECT TO <% if current_facility.city != nil %><%= current_facility.city.upcase %>CITY<% end %> JURISDICTION ONLY.</li>
+        <li>MEDICINES WITHOUT BATCH NO., EXP DT. & LOOSE TABLETS WILL NOT BE TAKEN BACK.</li>
+        <li>PLEASE CONSULT DOCTOR BEFORE USING THE MEDICINES</li>
+        <li>MEDICINE WITHOUT BILL WILL NOT BE TAKEN BACK</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<style type="text/css">
+  .font_size {
+    font-size: 12px;
+  }
+  .med_rules {
+    font-size: 10px;
+  }
+</style>

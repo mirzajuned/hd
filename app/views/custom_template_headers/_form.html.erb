@@ -1,0 +1,164 @@
+<div class="row">
+  <% selected = @print_data[0].select{ |key, value| value == true } %>
+  <% selected_keys = selected.keys %>
+  <% selected = OrganisationSettingsHelper.get_data(params[:flag], selected) %>
+  <div class="col-md-6 selected_fields_section">
+
+    <div class="row text-center" style="margin: 18px;">
+      <h4><b style="text-decoration: underline;">Selected Ordered fields</b></h4>
+    </div>
+
+    <div class="row selected_list" style="margin-left: 23px;">
+      <% selected.each_with_index do |(key, value), i| %>
+        <div class="col-sm-12 selected_row" data-field="<%= selected_keys[i] %>" style='margin: 8px;'>
+          <input type="hidden" name="print_details[<%= selected_keys[i] %>]" value="true">
+          <div class="col-md-6 display_section">
+            <b><span class="sr_no"><%= i + 1 %></span>. &nbsp;&nbsp;&nbsp; <span class="display_name"><%= key %></span> </b>
+          </div>
+          <div class="col-md-6">
+            <button class="btn btn-primary btn-xs move_row_up_btn" title="Move Up"><i class="fa fa-arrow-circle-up" aria-hidden="true"></i></button>&nbsp;
+            <button class="btn btn-primary btn-xs move_row_down_btn" title="Move Down"><i class="fa fa-arrow-circle-down" aria-hidden="true"></i></button>&nbsp;
+            <button class="btn btn-danger btn-xs remove_row_btn" title="Remove field"><i class="fa fa-times" aria-hidden="true"></i></button>
+          </div>
+
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- unselected fields data -->
+  <% unselected = @print_data[0].select{ |key, value| value == false } %>
+  <% unselected_keys = unselected.keys %>
+  <% unselected = OrganisationSettingsHelper.get_data(params[:flag], unselected) %>
+  <div class="col-md-6 unselected_fields_section">
+
+    <div class="row text-center" style="margin: 18px;">
+      <h4><b style="text-decoration: underline;">Un - Selected fields</b></h4>
+    </div>
+
+    <div class="row unselected_list" style="margin-left: 23px;">
+      <% unselected.each_with_index do |(key, value), i| %>
+        <div class="col-sm-12 unselected_row" data-field="<%= unselected_keys[i] %>" style='margin: 8px;padding-left: 57px;'>
+          <input type="hidden" name="print_details[<%= unselected_keys[i] %>]" value="false">
+          <div class="col-md-6"><b><span class="display_name"><%= key %></span></b></div>
+          <div class="col-md-6"><button class="btn btn-primary btn-xs reselect_btn">Re - Select</button></div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<script type="text/javascript">
+
+  function renumbering() {
+    var selected_list = $('.selected_list').find('.sr_no')
+
+    $.each( selected_list, function( counter, field ) {
+      $(field).html(counter + 1)
+    });
+  }
+
+  // remove button from LHS view
+  // ----------------------------------------------------------
+  function remove_row_field() {
+    $('.remove_row_btn').unbind().on('click', function(e) {
+      e.preventDefault();
+
+      // $(this).parent().parent().addClass('animated fadeOutDownBig')
+      var parent_div = $(this).parent().parent();
+
+      $(this).parent().parent().slideUp('fast')
+      setTimeout(function(){ parent_div.remove(); renumbering(); }, 200);
+
+      // unselected div append
+      var original_field_name = parent_div.data('field')
+
+      var hidden_name_field = "<input type='hidden' name='print_details["+ original_field_name +"]' value='false'>"
+      var name_section = '<div class="col-md-6"><b><span class="display_name"> ' + parent_div.find('.display_name').html() + '</span></b></div>'
+      var revive_section = '<div class="col-md-6"><button class="btn btn-primary btn-xs reselect_btn">Re - Select</button></div>'
+
+      var main_div = $('<div class="col-sm-12 unselected_row" data-field="'+ parent_div.data('field') +'" style="display:none;margin: 8px;padding-left: 57px;">' + hidden_name_field + name_section + revive_section + '</div>')
+
+      if ($('.unselected_list').find(`[data-field="${original_field_name}"]`).length == 0){
+        $(main_div).appendTo('.unselected_list').slideDown("fast");
+        reselect_field();
+      }
+    })
+  }
+
+  function reselect_field() {
+    $('.reselect_btn').unbind().on('click', function(e) {
+      e.preventDefault();
+
+      var parent_div = $(this).parent().parent();
+      var total_rows = $('.selected_row').length
+      var original_field_name = parent_div.data('field')
+
+      $(this).parent().parent().slideUp('fast')
+      setTimeout(function(){ parent_div.remove() }, 200);
+
+      // unselected div append
+      var hidden_name_field = "<input type='hidden' name='print_details["+ original_field_name +"]' value='true'>"
+      var name_section = '<div class="col-md-6 display_section"><b><span class="sr_no">'+ (total_rows + 1 )+'</span>. &nbsp;&nbsp;&nbsp;<span class="display_name"> ' + parent_div.find('.display_name').html() + '</span></b></div>'
+
+      var revive_section = '<div class="col-md-6"><button class="btn btn-primary btn-xs move_row_up_btn" style="margin-right: 6px;" title="Move Up"><i class="fa fa-arrow-circle-up" aria-hidden="true"></i></button><button class="btn btn-primary btn-xs move_row_down_btn" style="margin-right: 6px;" title="Move Down"><i class="fa fa-arrow-circle-down" aria-hidden="true"></i></button><button class="btn btn-danger btn-xs remove_row_btn" title="Remove field"><i class="fa fa-times" aria-hidden="true"></i></button></div>'
+
+      var main_div = $('<div class="col-sm-12 selected_row" data-field="'+ parent_div.data('field') +'" style="display:none;margin: 8px;">' + hidden_name_field + name_section + revive_section + '</div>')
+
+      if ($('.selected_list').find(`[data-field="${original_field_name}"]`).length == 0){
+        $(main_div).appendTo('.selected_list').slideDown("fast");
+        remove_row_field()
+        move_position()
+      }
+    })
+  }
+
+  function move_position() {
+    $('.move_row_up_btn').unbind().on('click', function(e) {
+      e.preventDefault();
+
+      var parent_div = $(this).parent().parent()
+      var position = parent_div.find('.sr_no').html();
+
+      if (position != 1) {
+        parent_div.insertBefore(parent_div.prev('.selected_row'));
+      
+        parent_div.css("background-color",'rgb(247, 232, 225)')
+        setTimeout(function(argument) {
+          parent_div.css("background-color",'')
+        }, 300)
+
+        renumbering()
+        $('.notify_area').html('')
+      }else{
+        $('.notify_area').html("<span class='label label-danger'>Can't move further Up - Side..</span>")
+      }
+    })
+
+    $('.move_row_down_btn').unbind().on('click', function(e) {
+      e.preventDefault();
+
+      var parent_div = $(this).parent().parent()
+      var position = parent_div.find('.sr_no').html();
+      var total_rows = $('.selected_row').length
+
+      if (position != total_rows) {
+        parent_div.insertAfter(parent_div.next('.selected_row'));
+
+        parent_div.css("background-color",'rgb(247, 232, 225)')
+        setTimeout(function(argument) {
+          parent_div.css("background-color",'')  
+        }, 300)
+
+        renumbering()
+        $('.notify_area').html('')
+      }else{
+        $('.notify_area').html("<span class='label label-danger'>Can't move further Down - Side..</span>")
+      }
+    })
+  }
+
+  move_position();
+  remove_row_field();
+  reselect_field();
+</script>

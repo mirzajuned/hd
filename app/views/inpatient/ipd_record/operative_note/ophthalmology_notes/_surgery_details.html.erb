@@ -1,0 +1,317 @@
+<!-- Counter Logic -->
+<% is_print ||= false %>
+<% is_mail ||= false %>
+<% if @operative_note.present? %>
+  <% surgery_counter = 0 %>
+  <% if @operative_note.surgerytype.present? || @operative_note.anesthesia.present? || @ipdrecord.diagnosislist.present? || @ipdrecord.procedures.present? %>
+    <% surgery_counter += 1 %>
+  <% end %>
+  <% unless @operative_note.patient_entry_time.nil? || @operative_note.patient_exit_time.nil? || @operative_note.anesthesia_start_time.nil? || @operative_note.anesthesia_end_time.nil? || @operative_note.surgery_start_time.nil? || @operative_note.surgery_end_time.nil? %>
+    <% surgery_counter += 1 %>
+  <% end %>
+
+  <% if @operative_note.procedure_note.present? && @operative_note.procedure_note != "<br>" %>
+    <% surgery_counter += 1 %>
+  <% end %>
+  <% @ipd_record_procedure_performed = @ipdrecord.procedure.where(is_performed: true, performed_note_id: @operative_note.id.to_s) %>
+  <% if @diagnosislist.where(is_disabled: false).try(:count) > 0 || @case_sheet.free_form_diagnoses.count > 0 || @ipd_record_procedure_performed.count > 0 || @case_sheet.free_form_procedures.count > 0 %>
+    <% surgery_counter += 1 %>
+  <% end %>
+
+  <% if surgery_counter > 0 %>
+    <div class="row mb10">
+      <div class="col-md-12">
+        <div class="row">
+          <strong>SURGERY :</strong>
+          <div class="summary-line-border"></div>
+        </div>
+        <% if @ipdrecord.procedure.present? || @operative_note.surgerytype.present? || @operative_note.anesthesia.present? %>
+          <div class="row mb5">
+            <% if @ipdrecord.procedure[-1].present? %>
+              <div class="col-md-4">
+                <% procedure_for_date = @ipdrecord.procedure.where(is_performed: true, performed_note_id: @operative_note.id.to_s).order(performed_datetime: :desc)[0] %>
+                <b>Date of Surgery :</b> <%= procedure_for_date.try(:performed_datetime).try(:strftime, '%d/%m/%Y') %>
+              </div>
+            <% end %>
+            <% if @operative_note.surgerytype.present? %>
+              <div class="col-md-4">
+                <b>Surgery Type :</b> <%= @operative_note.surgerytype %>
+              </div>
+            <% end %>
+            <% if @operative_note.anesthesia.present? %>
+              <div class="col-md-4">
+                <b>Anesthesia :</b> <%= @operative_note.anesthesia %>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+        <div class="row mb5">
+          <div class="col-md-12">
+            <% if @diagnosislist.where(is_disabled: false).try(:count) > 0 %>
+              <b>Pre-Operative Diagnosis:</b>
+              <% @diagnosislist.where(is_disabled: false).group_by(&:icddiagnosiscode).each do |icddiagnosiscode, diagnoses| %>
+                <% if diagnoses[0][:created_from] == "migration" %>
+                  <li style="margin-left: 10px"> <%= diagnoses[0][:diagnosisname].capitalize %></li>
+                <% else %>
+                  <% icd_type = diagnoses[0][:icd_type] %>
+                  <% icd_code = diagnoses[0][:icddiagnosiscode] %>
+                  <% if icd_type == 'IcdDiagnosis' || icd_type == 'TranslatedIcdDiagnosis' %>
+                    <% diagnosiscode = '- ' + icd_code.upcase.insert(3, '.') %>
+                  <% else %>
+                    <% diagnosiscode = '' %>
+                  <% end %>
+                  <% if icd_type == 'TranslatedIcdDiagnosis' %>
+                    <li style="margin-left: 10px"> <%= diagnoses[0][:diagnosisname].capitalize %><strong>  <%= diagnosiscode %></strong></li>
+                  <% else %>
+                    <li style="margin-left: 10px"> <%= diagnoses[0][:diagnosisoriginalname].capitalize %><strong>  <%= diagnosiscode %></strong></li>
+                  <% end %>
+                <% end %>
+              <% end %>
+            <% end %>
+            <% if @case_sheet.free_form_diagnoses.try(:count) > 0 %>
+              <% if @case_sheet.free_form_diagnoses[@ipdrecord.id.to_s].present? %>
+                <% if @case_sheet.free_form_diagnoses[@ipdrecord.id.to_s][:content].present? && @case_sheet.free_form_diagnoses[@ipdrecord.id.to_s][:content] != "<br>" %>
+                  <div class="row mb20">
+                    <div class="col-md-12">
+                      <b>Diagnosis <% if @diagnosislist.where(is_disabled: false).try(:count) > 0 %>Text<% end %>:</b>
+                      <li style="margin-left: 10px"><%= @case_sheet.free_form_diagnoses[@ipdrecord.id.to_s][:content].to_s.html_safe %></li>
+                    </div>
+                  </div>
+                <% end %>
+              <% else %>
+                <% uniq_array = [] %>
+                <div class="row mb20">
+                  <div class="col-md-12">
+                    <b>Diagnosis <% if @diagnosislist.where(is_disabled: false).try(:count) > 0 %>Text<% end %>:</b>
+                    <% @case_sheet.free_form_diagnoses.each do |key, diagnosis| %>
+                      <% unless uniq_array.include?(diagnosis[:content].to_s.html_safe()) %>
+                        <% if diagnosis[:content].present? && diagnosis[:content] != "<br>" %>
+                          <li style="margin-left: 10px"><%= diagnosis[:content].to_s.html_safe %></li>
+                          <% uniq_array << diagnosis[:content].to_s.html_safe %>
+                        <% end %>
+                      <% end %>
+                    <% end %>
+                  </div>
+                </div>
+              <% end %>
+            <% end %>
+          </div>
+        </div>
+        <% if false && @operative_note.diagnosis.present? %>
+          <div class="row mb5">
+            <div class="col-md-12">
+              <b> Diagnosis Details:</b> <%= @operative_note.diagnosis %>
+            </div>
+          </div>
+        <% end %>
+        <div class="row mb5">
+          <div class="col-md-12">
+            <% if @ipd_record_procedure_performed.count > 0 %>
+              <b>Procedure Performed :</b>
+              <% @ipd_record_procedure_performed.each do |procedure| %>
+                <li>
+
+                  <% procedurecode = procedure.try(:procedurefullcode) %>
+                  <% display_name = CustomCommonProcedure.find_by(code: procedurecode, organisation_id: @ipdrecord.try(:organisation_id)).try(:display_name) %>
+                  <% if display_name.present? %>
+                    <% procedurename = display_name %>
+                  <% else %>
+                    <% procedurename = procedure.procedurename %>
+                  <% end %>
+
+                  <% if procedure.try(:procedureside) == "18944008" %>
+                      <%= procedurename + ', R' %>
+                  <% elsif procedure.try(:procedureside) == "8966001" %>
+                      <%= procedurename + ', L' %>
+                  <% elsif  procedure.try(:procedureside) == "40638003" %>
+                      <%= procedurename + ', B/E' %>
+                  <% else %>
+                      <%= procedurename %>
+                  <% end %>
+                  <% ipd_complications = @ipdrecord.complications.where(procedure_id: procedure.id.to_s, is_deleted: false) %>
+                  <% unless is_print || is_mail %>
+                    <ul>
+                      <% if ipd_complications.count > 0 %>
+                        <li><b>Complications selected: </b>
+                          <ul>
+                            <% ipd_complications.each do |complication| %>
+                              <li>
+                                <%=complication.complication_name%>
+                              </li>
+                            <% end %>
+                          </ul>
+                        </li>
+                      <% end %>
+                      <% if procedure.complication_comment.present? %>
+                        <li>
+                          <b>Complication Comment:</b>
+                          <span style="word-wrap: break-word;"><%= procedure.complication_comment %></span>
+                        </li>
+                      <% end %>
+                    </ul>
+                  <% end %>
+                </li>
+              <% end %>
+            <% end %>
+            <% if @case_sheet.free_form_procedures.try(:count) > 0 %>
+              <% if @case_sheet.free_form_procedures[@ipdrecord.id.to_s].present? %>
+                <% if @case_sheet.free_form_procedures[@ipdrecord.id.to_s][:content].present? && @case_sheet.free_form_procedures[@ipdrecord.id.to_s][:content] != "<br>" %>
+                  <div class="row mb20">
+                    <div class="col-md-12">
+                      <b>Procedure <% if @ipd_record_procedure_performed.count > 0 %>Text<% end %>:</b>
+                      <li style="margin-left: 10px"><%= @case_sheet.free_form_procedures[@ipdrecord.id.to_s][:content].to_s.html_safe %></li>
+                    </div>
+                  </div>
+                <% end %>
+              <% else %>
+                <% uniq_array = [] %>
+                <div class="row mb20">
+                  <div class="col-md-12">
+                    <b>Procedure <% if @ipd_record_procedure_performed.count > 0 %>Text<% end %>:</b>
+                    <% @case_sheet.free_form_procedures.each do |key, procedure| %>
+                      <% if procedure[:content].present? && procedure[:content] != "<br>" %>
+                        <% unless uniq_array.include?(procedure[:content].to_s.html_safe()) %>
+                          <li style="margin-left: 10px"><%= procedure[:content].to_s.html_safe %></li>
+                          <% uniq_array << procedure[:content].to_s.html_safe %>
+                        <% end %>
+                      <% end %>
+                    <% end %>
+                  </div>
+                </div>
+              <% end %>
+            <% end %>
+          </div>
+        </div>
+        <% if false && @operative_note.procedure_performed.present? %>
+          <div class="row mb5">
+            <div class="col-md-12">
+              <b>Procedure Performed :</b> <%= @operative_note.try(:procedure_performed) %>
+            </div>
+          </div>
+        <% end %>
+        <% if @operative_note.post_op_plan.present? %>
+          <div class="row mb5">
+            <div class="col-md-12">
+              <b>Post-Op Plan :</b> <%= @operative_note.post_op_plan %>
+            </div>
+          </div>
+        <% end %>
+
+        <div class="row mb5">
+          <div class="col-md-12">
+            <% if @operative_note.theatre_name.present? %>
+              <div class="col-md-6" style="margin-left: -1.5%;">
+              <b>Theatre :</b> <%= @operative_note.theatre_name %>
+              </div>
+            <% end %>
+
+            <div class="col-md-6">
+              <b>Case no :</b> <%= @operative_note.case_no %>
+            </div>
+            <% if @operative_note.theatre_section.present? %>
+            <div class="col-md-6" style="margin-left: -1.5%;">
+              <b>Section :</b> <%= @operative_note.theatre_section %>
+            </div>
+            <% end %>
+            <% if @operative_note.site.present? %>
+              <div class="col-md-6">
+                <b>Site :</b> <%= @operative_note.site %>
+              </div>
+            <% end %>
+            <% if @operative_note.capsulotomy.present? %>
+              <div class="col-md-6" style="margin-left: -1.5%;">
+                <b>Capsulotomy :</b> <%= @operative_note.capsulotomy %>
+              </div>
+            <% end%>
+            <% if @operative_note.iridectomy.present? %>
+              <div class="col-md-6">
+                <b>iridectomy :</b> <%= @operative_note.iridectomy %>
+              </div>
+            <% end %>
+            <% if @operative_note.read_attribute(:iol).present? %>
+              <div class="col-md-6" style="margin-left: -1.5%;">
+                <b>Iol :</b> <%= @operative_note.read_attribute(:iol) %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+        <% unless @operative_note.patient_entry_time.blank? || @operative_note.patient_exit_time.blank? %>
+          <div class="row mb5">
+            <% unless @operative_note.patient_entry_time.blank? %>
+              <div class="col-md-4">
+                <b>Patient-In Time :</b> <%= @operative_note.patient_entry_time.strftime('%I:%M %p') %>
+              </div>
+            <% end %>
+            <% unless @operative_note.patient_exit_time.blank? %>
+              <div class="col-md-4">
+                <b>Patient-Out Time :</b> <%= @operative_note.patient_exit_time.strftime('%I:%M %p') %>
+              </div>
+            <% end %>
+            <% unless @operative_note.patient_exit_time.blank? && @operative_note.patient_entry_time.blank? %>
+              <div class="col-md-4">
+                <b>Total Time :</b> <%= @operative_note.read_attribute(:patient_entry_exit_time) %>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+        <% unless @operative_note.anesthesia_start_time.blank? || @operative_note.anesthesia_end_time.blank? %>
+          <div class="row mb5">
+            <% unless @operative_note.anesthesia_start_time.blank? %>
+              <div class="col-md-4">
+                <b>Anesthesia Start Time :</b> <%= @operative_note.anesthesia_start_time.try(:strftime, '%I:%M %p') %>
+              </div>
+            <% end %>
+            <% unless @operative_note.anesthesia_end_time.blank? %>
+              <div class="col-md-4">
+                <b>Anesthesia End Time :</b> <%= @operative_note.anesthesia_end_time.strftime('%I:%M %p') %>
+              </div>
+            <% end %>
+            <% unless @operative_note.anesthesia_end_time.blank? && @operative_note.anesthesia_start_time.blank? %>
+              <div class="col-md-4">
+                <b>Total Time :</b> <%= @operative_note.read_attribute(:anesthesia_start_end_time) %>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+        <% unless @operative_note.surgery_start_time.blank? || @operative_note.surgery_end_time.blank? %>
+          <div class="row mb5">
+            <% unless @operative_note.surgery_start_time.blank? %>
+              <div class="col-md-4">
+                <b>Surgery Start Time :</b> <%= @operative_note.surgery_start_time.try(:strftime, '%I:%M %p') %>
+              </div>
+            <% end %>
+            <% unless @operative_note.surgery_end_time.blank? %>
+              <div class="col-md-4">
+                <b>Surgery End Time :</b> <%= @operative_note.surgery_end_time.strftime('%I:%M %p') %>
+              </div>
+            <% end %>
+            <% unless @operative_note.surgery_end_time.blank? && @operative_note.surgery_start_time.blank? %>
+              <div class="col-md-4">
+                <b>Total Time :</b> <%= @operative_note.read_attribute(:surgery_start_end_time) %>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+        <!--procedure note should not be shown in summary - uncommented mohit   -->
+        <% if @operative_note.procedure_note.present? && @operative_note.procedure_note != "<br>" %>
+          <div class="row mb5">
+            <div class="col-md-12">
+              <b>Procedure Note:</b>
+              <span style="word-wrap: break-word;"><%= @operative_note.procedure_note.html_safe %></span>
+            </div>
+          </div>
+        <% end %>
+        <% unless is_print || is_mail %>
+          <% if @operative_note.try(:complication) == "Yes" && @operative_note.complication_comment.present? %>
+            <div class="row mb5">
+              <div class="col-md-12 surgery_complication_comment">
+                <b>Intraoperative Complications:</b>
+                <span style="word-wrap: break-word;"><%= @operative_note.complication_comment %></span>
+              </div>
+            </div>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+<% end %>

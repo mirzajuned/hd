@@ -1,0 +1,497 @@
+var current_user_id = '<%= current_user.id %>'
+var role
+if (<%= current_user.role_ids.include?159561009 || current_user.role_ids.include?(106292003)%>){
+    role = "receptionist"
+}
+else if(<%= current_user.role_ids.include?158965000%>){
+    role = "doctor"
+}
+else if(<%= current_user.role_ids.include?28229004%>){
+    role = "optometrist"
+}
+
+$("div.buttonPlaceholder").append("<%= escape_javascript(render 'opd_appointments/calendar_controls') %>")
+$(".facility-filter").html("<%= escape_javascript(render 'facilities_dropdown') %>")
+$(".department-filter").html("<%= escape_javascript(render 'departments_dropdown') %>")
+$(".user-filter").html("<%= escape_javascript(render 'users_dropdown') %>")
+
+
+$(".sidebar-summary").html("<%= escape_javascript(render 'opd_appointments/calendar/sidebar_summary') %>");
+
+$(".sidebar-doctors").html("<%= escape_javascript(render 'opd_appointments/calendar/sidebar_doctors') %>");
+asp_rat = $(".main_calendar").width() / ($(".main_calendar").height() - 50);
+$("select").chosen({
+    'min-width': '100px',
+    'white-space': 'nowrap',
+    disable_search_threshold: 10
+})
+calendar_options = {
+    header: {
+        left:   'today',
+        center: 'prev title next',
+        right: 'agendaWeek,agendaDay'
+    },
+    //header: false,
+    slotDuration: '<%= Time.at(@user_default_slot_time.minutes).utc.strftime("%H:%M:%S") %>',
+    scrollTime :  '<%= Time.current.strftime("%H:%M:%S").to_s %>',
+    // height: "700",
+    editable: true,
+    defaultView: "agendaWeek",
+    allDaySlot: false,
+    slotEventOverlap: false,
+    eventLimit: true, // allow "more" link when too many events
+    selectable: true,
+    selectHelper: true,
+    unselectAuto: true,
+    aspectRatio: asp_rat,
+    firstDay: <%= Date.current.strftime("%w").to_i %>,
+    // firstDay: "2016-06-19",
+    events: {
+        url: '/opd_clinical_workflow/get_calendar_data',
+        type: 'GET',
+        data: function(){
+            return {
+                facility_id: "<%=current_facility.id%>",
+                doctor_id: $(".current_doctor > a").attr("data-doctor-id"),
+                department_id: $("#department-filter").val(),
+                user_id: $("#user-filter").val()
+            }
+        },
+        success: function(res){
+            updateSummary(res);
+        },
+        error: function() {
+            alert('there was an error while fetching events!');
+        }
+    },
+    eventRender:function(event,element){
+        var i = $(element);
+        //$(".summary_appointment[data-appointment-id='" + "576764031907732d7e000240" + "']").trigger('click')
+        // $(element).popover({
+        //     placement : 'top',
+        //     title : 'Appointment Actions',
+        //     html : true,
+        //     content :function(){
+        //         $.ajax({
+        //             type: "GET",
+        //             url: "/patients/basic_details",
+        //             data: {appointment_id: event.appointment_id},
+        //             beforeSend: function(xhr){
+        //                 $('.popover').popover('hide');
+        //             }
+        //         }).done(function( data ) {
+
+        //             $('.popover.in .popover-content').empty();
+        //             $(".popover.in .popover-content").html(data);
+        //         })
+        //     },
+        //     trigger : 'focus',
+        //     template : '<div class="popover" data-container="body" role="tooltip" style="width: 275px !important;margin-top: -168px !important;"><div class="arrow"></div><button type="button" class="popover-close close" ><span class="glyphicon glyphicon-remove"></span></button><h3 class="popover-title"></h3><div class="popover-content"></div></div>'
+        //     // Huzaifa: Change min-width to width:275px Status:Done
+
+        // })
+
+    },
+    eventClick: function(calEvent, jsEvent, view) {
+        //POPOVER IS NO MORE OPENED. MODAL FROM LIST IS INVOKED WHEN CLICKED ON THE CALENDAR EVENT
+        // $(this).popover('toggle', {container: 'body'});
+        // $(this).attr('tabindex', -1);
+        $(".summary_appointment[data-appointment-id='" + calEvent.appointment_id + "']").trigger('click');
+    },
+    eventResize: function(event, delta, revertFunc, jsEvent, ui, view ) {
+
+        $.ajax({
+            type: "GET",
+            url: "/opd_appointments/edit_calendar_event",
+            data: {
+                appointment_id: event.appointment_id,
+                appointment_new_start: event.start.format(),
+                appointment_new_end: event.end.format()
+            },
+            success: function(res){
+                $("#calendar").fullCalendar('refetchEvents');
+            },
+            error: function(err){
+            }
+        });
+        // .done(function( data ) {
+        //   // updateSummary(res);
+        // })
+
+    },
+    eventDrop: function(event, delta, revertFunc, jsEvent, ui, view  ) {
+        $.ajax({
+            type: "GET",
+            url: "/opd_appointments/edit_calendar_event",
+            data: {
+                appointment_id: event.appointment_id,
+                appointment_new_start: event.start.format(),
+                appointment_new_end: event.end.format()
+            },
+            success: function(res){
+                $("#calendar").fullCalendar('refetchEvents');
+            },
+            error: function(err){
+            }
+        });
+        // .done(function( data ) {
+
+        // })
+
+    },
+    select: function( start, end, jsEvent, view ){
+        $.ajax({
+            type: "post",
+            dataType: "script",
+            url: "/opd_appointments/newappointment",
+            data: {
+                remote: "true",
+                current_doctor: $("#sidebar_doctors .current_doctor").find("a").attr("data-doctor-id"),
+                'toggle': "modal",
+                'target': '#appointment-modal',
+                'appointmentdate':start.format('YYYY-MM-DD'),
+                'start_time':start.format('HH:mm'),
+                'end_time':end.format('HH:mm')
+            }
+        })
+    },
+    viewRender: function(view, element) {
+        change_date_processing();
+    }
+}
+var day_events_calendar = $('#calendar').fullCalendar(calendar_options);
+
+$('.calendar-controls-print-schedule').on("click", function() {
+    var url = "/opd_appointments/printopdappointmentlist?current_date=<%=Date.current.to_s %>&department_id="+$("#department-filter").val()+"&user_id="+$("#user-filter").val();
+    window.open(url, "","toolbar=0,status=0");
+    event.preventDefault();
+});
+$('#facility-filter').on("change",function(){
+    $.ajax({
+        type: "GET",
+        dataType: "html",
+        url: "/departments/get_departments_for_facility",
+        data: {facility_id: "<%=current_facility.id%>"},
+        success: function(data) {
+            $("#department-filter").html(data);
+            $("#department-filter").trigger("chosen:updated");
+            $("#department-filter").trigger("change");
+        }
+    });
+
+});
+
+$('#department-filter').on("change", function() {
+    $.ajax({
+        type: "GET",
+        dataType: "html",
+        url: "/users/get_users_for_department",
+        data: {department_id: $("#department-filter").val(),facility_id: "<%=current_facility.id%>"},
+        success: function(data) {
+            $("#user-filter").html(data);
+            $("#user-filter").trigger("chosen:updated");
+            $("#user-filter").trigger("change");
+        }
+    });
+});
+
+$('#user-filter').on("change", function() {
+    $("#calendar").fullCalendar('refetchEvents');
+})
+$('.refresh-data').on("click",function(){
+    $("#calendar").fullCalendar('refetchEvents');
+})
+$('#calendar').on('click','.popover-close',function(){
+    $(".popover").popover('hide');
+})
+$('html').on('click', function(e) {
+    $('.popover').each( function() {
+        if( $(e.target).parents(".fc-time-grid-event").get(0) !== $(this).prev().get(0) ) {
+            $(this).popover('hide');
+        }
+    });
+});
+
+$('#calendar-datepicker-inline').datepicker({
+    dateFormat: "dd/mm/yy",
+    showOn: "button",
+    buttonText: '<i class="fa fa-calendar"></i>',
+
+    onSelect: function (dateText,obj) {
+        $("#calendar").fullCalendar("gotoDate",moment(dateText, "DD/MM/YYYY"));
+        change_date_processing();
+    }
+});
+$('.previous-day').on('click',function(){
+    $("#calendar").fullCalendar("prev");
+    change_date_processing();
+});
+$('.next-day').on('click',function(){
+    $("#calendar").fullCalendar("next");
+    change_date_processing();
+});
+//should be called when date is changed
+function change_date_processing(){
+    var calendar_date = $('#calendar').fullCalendar('getDate');
+    var calendar_view = $('#calendar').fullCalendar('getView');
+    var calendar_view_start = calendar_view.start;
+    var calendar_view_end = calendar_view.end;
+    $("#date-display").html(calendar_date.format("DD-MMM-YYYY"))
+    var add_appointment_url = '/opd_appointments/newappointment?appointmentdate='+calendar_date.format("YYYY-MM-DD");
+    $("#add-appointment-btn").attr('href',add_appointment_url);
+    $(".print-opd-appointment-list").attr('data-calendardate',calendar_date.format("YYYY-MM-DD"));
+    if (calendar_view.name == 'agendaWeek') {
+        if(calendar_date.isBetween(calendar_view_start.format("YYYY-MM-DD"), calendar_view_end.format("YYYY-MM-DD"), 'week')) {
+            $("#add-appointment-btn").hide();
+        } else {
+            $("#add-appointment-btn").show();
+        }
+    } else if (calendar_view.name == 'agendaDay') {
+        if(calendar_date.isBefore(moment().format("YYYY-MM-DD"))) {
+            $("#add-appointment-btn").hide();
+        } else {
+            $("#add-appointment-btn").show();
+        }
+    }
+}
+$(".ui-datepicker-trigger").addClass("btn btn-success");
+
+$('.print-opd-appointment-list').on("click", function() {
+    var url = "/opd_appointments/printopdappointmentlist?current_date="+$(this).attr("data-calendardate")+"&department_id="+$("#department-filter").val()+"&user_id="+$("#user-filter").val()+"&facility_id="+"<%=current_facility.id%>";
+    window.open(url, "","toolbar=0,status=0");
+    event.preventDefault();
+})
+function updateSummary(arr){
+    $(".appointment_type_content").html("");
+    $(".appointments_later").html("");
+    $("#appointment_all_not_finished").html("")
+    $("#appointment_all_finished").html("")
+    today = moment(new Date()).format("MM-DD-YYYY");
+    appointments_today = []
+    appointments_later = []
+    appointment_type_count = new Array(0,0,0,0,0,0)
+    for (var i = arr.length - 1; i >= 0; i--) {
+        if(today == moment(new Date(arr[i].start)).format("MM-DD-YYYY")){
+            appointments_today.push(arr[i]);
+            appointment_type_count[4]++;
+            //scheduled, waiting, seen
+            createSummaryAppointment(arr[i], '.appointments_today #appointment_all #appointment_all_not_finished');
+            if(arr[i].state == role & current_user_id == arr[i].user_id){
+                appointment_type_count[0]++;
+                createSummaryAppointment(arr[i], '.appointments_today #appointment_scheduled');
+            } else if(arr[i].state == "complete"){
+                appointment_type_count[1]++;
+                createSummaryAppointment(arr[i], '.appointments_today #appointment_waiting');
+            } else if(arr[i].appointment_state == "engaged"){
+                appointment_type_count[2]++;
+                createSummaryAppointment(arr[i], '.appointments_today #appointment_engaged');
+            }
+            else if(arr[i].state == 'not_arrived'){
+                // console.log(i, 'arr[i].state', arr[i]);
+             appointment_type_count[5]++;
+
+                createSummaryAppointment(arr[i], '.appointments_today #appointment_not_arrived',"not_arrived");
+            }
+        } else if(moment(new Date(arr[i].start)).format("MM-DD-YYYY") > today ) {
+            appointments_later.push(arr[i]);
+            createSummaryAppointment(arr[i], '.appointments_later');
+        }
+    }
+    activateSummaryAppointment();
+    $(".appointment_scheduled_count").text(appointment_type_count[0])
+    $(".appointment_waiting_count").text(appointment_type_count[1])
+    $(".appointment_engaged_count").text(appointment_type_count[2])
+    $(".appointment_finished_count").text(appointment_type_count[3])
+    $(".appointment_all_count").text(appointment_type_count[4])
+    $(".appointment_not_arrived_count").text(appointment_type_count[5])
+
+
+    if(appointment_type_count[3] == 0) {
+        $("#appointment_all").find(".finished_word").hide()
+    } else {
+        $("#appointment_all").find(".finished_word").show()
+    }
+
+    //Update already exisiting modal's content
+    if (($("#modalCalendarAppointmentDetails").data('bs.modal') || {}).isShown){
+        var appointment_id = $("#modalCalendarAppointmentDetails").find("#modalCalendarAppointmentDetailsId").attr('data-appointment-id');
+        // $("#modalCalendarAppointmentDetails").modal('hide');
+        // $(".summary_appointment[data-appointment-id='" + appointment_id + "']").trigger('click');
+
+        $("#modalCalendarAppointmentDetailsBody").html("<div class='loading_dots'><span></span>&nbsp;<span></span>&nbsp;<span></span></div>");
+        // $("#modalCalendarAppointmentDetails").modal('show');
+
+        $.ajax({
+            url: "/opd_appointments/calendar_appointment_details",
+            data: {
+                appointment_id: appointment_id
+            },
+            dataType: 'html',
+            success: function(res){
+                $("#modalCalendarAppointmentDetails").find("#modalCalendarAppointmentDetailsBody").html(res);
+            },
+            error: function(err){
+            }
+        });
+    }
+}
+
+function createSummaryAppointment(appointment, container){
+    assigned_time = moment('<%=Time.current%>').diff(moment(appointment.start_time), 'minutes')
+    if (assigned_time > 60) {
+        total_assigned_time = Math.floor(parseFloat(assigned_time) / 60) + "h" + parseFloat(assigned_time) % 60 + "m"
+    }
+    else{
+        total_assigned_time = assigned_time + " M"
+    }
+    var row = $('<div/>', {
+        class: 'row no_margin summary_appointment',
+        'data-appointment-id': appointment.appointment_id
+        // 'data-content': 'Popover'
+    }).appendTo(container);
+    $(row).css("border", "1px solid " + appointment.backgroundColor).css("border-left", "3px solid " + appointment.backgroundColor)
+
+    var name = $('<div/>', {
+        class: 'col-sm-4 no_padding'
+    }).appendTo(row);
+
+    $('<span/>',{
+        text: appointment.title
+        // href: "/patients/summary?appointment_id=" + appointment.appointment_id + "&patientid=" + appointment.patient_id + "&opd=440655000"
+    }).appendTo(name);
+    total_time = moment(appointment.end_time).diff(moment(appointment.start_time), 'minutes')
+    if (total_time > 60) {
+        toal_time_hrs = Math.floor(parseFloat(total_time) / 60) + "h"+ parseFloat(assigned_time) % 60 + "m"
+
+    }
+    else{
+        toal_time_hrs = total_time + " M"
+    }
+    if (appointment.state == "complete"){
+        $('<div/>', {
+            class: 'col-sm-2 no_padding text-center',
+            text: "T-"+toal_time_hrs
+
+        }).appendTo(row);
+    }
+    else if(appointment.state == "not arrived"){
+        $('<div/>', {
+            class: 'col-sm-2 no_padding text-center',
+            text: moment(appointment.start).format("DD/MM")
+        }).appendTo(row);
+    }
+    else{
+        $('<div/>', {
+            class: 'col-sm-2 no_padding text-center',
+            text: "T-"+total_assigned_time
+        }).appendTo(row);
+    }
+    if(appointment.state == "not arrived"){
+        $('<div/>', {
+            class: 'col-sm-2 no_padding text-right',
+            text: "NA"
+        }).appendTo(row);
+    }
+    else{
+        $('<div/>', {
+            class: 'col-sm-2 no_padding text-right',
+            text: moment(appointment.start_time).format("hh:mm A")
+        }).appendTo(row);
+    }
+
+    badge_div = $('<div/>', {
+        class: 'col-sm-2 no_padding text-right',
+    }).appendTo(row);
+
+    $('<span/>', {
+        class: 'badge badge-info',
+        text: appointment.state
+    }).appendTo(badge_div);
+
+    var dilate = $('<div/>', {
+        class: 'col-sm-2 no_padding text-right'
+        // style: 'padding-right: 5%;'
+    }).appendTo(row);
+
+    if(appointment.dilation_start_time != null && appointment.dilation_end_time == null){
+      $('<span/>',{
+          class: "dilated_d dilation-timer-here badge badge-danger"
+      }).appendTo(dilate);
+
+      $(".dilation-timer-here").timer({
+        seconds: appointment.difference,
+        format: '%M:%S'  //Display time as 00:00:00
+      });
+    } else if(appointment.dilation_start_time != null && appointment.dilation_end_time != null){
+      $('<span/>',{
+          text: appointment.end_difference,
+          class: "dilated_d badge badge-success"
+      }).appendTo(dilate);
+    }
+}
+
+$(document).ready(function(){
+    // $()
+    $("#sidebar_doctors .nav li.sidebar-doctor-filter").on('click', function(e){
+        $(this).siblings('li').removeClass("active current_doctor");
+        $(this).addClass("active current_doctor");
+        $("#calendar").fullCalendar('refetchEvents');
+    });
+
+    // $(".sidebar-appointment-filter > a").on('click', function(e){
+    //   e.preventDefault();
+    //   // $(this).tab('show');
+    //   filter = $(this).attr("data-appointment-filter");
+    //   if(filter == 'scheduled'){
+    //     $("#appointment_scheduled").tab('show');
+    //   }else if(filter == 'waiting'){
+    //     $("#appointment_waiting").tab('show');
+    //   } else if(filter == 'engaged'){
+    //     $("#appointment_engaged").tab('show');
+    //   }else if(filter == 'finished'){
+    //     $("#appointment_finished").tab('show');
+    //   }
+    // });
+
+    //Multiple Modals
+    $(document).on('show.bs.modal', '.modal', function (event) {
+        var zIndex = 1040 + (10 * $('.modal:visible').length);
+        $(this).css('z-index', zIndex);
+        setTimeout(function() {
+            $('.modal-backdrop').not('.modal-stack').css('z-index', zIndex - 1).addClass('modal-stack');
+        }, 0);
+    });
+
+    $(".appointment-modal-refresh").on("hidden.bs.modal", function(){
+        $("#calendar").fullCalendar('refetchEvents');
+    });
+
+});
+
+function activateSummaryAppointment(){
+    // $(".summary_appointment").on('click', function(e){
+    // e.preventDefault();
+    // $(".summary_appointment").popover({
+    //   title: 'Appointment Actions',
+    //   placement: "bottom",
+    //   trigger: 'manual'
+    // });
+    $('#modalCalendarAppointmentDetails').unbind('hidden.bs.modal');
+    $(".summary_appointment").on('click', function(e){
+        $("#modalCalendarAppointmentDetailsBody").html("<div class='loading_dots'><span></span>&nbsp;<span></span>&nbsp;<span></span></div>");
+        $("#modalCalendarAppointmentDetails").modal('show');
+        appointment_id = $(this).attr('data-appointment-id');
+        $.ajax({
+            url: "/opd_appointments/calendar_appointment_details",
+            data: {
+                appointment_id: appointment_id
+            },
+            dataType: 'html',
+            success: function(res){
+                $("#modalCalendarAppointmentDetails").find("#modalCalendarAppointmentDetailsBody").html(res);
+            },
+            error: function(err){
+            }
+        })
+    });
+}

@@ -1,0 +1,99 @@
+<div class="modal-dialog modal-hg-save-record-template" style="width:100%;">
+  <div class="modal-content">
+    <% if @mode == "tabview" %>
+      <% close = "showAndroidClose('hi')" %>
+    <% else %>
+      <% close %>
+    <% end %>
+    <div class="modal-header">
+      <div class="pull-right"> <!-- Action Buttons starts -->
+        <button aria-hidden="true" class="btn btn-success" onclick="append_medication_to_ortho_advice()">Update Advice</button>
+        <button aria-hidden="true" class="btn btn-info" data-dismiss="modal" onClick=<%= close %>>Close</button>
+      </div>
+      <div class="text-center">
+        <h4 class="nomargin"><%= @patient.fullname %>'s Prescription History</h4>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div class="row">
+        <div class="col-md-12 col-sm-12 col-xs-12">
+          <% @patient_prescriptions.each_with_index do |pp, cnt| %>
+            <table class="table table-bordered table-here">
+              <thead>
+                <tr>
+                  <th class="text-center" colspan="8">Adviced on <b><%= pp.updated_at.to_s(:hg_date_format) %></b>, by <b><%= pp.doctor_name %></b>, at <b><%= pp.facility.name %></b></th>
+                </tr>
+                <tr>
+                  <th><%= LanguageHelper.translation('sr_no', @translated_language) %></th>
+                  <th><%= LanguageHelper.translation('name', @translated_language) %></th>
+                  <th><%= LanguageHelper.translation('quantity', @translated_language) %></th>
+                  <th class="text-center"><%= LanguageHelper.translation('frequency', @translated_language) %>&nbsp;&nbsp;<a href="javascript:;" data-toggle="tooltip" data-placement="bottom" title="Number of times in a day"><i class="fa fa-info-circle" aria-hidden="true"></i></a></th>
+                  <th class="text-center"><%= LanguageHelper.translation('duration', @translated_language) %>&nbsp;&nbsp;<a href="javascript:;" data-toggle="tooltip" data-placement="bottom" title="How long you need to take this"><i class="fa fa-info-circle" aria-hidden="true"></i></a></th>
+                  <th class="text-center"><%= LanguageHelper.translation('instruction', @translated_language) %></th>
+                  <th><%= LanguageHelper.translation('c_d_heading', @translated_language) %></th>
+                  <th><%= LanguageHelper.translation('status', @translated_language) %></th>
+                </tr>
+              </thead>
+              <tbody id="tbody_ortho_fill_medication" class="medication-table-body-added">
+                <% pp.medications.each_with_index do |elem, i| %>
+                  <tr class="treatmentmedications">
+                    <td><%= i + 1 %></td>
+                    <td style="padding-left:1px;padding-top:1px;padding-bottom:1px;padding:0px;">
+                      <div class="form-group">
+                        <div class="input-group mb15">
+                          <div class="ui-widget">
+                            <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{i}][id]", pp.id, class: 'form-control ortho_id' %>
+                            <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{i}][position]", elem['position'], class: 'form-control ortho_position' %>
+                            <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{i}][pharmacy_item_id]", elem['pharmacy_item_id'], class: 'form-control ortho_pharmacy_item_id' %>
+                            <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{i}][generic_display_name]", elem['generic_display_name'], class: 'form-control ortho_generic_display_name' %>
+                            <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{i}][generic_display_ids]", elem['generic_display_ids'], class: 'form-control ortho_generic_display_ids' %>
+                            <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{i}][medicine_from]", elem['medicine_from'], class: 'form-control ortho_medicine_from' %>
+                            <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{i}][_destroy]", '0', class: 'form-control' %>
+                            <%= elem['medicinename'].to_s.upcase %><% if elem['medicinetype'].present? %> - <%= elem['medicinetype'].to_s.upcase %><% end %>
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="text-right">
+                      <%= elem['medicinequantity'] %>
+                    </td>
+                    <td class="text-center">
+                      <%= OpdRecordsHelper.medicine_frequency(elem['medicinefrequency']) %>
+                    </td>
+                    <td>
+                      <%= OpdRecordsHelper.medicine_duration(elem['medicinedurationoption'], elem['medicineduration']) %>
+                    </td>
+                    <td>
+                      <%= OpdRecordsHelper.medical_instructions(elem, @medication_set_arr, current_facility.country_id) %>
+                    </td>
+                    <td>
+                      <%# unless pp.updated_at.to_s(:hg_date_format) == Time.current.to_s(:hg_date_format) %>
+                        <%= simple_fields_for :other do |o| %>
+                          <%= o.input "hdn_ortho_medication_actions_#{pp.id}_#{elem['position']}", collection: [['Not Applicable', ''], ['Continue', 'C'], ['Discontinue', 'D']], as: :hg_radio_button, label: false, required: false, class: 'btn btn-xs btn-white ortho_medication_actions', input_html: { name: 'hdn_ortho_medication_actions' }, checked: 'Not Applicable' %>
+                        <% end %>
+                      <%# end %>
+                    </td>
+                    <td>
+                      <% if elem['status'].present? %>
+                        <% btn_cls = if elem['status'] == 'C'
+                                       'btn-info'
+                                     elsif elem['status'] == 'D'
+                                       'btn-warning'
+                                     end %>
+                        <a class="btn btn-xs <%= btn_cls %>" href="javascript:;" name="statusbutton"><%= elem['status'] %></a>
+                      <% end %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          <% end %>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button aria-hidden="true" class="btn btn-success" onclick="append_medication_to_ortho_advice()">Update Advice</button>
+      <button aria-hidden="true" class="btn btn-info" data-dismiss="modal" onClick=<%= close %>>Close</button>
+    </div>
+  </div>
+</div>

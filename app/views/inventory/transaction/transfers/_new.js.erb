@@ -1,0 +1,368 @@
+var checkItem = [];
+$('.items-lots-list .inventory-list-row').unbind()
+$('.items-lots-list .inventory-list-row').on('click', function(e){
+  e.preventDefault();
+  var variant_name =  $(this).find('.description').text();
+  var id =  $(this).attr('id')
+  if (!checkItem.includes(id)) {
+    checkItem.push(id)
+      $.ajax({
+      type: 'GET',
+      data: {
+        lot_id: id,
+        remote: true
+      },
+      url: '/inventory/transaction/transfers/add_lot',
+      success: function(){
+        $('#'+id).css('background-color', '#cfe8d2')
+        $('#'+id).addClass('disabled_row')
+      }
+    })
+  }
+})
+
+
+
+$(window).resize(function() {
+  adjust_height()
+})
+
+adjust_height()
+function adjust_height(){
+  modalContentHeigth = $(window).height() - 160
+  $(".items-lots").height(modalContentHeigth)
+  itemsLots = modalContentHeigth - $('.transaction-header').height() - 100
+  $('.items-lots-body').height(itemsLots)
+  transactionListHeight = modalContentHeigth - $('.transaction-title').height() - $('.transaction-common-fields').height() - 85
+  $('.transaction-table-body').height(transactionListHeight - $('.transaction-table-head').height())
+}
+
+function filter_index(query) {
+  if (query.length > 0){
+    $(".items-lots-search").find(".fa").show()
+  }
+  else {
+    $(".items-lots-search").find(".fa").hide()
+  }
+  receive_store_id = $('#inventory_transaction_transfer_receive_store_id').val()
+  $('#show_more_lots').show();
+  $.ajax({
+    type : 'get',
+    url: '/inventory/transaction/transfers/filter_lots',
+    data: {q: query,
+    store_id: "<%=@store_id %>",
+    item_type: "<%=@category %>",
+    receive_store_id: receive_store_id,
+    remote: "true" },
+  })
+}
+
+$(".items-lots-search").find(".fa").on('click',function(){
+  $("#lots_search").val("")
+  $("#lots_search_barcode").val("")
+  $("#lots_search_generic_name").val("")
+  filter_index("")
+})
+
+$("#lots_search").on("keyup", function () {
+  query = $(this).val()
+  filter_index(query)
+})
+
+$("#lots_search_barcode").on("keyup", function () {
+  query = $(this).val()
+  if (query.length > 0){
+    $(".items-lots-search").find(".fa").show()
+  }
+  else {
+    $(".items-lots-search").find(".fa").hide()
+  }
+})
+
+function isScrolledIntoLastRow(last_row_elem, scrollable_container) {
+  if (last_row_elem.length == 1) {
+    var top_of_element = $(last_row_elem).offset().top - $(scrollable_container).offset().top ;
+    var table_height = $(scrollable_container).innerHeight()
+    return top_of_element <= table_height
+  }
+}
+
+scrollinventory()
+function scrollinventory(){
+  $(".items-lots-body").scroll(function() {
+    last_row_elem = $('.items-lots-body').find('tr:nth-last-child(1)')
+    scrollable_container = $(".items-lots-body")
+    if (isScrolledIntoLastRow(last_row_elem, scrollable_container)) {
+      $("#show_more_lots").trigger("click")
+      $(".items-lots-body").off('scroll');
+      setTimeout(function() {   //calls click event after a certain time
+        scrollinventory()
+      }, 500);
+    }
+  })
+}
+$("#show_more_lots:visible").on('click', function(e){
+  e.preventDefault();
+  var total_count_row =  $('.items-lots-body tr').length;
+  var receive_store_id = $('#inventory_transaction_transfer_receive_store_id').val()
+  var query = ""
+  var search_type = $("#search_type").val()
+  switch(search_type) {
+    case 'Description':
+      query = $("#lots_search").val()
+      break;
+    case 'GenericName':
+      query = $('#lots_search_generic_name').val()
+      break;
+    default:
+      query = $('#lots_search_barcode').val()
+  }  
+  $.ajax({
+    type: "GET",
+    dataType: "script",
+    data: {
+      total_count_row: total_count_row,
+      item_type: "<%= @category %>",
+      store_id: "<%= @inventory_store.id %>",
+      search_type: search_type,
+      receive_store_id: receive_store_id,
+      q:query
+    },
+    url: "/inventory/transaction/transfers/append_lots",
+  })
+})
+
+$('.transaction-datepicker').datepicker({
+    dateFormat: "dd/mm/yy",
+    maxDate: -0
+});
+
+
+function validate_inventory_transfer_transactions_form() {
+
+  $("#inventory_transfer_transactions_form").validate({
+    rules: {
+      "inventory_transaction_transfer[receive_store_id]": {
+        required: true,
+      },
+      "inventory_transaction_transfer[total_cost]": {
+        required: true,
+      },
+    },
+    messages: {
+      "inventory_transaction_transfer[total_cost]": {
+        required: "No Item Added"
+      },
+
+    },
+    errorPlacement: function (error, element) {
+      var elem = $(element);
+      error.insertAfter(element);
+      if(elem.hasClass("select2-hidden-accessible")) {
+        element = $("#select2-" + elem.attr("id") + "-container").parent();
+        error.insertAfter(element);
+      } else {
+        error.insertAfter(element);
+      }
+    }
+  });
+}
+validate_inventory_transfer_transactions_form()
+
+$.validator.addClassRules("item_description", { required: true});
+$.validator.addClassRules("price_including_tax", { required: true, number: true});
+
+$.validator.addMethod("Number", $.validator.methods.digits, "Quantity Should be Number");
+$.validator.addMethod("checkQuantity", function(value, element, options) {
+  var id = $(element).attr("id")
+  var item_quantity = $('#'+id).val()
+  var item_max_quantity = $('#'+id).siblings(".item_max_quantity").val()
+  if (!item_max_quantity) {
+    return true
+  }
+  else{
+    return this.optional(element) || parseFloat(item_quantity) <= parseFloat(item_max_quantity);
+  }
+}, "Cannot Checkout more than stock");
+
+$.validator.addClassRules("item_quantity", { number: true, checkQuantity: true, required: true, min: 0.1});
+
+var search_type = $("#search_type").val()
+searchTypeForm(search_type)
+
+$("#lots_search_barcode").keypress(function(e) {
+  if(e.which == 13) {
+    if ($('#lots_search_barcode').val() != '') {
+      $("#search_by_barcode").click();
+    }
+  }
+});
+
+$('#search_by_barcode').on('click', function(e) {
+  e.preventDefault();
+  $('#show_more_lots').show();
+  var query = $('#lots_search_barcode').val()
+  var searchtype = $("#search_type").val()
+  var receive_store_id = $('#inventory_transaction_transfer_receive_store_id').val()
+  if (query != '') {
+    $.ajax({
+      type : 'get',
+      url: '/inventory/transaction/transfers/filter_lots',
+      data: {
+        q: query,
+        search_type: searchtype,
+        store_id: '<%= @inventory_store.id %>',
+        item_type: "<%= @category %>",
+        receive_store_id: receive_store_id,
+        remote: 'true'
+      },
+    })
+  }
+})
+
+$("#lots_search_generic_name").on("keyup", function () {
+  query = $(this).val()
+  var receive_store_id = $('#inventory_transaction_transfer_receive_store_id').val()
+  if (query.length > 0){
+    $(".items-lots-search").find(".fa").show()
+  }
+  else {
+    $(".items-lots-search").find(".fa").hide()
+  }  
+  $('#show_more_lots').show();
+  searchtype = $("#search_type").val()
+  $.ajax({
+    type : 'get',
+    url: '/inventory/transaction/transfers/filter_lots',
+    data: {
+      q: query,
+      search_type: searchtype,
+      store_id: '<%= @inventory_store.id %>',
+      item_type: '<%= @category %>',
+      receive_store_id: receive_store_id,
+      remote: 'true'
+    },
+  })
+})
+
+$("input:text").focus(function() { $(this).select(); } );
+
+$('.searchtype').on('click', function() {
+  var search_type = $(this).attr('input-value')
+  searchTypeForm(search_type)
+})
+
+// $('#inventory_transaction_transfer_receive_store_id').select2()
+
+var vendor_name = $('#inventory_transaction_transfer_receive_store_id').find(":selected").html()
+$('#inventory_order_indent_vendor_name').val(vendor_name)
+
+function transfer_receive_store_rule() {
+  var vendor_name = $('#inventory_transaction_transfer_receive_store_id').find(":selected").html()
+  $('#inventory_order_indent_vendor_name').val(vendor_name)
+  var receive_store_id = $('#inventory_transaction_transfer_receive_store_id').val()
+  if (receive_store_id != '') {
+    $.ajax({
+      type: "GET",
+      dataType: "script",
+      data: {
+        store_id: "<%= @inventory_store&.id %>",
+        item_type: 'all_item',
+        receive_store_id: receive_store_id,
+        q: ''
+      },
+      url: "/inventory/transaction/transfers/new",
+    })
+  }
+}
+
+function cancel_filter(element, prev){
+  if (prev == '-1')
+  {
+    $('.'+element+' option:eq(1)').attr('selected', 'selected');
+  } else {
+    $('.'+element).val(prev)
+  }
+  $(document).on('hidden.bs.modal', '.modal', function () {
+    $('.modal:visible').length && $(document.body).addClass('modal-open');
+  });
+}
+
+function confirmationModal(method, prev){
+  return `<div class="modal-dialog modal-sm">
+      <div class="modal-content">
+          <div class="modal-header">
+            <div class="row text-center">
+              <h5><b>Confirmation Requird!</b></h5>
+            </div>
+          </div>
+          <div class="modal-body">
+            <p>You are about to change store</p>
+            <p><span class='text-danger'> All unsaved changes will be lost.</span>
+            Would you still want to change store ?</p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-info cancel-filter" onclick='cancel_filter("${method}_dropdown", "${prev}")' data-dismiss="modal">No don't change</button>
+            <button type="button" class="btn btn-danger" onclick='${method}()' data-dismiss="modal">Yes change</button>
+          </div>
+      </div>
+    </div>`
+}
+
+$('#inventory_transaction_transfer_receive_store_id').on('change', function() {
+    if ($('.transfer-transaction-log-item').length > 0){
+      $('#confirm-filter')
+          .html(confirmationModal('transfer_receive_store_rule', 'transfer'))
+          .modal('show')
+          .css('background-color', 'rgba(0,0,0,0.5)')
+    } else {
+      transfer_receive_store_rule()
+    }
+  })
+
+jQuery.extend(jQuery.validator.messages, {
+  required: "Required",
+  remote: "Please fix this field.",
+  email: "Please enter a valid email address.",
+  url: "Please enter a valid URL.",
+  date: "Please enter a valid date.",
+  dateISO: "Invalid date.",
+  number: "Invalid No.",
+  digits: "Please enter only digits.",
+  creditcard: "Please enter a valid credit card number.",
+  equalTo: "Please enter the same value again.",
+  accept: "Please enter a value with a valid extension.",
+  maxlength: jQuery.validator.format("Please enter no more than {0} characters."),
+  minlength: jQuery.validator.format("Please enter at least {0} characters."),
+  rangelength: jQuery.validator.format("Please enter a value between {0} and {1} characters long."),
+  range: jQuery.validator.format("Please enter a value between {0} and {1}."),
+  max: jQuery.validator.format("Please enter a value less than or equal to {0}."),
+  min: jQuery.validator.format("Please enter a value greater than or equal to {0}.")
+});
+
+function searchTypeForm(search_type)
+{
+  if (search_type == 'Description') {
+    $('.search-barcode').hide();
+    $('#lots_search').show();
+    $('#lots_search_barcode').hide();
+    $('#lots_search_generic_name').hide()
+  } else if (search_type =='GenericName'){
+    $('.search-barcode').hide();
+    $('#lots_search_barcode').hide();
+    $('#lots_search').hide();
+    $('#lots_search_generic_name').show()  
+  } else{
+    $('.search-barcode').show();
+    $('#lots_search_barcode').show();
+    $('#lots_search').hide();
+    $('#lots_search_generic_name').hide()
+  }
+  $(".items-lots-search .fa").trigger('click')
+}
+
+
+
+
+
+

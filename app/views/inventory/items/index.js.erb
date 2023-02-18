@@ -1,0 +1,133 @@
+<% if @inventory_store.present? %>
+
+  $('.pharmacy-panel').html('').hide()
+  $('.optical-panel').html('').hide()
+  $('.ipd-panel').html('').hide()
+  $('.store-content-panel').show()
+
+  $('.store-content-list').html('<%= escape_javascript(render partial: 'inventory/items/index') %>')
+  jQuery(".store-content-details").html("<%= escape_javascript(render partial: 'inventory/stores/default_details.html') %>")
+  // jQuery(".store-content-details").html("<%#= escape_javascript(render partial: 'inventory/stores/default_details.html') %>")
+
+  <% if @category == ['out_stock'] || @category == ['all_item'] %>
+    $('.leftpanelinner li').removeClass('active nav-active')
+    $('.leftpanelinner .children').css('display', 'none')
+    $('.item-parent').trigger('click')
+    $('.item-parent ul').css('display', 'block')
+    $('.item-master').addClass('active')
+  <% else %>
+    // $('.store-content-list').html('<%#= escape_javascript(render partial: 'inventory/list/'+@category) %>')
+  <% end %>
+
+  function filter_index(query) {
+    if (query.length > 0){
+      $(".inventory_search_panel").find(".fa").show()
+    }
+    else {
+      $(".inventory_search_panel").find(".fa").hide()
+    }
+    $('#show_more_inventory').show();
+    item_type = '<%= @category %>'
+    item_type = JSON.parse(item_type.replace(/&quot;/g,'"'));
+    $.ajax({
+      type : 'get',
+      url: '/inventory/items/filter_index',
+      data: {q: query, store_id: "<%=@store_id %>",item_type: item_type, remote: "true" },
+    })
+  }
+
+  $(".inventory_search_panel").find(".fa").on('click',function(){
+    $("#inventory_search").val("")
+    filter_index("")
+  })
+
+  $("#inventory_search").on("keyup", function () {
+    query = $(this).val()
+    filter_index(query)
+  })
+
+  $(".btn-inventory-refresh").on("click", function () {
+    query = $("#inventory_search").val()
+    filter_index(query)
+  })
+
+  adjust_height()
+  function adjust_height(){
+    inventoryHeight = $(window).height() - $(".navbar").height() - 3
+    $(".sidebar-main").height(inventoryHeight)
+    $(".store-content").height(inventoryHeight)
+    toolbar2Height = $(".inventory-toolbar2").height()
+    $(".inventory-show-panel").height(inventoryHeight - toolbar2Height)
+    storeListHeight = inventoryHeight - $('.inventory-toolbar').height()
+    storeBodyHeight = storeListHeight - $('.inventory-table-head').height()
+    $('.inventory-table-body').height(storeBodyHeight)
+  }
+
+
+  $(window).resize(function() {
+    adjust_height()
+  })
+
+  $('.inventory-list-row').unbind()
+  $('.inventory-list-row').on('click', function(e){
+    e.preventDefault();
+    var _id =  $(this).attr('id');
+    $('.item-empty').css('background-color', '#FFB6C1')
+    $('.item-running-low').css('background-color', '#FFA500')
+    $('.item-stock').css('background-color', '#FFFAFA')
+    // $('.inventory-list-row').css('background-color', '')
+    $(this).css('background-color', '#D3D3D3')
+    $.ajax({
+      type: 'GET',
+      data: {
+        remote: true
+      },
+      url: '/inventory/items/'+_id,
+      success: function(){
+      }
+    })
+  })
+
+  function isScrolledIntoLastRow(last_row_elem, scrollable_container) {
+    if (last_row_elem.length == 1) {
+      var top_of_element = $(last_row_elem).offset().top - $(scrollable_container).offset().top ;
+      var table_height = $(scrollable_container).innerHeight()
+      return top_of_element <= table_height
+    }
+  }
+
+  scrollinventory()
+  function scrollinventory(){
+    $(".inventory-table-body").scroll(function() {
+      last_row_elem = $('.inventory-table-body').find('tr:nth-last-child(1)')
+      scrollable_container = $(".inventory-table-body")
+
+      if (isScrolledIntoLastRow(last_row_elem, scrollable_container)){
+        $("#show_more_inventory:visible").trigger("click")
+        $(".inventory-table-body").off('scroll');
+        setTimeout(function() {   //calls click event after a certain time
+          scrollinventory()
+        }, 500);
+      }
+    })
+  }
+  $("#show_more_inventory:visible").on('click', function(e){
+    e.preventDefault();
+    var total_count_row =  $('.inventory-table-body tr').length;
+    var query =  $("#inventory_search").val()
+    $.ajax({
+      type: "GET",
+      dataType: "script",
+      data: {
+        total_count_row: total_count_row,
+        item_type: "<%=  @category %>",
+        store_id: "<%= @store_id %>",
+        q:query
+      },
+      url: "/inventory/items/append_index",
+    })
+  })
+
+<% else %>
+  <%= render partial: 'index_master.js.erb' %>
+<% end %>

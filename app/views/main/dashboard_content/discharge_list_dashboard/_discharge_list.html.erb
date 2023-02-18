@@ -1,0 +1,41 @@
+<table class="table table-danger mb30">
+  <thead>
+    <tr>
+      <th style="font-size:12px;">#</th>
+      <th style="font-size:12px;">Patient Name</th>
+      <th style="font-size:12px;">Discharge Time</th>
+      <th style="font-size:12px;">Ward</th>
+      <th style="font-size:12px;"></th>
+    </tr>
+  </thead>
+  <tbody>
+    <% if current_user.has_role?(:doctor) %>
+      <% @discharge_list = Admission.where(:facility_id => @facility.id.to_s ,:doctor => current_user.id, :isdischarged => true) %>
+    <% else %>
+      <% if @user.nil? %>
+        <% @discharge_list = Admission.where(:facility_id => @facility.id.to_s, :isdischarged => true) %>
+      <% else %>
+        <% @discharge_list = Admission.where(:facility_id => @facility.id.to_s, :isdischarged => true, :doctor => @user.id.to_s) %>
+      <% end %>
+    <% end %>
+    <!-- If Discharge count is more than 0 show "td" -->
+    <% if @discharge_list.count > 0 %>
+      <% @discharge_list.order(dischargetime: :desc).limit(5).each.with_index do |discharge_list,i| %>
+        <tr>
+          <td style="font-size:12px;"><%= i+1 %></td>
+          <% @patient = Patient.find_by(:id => discharge_list.patient_id) %>
+          <td style="font-size:12px;"><%= @patient.fullname %></td>
+          <td style="font-size:12px;"><%= discharge_list.dischargetime.strftime("%I:%M %p, %d/%m") %></td>
+          <td style="font-size:12px;">N/A</td>
+          <td style="font-size:12px;" class="table-action">
+            <%= link_to ipd_patients_view_all_discharge_notes_path(:admission_id => discharge_list.id, :patient_id => @patient.id), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#templates-modal'} do %> <i class="fa fa-print"> </i><% end %>
+          </td>
+        </tr>
+      <%end%>
+    <!-- If Appointment count is less than 0 dont show "td" -->
+    <% else %>
+      <td></td>
+      <td>No Patients Discharged</td>
+    <% end %>
+  </tbody>
+</table>

@@ -1,0 +1,176 @@
+<!-- defining global ajax methods so that it can be called when zooming graphs -->
+<script type="text/javascript">
+  var AjaxObjectFunction = {}
+</script>
+
+
+<script type="text/javascript">
+    var filtered_facility = $(".dropdown-facilitymenu-button").attr("data-facility-id")
+    var filtered_specialty = $(".dropdown-specialtymenu-button").attr("data-specialty-id")
+    var filtered_specialty = $(".dropdown-specialtymenu-button").attr("data-specialty-id")
+    var analytics_to_date = $("#analytics-to-datepicker").val();
+    var analytics_from_date = $("#analytics-from-datepicker").val();
+    var current_url = window.location.href;
+    let url = 'admins';
+    if ((current_url.split('/').indexOf('users')) == -1){
+        url = 'admins';
+    }else{
+      url = 'users';
+    }
+    var analytics_url = "/analytics/"+url+"/overview";
+    $("#btnAnalyticsReload").attr("href",analytics_url);
+    $.ajax({
+      type: "GET",
+      dataType: "script",
+      data: { filtered_facility: filtered_facility, filtered_specialty: filtered_specialty, filtered_specialty: filtered_specialty,
+              analytics_to_date: analytics_to_date,analytics_from_date: analytics_from_date, remote: true },
+      url: analytics_url,
+    });
+
+  $(document).on('click', ".fac_menu_search", function(e){
+     e.stopPropagation();
+  });
+  
+
+  $(document).on('keyup',".search-facility2", function(){
+
+    $(this).parents('ul');
+    let facility_list = $(this).parents('ul').find('.search_result')
+    let search = $(this).val().toUpperCase().trim();
+    
+      for (let i = facility_list.length - 1; i >= 0; i--) {
+      
+        let facility_name = $(facility_list[i]).html();
+        if (facility_name.toUpperCase().indexOf(search) > -1) {
+          $(facility_list[i]).css("display", "");
+        } else {
+          $(facility_list[i]).css("display", "None");
+        }
+      }
+   
+  });
+$(".search_result").on("click", function(){ $(".headermenu").find(".btn-group").removeClass("open") });
+
+  window.counting_animation = function (){
+    $('.count_earning, .count').each(function () {
+      $(this).prop('Counter', 0).animate({
+          fontSize: "20px",
+          Counter: $(this).text()
+      }, {
+          duration: 400,
+          easing: 'swing',
+          step: function (now) {
+            // $(this).text(Math.abs(now.toFixed(2)));
+          }
+      });
+    });
+  };
+
+
+  AjaxObjectFunction.expand_graph = function(params, on_zoom={}){
+      let data = {};
+      data["data_query"] = {};
+
+      if (params["on_zoom"] == true){
+        data["data_query"]["filtered_facility"]   = $(".dropdown-facilitymenu-button").attr("data-facility-id");
+        data["data_query"]["filtered_specialty"]   = $(".dropdown-specialtymenu-button").attr("data-specialty-id");
+        data["data_query"]["analytics_to_date"]   = $("#analytics-to-datepicker").val();
+        data["data_query"]["analytics_from_date"] = $("#analytics-from-datepicker").val();
+        data["data_query"]["data_data_range"]     = $(".dropdown-timemenu-button").attr('data-data_range');
+      }else{
+        data["data_query"]["filtered_facility"]   = on_zoom.filtered_facility;
+        data["data_query"]["filtered_specialty"]   = on_zoom.filtered_specialty;
+        data["data_query"]["analytics_to_date"]   = on_zoom.analytics_to_date;
+        data["data_query"]["analytics_from_date"] = on_zoom.analytics_from_date;
+        data["data_query"]["data_type"]     = on_zoom.data_data_range;
+      }
+      data["data_query"]["user_id"] = "";
+      if ($('.current_user_check').length >= 1){
+        data["data_query"]["user_id"] = $('.current_user_check').val();
+      }
+
+      data["service_query"] = params;
+      
+      var action_path = "/analytics/analytics_data/show_modal";
+
+      $.ajax({
+        method: "GET",
+        data: data,
+        url: action_path
+      })
+
+
+
+  };
+
+
+// tooltip for zoom dropdown-facilitymenu-button
+$(".expand_button_class").tooltip();
+
+
+$(".analyticscontentpanel").on('click','.expand_button_class', function(){
+  let service_query = {};
+  let hidden_data_values = $(this).parents('.to_add_expand_button').find('.hidden_data_values');
+  service_query.service_name = hidden_data_values.attr("data-service_name");
+  service_query.action_name  = hidden_data_values.attr("data-action_name");
+  service_query.partial_name = hidden_data_values.attr("data-partial_name");
+  service_query.on_zoom      = true;
+  service_query.currency_id = "";
+  if($("#currency_id").length > 0){
+    service_query.currency_id = $("#currency_id").val()
+  }
+
+  AjaxObjectFunction.expand_graph(service_query);
+  return false;  //return false so that it will trigger only one time
+});
+
+
+// modal popup code
+
+$("#expandedModal").on('click',"#btnAnalyticsReload_modal", function(){
+  var closest_ul = $(this).closest("ul.modal_header_menu");
+  var filtered_facility = $(".dropdown-facilitymenu-button_modal").attr("data-facility-id");
+  var filtered_specialty = $(".dropdown-specialtymenu-button_modal").attr("data-specialty-id");
+  var analytics_to_date = $("#analytics-to-datepicker_modal").val();
+  var analytics_from_date = $("#analytics-from-datepicker_modal").val();
+  var data_data_range  = $(".dropdown-timemenu-button").attr('data-data_range');
+  var service_query = {};
+  var hidden_data_values = $("#expandedModal").find('.hidden_data_values');
+  service_query.service_name = hidden_data_values.attr("data-service_name");
+  service_query.action_name  = hidden_data_values.attr("data-action_name");
+  service_query.partial_name = hidden_data_values.attr("data-partial_name");
+  service_query.on_zoom      = false;
+  var on_zoom = {};
+  on_zoom.filtered_facility = filtered_facility;
+  on_zoom.filtered_specialty = filtered_specialty;
+  on_zoom.analytics_to_date = analytics_to_date;
+  on_zoom.analytics_from_date = analytics_from_date;
+  on_zoom.data_data_range     = data_data_range;
+
+  service_query.currency_id = "";
+  if($("#currency_id").length > 0){
+    service_query.currency_id = $("#currency_id").val()
+  }
+
+  AjaxObjectFunction.expand_graph(service_query, on_zoom)
+
+});
+
+
+
+// below code is for header used in modal change carefully
+
+
+
+// custom date selection
+
+$(".custom_date_selector").on("click", function(e){
+  e.preventDefault();
+  $("#custom_date_modal").modal("show");
+  $("#custom_date_modal").html("<%= escape_javascript(render partial: '/analytics/shared/custom_date_select') %>");
+
+})
+
+
+
+</script>

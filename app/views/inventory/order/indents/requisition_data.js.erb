@@ -1,0 +1,70 @@
+var counter = $('#tbody_medication tr').length
+
+if (counter == 0) {
+  $(".medication-table-body-added").html("<%= escape_javascript(render 'fill_requisition_data.html.erb') %>")
+} else {
+  $('#medicationTable > tbody:last').append("<%= escape_javascript(render 'fill_requisition_data.html.erb') %>")
+}
+
+function validate_create_button() {
+  let row_count = $('#tbody_medication tr').length
+  if (row_count > 0) {
+    $('.validate-indent').attr('disabled', false)
+  } else {
+    $('.validate-indent').attr('disabled', true)
+  }
+}
+
+$('.delete_empty_item').on('click', function(){
+  $(this).closest('.treatmentmedications').remove()
+  validate_create_button()
+})
+
+// $.validator.addMethod("checkQuantity", function(value, element, options) {
+//   var id = $(element).attr("id")
+//   var item_quantity = $('#'+id).val()
+//   var item_max_quantity = $('#'+id).siblings(".item_max_quantity").val()
+//   if (!item_max_quantity) {
+//     return true
+//   }
+//   else{
+//     return this.optional(element) || parseInt(item_quantity) <= parseInt(item_max_quantity);
+//   }
+// }, "Cannot Checkout more than stock");
+
+$.validator.addClassRules("item_quantity", { number: true, required: true, min: 1});
+
+validate_create_button()
+
+updateIndex()
+function updateIndex(){
+  var count = 1
+  $(".treatmentmedications").each(function(){
+    $(this).find(".set_s_no").text(count)
+    count += 1
+  })
+}
+
+function indent_quantity_validation (){
+ var total_quantity = 0
+ $(".item_quantity").each(function(){ 
+  var current_quantity = parseFloat($(this).val() || 0) 
+  var sub_unit = parseFloat($(this).closest(".treatmentmedications").find(".item_sub_units_value").val()) || 0 
+   total_quantity += current_quantity
+ if (current_quantity % sub_unit == 0) {
+  
+    $(this).closest(".treatmentmedications").find(".new_value").text("");
+  } 
+ 
+  else { 
+    $(this).closest(".treatmentmedications").find(".new_value").text(`Item can be in multiple of ${sub_unit}`);
+  } 
+  
+    $(this).closest(".medication_tab_row").find(".total_qnt").text(`Total Quantity :${total_quantity}`);
+  
+}) 
+}
+$(".item_quantity").bind("change paste keyup", function(value, element, options) {
+   indent_quantity_validation()
+ 
+});

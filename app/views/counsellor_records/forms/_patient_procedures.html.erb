@@ -1,0 +1,277 @@
+<% @case_sheet_procedures = @case_sheet.procedures %>
+<div class="row mb20 patient-procedures">
+  <div class="col-md-12">
+    <div class="row">
+      <% if @case_sheet_procedures.count > 0 || @case_sheet.free_form_procedures.count == 0 || @appointment.specialty_id == "309988001" %>
+        <div class="col-md-10">
+          <strong style="text-decoration: underline;">PROCEDURES</strong>
+        </div>
+      <% end %>
+      <% if @appointment.specialty_id == "309988001" %>
+        <div class="col-md-2 text-right">
+          <input type="text" class="form-control search_procedures p3_10" placeholder="Search & Add Procedure">
+        </div>
+      <% end %>
+    </div>
+    <div id="patient-procedures">
+      <% if @case_sheet.present? %>
+        <% counter = 0 %>
+        <% if @case_sheet_procedures.count > 0 %>
+          <% counter += 1 %>
+          <% @performed_procedures = [] %>
+          <% @removed_procedures = [] %>
+          <div id="patient-advised-procedures">
+            <% i = 0 %>
+            <% @case_sheet_procedures.order(advised_datetime: :asc).group_by{ |p| [p.procedurefullcode, p.procedureside] }.each do |procedure_args, procedures| %>
+              <% unless procedures[0].is_performed %><hr style="border-top: 1px solid #ccc;margin: 10px auto 15px;" /><% end %>
+              <div class="row patient-procedure" <%= "style=display:none;" if procedures[0].is_performed %>>
+                <div class="col-md-12">
+                  <div class="row agreed_declined_row">
+                    <!-- Procedure Hidden Fields -->
+                    <% if procedures[0].counsellor_procedure_ids[@counsellor_record.id.to_s].present? && procedures[0].counsellor_procedure_ids[@counsellor_record.id.to_s][:procedure_id].present? %>
+                      <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][id]', procedures[0].counsellor_procedure_ids[@counsellor_record.id.to_s][:procedure_id] %>
+                    <% end %>
+                    <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][record_id]', procedures[0].record_id %>
+                    <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][case_sheet_procedure_id]', procedures[0].id %>
+                    <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][opd_procedure_id]', procedures[0].opd_procedure_id %>
+                    <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][procedurename]', procedures[0].procedurename %>
+                    <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][procedure_id]', procedures[0].procedure_id %>
+                    <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][procedureside]', procedures[0].procedureside, class: 'procedureside' %>
+                    <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][full_code]', procedures[0].full_code %>
+                    <% procedurestage = ("Counselled" if procedures[0].procedurestage == "Advised") || procedures[0].procedurestage %>
+                    <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][procedurestage]', procedurestage, class: 'procedurestage' %>
+                    <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][procedure_type]', procedures[0].procedure_type %>
+                    <!-- Entered Hidden Fields -->
+                    <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][entered_by_id]', procedures[0].entered_by_id %>
+                    <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][entered_by]', procedures[0].entered_by %>
+                    <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][entered_from]', procedures[0].entered_from %>
+                    <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][entered_at_facility_id]', procedures[0].entered_at_facility_id %>
+                    <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][entered_at_facility]', procedures[0].entered_at_facility %>
+                    <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][entered_datetime]', procedures[0].entered_datetime %>
+                    <!-- Advised Hidden Fields -->
+                    <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][advised_by_id]', procedures[0].advised_by_id %>
+                    <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][advised_by]', procedures[0].advised_by %>
+                    <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][advised_from]', procedures[0].advised_from %>
+                    <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][advised_at_facility_id]', procedures[0].advised_at_facility_id %>
+                    <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][advised_at_facility]', procedures[0].advised_at_facility %>
+                    <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][advised_datetime]', procedures[0].advised_datetime %>
+                    <!-- Performed Hidden Fields -->
+                    <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][performed_by_id]', procedures[0].performed_by_id %>
+                    <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][performed_by]', procedures[0].performed_by %>
+                    <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][performed_from]', procedures[0].performed_from %>
+                    <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][performed_at_facility_id]', procedures[0].performed_at_facility_id %>
+                    <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][performed_at_facility]', procedures[0].performed_at_facility %>
+                    <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][performed_datetime]', procedures[0].performed_datetime %>
+                    <% unless procedures[0].is_performed %>
+                      <!-- Counselled Hidden Fields -->
+                      <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][is_counselled]', procedures[0].is_counselled || true %>
+                      <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][counselled_by_id]', procedures[0].counselled_by_id || current_user.id %>
+                      <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][counselled_by]', procedures[0].counselled_by || current_user.fullname %>
+                      <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][counselled_from]', procedures[0].counselled_from || "counsellor_record" %>
+                      <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][counselled_at_facility_id]', procedures[0].counselled_at_facility_id || current_facility.id %>
+                      <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][counselled_at_facility]', procedures[0].counselled_at_facility || current_facility.name %>
+                      <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][counselled_datetime]', procedures[0].counselled_datetime || Time.current %>
+                      <!-- Agreed Hidden Fields -->
+                      <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][agreed_by]', procedures[0].agreed_by, class: 'agreed_by' %>
+                      <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][agreed_from]', procedures[0].agreed_from, class: 'agreed_from' %>
+                      <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][agreed_at_facility_id]', procedures[0].agreed_at_facility_id, class: 'agreed_at_facility_id' %>
+                      <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][agreed_at_facility]', procedures[0].agreed_at_facility, class: 'agreed_at_facility' %>
+                      <!-- Payment Taken Hidden Fields -->
+                      <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][payment_taken_by]', procedures[0].payment_taken_by, class: 'payment_taken_by' %>
+                      <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][payment_taken_from]', procedures[0].payment_taken_from, class: 'payment_taken_from' %>
+                      <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][payment_taken_at_facility_id]', procedures[0].payment_taken_at_facility_id, class: 'payment_taken_at_facility_id' %>
+                      <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][payment_taken_at_facility]', procedures[0].payment_taken_at_facility, class: 'payment_taken_at_facility' %>
+                      <!-- Declined Hidden Fields -->
+                      <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][declined_by]', procedures[0].declined_by, class: 'declined_by' %>
+                      <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][declined_from]', procedures[0].declined_from, class: 'declined_from' %>
+                      <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][declined_at_facility_id]', procedures[0].declined_at_facility_id, class: 'declined_at_facility_id' %>
+                      <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][declined_at_facility]', procedures[0].declined_at_facility, class: 'declined_at_facility' %>
+                      <!-- Removed Hidden Fields -->
+                      <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][is_removed]', procedures[0].is_removed || false, class: 'is_removed' %>
+                      <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][removed_by_id]', procedures[0].removed_by_id, class: 'removed_by_id' %>
+                      <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][removed_by]', procedures[0].removed_by, class: 'removed_by' %>
+                      <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][removed_from]', procedures[0].removed_from, class: 'removed_from' %>
+                      <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][removed_at_facility_id]', procedures[0].removed_at_facility_id, class: 'removed_at_facility_id' %>
+                      <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][removed_at_facility]', procedures[0].removed_at_facility, class: 'removed_at_facility' %>
+                      <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][removed_datetime]', procedures[0].removed_datetime, class: 'removed_datetime' %>
+                    <% end %>
+
+                    <% if !procedures[0].is_performed %>
+                      <div class="col-md-12">
+                        <div class="row">
+                          <div class="col-md-3">
+                            <span class="procedure-name"><%= procedures[0].procedurename.to_s %>&emsp;</span>
+                            <% laterality = [{side_name: 'Right', side_id: '18944008'}, {side_name: 'Left', side_id: '8966001'}] %>
+                            <% if procedures[0].procedureside.present? %>
+                              <select class="laterality" <%= "disabled='disabled'" if procedures[0].entered_from == "opd_record" %>>
+                                <% laterality.each do |laterality| %>
+                                  <option value='<%= laterality[:side_id] %>' <%= "selected='selected'" if procedures[0].procedureside == laterality[:side_id] %>><%= laterality[:side_name] %></option>
+                                <% end %>
+                              </select>
+                            <% end %>
+                            <br/><span style="font-size:12px;">- <%= procedures[0].try(:advised_by) %> (<%= procedures[0].try(:advised_datetime).try(:strftime, "%d %b'%y") %>)</span>
+                          </div>
+                          <div class="col-md-4 col-md-9-shared agreed_by_details">
+                            <div class="row">
+                              <div class="col-md-3">
+                                <div class="ckbox ckbox-primary ckbox-agreed">
+                                  <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][has_agreed]', false %>
+                                  <%= check_box_tag 'counsellor_record[procedures]['+i.to_s+'][has_agreed]', true, procedures[0].has_agreed, {id: "procedure_#{i}_has_agreed", class: 'has_agreed'} %>
+                                  <label for="procedure_<%= i.to_s %>_has_agreed">Agreed</label>
+                                </div>
+                              </div>
+                              <div class="agreed_fields" <%= "style=display:none;" unless procedures[0].has_agreed %>>
+                                <div class="col-md-4 col-md-9-shared">
+                                  <div class="input-group">
+                                    <span class="input-group-addon" style="padding: 5px 10px;font-size: 10px;"><i class="fa fa-calendar"></i></span>
+                                    <% agreed_datetime = (procedures[0].agreed_datetime.strftime('%d/%m/%Y') if procedures[0].try(:agreed_datetime).present?) || "" %>
+                                    <%= text_field_tag 'counsellor_record[procedures]['+i.to_s+'][agreed_datetime]', agreed_datetime, class: 'agreed_datetime form-control p3_10', readonly: 'readonly' %>
+                                  </div>
+                                </div>
+                                <div class="col-md-4 col-md-9-shared">
+                                  <% procedure_agreed_counsellor_options = (@counsellor_options + [[procedures[0].agreed_by, procedures[0].agreed_by_id]] if procedures[0].agreed_by_id != current_user.id) || @counsellor_options %>
+                                  <%= select_tag 'counsellor_record[procedures]['+i.to_s+'][agreed_by_id]', options_for_select(procedure_agreed_counsellor_options, procedures[0].agreed_by_id), {include_blank: "Select", class: "agreed_by_id form-control p3_10"} %>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          <div class="col-md-4 col-md-9-shared declined_by_details">
+                            <div class="row">
+                              <div class="col-md-3">
+                                <div class="ckbox ckbox-danger ckbox-declined">
+                                  <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][has_declined]', false %>
+                                  <%= check_box_tag 'counsellor_record[procedures]['+i.to_s+'][has_declined]', true, procedures[0].has_declined, {id: "procedure_#{i}_has_declined", class: 'has_declined'} %>
+                                  <label for="procedure_<%= i.to_s %>_has_declined">Declined</label>
+                                </div>
+                              </div>
+                              <div class="declined_fields" <%= "style=display:none;" unless procedures[0].has_declined %>>
+                                <div class="col-md-4 col-md-9-shared">
+                                  <div class="input-group">
+                                    <span class="input-group-addon" style="padding: 5px 10px;font-size: 10px;"><i class="fa fa-calendar"></i></span>
+                                    <% declined_datetime = (procedures[0].declined_datetime.strftime('%d/%m/%Y') if procedures[0].try(:declined_datetime).present?) || "" %>
+                                    <%= text_field_tag 'counsellor_record[procedures]['+i.to_s+'][declined_datetime]', declined_datetime, class: 'declined_datetime form-control p3_10', readonly: 'readonly' %>
+                                  </div>
+                                </div>
+                                <div class="col-md-4 col-md-9-shared">
+                                  <% procedure_declined_counsellor_options = (@counsellor_options + [[procedures[0].declined_by, procedures[0].declined_by_id]] if procedures[0].declined_by_id != current_user.id) || @counsellor_options %>
+                                  <%= select_tag 'counsellor_record[procedures]['+i.to_s+'][declined_by_id]', options_for_select(procedure_declined_counsellor_options, procedures[0].declined_by_id), {include_blank: "Select", class: "declined_by_id form-control p3_10"} %>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="row mt10 agreed-options" <%= "style=display:none;" unless procedures[0].has_agreed %>>
+                          <div class="col-md-3 remove_details">
+                          </div>
+                          <div class="col-md-4 col-md-9-shared payment_taken_by_details">
+                            <div class="row">
+                              <div class="col-md-3">
+                                <div class="ckbox ckbox-success ckbox-payment-taken">
+                                  <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][payment_taken]', false %>
+                                  <%= check_box_tag 'counsellor_record[procedures]['+i.to_s+'][payment_taken]', true, procedures[0].payment_taken, {id: "procedure_#{i}_payment_taken", class: 'payment_taken'} %>
+                                  <label for="procedure_<%= i.to_s %>_payment_taken">Paid</label>
+                                </div>
+                              </div>
+                              <div class="payment_taken_fields" <%= "style=display:none;" unless procedures[0].payment_taken %>>
+                                <div class="col-md-4 col-md-9-shared">
+                                  <div class="input-group">
+                                    <span class="input-group-addon" style="padding: 5px 10px;font-size: 10px;"><i class="fa fa-calendar"></i></span>
+                                    <% payment_taken_datetime = (procedures[0].payment_taken_datetime.strftime('%d/%m/%Y') if procedures[0].try(:payment_taken_datetime).present?) || "" %>
+                                    <%= text_field_tag 'counsellor_record[procedures]['+i.to_s+'][payment_taken_datetime]', payment_taken_datetime, class: 'payment_taken_datetime form-control p3_10', readonly: 'readonly' %>
+                                  </div>
+                                </div>
+                                <div class="col-md-4 col-md-9-shared">
+                                  <% procedure_payment_taken_counsellor_options = (@counsellor_options + [[procedures[0].payment_taken_by, procedures[0].payment_taken_by_id]] if procedures[0].payment_taken_by_id != current_user.id) || @counsellor_options %>
+                                  <%= select_tag 'counsellor_record[procedures]['+i.to_s+'][payment_taken_by_id]', options_for_select(procedure_payment_taken_counsellor_options, procedures[0].payment_taken_by_id), {include_blank: "Select", class: "payment_taken_by_id form-control p3_10"} %>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          <div class="col-md-4 col-md-9-shared iol_present_details">
+                            <div class="row">
+                              <div class="col-md-3">
+                                <div class="ckbox ckbox-success ckbox-iol-present">
+                                  <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][iol_present]', false %>
+                                  <%= check_box_tag 'counsellor_record[procedures]['+i.to_s+'][iol_present]', true, procedures[0].iol_present, {id: "procedure_#{i}_iol_present", class: 'iol_present'} %>
+                                  <label for="procedure_<%= i.to_s %>_iol_present">IOL</label>
+                                </div>
+                              </div>
+                              <div class="iol_fields" <%= "style=display:none;" unless procedures[0].iol_present %>>
+                                <div class="col-md-4 col-md-9-shared">
+                                  <%= text_field_tag 'counsellor_record[procedures]['+i.to_s+'][iol_agreed]', procedures[0].iol_agreed, class: 'iol_power_used form-control p3_10', placeholder: "IOL Agreed" %>
+                                </div>
+                                <div class="col-md-4 col-md-9-shared">
+                                  <%= text_field_tag 'counsellor_record[procedures]['+i.to_s+'][iol_power]', procedures[0].iol_power, class: 'iol_power form-control p3_10', placeholder: "Power" %>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    <% else %>
+                      <%= hidden_field_tag 'counsellor_record[procedures]['+i.to_s+'][is_performed]', true %>
+                      <% @performed_procedures << (procedures[0].procedurename.to_s + ', ' + procedures[0].get_label_for_procedure_side(procedures[0].procedureside)) %>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+            <% i += 1 %>
+            <% end %>
+          </div>
+          <div class="row mt10 removed-procedures">
+            <div class="col-md-12">
+              <span style="color:#d9534f"><strong>Removed:</strong> <span class="removed-procedures-name"><%= @removed_procedures.join(" | ") %></span></span>
+            </div>
+          </div>
+          <% if @performed_procedures.count > 0 %>
+            <div class="row mt10">
+              <div class="col-md-12">
+                <span style="color:#1CAF9A"><strong>Performed:</strong> <%= @performed_procedures.join(" | ") %></span>
+              </div>
+            </div>
+          <% end %>
+        <% else %>
+          <div id="patient-advised-procedures"></div>
+        <% end %>
+        <% if @case_sheet.free_form_procedures.select{ |k,v| v[:content] != "<br>" }.count > 0 %>
+          <% counter += 1 %>
+          <% if @appointment.specialty_id == "309988001" %><hr><% end %>
+          <div class="row mt10">
+            <div class="col-md-12 mt10" style="text-decoration: underline;"><b>PROCEDURES</b></div>
+            <% @case_sheet.free_form_procedures.each do |key, procedure| %>
+              <%= hidden_field_tag 'counsellor_record[free_form_procedures]['+key+'][record_id]', procedure[:record_id] %>
+              <%= hidden_field_tag 'counsellor_record[free_form_procedures]['+key+'][consultant_id]', procedure[:consultant_id] %>
+              <%= hidden_field_tag 'counsellor_record[free_form_procedures]['+key+'][consultant_name]', procedure[:consultant_name] %>
+              <%= hidden_field_tag 'counsellor_record[free_form_procedures]['+key+'][content]', procedure[:content] %>
+              <div class="col-md-12">
+                <span><b style="color: #333;"><%= procedure[:content].to_s.html_safe() %></b></span>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+        <% if counter == 0 %>
+          <div class="row no-procedure">
+            <div class="col-md-12">
+              <span>No Procedures</span>
+            </div>
+          </div>
+        <% end %>
+      <% else %>
+        <div class="row no-procedure">
+          <div class="col-md-12">
+            <span>No Procedures</span>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+<div class="row">
+  <div class="col-md-6">
+    <div class="row patient-procedure-comment">
+      <div class="col-md-12">
+        <%= f.text_area :procedure_comment, class: 'form-control p7_10', placeholder: 'Procedure Comment' %>
+      </div>
+    </div>
+  </div>
+</div>

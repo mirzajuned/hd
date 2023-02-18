@@ -1,0 +1,234 @@
+<div class="tab-pane row <%= 'print_text_font_size' if  @print_setting %>" id="advice" style="<%= text_font_size %>">
+  <div class="row">
+    <div class="col-md-9 col-sm-9 col-xs-12">
+      <div class="row mb10">
+        <p><b>**Note:</b> Please uncheck the check box if you dont want to create followup appointment automatically</p>
+        <div class="col-md-2 col-sm-3 col-xs-3">Management Plan:</div>
+        <div class="col-md-6 col-sm-5 col-xs-6">
+          <%= f.input :advicemanagementplan, as: :text,  label: false, required: false, input_html: { class: 'form-control', rows: 2, style: 'min-width: 90%', required: false, name: 'opdrecord[advicemanagementplan]', value: opdrecord.read_attribute(:advicemanagementplan) } %>
+        </div>
+        <div class="ckbox ckbox-primary col-md-4 col-sm-4 col-xs-3">
+          <%= f.check_box :advicemanagementplantoreceptionist, { class: 'myclass', id: 'advicemanagementplantoreceptionist', checked: false} , 'true', 'false' %>
+          <label for="advicemanagementplantoreceptionist">Show On Receptionist List View.</label>
+        </div>
+      </div>
+      <div class="row mb10">
+        <div class="col-md-2 col-sm-3 col-xs-3">Personal Comments:<br>(This will not appear in print)</div>
+        <div class="col-md-6 col-sm-5 col-xs-6">
+          <%= f.input :management_personal_cmt, as: :text, label: false, required: false, input_html: { class: 'form-control', rows: 2, style: 'min-width: 90%', required: false, name: 'opdrecord[management_personal_cmt]', value: opdrecord.read_attribute(:management_personal_cmt) } %>
+        </div>
+      </div>
+      <div class="row mb10">
+        <div class="col-md-12 col-sm-12 col-lg-12 col-xs-12">
+          <b>Follow Up</b>
+          <%= hidden_field_tag "opdrecord[advice_attributes][opdfollowuptime]", '', class: "hidden_followup_timepicker" %>
+        </div>
+      </div>
+
+      <div class="row mb10">
+        <div class="col-md-3 col-lg-3 col-xs-12 col-sm-3">
+          <div class="col-md-12">
+            <b>Date</b>
+            <a href="" id='clear_follow_up_date' style="font-size: 10px;margin-top: -7px;">Clear</a>
+          </div>
+          <div class="col-md-12">
+            <% @followup_date =  opdrecord.advice.try(:opdfollowupdate) %>
+            <% if @followup_date.present? %>
+              <% followup_date_view = Date.parse("#{@followup_date}").strftime("%d/%m/%Y") %>
+            <% else %>
+              <% followup_date_view = '' %>
+            <% end %>
+            <%= text_field_tag "opdrecord[advice_attributes][opdfollowupdate]", followup_date_view, class: 'form-control opdfollowupdate-datepicker', style: 'width: 100%; background:#fff; cursor: pointer;', id: "opdfollowupdate-datepicker", readonly: true %>
+          </div>
+        </div>
+
+        <div class="col-md-3 col-lg-3 col-xs-12 col-sm-3">
+          <div class="col-md-12">
+            <b>Location</b>
+          </div>
+          <div class="col-md-12">
+            <% selected_facility = opdrecord.advice.try(:appointment_facility) ? opdrecord.advice.try(:appointment_facility) : @current_facility.id %>
+            <%= select_tag("opdrecord[advice_attributes][appointment_facility]", options_for_select(@facilities.map { |facility| [facility.name, facility.id] }, selected_facility), { :class => 'form-control fac_ddap', style: "width: 100%" }) %>
+          </div>
+        </div>
+
+        <div class="col-md-3 col-lg-3 col-xs-12 col-sm-3 specialty_dropdown_div">
+          <div class="col-md-12">
+            <b>Location's Specialty</b>
+          </div>
+          <div class="col-md-12">
+            <% selected_facility = Facility.find_by(id: selected_facility) %>
+            <% selected_specialty = opdrecord.advice.try(:appointment_specialty_id) || @appointment.specialty_id %>
+            <% specialties = Specialty.where(:id.in => [selected_specialty]).pluck(:name, :id) %>
+            <%= select_tag("opdrecord[advice_attributes][appointment_specialty_id]", options_for_select(specialties, selected_specialty), {:class => 'form-control advice_appointment_specialty_id', style: "width: 100%" }) %>
+          </div>
+        </div>
+
+        <div class="col-md-3 col-lg-3 col-sm-3 col-xs-12">
+          <div class="col-md-12">
+            <b>Consultant</b>
+          </div>
+          <div class="col-md-12">
+            <% if @current_facility.country_id == 'KH_039' %>
+              <% doctors_array = { organisation_id: @current_user.organisation_id, role_ids: 28229004, is_active: true } %>
+            <% else %>
+              <% doctors_array = { organisation_id: @current_user.organisation_id, role_ids: 158965000, is_active: true } %>
+            <% end %>
+            <% doctors_array = doctors_array.merge(specialty_ids: opdrecord.advice.try(:appointment_specialty_id) || @appointment.specialty_id) %>
+            <% doctors_array = doctors_array.merge(facility_ids: opdrecord.advice.try(:appointment_facility) || @current_facility.id) %>
+            <% selected_doctor = opdrecord.advice.try(:appointment_doctor).present? ? opdrecord.advice.try(:appointment_doctor) : current_user.id.to_s %>
+            <% @doctors_array = User.where(doctors_array).pluck(:fullname, :id) %>
+            <%= select_tag("opdrecord[advice_attributes][appointment_doctor]", options_for_select(@doctors_array, selected_doctor),{:class => 'form-control user_ddapt advice_appointment_doctor_id', :style => 'width: 100%'}) %>
+          </div>
+          <input type="hidden" class="doctor_id" value="<%= @user.id %>">
+        </div>
+      </div>
+
+      <div class="row mb10 appointment_types_row">
+        <div class="col-md-3 col-lg-3 col-sm-3 col-xs-12">
+          <div class="col-md-12">
+            <b>Time</b>
+          </div>
+          <div class="col-md-12 opd-followup-timepicker">
+            <div class="bootstrap-timepicker timepicker">
+              <% @followup_time =  opdrecord.advice.try(:opdfollowuptime) %>
+              <%if @followup_time.present? %>
+                <% @followup_time_view = Time.zone.parse("#{opdrecord.advice.try(:opdfollowuptime)}").strftime("%I:%M %p") %>
+              <%else%>
+                <% @followup_time_view = Time.current.strftime("%I:%M %p") %>
+              <%end%>
+              <%= text_field_tag "opdfollowuptime", @followup_time_view, class: 'form-control full_width opdfollowuptime-timepicker ', style: 'width: 100%; background:#fff; cursor: pointer;', id: "opdfollowuptime-timepicker" %>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-3 col-lg-3 col-sm-3 col-xs-12">
+          <div class="col-md-12">
+            <b>Appointment Type <b style="color: red;">Required</b></b>
+          </div>
+          <div class="col-md-12 opdrecord_appointment_types">
+            <% @locals = { name_attr:"opdrecord[advice_attributes][appointment_type_id]", option_values: @appointment_types } %>
+            <% if "#{opdrecord.advice.try(:appointment_type_id)}" == nil || "#{opdrecord.advice.try(:appointment_type_id)}" == ""%>
+              <% @locals = @locals.merge(selected: "") %>
+            <% else %>
+              <% @locals = @locals.merge(selected: opdrecord.try(:advice).try(:appointment_type_id)) %>
+            <% end %>
+            <%= render partial: 'opd_records/ophthalmology_notes/appointment_type_partial', locals: @locals %>
+          </div>
+        </div>
+
+        <div class="col-md-3 col-lg-3 col-sm-3 col-xs-12">
+          <div class="col-md-12">
+            <b>Appointment Category</b>
+          </div>
+          <div class="col-md-12">
+            <%= select_tag("opdrecord[advice_attributes][appointment_category_id]", options_for_select(@sub_appointment_types.pluck(:label, :id), opdrecord.try(:advice).try(:appointment_category_id)), include_blank: 'Select Appointment Category', class: "form-control opdrecord_appointment_category", id: 'opdrecord_appointment_category_id', style: 'width:100%;')%>
+          </div>
+        </div>
+      </div>
+
+      <% if (@appointment.try(:organisation_id).to_s == '5e21ffd6cd29ba0ce0bf5a1e') && @appointment.try(:created_from) == 'Integration' %>
+        <div style="display: none">
+          <%= f.check_box :bookappointment, {:class => "myclass",:id => "bookappointment-integration", :checked => false}, "true", "false" %>
+        </div>
+      <% else %>
+        <div class="row mb10">
+          <div class="col-md-4 col-lg-4 col-xs-12 col-sm-12">
+            <div class="col-md-12">
+              &nbsp;
+            </div>
+            <div class="col-md-12">
+              <div class="ckbox ckbox-primary">
+                <% if opdrecord.bookappointment.nil? %>
+                  <%= f.check_box :bookappointment, {:class => "myclass", :id => "bookappointment", :checked => false}, "true", "false" %>
+                  <label for="bookappointment">Make Appointment**</label>
+                <% elsif opdrecord.bookappointment == 'false' %>
+                  <%= f.check_box :bookappointment, {:class => "myclass", :id => "bookappointment", :checked => false }, "true", "false" %>
+                  <label for="bookappointment">Make Appointment**</label>
+                <% elsif opdrecord.bookappointment == 'true' %>
+                  <%= f.check_box :bookappointment, {:class => "myclass", :id => "bookappointment", :checked => true} , "true", "false" %>
+                  <label for="bookappointment">Make Appointment**</label>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
+      <div class="row">
+        <p class="text-center">OR</p>
+      </div>
+
+      <div class="row">
+        <div class="col-md-2 col-sm-2 text-right"></div>
+        <div class="col-md-10 col-sm-10">
+          <%= f.input :opdfollowuptimeframe, wrapper_html: {:class=>"col-md-12 col-sm-12"}, collection: (opdrecord.get_opd_followup_timeframe_list()), :as => :hg_checkbox, :label => false, :required => false, :class => 'btn btn-xs btn-white timeframe mb10', :input_html => {:name => "opdrecord[advice_attributes][opdfollowuptimeframe]" }, :checked => opdrecord.checkboxes_checked(opdrecord.advice.try(:opdfollowuptimeframe)) %>
+        </div>
+      </div>
+
+      <% if templatetype == "paediatrics" %>
+        <div class="row mb10">
+          <div class="col-md-12 col-sm-12">
+            <div class="col-md-12 col-sm-12">
+              <div class="ckbox ckbox-primary">
+                <% if opdrecord.immunization_nutrition.nil? %>
+                  <%= f.check_box :immunization_nutrition, {:class => "myclass", :id => "immunization_nutrition", :checked => false}, "true", "false" %>
+                  <label for="immunization_nutrition">Immunization and Nutrition Awareness done</label>
+                <% elsif opdrecord.immunization_nutrition == 'false' %>
+                  <%= f.check_box :immunization_nutrition, {:class => "myclass", :id => "immunization_nutrition", :checked => false }, "true", "false" %>
+                  <label for="immunization_nutrition">Immunization and Nutrition Awareness done</label>
+                <% elsif opdrecord.immunization_nutrition == 'true' %>
+                  <%= f.check_box :immunization_nutrition, {:class => "myclass", :id => "immunization_nutrition", :checked => true} , "true", "false" %>
+                  <label for="immunization_nutrition">Immunization and Nutrition Awareness done</label>
+                <% end %>
+              </div>
+            </div>
+            <div class="col-md-3 col-sm-3">Comments:</div>
+            <div class="col-md-9 col-sm-9">
+              <%= f.input :immunization_nutrition_comment, wrapper_html: {:class=>"col-md-12 col-sm-12 col-xs-12"}, as: :text,  :label => false, :required => false, :input_html => {:class => "form-control", :rows => 2, :style => 'width:96%;', :required => false, :name => "opdrecord[immunization_nutrition_comment]", :value => opdrecord.read_attribute(:immunization_nutrition_comment) } %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+      <!-- ----------------------- -->
+      <%= render partial: "templates/common/advice_precautions", locals: { f: f } %>
+
+      <div class="row" style="display: none">
+        <div class="col-md-2 col-sm-2">Precautions:<div style="cursor: pointer;color: rgb(66, 139, 202);display: table;border: 1px solid rgb(66, 139, 202);border-radius: 2px;" id="select_all_opdprecautions">Select all</div></div>
+        <div class="col-md-10 col-sm-10">
+          <%= f.input :opdprecautions, wrapper_html: {:class=>"col-md-12 col-sm-12"}, collection: ["Refrain from rubbing or touching your eye","Avoid getting dust or soap water in your eye","Use dark glasses","Avoid exerting yourself","Try not to bend over or carry heavy loads or perform strenuous exercises","Refrain from driving or riding a motorcycle till you are confident that your vision is clear","Avoid cosmetics to the eye such as mascara or eye liners etc for at least 4 weeks"], :as => :hg_checkbox, :label => false, :required => false, :class => 'btn btn-xs btn-white mb10 opdprecautions', :input_html => {:name => "opdrecord[advice_attributes][opdprecautions]" }, :checked => opdrecord.checkboxes_checked(opdrecord.advice.try(:opdprecautions)) %>
+        </div>
+      </div>
+
+      <div class="row" style="display: none">
+        <div class="col-md-2 col-sm-2">Pre-operative instructions:<div style="cursor: pointer;color: rgb(66, 139, 202);display: inline-table;border: 1px solid rgb(66, 139, 202);border-radius: 2px;" id="select_all_preoperative_ins">Select all</div></div>
+        <div class="col-md-10 col-sm-10">
+          <%= f.input :opdpreop_instruction, wrapper_html: {:class=>"col-md-12 col-sm-12"}, collection: ["Take a head bath before the surgery as you will have restrictions for head bath after the surgery","Have an early and light breakfast as per your diet on the day of surgery","Take your systemic medications as advised before and after the surgery","Remove any kind of jewellery like hair clips or Bindis on the day of surgery","No kind of eye or face make up to be done on the day of surgery","You can have light food or milk/coffee/tea after the surgery unless specifically advised against it","Wear light fitting and comfortable clothes on the day of the surgery","All records to be carried along on the day of the surgery"], :as => :hg_checkbox, :label => false, :required => false, :class => 'btn btn-xs btn-white mb10 opdpreop_instruction', :input_html => {:name => "opdrecord[advice_attributes][opdpreop_instruction]" }, :checked => opdrecord.checkboxes_checked(opdrecord.advice.try(:opdpreop_instruction)) %>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3 col-sm-3 col-xs-6"  >
+
+      <div id="booked-appointment-slots" style="background: #fcfcfc;border-left:1px solid #eee;">
+        <%= render partial: '/opd_appointments/available_slot.html.erb' %>
+      </div>
+
+      <div class="clinical-abbreviations" style="background: #fcfcfc;border-left:1px solid #eee;">
+        <%= render partial: '/opd_records/abbreviations.html.erb' %>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script type="text/javascript">
+</script>
+
+<style type="text/css">
+  [data-toggle='tooltip'] + .tooltip > .tooltip-inner {
+    background: black;
+    color:#ffffff;
+    border: 1px solid #000000;
+  }
+</style>

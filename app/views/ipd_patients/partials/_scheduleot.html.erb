@@ -1,0 +1,216 @@
+<div class="modal-dialog modal-hg-patientreg">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h4 class="nomargin">Schedule OT</h4>
+      <%= stylesheet_link_tag  "bootstrap-timepicker.min", media: "all", "data-turbolinks-track" => true %>
+    </div>
+    <div class="modal-body">
+
+      <div id="signuppatient" class="signuppatient">
+
+        <div id="siguppatientform" class="signuppatientform">
+          <%= form_for(@otschedule, :format => :js, :method => :post, remote: true, :multipart => true, :class => "signuppatientformtag form-horizontal form-bordered", :url => ipd_patients_makeot_path) do |ot_schedule|%>
+
+            <%= ot_schedule.hidden_field :user_id, value: current_user.id.to_s %>
+            <%= ot_schedule.hidden_field "patient_id", value: @patient.id.to_s %>
+            <%= ot_schedule.hidden_field "from", value: @source %>
+            <%= ot_schedule.hidden_field "appointment_id", value: @appointment %>
+            <% unless @admission.nil? %>
+              <%= ot_schedule.hidden_field "admission_id", value: @admission.id.to_s %>
+            <% end %>
+            <% @allotscheduled = OtSchedule.where(patient_id: @patient.id.to_s, is_deleted: false, is_engaged: false, operation_done: false) %>
+            <% if @allotscheduled.count > 0 %>
+              <div class="row">
+                <div class="col-md-3">
+                  Existing Scheduled OT:
+                </div>
+                <div class="col-md-9">
+                  <ol>
+                    <% @allotscheduled.each do |otschedule| %>
+                      <li><b><%= otschedule.otdate.strftime('%d %b, %Y') %><%= otschedule.ottime.strftime(" at %I:%M %p") %></b> by <b><%= User.find(otschedule.user_id).fullname %></b></li>
+                    <% end %>
+                  </ol>
+                </div>
+              </div>
+              <hr/>
+            <% end %>
+            <div class="row">
+              <!-- Facility DropDown -->
+              <div class="form-group col-md-6">
+                <label class="col-sm-4 control-label">Location :</label>
+                <div class="col-sm-5">
+                  <% if @facilities.count > 1 %>
+                    <% facilities_array = @facilities.map { |facility| [facility.name, facility.id] } %>
+                    <%= ot_schedule.select :facility_id, options_for_select(facilities_array, current_facility.id), {}, {:class => "form-control input-sm mb15"} %>
+                  <% else %>
+                    <%= ot_schedule.hidden_field :facility_id, value: @facilities.first.id.to_s %>
+                    <%= @facilities.first.name %>
+                  <% end %>
+                </div>
+              </div>
+              <!-- Surgeon Name Dropdown Comes Via Facility Dropdown On Change Ajax Call. Refer Below -->
+              <div class="form-group col-md-6">
+                <label class="col-sm-4 control-label">Surgeon Name :</label>
+                <div class="col-sm-6">
+                  <% if current_user.has_role?(:doctor) %>
+                    <%= ot_schedule.hidden_field :surgeonname, :value => current_user.id.to_s %>
+                    <%= current_user.fullname.capitalize %>
+                  <% else %>
+                    <%= ot_schedule.select :surgeonname, options_for_select(""), {}, {:class => "form-control input-sm mb15"} %>
+                  <% end %>
+                </div>
+              </div>
+            </div>
+            <div class="row">
+              <!-- Patient Name Dropdown Comes Via Facility Dropdown On Change Ajax Call. Refer Below -->
+              <div class="form-group col-md-6">
+                <label class="col-sm-4 control-label">Patient Name :</label>
+                <div class="col-sm-5">
+                  <%= Patient.find_by(:id => @patient.id.to_s).fullname.to_s.upcase %>
+                </div>
+              </div>
+              <div class="form-group col-md-6">
+                <label class="col-sm-4 control-label">OT Date</label>
+                <div class="col-sm-6">
+                  <div class="input-group">
+                    <span class="input-group-addon"><i class="glyphicon glyphicon-calendar"></i></span>
+                    <%= ot_schedule.text_field "otdate", {:class => 'form-control ot_scheduledate', :id => "ot_scheduledate-datepicker", :placeholder => "dd/mm/yyyy", :value => Date.current.strftime("%d/%m/%Y")} %>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <br>
+            <div class="row">
+              <div class="form-group col-md-6">
+                <label class="col-sm-4 control-label">Theatre No.</label>
+                <div class="col-sm-6">
+                  <div class="input-group mb15">
+                    <span class="input-group-addon"><i class="fa fa-heartbeat"></i></span>
+                    <div class="bootstrap-timepicker">
+                      <%= ot_schedule.text_field "theatreno", {:class => 'form-control ot_theatreno', :id => "ot_theatreno"} %>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="form-group col-md-6">
+                <label class="col-sm-4 control-label">OT Start Time</label>
+                <div class="col-sm-6">
+                  <div class="input-group mb15">
+                    <span class="input-group-addon"><i class="glyphicon glyphicon-time"></i></span>
+                    <div class="bootstrap-timepicker timepicker">
+                      <%= ot_schedule.text_field "ottime", {:class => 'form-control ot_scheduletime', :id => "ot_scheduletime-timepicker" } %>
+                    </div>
+                  </div>
+                </div>
+                <label class="col-sm-4 control-label">OT End Time</label>
+                <div class="col-sm-6">
+                  <div class="input-group mb15">
+                    <span class="input-group-addon"><i class="glyphicon glyphicon-time"></i></span>
+                    <div class="bootstrap-timepicker timepicker">
+                      <%= ot_schedule.text_field "otendtime", {:class => 'form-control ot_scheduleendtime', :id => "ot_scheduleendtime-timepicker" } %>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="row">
+              <div class="form-group col-md-12 data_from_opd">
+                <%= render partial: "inpatient/home/ot_management/data_from_opd",locals: {diagnosis: @diagnosis,procedures: @procedures,admission_note: @admission_note,performed_remaining: @performed_remaining,operative_note: @operative_note} %>
+              </div>
+            </div>
+            <div class="row" style="margin-left:10px;margin-top: 20px;">
+              <%= submit_tag "Schedule OT", class: "btn btn-success",id: "submit_ot", remote: true, 'data-disable-with' => "Please wait.." %>
+              <button aria-hidden="true" class="btn btn-info signup-patient-form-close" data-dismiss="modal">Close</button>
+            </div>
+          <% end %>
+
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<%= javascript_include_tag "jquery.seat-charts.min", "data-turbolinks-track" => true %>
+<%= javascript_include_tag "bootstrap-timepicker.min", "data-turbolinks-track" => true %>
+<%= javascript_include_tag "bootstrap-wizard.min", "data-turbolinks-track" => true %>
+<style>
+    .personnel-row{
+        margin-left: 160px;
+    }
+    .personnel-col{
+        margin-top: -18px;
+    }
+</style>
+<script>
+  jQuery(document).ready(function(){
+    jQuery('#ot_schedule_facility_id').on("change",function(){
+      jQuery.ajax({
+        type: "GET",
+        dataType: "json",
+        url: "/ipd_patients/ot_surgeonname",
+        data: {facility_id: jQuery("#ot_schedule_facility_id").val()},
+        success: function(response){
+          var user = response.user
+          jQuery('#ot_schedule_surgeonname').children().remove();
+          jQuery.each(user, function(key, value) {
+            jQuery('#ot_schedule_surgeonname').append(jQuery("<option></option>").attr("value",value[1]).text(value[0]));
+          });
+        }
+      })
+    });
+    jQuery('#ot_schedule_facility_id').trigger("change");
+
+    jQuery('#ot_scheduledate-datepicker').datepicker({
+        dateFormat: "dd/mm/yy"
+    });
+    timepicker_options = {defaultTIme: false, minuteStep: 5}
+    <% if @ottime.length > 0 %>
+        <% time = @ottime %>
+        //timepicker_options = {defaultTIme: false, minuteStep: 5}
+        jQuery('#ot_scheduletime-timepicker').timepicker(timepicker_options)
+        jQuery('#ot_scheduletime-timepicker').timepicker('setTime', '<%= time %>')
+    <% else %>
+        //timepicker_options = {defaultTIme: false, minuteStep: 5}
+        jQuery('#ot_scheduletime-timepicker').timepicker(timepicker_options)
+    <% end %>
+    <% if @otendtime.length > 0 %>
+        <% time = Time.zone.parse(@otendtime).strftime("%I:%M %p") %>
+        //timepicker_options = {defaultTIme: false, minuteStep: 5}
+        jQuery('#ot_scheduleendtime-timepicker').timepicker(timepicker_options)
+        jQuery('#ot_scheduleendtime-timepicker').timepicker('setTime', '<%= time %>')
+    <% else %>
+        //timepicker_options = {defaultTIme: false, minuteStep: 5}
+        jQuery('#ot_scheduleendtime-timepicker').timepicker(timepicker_options)
+        jQuery('.ot_scheduleendtime').val("")
+    <% end %>
+
+
+    $('#ward_list').change(function() {
+        $.ajax({
+            url: "/ipd_patients/room_update",
+            data: {
+                id : $('#ward_list').val()
+            },
+            dataType: "script"
+        });
+    });
+
+      jQuery('.patientlist').on('change', function() {
+          foobar = this.value
+//          console.log(foobar)
+          x = foobar.split(',')
+          jQuery('.patient_value').val(x[0])
+          jQuery('.admission_value').val(x[1])
+          var ids = $("#huzi").val()
+          var patient_id = ids.split(',')[0]
+          var adm_id = jQuery('.admission_value').val()
+          $.ajax({
+              url: '/inpatient/ipd_records/data_from_opd',
+              data: {patient_id: patient_id,admission_id: adm_id},
+          });
+      });
+  });
+
+</script>

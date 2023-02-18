@@ -1,0 +1,110 @@
+<div class="">
+  <h3 class="text-center"></h3>
+  <div style="margin-left: 10px;">
+    <div class="btn-group">
+      <%= link_to print_inventory_transaction_stock_opening_path(@stock_opening, page_size: 'A4'),
+            class: "btn btn-xs btn-success", target: :_blank  do %>
+        <i class="fa fa-print"></i>&nbsp;Print A4
+      <% end %>
+      <%= link_to print_inventory_transaction_stock_opening_path(@stock_opening, page_size: 'A5'),
+            class: "btn btn-xs btn-success", target: :_blank  do %>
+        <i class="fa fa-print"></i>&nbsp;Print A5
+      <% end %>
+    </div>
+    <% if @stock_opening.status_open? %>
+      <div class="btn-group">
+        <% if Authorization::PolicyHelper.verification(current_user.id ,"HGP-100-104-101", @stock_opening.user_id) %>
+          <%= link_to 'Approve', approve_inventory_transaction_stock_opening_path(@stock_opening), class: "btn btn-xs btn-info", remote: true %>
+        <% end %>
+        <% if Authorization::PolicyHelper.verification(current_user.id ,"HGP-100-104-102") %>
+          <%= link_to edit_inventory_transaction_stock_opening_path(@stock_opening), class: 'btn btn-primary btn-xs', remote: true do %>
+            <i class="fa fa-edit"></i> Edit
+          <% end %>
+        <% end %>
+        <% if Authorization::PolicyHelper.verification(current_user.id ,"HGP-100-104-103") %>
+          <button class="btn btn-xs btn-danger cancel-stock-opening" data-id="<%= @stock_opening.id.to_s%>">
+            <i class="fa fa-trash-alt"></i> &nbsp; Cancel
+          </button>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+  <h3 class="text-center" style="color: #00BFFF"><%= @stock_opening.note %></h3>
+  <div class="container-fluid">
+    <div class="row mb5">
+      <% if @stock_opening.approved? %>
+        <div class="col-sm-4">Store: &nbsp;&nbsp;&nbsp;<%= @inventory_store.name %></div>
+        <div class="col-sm-4">Document Number: &nbsp;&nbsp;&nbsp;<%= @stock_opening.document_number %></div>
+        <div class="col-sm-4">Status: &nbsp;&nbsp;&nbsp;<%= @stock_opening.status_text %></div>
+        <div class="col-md-4">Created By:&nbsp;&nbsp;&nbsp; <%= @stock_opening.entered_by %></div>
+        <div class="col-md-4">Created At:&nbsp;&nbsp;&nbsp; <%= @stock_opening.created_at.try(:strftime, '%d-%m-%Y') %>&nbsp;|&nbsp;<%= @stock_opening.created_at&.strftime("%I:%M%p") %></div>
+        <div class="col-sm-4">Approved By: &nbsp;&nbsp;&nbsp;<%= @stock_opening.approved_by.fullname %></div>
+      <% elsif @stock_opening.cancelled? %>
+        <div class="col-sm-4">Store: &nbsp;&nbsp;&nbsp;<%= @inventory_store.name %></div>
+        <div class="col-sm-4">Document Number: &nbsp;&nbsp;&nbsp;<%= @stock_opening.document_number %></div>
+        <div class="col-sm-4">Status: &nbsp;&nbsp;&nbsp;<%= @stock_opening.status_text %></div>
+        <div class="col-md-4">Created By:&nbsp;&nbsp;&nbsp; <%= @stock_opening.entered_by %></div>
+        <div class="col-md-4">Created At:&nbsp;&nbsp;&nbsp; <%= @stock_opening.created_at.try(:strftime, '%d-%m-%Y') %>&nbsp;|&nbsp;<%= @stock_opening.created_at&.strftime("%I:%M%p") %></div>
+        <div class="col-sm-4">Cancelled Reason: &nbsp;&nbsp;&nbsp;<%= @stock_opening.cancelled_reason %></div>
+        <div class="col-sm-4">Cancelled On: &nbsp;&nbsp;&nbsp;<%= @stock_opening.cancelled_on.try(:strftime, '%d-%m-%Y') %></div>
+        <div class="col-sm-4">Cancelled By: &nbsp;&nbsp;&nbsp;<%= @stock_opening.cancelled_by_name %></div>
+      <% else %>
+        <div class="col-sm-4">Store: &nbsp;&nbsp;&nbsp;<%= @inventory_store.name %></div>
+        <div class="col-sm-4">Document Number: &nbsp;&nbsp;&nbsp;<%= @stock_opening.document_number %></div>
+        <div class="col-sm-4">Status: &nbsp;&nbsp;&nbsp;<%= @stock_opening.status_text %></div>
+        <div class="col-md-4">Created By:&nbsp;&nbsp;&nbsp; <%= @stock_opening.entered_by %></div>
+        <div class="col-md-4">Created At:&nbsp;&nbsp;&nbsp; <%= @stock_opening.created_at.try(:strftime, '%d-%m-%Y') %>&nbsp;|&nbsp;<%= @stock_opening.created_at&.strftime("%I:%M%p") %></div>
+      <% end %>
+      <div class="col-sm-4">Transaction ID: &nbsp;&nbsp;&nbsp;<%= @stock_opening.stock_opening_display_id %></div>
+    </div>
+  </div>
+  <br>
+
+  <%= render '/inventory/transaction/stock_openings/show_body.html.erb', stock_opening: @stock_opening %>
+</div>
+
+<div id="cancelModal" class="modal false fade in" tabindex="-1" role="dialog" aria-labelledby="cancelModal" aria-hidden="false" style="z-index: 1051; display: hidden;">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+        <h5 id="cancelModal" class="modal-title">Are you sure?</h5> 
+      </div>
+      <%= form_tag cancel_inventory_transaction_stock_opening_path(id: @stock_opening.id), method: 'get', remote: true, id: 'new-message-form', class: "new-message-form" do %>
+        <div class="modal-body">
+          <%= label_tag "Reason for Cancellation"%>
+          <%= text_field_tag :cancelled_reason, '', class: "form-control p7_10", placeholder: 'Reason for Cancellation', minlength: '5', required: true %>
+        </div>
+        <div class="modal-footer">
+          <button class="btn commit btn-danger" data-dismiss="modal">Don't Cancel</button>
+          <%= submit_tag "Cancel", class: "btn btn-success", data: { 'disable-with': 'Please Wait...' }, onclick: 'validateMessage()' %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<style type="text/css">
+  .table-add-item td{
+    padding: 5px 5px 0;
+  }
+
+  .check_font table tr th {
+    padding: 2px 5px;
+  }
+
+  .check_font table tr td {
+    padding: 2px 5px;
+  }
+
+  .check_font {
+    font-size: 11px;
+  }
+</style>
+
+<script type="text/javascript">
+  $('.cancel-stock-opening').click(function(e){
+    e.preventDefault();
+    $("#cancelModal").modal('show');
+  })
+</script>

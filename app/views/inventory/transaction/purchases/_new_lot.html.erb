@@ -1,0 +1,425 @@
+<div class="modal-dialog modal-lg" style="width: 90%">
+  <div class="modal-content inventory-lot-modal" style="">
+    <div class="modal-header inventory-lot-header">
+      <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+      <h4 class="modal-title text-center"> Add Lot - <%= @variant_name %></h4>
+    </div>
+
+    <div class="modal-body inventory-lot-body">
+
+      <div class="well item-info">
+        <div class="row" style="margin-bottom: 0px;">
+
+          <div class="col-lg-2 col-md-2 col-xs-2">
+            <label>Description:</label>
+          </div>
+          <div class="col-lg-2 col-md-2 col-xs-2">
+            <strong><%= @variant.description %></strong>
+          </div>
+
+          <div class="col-lg-2 col-md-2 col-xs-2">
+            <label>HSN No:</label>
+          </div>
+          <div class="col-lg-2 col-md-2 col-xs-2">
+            <strong><%= @item.hsn_no %></strong>
+          </div>
+
+          <div class="col-lg-2 col-md-2 col-xs-2">
+            <label>Item Code:</label>
+          </div>
+          <div class="col-lg-2 col-md-2 col-xs-2">
+            <strong><%= @variant.item_code %></strong>
+          </div>
+
+        </div>
+
+        <div class="row" style="margin-bottom: 0px;">
+
+          <div class="col-lg-2 col-md-2 col-xs-2">
+            <label>Category:</label>
+          </div>
+          <div class="col-lg-2 col-md-2 col-xs-2">
+            <strong><%= @variant.category&.titleize %></strong>
+          </div>
+
+          <div class="col-lg-2 col-md-2 col-xs-2">
+            <label>Dosage:</label>
+          </div>
+          <div class="col-lg-2 col-md-2 col-xs-2">
+            <strong><%= @item.try(:dosage) %></strong>
+          </div>
+
+          <div class="col-lg-2 col-md-2 col-xs-2">
+            <label>Dispensing Unit:</label>
+          </div>
+          <div class="col-lg-2 col-md-2 col-xs-2">
+            <strong><%= @item.dispensing_unit %></strong>
+          </div>
+
+        </div>
+        <div class="row" style="margin-bottom: 0px;">
+
+          <div class="col-lg-2 col-md-2 col-xs-2">
+            <label>Package Type:</label>
+          </div>
+          <div class="col-lg-2 col-md-2 col-xs-2">
+            <strong><%= @item.package_type %></strong>
+          </div>
+
+          <div class="col-lg-2 col-md-2 col-xs-2">
+            <label>Sub package/Package:</label>
+          </div>
+          <div class="col-lg-2 col-md-2 col-xs-2">
+            <strong><%= "#{@item.sub_package_units} #{@item.sub_package_type}" %></strong>
+          </div>
+
+          <div class="col-lg-2 col-md-2 col-xs-2">
+            <label>Unit/Sub package:</label>
+          </div>
+          <div class="col-lg-2 col-md-2 col-xs-2">
+            <strong><%= "#{@item.item_units} #{@item.item_type}" %></strong>
+          </div>
+        </div>
+
+        <% if @inventory_store.department_id == '50121007' %>
+          <div class="row" style="margin-bottom: 0px;">
+
+            <div class="col-lg-2 col-md-2 col-xs-2">
+              <label>Model No.:</label>
+            </div>
+            <div class="col-lg-2 col-md-2 col-xs-2">
+              <% model_no = @item.model_no.present? ? @item.model_no : 'NA' %>
+              <strong><%= model_no %></strong>
+            </div>
+          </div>
+        <% end %>
+      </div>
+
+
+      <%= form_tag "/inventory/transaction/purchases/add_lot", method: "post", remote: true, id: 'purchase_add_lot_form', class: "purchase-add-lot-form" do %>
+        <%= hidden_field_tag :model_no, @variant.model_no, name: "item[model_no]", readonly: true %>
+        <%= hidden_field_tag :variant_id, @variant.id %>
+        <%= hidden_field_tag :department_id, @inventory_store.department_id, name: "item[department_id]" %>
+        <%= hidden_field_tag :department_name, @inventory_store.department_name, name: "item[department_name]" %>
+        <%= hidden_field_tag :discount_per_unit,"",name: "item[discount_per_unit]" %>
+        <%= hidden_field_tag :net_unit_cost_without_tax,"",name: "item[net_unit_cost_without_tax]" %>
+        <%= hidden_field_tag :margin,"",name: "item[margin]" %>
+        <%= hidden_field_tag :dispensing_unit, @item.dispensing_unit , name: "item[dispensing_unit]" %>
+        <div class="row" style="margin-bottom: 5px;">
+          <div class="col-lg-4 col-md-4 col-xs-4">
+          </div>
+          <%if @variant.variant_identifier.present? %>
+            <div class="col-lg-4 col-md-4 col-xs-4"><%= text_field_tag :variant_identifier, "",readonly: true, class: "form-control form-control-custom variant-identifier", required: false, name: "item[variant_identifier]", style: 'background-image: none;' %></div>
+          <% else %>
+            <div class="col-lg-4 col-md-4 col-xs-4"><%= hidden_field_tag :variant_identifier, "",readonly: true, class: "form-control form-control-custom variant-identifier", required: false, name: "item[variant_identifier]" %></div>
+          <% end %>
+          <div class="col-lg-4 col-md-4 col-xs-4">
+            <button type="button" class="btn btn-xs btn-default pull-right" data-dismiss="modal">Cancel</button>
+            <%= submit_tag "Save", class: "btn btn-xs btn-success validate-purchase-add-lot pull-right", onclick: 'validate_purchase_add_lot_form()', data: { 'disable-with': 'Please Wait...' } %>
+          </div>
+        </div>
+        <hr>
+
+        <div class="" style="">
+          <div class="row" style="margin-bottom: 5px;">
+            <% @item.custom_fields.each do |custom_field| %>
+              <% key_name = custom_field.name&.gsub(/[^0-9A-Za-z ]/,' ')&.split&.join(" ") %>
+              <div class="col-lg-1 col-md-1 col-xs-1 text-left" >
+                <label><%= key_name&.capitalize %>:</label>
+              </div>
+
+              <div class="col-lg-2 col-md-2 col-xs-2">
+                <%= select_tag "item[custom_field][#{key_name}]", options_for_select(custom_field.value,@variant.custom_fields.find_by(name: custom_field.name).try(:value)), include_blank: "Select", class: 'form-control-custom form-control variant-skew' %>
+                <%= hidden_field_tag "item[custom_field_tags][]", @variant.custom_fields.find_by(name: custom_field.name).try(:value), class: "form-control form-control-custom custom-field-tags", required: false %>
+              </div>
+            <%end %>
+          </div>
+          <hr>
+          <div class="row" style="margin-bottom: 5px">
+            <div class="col-lg-1 col-md-1 col-xs-1 text-left" >
+              <label>Batch No:</label>
+            </div>
+            <div class="col-lg-2 col-md-2 col-xs-2">
+              <%= text_field_tag :batch_no, "", class: "form-control form-control-custom", required: false, name: "item[batch_no]", style: 'background-image: none;', id:"item_batch_info_Indent" %>
+            </div>
+            <% if @item.expiry_present %>
+              <div class="col-lg-1 col-md-1 col-xs-1 text-left">
+                <label>Expiry:</label>
+              </div>
+              <div class="col-lg-2 col-md-2 col-xs-2">
+                <%= text_field_tag :expiry, "", class: "form-control form-control-custom expiry-datepicker new-transaction-datepicker", required: false, name: "item[expiry]", readonly: true, style: 'background-image: none;' %>
+                <%= hidden_field_tag :expiry_present,@item.expiry_present , name: "item[expiry_present]", readonly: true %>
+              </div>
+            <% end %>
+            <% if @sub_stores.size > 1 %>
+              <div class="col-lg-1 col-md-1 col-xs-1 text-left">
+                <label>Sub-Store:</label>
+              </div>
+              <div class="col-lg-2 col-md-2 col-xs-2">
+                <%= select_tag 'item[sub_store_id]', options_for_select(@sub_stores, selected: ''), include_blank: true, include_hidden: false, class: 'form-control', id: 'sub_store_id', style: 'padding: 5px; background-image: none;' %>
+                <%= hidden_field_tag :sub_store_name, "", class: "form-control", id: "sub_store_name", required: false, name: "item[sub_store_name]" %>
+              </div>
+            <% else %>
+              <%= hidden_field_tag :sub_store_id, @sub_stores[0][1], name: "item[sub_store_id]" %>
+              <%= hidden_field_tag :sub_store_name, @sub_stores[0][0], name: "item[sub_store_name]" %>
+            <% end %>
+            <div class="col-md-3 col-xs-3 vendor-purchase-rate text-right">
+              <%= link_to show_vendor_purchase_rate_inventory_stores_path(store_id: @inventory_store.id, variant_id: @variant.id), id: 'show_vendor_purchase_rate', data: { remote: true, toggle: 'modal', target: '#vendor-purchase-rate-modal' }, class: 'btn btn-primary btn-xs', style: "margin-right: 10px;" do %><i class=""></i>Previous Rate<% end %>
+
+              <%= link_to lot_stock_data_inventory_stores_path(store_id: @inventory_store.id, variant_id: @variant.id), id: 'show_vendor_purchase_rate', data: { remote: true, toggle: 'modal', target: '#vendor-purchase-rate-modal' }, class: 'btn btn-primary btn-xs' do %><i class=""></i>Stock Availability<% end %>
+            </div>
+            <div class="col-lg-1 col-md-1 col-xs-1">
+              <div class="input-group"> 
+                <%#= check_box_tag :system_generated_barcode,true,false,class: "form-control form-control-custom auto_generated", name: 'item[system_generated_barcode]',style: "width:auto; margin-right: 5px; transform: scale(1.3);"%>
+                <!-- <label>Auto Generated</label> -->
+              </div>
+            </div> 
+          </div>
+          <hr>
+          <div class="row" style="margin-bottom: 5px;">
+            <div class="col-lg-1 col-md-1 col-xs-1 text-left" >
+              <label>Total Cost:</label>
+            </div>
+            <div class="col-lg-2 col-md-2 col-xs-2">
+              <%= text_field_tag :total_cost, "", class: "form-control form-control-custom", required: false, name: "item[total_cost]", onkeypress: 'return event.charCode >= 48 && event.charCode <= 57', readonly: true, style: 'background-image: none;' %>
+            </div>
+            <div class="col-lg-1 col-md-1 col-xs-1 text-left" >
+              <label style="font-size: 13px;">Unit Cost With Tax:</label>
+              <label class="label-info"><%= @item.tax_rate %>% &nbsp;tax</label>
+            </div>
+            <div class="col-lg-2 col-md-2 col-xs-2">
+              <div class="input-group">
+                <%= text_field_tag :unit_cost, "", class: "form-control form-control-custom", required: false, name: "item[unit_cost]", onkeypress: 'return event.charCode >= 46 && event.charCode <= 57;', oninput: 'this.value = this.value.match(/^\d+\.?\d{0,2}/);', style: 'background-image: none;' %>
+                <span class="input-group-addon form-control-custom-unit">/ Unit</span>
+              </div>
+            </div>
+            <div class="col-lg-1 col-md-1 col-xs-1 text-left" >
+              <label>Unit Cost W/O Tax:</label>
+            </div>
+            <div class="col-lg-2 col-md-2 col-xs-2">
+              <div class="input-group">
+                <%= hidden_field_tag :unit_purchase_tax_amount, "", class: "form-control form-control-custom-input", style: "width: 100%", required: false, name: "item[unit_purchase_tax_amount]" %>
+                <%= hidden_field_tag :purchase_tax_amount, "", class: "form-control form-control-custom-input", style: "width: 100%", required: false, name: "item[purchase_tax_amount]" %>
+                <%= hidden_field_tag :item_cost_without_tax, "", class: "form-control form-control-custom-input", style: "width: 100%", required: false, name: "item[item_cost_without_tax]" %>
+                <% if @vendor_rate.try(:rate).present? %>
+                  <%= text_field_tag :unit_cost_without_tax, "", class: "form-control form-control-custom", required: false, name: "item[unit_cost_without_tax]", value: @vendor_rate.try(:rate).to_f, max: @vendor_rate.try(:rate).to_f, onkeypress: 'return event.charCode >= 46 && event.charCode <= 57;', oninput: 'this.value = this.value.match(/^\d+\.?\d{0,2}/);', style: 'background-image: none;' %>
+                <% else %>
+                  <%= text_field_tag :unit_cost_without_tax, "", class: "form-control form-control-custom", required: false, name: "item[unit_cost_without_tax]", onkeypress: 'return event.charCode >= 46 && event.charCode <= 57', oninput: 'this.value = this.value.match(/^\d+\.?\d{0,2}/);', style: 'background-image: none;' %>
+                <% end %>
+                <span class="input-group-addon form-control-custom-unit">/ Unit</span>
+              </div>
+            </div>
+            <div class="col-lg-1 col-md-1 col-xs-1 text-left" >
+              <label>Discount:</label>
+            </div>
+            <div class="col-lg-2 col-md-2 col-xs-2">
+              <div class="input-group">
+                <%= text_field_tag :discount_amount, "", class: "form-control form-control-custom input_focus_none", style: "width: 100%; border: 1px solid #ccc; background-image: none;", required: false, name: "item[discount_amount]", onkeypress: 'return event.charCode >= 46 && event.charCode <= 57',value: 0 %>
+                <span class="input-group-addon form-control-custom-slash" style="width: 0;"></span>
+                <%= select_tag :item_discount_type, options_for_select(["#{@currency_symbol}","%"]), class: 'form-control form-control-custom', style: "width: 106%; border: 1px solid #ccc; background-image: none;font-size: 16px;", name: "item[item_discount_type]" %>
+                  <%= hidden_field_tag :currency_id, current_facility.currency_id, name: "item[currency_id]" %>
+                  <%= hidden_field_tag :discount_show,"",class: "form-control form-control-custom-input", style: "width: 100%", required: false %>
+                  <%= hidden_field_tag :item_discount,"",class: "form-control form-control-custom-input",name: "item[item_discount]", style: "width: 100%", required: false %>
+                  <%= hidden_field_tag :amt_after_tax,"",class: "form-control form-control-custom-input", style: "width: 100%", required: false %>
+              </div>
+                <div class="item_discount_value">hii</div>
+            </div>
+          </div>
+          <hr>
+          <div class="row" style="margin-bottom: 0px;">
+            <div class="col-lg-12 col-md-12 col-xs-12 text-left" >
+              <label>Stock (Package + Subpackage + Units + Free Units):</label>
+            </div>
+          </div>
+          <% onkeypress = @item.unit_level == true ? 'return event.charCode >= 48 && event.charCode <= 57' : '' %>
+          <div class="row" style="margin-bottom: 5px;">
+            <div class="col-lg-2 col-md-2 col-xs-2">
+              <div class="col-lg-9 col-md-9 col-xs-9">
+                <label style="font-size: x-small">
+                  <%= "Package/s (x #{@item.sub_package_units} x #{@item.item_units})" %>
+                </label>
+                <%= number_field_tag :stock_package, "", class: "form-control form-control-custom calculate-total-stock",placeholder: "#{@item.package_type}", required: false, name: "item[stock_package]", style: 'background-image: none;', onkeypress: onkeypress %>
+              </div>
+
+              <div class="col-lg-3 col-md-3 col-xs-3">
+                +
+              </div>
+            </div>
+
+            <div class="col-lg-2 col-md-2 col-xs-2">
+              <div class="col-lg-9 col-md-9 col-xs-9">
+                <label style="font-size: x-small">
+                  <%= "Subpackage/s (x #{@item.item_units})" %>
+                </label>
+                <%= number_field_tag :stock_subpackage, "", class: "form-control form-control-custom calculate-total-stock",placeholder: "#{@item.sub_package_type}", required: false, name: "item[stock_subpackage]", style: 'background-image: none;', onkeypress: onkeypress %>
+              </div>
+              <div class="col-lg-3 col-md-3 col-xs-3">
+                +
+              </div>
+            </div>
+
+            <div class="col-lg-2 col-md-2 col-xs-2">
+              <div class="col-lg-9 col-md-9 col-xs-9">
+                <label style="font-size: x-small">
+                  Unit/s
+                </label>
+                <%= number_field_tag :stock_unit, "", class: "form-control form-control-custom calculate-total-stock",placeholder: "#{@item.item_type}", required: false, name: "item[stock_unit]", style: 'background-image: none;', onkeypress: onkeypress %>
+                <%= hidden_field_tag "", @variant.stock.to_i, class: 'item_max_quantity form-control' %>
+                <%= hidden_field_tag "", @item.item_units, class: 'item_sub_units_value form-control' %>
+                <lable class="item_units_error_message" style=" color: red;" ></label>
+              </div>
+              <div class="col-lg-3 col-md-3 col-xs-3">
+                =
+              </div>
+            </div>
+
+            <div class="col-lg-2 col-md-2 col-xs-2">
+              <label style="font-size: x-small">
+                Total Paid Unit/s
+              </label>
+              <%= text_field_tag :paid_stock, "", class: "form-control form-control-custom",placeholder: "Total Unit/s", required: false, name: "item[paid_stock]", readonly: true %>
+              <%= hidden_field_tag :stock, "", class: "form-control form-control-custom",placeholder: "Total Unit/s", required: false, name: "item[stock]", readonly: true %>
+            </div>
+
+            <div class="col-lg-2 col-md-2 col-xs-2">
+              <div class="col-lg-9 col-md-9 col-xs-9">
+                <label style="font-size: x-small">
+                  Free Unit/s
+                </label>
+                <%= number_field_tag :stock_free_unit, "", class: "form-control form-control-custom calculate-total-stock",placeholder: "Free Unit/s", required: false, name: "item[stock_free_unit]", style: 'background-image: none;', onkeypress: onkeypress %>
+              </div>
+            </div>
+          </div>
+          <hr>
+          <div class="row" style="margin-bottom: 5px;">
+<!--            <div class="col-lg-4 col-md-4 col-xs-4">-->
+<!--              <div class="row">-->
+<!--                <div class="col-lg-2 col-md-2 col-xs-2 text-left">-->
+<!--                  <label>MRP:</label>-->
+<!--                </div>-->
+<!--                <div class="col-lg-6 col-md-6 col-xs-6 text-left">-->
+<!--                  <div class="input-group">-->
+                    <%#= text_field_tag :mrp_pack, "", class: "form-control form-control-custom-input", style: "width: 100%", required: false, name: "item[mrp_pack]" %>
+<!--                    <span class="input-group-addon form-control-custom-slash">/</span>-->
+                    <%#= select_tag :mrp_pack_denomination, options_for_select(["Package","Subpackage","Unit" ]), class: 'form-control-custom-select form-control', style: "width: 100%", name: "item[mrp_pack_denomination]" %>
+<!--                  </div>-->
+<!--                </div>-->
+<!--                <div class="col-lg-4 col-md-4 col-xs-4 text-left">-->
+<!--                  <div class="input-group">-->
+                    <%#= text_field_tag :mrp, "", class: "form-control form-control-custom-input", style: "width: 100%", required: false, name: "item[mrp]", readonly: true %>
+<!--                    <span class="input-group-addon form-control-custom-unit">/ Unit/s</span>-->
+<!--                  </div>-->
+<!--                </div>-->
+<!--              </div>-->
+<!--            </div>-->
+            <div class="col-lg-7 col-md-7 col-xs-7">
+              <div class="row">
+                <div class="col-lg-3 col-md-3 col-xs-3 text-left">
+                  <label>Selling Price <i class="fa fa-info-circle hg-tooltip" title="The rate at which you are going sell this item" style="cursor:help;"></i>:</label>
+                  <label class="label-info"><%= @item.tax_rate %>%&nbsp;tax - <%= @item.tax_inclusive ? "Inclusive" : "Exclusive"  %></label>
+                </div>
+                <div class="col-lg-5 col-md-5 col-xs-5 text-left">
+                  <div class="input-group">
+                    <% if @vendor_rate.try(:selling_price).present? %>
+                      <%= text_field_tag :list_price_pack, "", class: "form-control form-control-custom-input", required: false, name: "item[list_price_pack]", value: @vendor_rate&.selling_price.to_f, onkeypress: 'return event.charCode >= 46 && event.charCode <= 57', style: 'width: 100%; background-image: none;' %>
+                    <% else %>
+                      <%= text_field_tag :list_price_pack, "", class: "form-control form-control-custom-input", required: false, name: "item[list_price_pack]", onkeypress: 'return event.charCode >= 46 && event.charCode <= 57', style: 'width: 100%; background-image: none;' %>
+                    <% end %>
+                    <span class="input-group-addon form-control-custom-slash">/</span>
+                    <%= select_tag :list_price_pack_denomination, options_for_select(["Package","Subpackage","Unit"]), class: 'form-control-custom-select form-control', style: "width: 100%", name: "item[list_price_pack_denomination]" %>
+                  </div>
+                </div>
+                <div class="col-lg-4 col-md-4 col-xs-4 text-left">
+                  <div class="input-group">
+                    <%= text_field_tag :list_price, "", class: "form-control form-control-custom-input", required: false, name: "item[list_price]", readonly: true, style: 'width: 100%; background-image: none;' %>
+                    <%= hidden_field_tag :tax_rate, @item.tax_rate, class: "form-control form-control-custom-input", style: "width: 100%", required: false, name: "item[tax_rate]", readonly: true %>
+                    <%= hidden_field_tag :tax_name, @item.tax_name, class: "form-control form-control-custom-input", style: "width: 100%", required: false, name: "item[tax_name]", readonly: true %>
+                    <%= hidden_field_tag :tax_group_id, @item.tax_group_id, class: "form-control form-control-custom-input", style: "width: 100%", required: false, name: "item[tax_group_id]", readonly: true %>
+                    <%= hidden_field_tag :tax_inclusive, @item.tax_inclusive, class: "form-control form-control-custom-input", style: "width: 100%", required: false, name: "item[tax_inclusive]", readonly: true %>
+                    <span class="input-group-addon form-control-custom-unit">/ Unit</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-lg-1 col-md-1 col-xs-1">
+            </div>
+
+            <div class="col-lg-4 col-md-4 col-xs-4">
+              <div class="row">
+                <div class="col-lg-5 col-md-5 col-xs-5 text-left">
+                  <label>Price w/o Tax <i class="fa fa-info-circle hg-tooltip" title="The profit which you are going get after tax deduction" style="cursor:help;"></i>:</label>
+                </div>
+                <div class="col-lg-7 col-md-7 col-xs-7 text-left">
+                  <div class="input-group">
+                    <input type="text" name="" id="unit_non_taxable_amount_show" value="" class="form-control form-control-custom-input" style="width: 100%" readonly="readonly">
+                    <%= hidden_field_tag :unit_non_taxable_amount, "", class: "form-control form-control-custom-input", style: "width: 100%", required: false, name: "item[unit_non_taxable_amount]", readonly: true %>
+                    <%= hidden_field_tag :unit_taxable_amount, "", class: "form-control form-control-custom-input", style: "width: 100%", required: false, name: "item[unit_taxable_amount]", readonly: true %>
+                    <span class="input-group-addon form-control-custom-unit">/ Unit</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      <%end %>
+    </div>
+  </div>
+</div>
+
+
+<style>
+  .form-control-custom-input{
+    padding: 5px 10px;
+    border-right: none;
+  }
+  .form-control-custom-select{
+    padding: 6px 10px;
+    border-left: none;
+  }
+  .form-control-custom-slash {
+    background: #FFFFFF;
+    padding: 0px;
+    margin: 0px;
+    border-right: none;
+    border-left: none;
+  }
+
+  .form-control-custom-unit {
+    margin: 0px;
+    border-left: none;
+  }
+
+  .item-info {
+
+  }
+  /*.input-group-btn select {*/
+    /*border-color: #ccc;*/
+    /*margin-top: 0px;*/
+    /*margin-bottom: 0px;*/
+    /*padding-top: 7px;*/
+    /*padding-bottom: 7px;*/
+  /*}*/
+
+  .ui-datepicker-calendar{
+    display: <%= organization_expiry_calendar %>;
+  }
+</style>
+
+
+<script type="text/javascript">
+  expiry_type = "<%= organization_expiry_calendar %>"
+  if(expiry_type == 'none'){
+      $('.new-transaction-datepicker').datepicker({
+      dateFormat: "dd/mm/yy",
+      minDate: -0,
+      changeMonth: true,
+      changeYear: true,
+      showButtonPanel: true,
+      onClose: function(dateText, inst) { 
+                 last_date = new Date(inst.selectedYear, inst.selectedMonth + 1, 0).getDate()
+                 $(this).datepicker('setDate', new Date(inst.selectedYear, inst.selectedMonth, last_date)); 
+               }
+    });
+  }
+</script>

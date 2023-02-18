@@ -1,0 +1,125 @@
+<tr class="transfer-transaction-log-item">
+  <%= form_for return_transaction, :url => inventory_transaction_vendor_returns_path, :authenticity_token => false do |f| %>
+    <%= f.fields_for :items, :child_index => (Time.current.to_f.round(3)*1000).to_i do |builder| %>
+      <!-- <table width="100%" class="transfer-transaction-log-item table-striped table-bordered" style="padding:0"> -->
+          <% @purchase = Inventory::Transaction::Purchase.find(@lot.transaction_id) %>
+          <% @purchase_item = @purchase.items.find_by(id: @lot.purchase_item_id) %>
+
+          <%= builder.hidden_field :item_code, { value: @variant.item_code } %>
+          <%= builder.hidden_field :variant_code, { value: @variant.variant_code } %>
+          <%= builder.hidden_field :item_id, { value: @variant.item_id } %>
+          <%= builder.hidden_field :lot_id, { value: @lot.id } %>
+          <%= builder.hidden_field :variant_id, { value: @variant.id } %>
+          <%= builder.hidden_field :category, { value: @variant.category_name } %>
+          <%= builder.hidden_field :barcode, { value: @variant.barcode } %>
+          <%= builder.hidden_field :barcode_present, { value: @variant.barcode_present } %>
+          <%= builder.hidden_field :variant_reference_id, { value: @variant.reference_id } %>
+          <%= builder.hidden_field :item_reference_id, { value: @item&.reference_id } %>
+          <%= builder.hidden_field :lot_reference_id, { value: @lot.reference_id } %>
+          <%= builder.hidden_field :facility_id, { value: @variant.facility_id } %>
+          <%= builder.hidden_field :store_id, { value: @variant.store_id } %>
+          <%= builder.hidden_field :organisation_id, { value: @variant.organisation_id } %>
+          <%= builder.hidden_field :search, { value: @lot.search } %>
+          <%= builder.hidden_field :variant_identifier, { value: @lot.variant_identifier } %>
+          <%= builder.hidden_field :mark_up, { value: @lot.mark_up } %>
+          <%= builder.hidden_field :mrp, { value: @lot.mrp } %>
+          <%= builder.hidden_field :list_price, { value: @lot.list_price } %>
+          <%= builder.hidden_field :unit_non_taxable_amount, { value: @lot.unit_non_taxable_amount } %>
+          <%= builder.hidden_field :unit_taxable_amount, { value: @lot.unit_taxable_amount } %>
+          <%= builder.hidden_field :tax_rate, { value: @lot.tax_rate } %>
+          <%= builder.hidden_field :tax_name, { value: @lot.tax_name } %>
+          <%= builder.hidden_field :tax_group_id, { value: @lot.tax_group_id } %>
+          <%= builder.hidden_field :tax_inclusive, { value: @lot.tax_inclusive } %>
+          <%= builder.hidden_field :vendor_name, { value: @lot.vendor_name } %>
+          <%= builder.hidden_field :vendor_id, { value: @lot.vendor_id } %>
+          <%= builder.hidden_field :transaction_id, { value: @lot.transaction_id } %>
+          <%= builder.hidden_field :model_no, { value: @lot.model_no } %>
+          <%= builder.hidden_field :sub_store_id, { value: @lot.sub_store_id } %>
+          <%= builder.hidden_field :sub_store_name, { value: @lot.sub_store_name } %>
+          <%= builder.hidden_field :unit_level, { value: @lot.unit_level } %>
+          <%= builder.hidden_field :margin, { value: @purchase_item.present? ? @purchase_item.margin : 0.0 } %>
+          <%= builder.hidden_field :purchase_tax_amount, { value: 0.0 } %>
+          <%= builder.hidden_field :net_unit_cost_without_tax, { value: @purchase_item&.net_unit_cost_without_tax} %>
+
+
+          <% if @lot.custom_field_data.present? %>
+            <% @lot.custom_field_data.each do |k,v| %>
+              <%= builder.hidden_field :custom_field_data, {value: v,name: "inventory_transaction_transfer[items_attributes][#{builder.options[:child_index] }][custom_field_data][#{k}]"} %>
+            <% end %>
+          <% end %>
+          <%= builder.select :custom_field_tags,options_for_select(@lot.custom_field_tags,@lot.custom_field_tags),{include_hidden: false}, {multiple:true, style: "display: none;"} %>
+          <td class="font_size">
+            <span class="set_s_no"></span>
+          </td>
+          <td class=" font_size">
+            <!-- <strong><%#= @lot.description %></strong> -->
+            <%=  @lot.description%>
+            <a class="tool"  data-toggle="tooltip" data-placement="right" title="GRN ID: <%= @purchase.purchase_display_id %>&#013; Batch No: <%= @lot.batch_no.present? ? @lot.batch_no : "NA" %>&#013; Expiry: <%=@lot.expiry.present? ?  @lot.expiry : "NA"  %>&#013;MRP: <%= @purchase_item&.list_price%> " class="indent_item_description_info"><i class="fa fa-info-circle" aria-hidden="true"></i></a>
+
+            <%= builder.hidden_field :description,value: @item&.description,readonly: true, :class => "item_description modalRequest_input_style", :placeholder=>"Description" %>
+            <%= builder.hidden_field :_destroy,  {value: 0 ,class: 'form-control' } %>
+          </td>
+          <td class="inventory_transaction_vendor_return_items_attributes_<%= builder.options[:child_index]%>_unit_cost_without_tax">
+            <strong><%=  @purchase_item&.unit_cost_without_tax  %></strong>
+          </td>
+          <td class=" font_size">
+              <%= builder.text_field :pr_net_unit_cost_without_tax,value: @purchase_item&.net_unit_cost_without_tax, :class => "item-quantity modalRequest_input_style", :style=>"width:100%;text-align:left;background-image:none;background-color: #ffc;border: 1px solid #ccc;", onkeypress: 'return event.charCode >= 46 && event.charCode <= 57'%>
+          </td>
+          <td class=" font_size inventory_transaction_vendor_return_items_attributes_<%= builder.options[:child_index]%>_margin">
+            <%= @purchase_item&.margin %>
+          </td>
+           <td class=" font_size">
+            <%= @purchase_item&.paid_stock %>
+          </td>
+          <td class=" font_size">
+            <%= @purchase_item&.stock_free_unit %>
+          </td>
+          <td class=" font_size">
+            <!-- ret -->
+            <%= (@purchase_item&.stock&.round(2).to_f - @lot.returned_stock&.round(2).to_f) %>
+          </td>
+          <td class=" font_size">
+            <!-- aval -->
+            <%= @lot.stock  %>
+          </td>
+          <!-- <td class="col-md-2 col-sm-2 col-xs-2 font_size"> -->
+            <!-- <label class="label label-info" style="font-size: 10px; padding: 2px"><%#= @lot.batch_no %></label> -->
+            <%= builder.hidden_field :batch_no,value: @lot.batch_no,readonly: true, :class => "item_batch modalRequest_input_style", :placeholder=>"Batch" %>
+            <%= builder.hidden_field :self_batched,value: @lot.self_batched %>
+          <!-- </td> -->
+          <!-- <td class="col-md-2 col-sm-2 col-xs-2 font_size"> -->
+            <!-- <label class="label label-info" style="font-size: 10px; padding: 2px"><%#= @lot.model_no %></label> -->
+          <!-- </td> -->
+          <!-- <td class="col-md-2 col-sm-2 col-xs-2 font_size"> -->
+            <%# if @lot.expiry %>
+              <%#= @lot.expiry %>
+            <%#else %>
+              <!-- N.A -->
+            <%#end %>
+            <%= builder.hidden_field :expiry_present, value: @lot.expiry_present,readonly: true, :class => "exp_datepicker item_expiry modalRequest_input_style", :placeholder=>"Expiry" %>
+            <%= builder.hidden_field :expiry, value: @lot.expiry,readonly: true, :class => "exp_datepicker item_expiry modalRequest_input_style", :placeholder=>"Expiry" %>
+          <!-- </td> -->
+
+          <td class=" font_size">
+            <%= builder.number_field :stock, :class => "item-quantity modalRequest_input_style", :placeholder=>"Qty", :style=>"width:100%;text-align:left;background-image:none;background-color: #ffc;border: 1px solid #ccc;", min: "0", max: "#{@lot.stock }" %>
+            <input type="hidden" value= "<%= @lot.stock %>" class="item_max_quantity modalRequest_input_style" placeholder="" style="width:90%;text-align:left" />
+          </td>
+          <td class=" font_size">
+            <!-- aval -->
+            <strong><%= @lot.tax_rate %></strong>
+          </td>
+          <td class=" font_size">
+            <%= builder.text_field :total_cost,readonly: true ,:class => "price_including_tax modalRequest_input_style", :placeholder=>"Total Cost Price", :style=>"width:100%;text-align:left"%>
+            <%= builder.hidden_field :list_price, value: @lot.list_price, :class => "item_list_cost modalRequest_input_style"%>
+            <%= builder.hidden_field :unit_cost, value: @lot.unit_cost, :class => "item_unit_cost modalRequest_input_style"%>
+          </td>
+          <td class="font_size">
+            <%= builder.text_field :remarks, :class => "modalRequest_input_style",:placeholder => "Remark", :style => "width:100%;text-align:left;background-image:none;background-color:#ffc;border: 1px solid #ccc" %>
+          </td>
+          <td class=" font-size text-center">
+            <button type="button" class="btn btn-link hg-tooltip delete_empty_item" tabindex="-1" style="padding:0px;" title="Remove From List" value="<%= @lot.id %>"><i class="fa fa-trash-alt" style="color:#000;"></i></button>
+          </td>
+      <!-- </table> -->
+    <% end %>
+  <% end %>
+</tr>

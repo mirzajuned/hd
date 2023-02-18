@@ -1,0 +1,168 @@
+const renumberSessionRows = () => {
+  let eachCkbox = $('#session-rows').find(".each-ckbox")
+  renumberIndex(eachCkbox, ["input", "select", "button", "label"], 1)
+
+  let eachSession = $('#session-rows').find(".each-session")
+  renumberIndex(eachSession, ["input", "select"], 1)
+}
+renumberSessionRows();
+
+// Disable days which are checked in other sessions
+const disableDays = () => {
+  let sessionRows = $('.sessions-row')
+  for (var i = sessionRows.length - 1; i >= 0; i--) {
+    let ckboxDays = $(sessionRows[i]).find(`.sessions_ckbox_days`)
+    for (var j = ckboxDays.length - 1; j >= 0; j--) {
+      if(ckboxDays[j].checked) {
+        let value = $(ckboxDays[j]).val();
+        $(`.sessions_ckbox_days[data-day='${value}']`).not(ckboxDays[j]).attr('disabled', true)
+      }
+    }
+  }
+}
+disableDays();
+
+// Validations for TimeSlot::Session
+$.validator.addMethod("GreaterThanStartTime", function(value, element) {
+  let end_time = $(element).val()
+  let start_time = $(element).closest(".each-session").find(".sessions_start_time").val()
+
+  if (end_time == '' || start_time == '') {
+    return true
+  } else if (moment(start_time, 'hh:mm A') < moment(end_time, 'hh:mm A')) {
+    return true
+  } else {
+    return false
+  }
+}, "End Time cannot be less than Start Time");
+
+$.validator.addMethod("lessThanTimeDuration", function (value, element) {
+  let slot_duration = $(element).val();
+  let time_duration = $(element).closest(".each-session").find(".sessions_time_duration").val()
+
+  if (slot_duration == '' || time_duration == '') {
+    return true
+  } else if (parseInt(slot_duration) <= parseInt(time_duration)) {
+    return true
+  } else {
+    return false
+  }
+}, "Slot Duration should be less than Time Duration");
+
+$.validator.addClassRules("sessions_ckbox_days", { required: true });
+$.validator.addClassRules("section-session-0-facility_id", { required: true });
+$.validator.addClassRules("section-session-0-department_id", { required: true });
+$.validator.addClassRules("section-session-0-start_time", { required: true });
+$.validator.addClassRules("section-session-0-end_time", { required: true });
+$.validator.addClassRules("section-session-0-slot_duration", { required: true });
+$.validator.addClassRules("section-session-0-time_duration", { required: true });
+$.validator.addClassRules("sessions_end_time", { GreaterThanStartTime: true });
+$.validator.addClassRules("sessions_slot_duration", { lessThanTimeDuration: true });
+
+// Disable Checked Days in other slots
+$('#session-rows').on('click', '.sessions_ckbox_days', function() {
+  let value = $(this).val();
+  let day = $(this).attr('data-day')
+
+  $(this).closest('.sessions-row').find(`.sessions_days_${value}`).prop('checked', this.checked)
+  $(`.sessions_ckbox_days[data-day='${day}']`).not($(this)).attr('disabled', this.checked)
+})
+
+// Add Sessions
+$('#add-more-sessions').on('click', function() {
+  let sessions_count = $('.each-session').length;
+
+  $('#session-rows').append("<%= j render partial: 'time_slots/sessions/new.html.erb' %>");
+
+  // New Shared ID
+  $('.sessions-row:last').find('.sessions_shared_id').val(ObjectId())
+
+  renumberSessionRows();
+  disableDays();
+
+  if ($('.sessions-row').not('.hidden').length === 7) {
+    $('#add-more-sessions').attr('disabled', true)
+  }
+
+  if ($('.sessions-row').not('.hidden').length > 1) {
+    $('.remove-slot-row').removeClass('hidden');
+  }
+})
+
+// Remove Sessions
+$('#session-rows').on('click', '.remove-slot-row', function() {
+  let sessionRows = $(this).closest('.sessions-row')
+
+  // Uncheck checked boxes to enable other similiar checkboxes
+  $(sessionRows).find('.sessions_ckbox_days:checked').click();
+
+  $(this).closest('hr').remove();
+
+  if($(this).hasClass('soft-delete')) {
+    $(sessionRows).find('.sessions_destroy').val(1);
+    $(sessionRows).addClass('hidden');
+
+    // To avoid validating this (not required in form submission)
+    $(sessionRows).find('.each-ckbox').remove();
+  } else {
+    $(sessionRows).remove();
+  }
+
+  if ($('.sessions-row').not('.hidden').length < 7) {
+    $('#add-more-sessions').removeAttr('disabled')
+  }
+
+  if ($('.sessions-row').not('.hidden').length == 1) {
+    $('.remove-slot-row:first').addClass('hidden');
+  }
+
+  renumberSessionRows();
+})
+
+// Clear Selection
+$('#session-rows').on('click', '.clear-selection', function() {
+  let eachSession = $(this).closest('.each-session')
+
+  $(eachSession).find('.sessions_facility_id').val('');
+  $(eachSession).find('.sessions_department_id').val('');
+  $(eachSession).find('.sessions_start_time').timepicker('setTime', '');
+  $(eachSession).find('.sessions_end_time').timepicker('setTime', '');
+  $(eachSession).find('.sessions_slot_duration').val('');
+  $(eachSession).find('.sessions_time_duration').val('');
+
+  if($(eachSession).find('.sessions_destroy').length > 0) {
+    $(eachSession).find('.sessions_destroy').val(1)
+  }
+})
+
+$('#session-rows').on('change', '.sessions_facility_id', function() {
+  let eachSession = $(this).closest('.each-session')
+
+  if($(eachSession).find('.sessions_destroy').length > 0) {
+    $(eachSession).find('.sessions_destroy').val(0)
+  }
+})
+
+$('#session-rows').on('change', '.sessions_department_id', function() {
+  let eachSession = $(this).closest('.each-session')
+
+  if($(eachSession).find('.sessions_destroy').length > 0) {
+    $(eachSession).find('.sessions_destroy').val(0)
+  }
+})
+
+$('#session-rows').on('change', '.sessions_start_time', function() {
+  let eachSession = $(this).closest('.each-session')
+
+  if($(eachSession).find('.sessions_destroy').length > 0) {
+    $(eachSession).find('.sessions_destroy').val(0)
+  }
+})
+
+$('#session-rows').on('change', '.sessions_end_time', function() {
+  let eachSession = $(this).closest('.each-session')
+
+  if($(eachSession).find('.sessions_destroy').length > 0) {
+    $(eachSession).find('.sessions_destroy').val(0)
+  }
+})

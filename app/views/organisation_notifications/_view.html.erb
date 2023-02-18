@@ -1,0 +1,110 @@
+<div class="row">
+  <div class="col-md-12">
+    <table class="table table-bordered mt10" id="<%= type %>OrganisationNotificationTable">
+      <thead>
+        <tr>
+          <th width='5%'>SNo.</th>
+          <th width='50%'>Message</th>
+          <th width='30%'>Details</th>
+          <th width='15%'>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% notifications.each_with_index do |notification, i| %>
+          <tr>
+            <td><%= i + 1 %></td>
+            <td>
+              <div class="padding10 mb10">
+                <strong><%= notification.title %></strong>
+              </div>
+              <div class="padding10 mb10">
+                <%= notification.body.html_safe %>
+              </div>
+            </td>
+            <td>
+              <div class="row mb10">
+                <div class="col-md-6">
+                  <strong>Facilities</strong>
+                </div>
+                <div class="col-md-6">
+                  <%= notification.all_facilities ? 'Organisation Wide' : @facilities.select { |facility| notification.facility_ids.include?(facility[:id].to_s) }.pluck(:name).join(', ') %>
+                </div>
+              </div>
+              <div class="row mb10">
+                <div class="col-md-6">
+                  <strong>Roles</strong>
+                </div>
+                <div class="col-md-6">
+                  <%= notification.all_roles ? 'All Roles' : @roles.select { |role| notification.role_ids.include?(role[:id].to_s) }.pluck(:label).join(', ') %>
+                </div>
+              </div>
+              <div class="row mb10">
+                <div class="col-md-6">
+                  <strong>Start Date</strong>
+                </div>
+                <div class="col-md-6">
+                  <%= notification.start_date.to_s(:standard) %>
+                </div>
+              </div>
+              <div class="row mb10">
+                <div class="col-md-6">
+                  <strong>End Date</strong>
+                </div>
+                <div class="col-md-6">
+                  <%= notification.end_date.to_s(:standard) %>
+                </div>
+              </div>
+              <div class="row mb10">
+                <div class="col-md-6">
+                  <strong>Sent By</strong>
+                </div>
+                <div class="col-md-6">
+                  <%= notification.user.fullname %>
+                </div>
+              </div>
+              <div class="row mb10">
+                <div class="col-md-6">
+                  <strong>Active</strong>
+                </div>
+                <div class="col-md-6">
+                  <%= sanitize notification.active ? '<i class="text-success">Yes</i>' : '<i class="text-danger">No</i>' %>
+                </div>
+              </div>
+            </td>
+            <td>
+              <div class="btn-group">
+                <% unless notification.deleted || type == 'expired' %>
+                  <% if editable %>
+                    <% if notification.created_at > 1.day.ago %>
+                      <%= link_to edit_organisation_notification_path(id: notification.id), data: { remote: true, toggle: 'modal', target: '#notification-modal' }, class: 'btn btn-primary btn-primary-transparent' do %><i class="fa fa-edit"></i> Edit<% end %>
+                    <% end %>
+                  <% end %>
+                  <% if deletable %>
+                    <%= link_to organisation_notification_path(id: notification.id, deleted: true), method: :delete, data: { remote: true }, class: 'btn btn-danger btn-danger-transparent' do %>Disable<% end %>
+                  <% end %>
+                <% end %>
+              </div>
+            </td>
+          </tr>
+        <% end %>
+        <% if notifications.empty? %>
+          <tr>
+            <th class="text-center" colspan="4">No Notifications.</th>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<% if notifications.count > 5 %>
+  <script type="text/javascript">
+    $('#<%= type %>OrganisationNotificationTable').DataTable({
+      sDom: "<'top'lp>",
+      ordering: false,
+      displayStart: 0,
+      displayLength: 10,
+      autoWidth: false
+    });
+  </script>
+<% end %>

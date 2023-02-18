@@ -1,0 +1,130 @@
+<% if @clinical_workflow_present %>
+  <% unless @clinical_workflow.try(:state) == "not_arrived" %>
+    <div class="row no_margin no_padding clinical-workflow-timeline">
+      <div class="col-xs-12" style="line-height: 2;">
+        <% unless @clinical_workflow_timeline_count >= 6 %>
+          <label style="font-size:12px;border-radius: 12px;" class="label label-danger">Arrived</label>
+        <% else %>
+          <%= link_to outpatients_load_prev_states_path(workflow_id: @clinical_workflow.try(:id)), class: 'btn btn-orange btn-xs', data: { remote: true } do %> Show All<% end %>
+        <% end %>
+
+        <% @clinical_workflow_timeline.each do |transition| %>
+          <% start_time = transition.transition_start %>
+          <% end_time = transition.try(:transition_end).present? ? transition.transition_end : Time.current %>
+          <% time_difference = TimeDifference.between(start_time, end_time).in_general.delete_if { |unit, value| (value == 0 || ['hours', 'minutes'].exclude?(unit.to_s)) }.stringify_keys %>
+          <% time_text = '' %>
+          <% time_difference.each { |unit, value| time_text += "#{value} #{unit.titleize} " } %>
+          <% time_text = '0 Minutes' if time_text.blank? %>
+
+          <% if transition.user_id.present? %>
+            <% state_name = transition.with_user.present? ? transition.with_user : User.find_by(id: transition.user_id).try(:fullname) %>
+          <% elsif transition.department_id != nil %>
+            <% if transition.department_id == '309935007' %>
+              <% state_name = 'Ophthalmology Investigation' %>
+            <% elsif transition.department_id == '309964003' %>
+              <% state_name = 'Radiology Investigation' %>
+            <% elsif transition.department_id == '261904005' %>
+              <% state_name = 'Laboratory Investigation' %>
+            <% elsif transition.department_id == '50121007' %>
+              <% state_name = 'Optical Shop' %>
+            <% elsif transition.department_id == '284748001' %>
+              <% state_name = 'Pharmacy Shop' %>
+            <% elsif transition.department_id == '450368792' %>
+              <% state_name = 'TPA Department' %>
+            <% end %>
+          <% end %>
+          <% sub_station_code = "(#{transition.sub_station_code})" if @queue_management_present && transition.sub_station_code.present? %>
+          <i class="fa fa-long-arrow-alt-right"></i>
+          <% if transition.to == "waiting" %>
+            <label title="<%= time_text %>" style="font-size:12px;border-radius: 12px;margin:0px;" class="label label-default">Waiting: <%= state_name %> <%= sub_station_code %></label>
+          <% elsif transition.to == "call" %>
+            <label title="<%= time_text %>" style="font-size:12px;border-radius: 12px;margin:0px;" class="label label-default">Call: <%= state_name %> <%= sub_station_code %></label>
+          <% elsif transition.to == "check_out" %>
+            <% if transition.station_code.present? %>
+              <label title="<%= time_text %>" style="font-size:12px;border-radius: 12px;margin:0px;" class="label label-default">WI: <%= transition.station_name %> (<%= transition.station_code %>)</label>
+            <% else %>
+              <label title="<%= time_text %>" style="font-size:12px;border-radius: 12px;margin:0px;" class="label label-default">WI: <%= state_name %> <%= sub_station_code %></label>
+            <% end %>
+          <% else %>
+            <% if transition.try(:user_id) %>
+              <% if transition.to == "away" %>
+                <label title="<%= time_text %>" style="font-size:12px;border-radius: 12px;" class="label label-warning">Away</label>
+              <% elsif transition.to == "doctor" %>
+                <label title="<%= time_text %>" style="font-size:12px;border-radius: 12px;" class="label label-primary">Dr.<%= state_name %> <%= sub_station_code %></label>
+              <% elsif transition.to == "complete" %>
+                <label title="" style="font-size:12px;border-radius: 12px;" class="label label-success away">Complete</label>
+              <% elsif transition.to == "receptionist" %>
+                <label title="<%= time_text %>" style="font-size:12px;border-radius: 12px;margin:0px;" class="label label-default">Rcpt.<%= state_name %> <%= sub_station_code %></label>
+              <% elsif transition.to == "nurse" %>
+                <label title="<%= time_text %>" style="font-size:12px;border-radius: 12px;margin:0px;" class="label label-default">Nr.<%= state_name %> <%= sub_station_code %></label>
+              <% elsif transition.to == "counsellor" %>
+                <label title="<%= time_text %>" style="font-size:12px;border-radius: 12px;margin:0px;" class="label label-default">Cr.<%= state_name %> <%= sub_station_code %></label>
+              <% elsif transition.to == "optometrist" %>
+                <label title="<%= time_text %>" style="font-size:12px;border-radius: 12px;margin:0px;" class="label label-default">Opt.<%= state_name %> <%= sub_station_code %></label>
+              <% elsif transition.to == "pharmacist" %>
+                <label title="<%= time_text %>" style="font-size:12px;border-radius: 12px;margin:0px;" class="label label-default">Ph.<%= state_name %> <%= sub_station_code %></label>
+              <% elsif transition.to == "optician" %>
+                <label title="<%= time_text %>" style="font-size:12px;border-radius: 12px;margin:0px;" class="label label-default">OP.<%= state_name %> <%= sub_station_code %></label>
+              <% elsif transition.to == "radiologist" %>
+                <label title="<%= time_text %>" style="font-size:12px;border-radius: 12px;margin:0px;" class="label label-default">RA.<%= state_name %> <%= sub_station_code %></label>
+              <% elsif transition.to == "technician" %>
+                <label title="<%= time_text %>" style="font-size:12px;border-radius: 12px;margin:0px;" class="label label-default">LA.<%= state_name %> <%= sub_station_code %></label>
+              <% elsif transition.to == "ophthalmology_technician" %>
+                <label title="<%= time_text %>" style="font-size:12px;border-radius: 12px;margin:0px;" class="label label-default">OPH.<%= state_name %> <%= sub_station_code %></label>
+              <% elsif transition.to == "cashier" %>
+                <label title="<%= time_text %>" style="font-size:12px;border-radius: 12px;margin:0px;" class="label label-default">CA.<%= state_name %> <%= sub_station_code %></label>
+              <% elsif transition.to == "ar_nct" %>
+                <label title="<%= time_text %>" style="font-size:12px;border-radius: 12px;margin:0px;" class="label label-default">AR.<%= state_name %> <%= sub_station_code %></label>
+              <% elsif transition.to == "floormanager" %>
+                <label title="<%= time_text %>" style="font-size:12px;border-radius: 12px;margin:0px;" class="label label-default">FM.<%= state_name %> <%= sub_station_code %></label>
+              <% elsif transition.to == "tpa" %>
+                <label title="<%= time_text %>" style="font-size:12px;border-radius: 12px;margin:0px;" class="label label-default">TP.<%= state_name %> <%= sub_station_code %></label>
+              <% end %>
+            <% elsif transition.department_id != nil %>
+              <label title="<%= time_text %>" style="font-size:12px;border-radius: 12px;" class="label label-primary"><%= state_name %> <%= sub_station_code %></label>
+            <% else %>
+              <% if transition.to == "complete" %>
+                <label title="" style="font-size:12px;border-radius: 12px;" class="label label-success away">Complete</label>
+              <% elsif transition.to == "incomplete" %>
+                <label title="" style="font-size:12px;border-radius: 12px;" class="label label-danger away">InCompleted</label>
+              <% elsif transition.to == "away" %>
+                <label title="<%= time_text %>" style="font-size:12px;border-radius: 12px;" class="label label-warning"><%= transition.to.capitalize %></label>
+              <% end %>
+            <% end %>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+  <%# else %>
+    <!-- <label class="label label-danger "style="margin-left: 10px">Not Arrived</label> -->
+  <% end %>
+<% else %>
+  <% unless @clinical_workflow.try(:state) == "not_arrived" %>
+    <div class="row no_margin no_padding clinical-workflow-timeline" style="margin: 0 auto;">
+      <div class="col-xs-12 text-center" style="line-height: 2;">
+        <label style="font-size:12px;border-radius: 12px;" class="label label-danger">Arrived</label>
+        <% @clinical_workflow_timeline.each do |transition| %>
+          <% start_time = transition.transition_start %>
+          <% end_time = transition.try(:transition_end).present? ? transition.transition_end : Time.current %>
+          <% time_difference = TimeDifference.between(start_time, end_time).in_general.delete_if { |unit, value| (value == 0 || ['hours', 'minutes'].exclude?(unit.to_s)) }.stringify_keys %>
+          <% time_text = '' %>
+          <% time_difference.each { |unit, value| time_text += "#{value} #{unit.titleize} " } %>
+          <% time_text = '0 Minutes' if time_text.blank? %>
+
+          <i class="fa fa-long-arrow-alt-right fa-xs"></i>
+          <% if transition.to == "waiting" %>
+            <label style="font-size:12px;border-radius: 12px;" class="label label-warning" title="<%= time_text %>">Waiting</label>
+          <% elsif transition.to == "engaged" %>
+            <label style="font-size:12px;border-radius: 12px;background: #ff8735;" class="label label-warning" title="<%= time_text %>">Engaged</label>
+          <% else %>
+            <% if transition.to == "complete" %>
+              <label style="font-size:12px;border-radius: 12px;" class="label label-success">Completed</label>
+            <% else %>
+              <label style="font-size:12px;border-radius: 12px;" class="label label-danger">InCompleted</label>
+            <% end %>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+<% end %>

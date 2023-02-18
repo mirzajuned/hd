@@ -1,0 +1,288 @@
+<style type="text/css" media="all">
+    .print-template {
+      font-family: Open Sans;
+      font-size: 8pt;
+      color: #333;
+      background:  #fff;
+      box-shadow: 0 0 6px #ccc;
+      max-width: 800px;
+      padding: 0 0.4in 0 0.55in;
+      font-family: 'Open Sans';
+    }
+    #patientinfo {
+      border: none;
+      margin-top: 15px; 
+    }
+
+    .pcs-entity-title {
+        font-size: 12pt;
+        color: #333;
+        text-align: center;
+    }
+
+    .med-table-head {
+      font-size: 8pt;
+      padding: 5px 10px !important;
+      background-color: #eff0f1 !important;
+      font-weight: 400;
+    }
+
+    .med-table-content {
+      padding: 10px !important;
+      background-color: #fff !important;
+    }
+</style>
+
+<div class="print-template">
+  <br>
+  <div class="patientinfo mb10" id="patientinfo" style="font-size:8pt;margin-top:20px;margin-left:20px;">
+
+    <div class="row">
+      <div class="col-md-6">
+        <span><b><%= patient.fullname %></b></span><br>
+        <% if patient.age? || patient.gender? %><span><% if patient.age? %><%= patient.age %><% end %><% if patient.gender == 'Male' %>/M<% end %><% if patient.gender == 'Female' %>/F)<% end %></span><br><% end %>
+        <span><%= PatientIdentifier.find_by(:patient_id => patient.id, :organisation_id => current_user.organisation_id).try(:patient_org_id) %></span><br>
+        <span><%= patient.mobilenumber %></span>
+      </div>
+      <div class="col-md-6 text-right">
+        <span><b>Dr. <%= User.find_by(id: admission.doctor).fullname %></b></span><br>
+        <% unless User.find_by(id: admission.doctor).designation.nil? %><span><%= User.find_by(id: admission.doctor).designation %></span><br><% end %>
+        <span><%= @admission.display_id %></span><br>
+        <span><%= admission.admissiontime.strftime("%d-%m-%y") %></span>
+      </div>
+    </div>
+
+  </div>
+  <div class="pcs-entity-title" style="opacity:0.6;"><span>Discharge Note</span></div>
+  <div class="dischargenote mb5" id="dischargenote">
+  
+    <div class="row">
+      <div class="col-md-4">
+        <% unless @ipdrecord.admissiondate.blank? %>
+            <span style="font-weight:bold"><i>Admission Date : </i></span>
+            <%= @ipdrecord.read_attribute(:"admissiondate") %>
+        <% end %>
+      </div>
+      <div class="col-md-4">
+        <% unless @ipdrecord.surgerydate.blank? %>
+            <span style="font-weight:bold"><i>Surgery Date : </i></span>
+            <%= @ipdrecord.read_attribute(:"surgerydate") %>
+        <% end %>
+      </div>
+      <div class="col-md-4">
+        <% unless @ipdrecord.dischargedate.blank? %>
+            <span style="font-weight:bold"><i>Discharge Date : </i></span>
+            <%= @ipdrecord.read_attribute(:"dischargedate") %>
+        <% end %>
+      </div>
+      <br>
+      <div class="col-md-6">
+        <% unless @ipdrecord.assessment.blank? %>
+            <% if @ipdrecord.assessment.length > 0 %>
+                <span style="font-weight:bold"><i>Assessment : </i></span>
+                <%= @ipdrecord.read_attribute(:"assessment") %>
+            <% end %>
+        <% end %>
+      </div>
+      <div class="col-md-6">
+        <% unless @ipdrecord.diagnosis.blank? %>
+            <% if @ipdrecord.diagnosis.length > 0 %>
+                <span style="font-weight:bold"><i>Diagnosis : </i></span>
+                <%= @ipdrecord.read_attribute(:"diagnosis") %>
+                <div class="mb3"></div>
+            <% end %>
+        <% end %>
+      </div>
+    </div>
+
+  </div>
+
+
+  <div class="medication mb5" id="medication">
+
+    <% if @ipdrecord.has_treatmentmedication? %>
+
+        <div class="row">
+          <table class="table table-striped table-bordered">
+
+          <% if @ipdrecord.specialty_id == "309988001" %>
+            <thead style="background-color: #7989BB;">
+            <tr>
+              <th width="3%" class="med-table-head">#</th>
+              <th width="25%" class="med-table-head">Name</th>
+              <th width="15%" class="med-table-head">Type</th>
+              <th width="3%" class="med-table-head">Quantity</th>
+              <th width="10%" class="med-table-head">Frequency</th>
+              <th width="10%" class="med-table-head">Duration</th>
+              <th width="20%" class="med-table-head">Directions for use</th>
+            </tr>
+            </thead>
+            <tbody class="medication-table-body">
+
+            <% @ipdrecord.treatmentmedication.each_with_index do |elem, i|  %>
+
+                <tr class="treatmentmedications">
+
+                  <td class="pcs-item-row" style="padding: 15px 5px;word-wrap: break-word;text-align: center;" valign="top">
+                    <%= (i.to_i + 1) %>.
+                  </td>
+                  <td class="pcs-item-row" style="padding: 15px 0px 15px 10px;" valign="top">
+                    <%= elem.medicinename %>
+                  </td>
+                  <td class="pcs-item-row" style="padding: 15px 0px 15px 10px;" valign="top">
+                    <%= elem.medicinetype %>
+                  </td>
+                  <td class="pcs-item-row" style="padding: 15px 10px 15px 10px;word-wrap: break-word;" valign="top">
+                   <%= elem.medicinequantity %>
+                  </td>
+                  <td class="pcs-item-row" style="padding: 15px 10px 15px 10px;word-wrap: break-word;" valign="top">
+                    <% unless elem.medicinefrequency == "SOS" %>
+                      <%= ActionController::Base.helpers.pluralize(elem.medicinefrequency, ' time a day', ' times a day') %>
+                    <% else %>
+                      <%= elem.medicinefrequency %>
+                    <% end %>  
+                  </td>
+                  <td class="pcs-item-row" style="padding: 15px 10px 15px 5px;word-wrap: break-word;" valign="top">
+                    <% if elem.medicinedurationoption == "D" %>
+                        <%= ActionController::Base.helpers.pluralize(elem.medicineduration, ' Day', ' Days') %>
+                    <% elsif elem.medicinedurationoption == "W" %>
+                        <%= ActionController::Base.helpers.pluralize(elem.medicineduration, ' Week', ' Weeks') %>
+                    <% elsif elem.medicinedurationoption == "M" %>
+                        <%= ActionController::Base.helpers.pluralize(elem.medicineduration, ' Month', ' Months') %>
+                    <% elsif elem.medicinedurationoption == "F" %>
+                        Till next followup
+                    <% end %>
+                  </td>
+                  <td class="pcs-item-row" style="padding: 15px 10px 15px 10px;word-wrap: break-word;" valign="top">
+                    <%= elem.medicineinstructions %>
+                  </td>
+
+                </tr>
+
+            <% end %>
+
+            </tbody>
+
+          <% else %>
+            <thead style="background-color: #7989BB;">
+            <tr>
+              <th width="5%" style="padding-top:0px;padding-bottom:0px;">#</th>
+              <th width="20%" style="padding-top:0px;padding-bottom:0px;">Name</th>
+              <!--<th width="5%" style="padding-top:0px;padding-bottom:0px;">Qty</th>-->
+              <th width="25%" style="padding-top:0px;padding-bottom:0px;text-align:center;">Frequency</th>
+              <th width="10%" style="padding-top:0px;padding-bottom:0px;">Duration</th>
+              <th width="15%" style="padding-top:0px;padding-bottom:0px;">Instructions</th>
+            </tr>
+            </thead>
+            <tbody class="medication-table-body">
+
+            <% ipdrecord.treatmentmedication.each_with_index do |elem, i|  %>
+              <tr class="procedurelist">
+                <td style="padding-left:1px;padding-top:1px;padding-bottom:1px;padding:0px;text-align:center;"><%= (i.to_i + 1) %>.</td>
+                <td style="padding-left:1px;padding-top:1px;padding-bottom:1px;padding:0px;text-align:center;"> <%= elem.medicinename %>, <%= elem.medicinetype %></td>
+                <td style="padding-left:1px;padding-top:1px;padding-bottom:1px;padding:0px;text-align:center;display: none"><%= elem.medicinequantity %></td>
+                <% if Array["1-1-1", "1-1-0", "1-0-1", "0-1-1", "1-0-0", "0-1-0", "0-0-1", "1-1-1-1", "2-2-2", "2-0-2"].include?(elem.medicinefrequency) %>
+                    <td style="padding-left:1px;padding-top:1px;padding-bottom:1px;padding:0px;text-align:center;"><% medicinefrequency_array = elem.medicinefrequency.split("-") %>
+                      <div class="row">
+                        <% if medicinefrequency_array.count == 3 %>
+                          <div class="col-md-1" style="margin-right:-15px;">
+                          </div>
+                          <div class="col-md-3">
+                            <%= medicinefrequency_array[0] %><br>
+                            Mrng
+                          </div>
+                          <div class="col-md-1">
+                            -
+                          </div>
+                          <div class="col-md-3">
+                            <%= medicinefrequency_array[1] %><br>
+                            Noon
+                          </div>
+                          <div class="col-md-1">
+                            -
+                          </div>
+                          <div class="col-md-3">
+                            <%= medicinefrequency_array[2] %><br>
+                            Evng
+                          </div>
+                        <% elsif medicinefrequency_array.count == 4 %>
+                          <div class="col-md-1" style="margin-right:-15px;">
+                          </div>
+                          <div class="col-md-2">
+                            <%= medicinefrequency_array[0] %><br>
+                            Mrng
+                          </div>
+                          <div class="col-md-1">
+                            -
+                          </div>
+                          <div class="col-md-2">
+                            <%= medicinefrequency_array[1] %><br>
+                            Noon
+                          </div>
+                          <div class="col-md-1">
+                            -
+                          </div>
+                          <div class="col-md-2">
+                            <%= medicinefrequency_array[2] %><br>
+                            Evng
+                          </div>
+                          <div class="col-md-1">
+                            -
+                          </div>
+                          <div class="col-md-2">
+                            <%= medicinefrequency_array[2] %><br>
+                            Night
+                          </div>
+                        <% end %>
+                      </div>
+                    </td>
+                  <% else %>
+                    <td style="padding-left:1px;padding-top:1px;padding-bottom:1px;padding:0px;text-align:center;"><%= elem.medicinefrequency %></td>
+                  <%end%>
+                  <td style="padding-left:1px;padding-top:1px;padding-bottom:1px;padding:0px;text-align:center;"> <% if elem.medicinedurationoption == "D" %>
+
+                        <%= ActionController::Base.helpers.pluralize(elem.medicineduration, ' Day', ' Days') %>
+                    <% elsif elem.medicinedurationoption == "W" %>
+                        <%= ActionController::Base.helpers.pluralize(elem.medicineduration, ' Week', ' Weeks') %>
+                    <% elsif elem.medicinedurationoption == "M" %>
+                        <%= ActionController::Base.helpers.pluralize(elem.medicineduration, ' Month', ' Months') %>
+                    <% elsif elem.medicinedurationoption == "F" %>
+                        Till next followup
+                    <% end %>
+                  </td>
+                  <td style="padding-left:1px;padding-top:1px;padding-bottom:1px;padding:0px;text-align:center;"><%= elem.medicineinstructions %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          <% end %>
+          </table>
+        </div>
+
+    <% end %>
+
+  </div>
+
+  <div class="advice mb5" id="advice">
+
+    <div class="row">
+
+      <% unless @ipdrecord.medicationcomments.blank? %>
+          <% if @ipdrecord.medicationcomments.length > 0 %>
+              <span style="font-weight:bold"><i>Comments : </i></span>
+              <%= @ipdrecord.read_attribute(:"medicationcomments") %>
+              <div class="mb3"></div>
+          <% end %>
+      <% end %>
+
+      <% unless @ipdrecord.adviceondischarge.blank? %>
+          <% if @ipdrecord.adviceondischarge.length > 0 %>
+              <span style="font-weight:bold"><i>Advice on Discharge : </i></span>
+              <%= @ipdrecord.read_attribute(:"adviceondischarge") %>
+              <div class="mb3"></div>
+          <% end %>
+      <% end %>
+
+    </div>
+    <br>
+  </div>
+</div>

@@ -1,0 +1,77 @@
+<% if @mode != "tabview" %>
+  <% specialty_folder_name = TemplatesHelper.get_speciality_folder_name(timeline['pst'][0]['specialty_id']) %>
+  <% if @admission_list_view.try(:admission_id).to_s == timeline['pst'][0]['query']['_id'] %>
+    <% current_state = timeline['pst'][0]['links']['admission']['current_state'] %>
+    <button class="btn btn-warning btn-warning-transparent btn-circle btn-ipd-templates-<%= timeline['pst'][0]['query']['_id'] %>" title="IPD Templates" id="templates_ipd" title="IPD Templates" data-toggle="dropdown"><i class="fa fa-file"></i></button>
+    <ul class="dropdown-menu ipd-templates ipd-templates-<%= timeline['pst'][0]['query']['_id'] %>" role="menu" aria-labelledby="ipd-templates-dropdown"></ul>
+    &nbsp;&nbsp;|&nbsp;&nbsp;
+    
+    <% if current_state == "Admitted" %>
+      <% if @all_ots.count == @completed_ots.count %>
+        <%= link_to ipd_patients_confirm_discharge_path(:admission_id => timeline['pst'][0]['query']['_id'], :patient_id => @patient.id, current_date: @current_date),class: "btn btn-darkblue btn-darkblue-transparent btn-xs btn-circle", :data => {:remote => true} do %> <i class="fa fa-sign-out-alt"></i><% end %>
+      <% else %>
+        <button class="btn btn-darkblue btn-darkblue-transparent btn-xs btn-circle restrict-discharge-btn" title="Discharge Patient"><i class="fa fa-sign-out-alt"></i></button>
+      <% end %>
+    <% elsif current_state == "Scheduled" %>
+      <% @current_facility_time_zone = current_facility.time_zone %>
+      <% if timeline['pst'][0]['encounter_date_time'].in_time_zone(@current_facility_time_zone).strftime("%d/%m/%Y") == Date.current.in_time_zone(@current_facility_time_zone).strftime("%d/%m/%Y") %>
+        <% existing_admission = Admission.find_by(:id.ne => timeline['pst'][0]['query']['_id'], patient_id: @patient.id, isdischarged: false, is_deleted: false, patient_arrived: true) %>
+        <% if existing_admission.nil? %>
+          <%= link_to ipd_casesheets_edit_path(templatetype: 'admissionnote', admission_id: timeline['pst'][0]['query']['_id']), class: "btn btn-danger btn-danger-transparent btn-circle btn-xs", title: "Admit Patient", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#ipdrecord-modal'} do %><i class="fa fa-sign-in-alt"></i><% end %>
+        <% end %>
+      <% end %>
+    <% end %>
+    
+    <%= link_to edit_admission_path(id: timeline['pst'][0]['query']['_id']), id: "edit-admission-btn", :class => "btn btn-xs btn-circle btn-primary btn-primary-transparent", title: "Edit Admission", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#admission-modal'} do %><i class="fa fa-edit"></i><% end %>
+    <%= link_to admission_path(:id => timeline['pst'][0]['query']['_id']), :class => "btn btn-xs btn-circle btn-danger btn-danger-transparent",method: 'delete', :title => "Delete Admission", :data => {:remote => true, :confirm => "<h4>Are you sure that you want to delete admission for -- #{@patient.fullname} ?</h4>".html_safe, :commit => 'Delete Admission' } do %><i class="fa fa-trash-alt"></i><% end %>
+  <% else %>
+    <button type="button" class="btn btn-warning btn-warning-transparent btn-circle btn-ipd-templates-<%= timeline['pst'][0]['query']['_id'] %>" title="IPD Templates" id="templates_ipd" data-toggle="dropdown"><i class="fa fa-file"></i></button>
+    <ul class="dropdown-menu ipd-templates ipd-templates-<%= timeline['pst'][0]['query']['_id'] %>" role="menu" aria-labelledby="ipd-templates-dropdown"></ul>
+  <% end %>
+<% end %>
+<script type="text/javascript">
+  $(".btn-ipd-templates-<%= timeline['pst'][0]['query']['_id'] %>").on('click', function(){
+    if($(this).closest('.full-view').hasClass('open')){
+    } else {
+      $(this).siblings("ul").html('<li class="text-center">Loading..</li>')
+      $.ajax({
+        type: "GET",
+        dataType: "script",
+        data: {
+          admission_id: "<%= timeline['pst'][0]['query']['_id'] %>"
+        },
+        url: "/patient_summary_timelines/ipd_templates"
+      })
+    }
+  })
+
+  $(".btn-ipd-invoice-<%= timeline['pst'][0]['query']['_id'] %>").on('click', function(){
+    if($(this).closest('.full-view').hasClass('open')){
+    } else {
+      $(this).siblings(".ipd-invoices").html('<li class="text-center">Loading..</li>')
+      $.ajax({
+        type: "GET",
+        dataType: "script",
+        data: {
+          admission_id: "<%= timeline['pst'][0]['query']['_id'] %>",
+          patient_id: "<%= @patient.id.to_s %>"
+        },
+        url: "/patient_summary_timelines/ipd_invoices"
+      })
+    }
+  })
+
+  $(".restrict-discharge-btn").on('click', function(){
+    ot_restriction()
+  })
+
+  function ot_restriction(){
+    if ($(".ui-pnotify").length > 0) { $(".ui-pnotify").remove() }
+    notice = new PNotify({
+      title: 'Error',
+      text: 'Cannot Change Status as OTs for this ADMISSION are Still Not COMPLETED.<br>Please Delete/Unlink/Complete them.',
+      type: 'error'
+    })
+    notice.get().click(function(){ notice.remove() });
+  }
+</script>

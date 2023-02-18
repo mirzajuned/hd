@@ -1,0 +1,197 @@
+<%@clinical_histories ||= @clinical_note.record_histories.where(:template_type => "Clinical Note")%>
+<div class="modal-dialog modal_ipdrecord">
+  <div class="modal-content">
+
+    <div class="modal-header">
+      <div class="pull-right"> <!-- Action Buttons starts -->
+        <button aria-hidden="true" class="btn btn-info" data-dismiss="modal">Close</button>
+      </div>
+      <div class="text-center">
+        <h4 class="nomargin">Clinical Note</h4>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div class="row">
+        <div class="col-md-9 col-dm-9">
+          <!-- Action Button -->
+          <div class="row">
+            <div class="col-md-12 mb5">
+              <div class="ipd-review-actions">
+                <div class="btn-group mr10">
+                  <% @edit = "edit_inpatient_ipd_record_clinical_note_" + @speciality_folder_name + "_note_path(id: @clinical_note.id, admission_id: @admission.id.to_s)" %>
+                  <%= link_to eval(@edit), class: "btn btn-primary", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#ipdrecord-modal'} do %><i class="fa fa-edit"></i> Edit<% end %>
+                  <% if Authorization::PolicyHelper.verification(current_user.id ,"HGP-101-106-100") %>
+                    <% if @print_settings.count > 1 %>
+                      <div class="btn-group">
+                        <button type="button" class="btn btn-primary full_print dropdown-toggle" data-toggle="dropdown"><i class="fa fa-print mr5"></i> Summary <i class="fa fa-caret-down"></i></button>
+                        <ul class="dropdown-menu dropdown-left-manual" role="menu" aria-labelledby="summary-print-dropdown" style="">
+                          <% @print_settings.each do |print_setting| %>
+                            <li style="text-align:left" class="multi-print">
+                              <% print_summary = "inpatient_ipd_record_clinical_note_" + @speciality_folder_name + "_note_print_path(id: @clinical_note.id, " + @speciality_folder_name + "_note_id: @clinical_note.id, admission_id: @admission.id.to_s, view: 'Summary', format: 'pdf', print_setting_id: print_setting&.id)" %>
+                              <%= link_to eval(print_summary), :class => "",:style => "color: #d9534f;",:target => "_blank", :data => {method: :get} do %> <i class="fa fa-print mr5"></i> <%= print_setting.name %> <% end %>
+                            </li>
+                          <% end %>
+                        </ul>
+                      </div>
+                      <div class="btn-group">
+                        <button type="button" class="btn btn-primary full_print dropdown-toggle" data-toggle="dropdown"><i class="fa fa-print mr5"></i> Note <i class="fa fa-caret-down"></i></button>
+                        <ul class="dropdown-menu dropdown-left-manual" role="menu" aria-labelledby="summary-print-dropdown" style="">
+                          <% @print_settings.each do |print_setting| %>
+                            <li style="text-align:left" class="multi-print">
+                              <% print_note = "inpatient_ipd_record_clinical_note_" + @speciality_folder_name + "_note_print_path(id: @clinical_note.id, " + @speciality_folder_name + "_note_id: @clinical_note.id, admission_id: @admission.id.to_s, view: 'Note', format: 'pdf', print_setting_id: print_setting&.id)" %>
+                              <%= link_to eval(print_note), :class => "",:style => "color: #d9534f;",:target => "_blank", :data => {method: :get} do %> <i class="fa fa-print mr5"></i> <%= print_setting.name %> <% end %>
+                            </li>
+                          <% end %>
+                        </ul>
+                      </div>
+                    <% else %>
+                      <% print_summary = "inpatient_ipd_record_clinical_note_" + @speciality_folder_name + "_note_print_path(id: @clinical_note.id, " + @speciality_folder_name + "_note_id: @clinical_note.id, admission_id: @admission.id.to_s, view: 'Summary', format: 'pdf', print_setting_id: @print_settings[0]&.id)" %>
+                      <%= link_to eval(print_summary), :class => "btn btn-primary full_print",:target => "_blank", :data => {method: :get} do %> <i class="fa fa-print mr5"></i> Summary <% end %>
+
+                      <% print_note = "inpatient_ipd_record_clinical_note_" + @speciality_folder_name + "_note_print_path(id: @clinical_note.id, " + @speciality_folder_name + "_note_id: @clinical_note.id, admission_id: @admission.id.to_s, view: 'Note', format: 'pdf', print_setting_id: @print_settings[0]&.id)" %>
+                      <%= link_to eval(print_note), :class => "btn btn-primary full_print",:target => "_blank", :data => {method: :get} do %> <i class="fa fa-print mr5"></i> Note <% end %>
+                    <% end %>
+                  <% end %>
+                  <% if Authorization::PolicyHelper.verification(current_user.id ,"HGP-101-106-101") %>
+                    <%= link_to new_mail_record_tracker_path(:record_name => 'Clinical Note', :record_id => @clinical_note.id, :record_model => 'Inpatient::IpdRecord',admission_id: @admission.id.to_s, speciality: @speciality_folder_name, speciality_id: @specialty_id),  class: "btn btn-primary", :id => "record-mail-html", :data => {:remote => true, 'disable-with' =>  "Please Wait..."} do %><i class="glyphicon glyphicon-envelope"></i> Email<% end %>
+                  <% end %>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-12 col-sm-12">
+              <div class="summary-template paper_view">
+                <%= render partial: 'inpatient/ipd_record/clinical_note/' + @speciality_folder_name + '_notes/view_body', locals: { view: "Summary", mail_job: false } %>
+              </div>
+              <br>
+              <hr>
+              <br>
+              <div class="summary-template paper_view">
+                <%= render partial: 'inpatient/ipd_record/clinical_note/' + @speciality_folder_name + '_notes/view_body', locals: { view: "Note", mail_job: false  } %>
+              </div>
+            </div>
+          </div>
+          <!-- Action Button Ends -->
+        </div>
+        <div class="col-md-3" style="border-left: 1px solid #ddd;">
+          <!-- Show History Logic Starts -->
+            <div class="show-history text-center">
+              <div class="row mb10">
+                <div class="col-md-12">
+                  <h4 style="margin:0px;">Template History(<%= "Clinical Note".capitalize %>)</h4>
+                  <% ipd_histories = @clinical_histories.where(:action.ne => 'C').group_by { |h| h[:action] } %>
+                  <% ["U", "P"].each do |a| %>
+                    <div class="col-md-6">
+                      <% if a == 'U' %>
+                        <strong>Updated</strong>
+                      <% elsif a == 'P' %>
+                        <strong>Printed</strong>
+                      <% end %>
+                      <div class="mt5"><span class="template-<%= a %>" style="padding: 10px 12px;"><%= ipd_histories[a].count rescue 0 %></span></div>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+              <div class="row" style="background:#1CAF9A;padding: 6px;">
+                <% @ipd_history_creator = @clinical_histories.first %>
+                <div class="col-md-1">
+                  <span style="color:#1CAF9A;">|</span>
+                </div>
+                <div class="col-md-2">
+                  <div style="margin-top:7px;"><span style="border-radius: 100%;background-color: #fff;padding: 7px 10px;font-size: 12px;color: #1CAF9A;">C</span>&nbsp;<span style="color:#fff;">reated</span></div>
+                </div>
+                <div class="col-md-9">
+                  <p style="margin-bottom:-7px;font-size:16px;color: #fff;"><b><%= User.find_by(id: @ipd_history_creator.user_id.to_s).fullname %></b></p>
+                  <span style="font-size:9px;color: #fff;"><%= @ipd_history_creator.actiontime.strftime("%I:%M%P, %d %B") %></span>
+                </div>
+                <!-- For Using Toggle uncomment this & add display:none; to show-history-details & info-history-abbv..also uncomment the js written in show_ipd_record.js under //for toggle history -->
+                <!-- <div class="col-md-12 text-center">
+                  <button class="btn btn-link btn-xs show-history-toggle" style="color:#fff;text-decoration:underline;">Show Details</button>
+                </div> -->
+              </div>
+              <div class="show-history-details" style="max-height:300px;overflow:scroll;margin-top:10px;">
+                <div class="col-md-12 mt5 mb5" style="border-bottom:1px solid #ddd;">
+                  <p class="info-history-abbv" style="font-size:10px;">
+                    <span style="border-radius: 100%;background-color: #d9534f;padding: 3px 5px;font-size: 12px;color: #fff;">U</span> = <b>Update</b> ,&nbsp;&nbsp; <span style="border-radius: 100%;background-color: #428bca;padding: 3px 5px;font-size: 12px;color: #fff;">P</span> = <b>Print</b>
+                  </p>
+                </div>
+                <% @ipd_history = @clinical_histories.order(actiontime: :desc) %>
+                <% @ipd_history.each do |ipd_history| %>
+                  <% if ipd_history.action != "C" %>
+                    <div class="row" style="border-bottom:1px solid #ddd; padding: 7px 0;">
+                      <div class="col-md-1">
+                        <span style="color:#fff;">|</span>
+                      </div>
+                      <div class="col-md-2">
+                        <div style="margin-top:7px;">
+                          <% if ipd_history.action == "U" %>
+                            <span style="border-radius: 100%;background-color: #d9534f;padding: 7px 10px;font-size: 12px;color: #fff;">U
+                            </span>
+                          <% elsif ipd_history.action == "C" %>
+                            <span style="border-radius: 100%;background-color: #1CAF9A;padding: 7px 10px;font-size: 12px;color: #fff;">C
+                            </span>
+                          <% elsif ipd_history.action == "P" %>
+                            <span style="border-radius: 100%;background-color: #428bca;padding: 7px 10px;font-size: 12px;color: #fff;">P
+                            </span>
+                          <% end %>
+                        </div>
+                      </div>
+                      <div class="col-md-9">
+                        <p style="margin-bottom:-7px;font-size:16px;"><b><%= User.find_by(id: ipd_history.user_id.to_s).fullname %></b></p>
+                        <span style="font-size:9px;"><%= ipd_history.actiontime.strftime("%I:%M%P, %d %B") %></span>
+                      </div>
+                    </div>
+                  <% end %>
+                <% end %>
+              </div>
+            </div>
+          <!-- Show History Logic Ends -->
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<style>
+  .modal_ipdrecord {
+    width: 95%;
+  }
+  .paper_view {
+    box-shadow: 0 0 6px #ccc;
+    max-width: 90%;
+    padding: 0 0.400000in 0 0.550000in;
+    font-family: 'Open Sans';
+  }
+  .updated_by, .printed_by, .created_by {
+    border-radius: 100%;
+    background-color: #d9534f;
+    padding: 7px 10px;
+    font-size: 12px;
+    color: #fff;
+  }
+  .printed_by {
+    background-color: #428bca;
+  }
+  .created_by {
+   background-color: #fff;
+   color: #1CAF9A;
+  }
+  .template-U {
+    border-radius: 100%;
+    background-color: #d9534f;
+    font-size: 12px;
+    color: #fff;
+  }
+  .template-C {
+    border-radius: 100%;
+    background-color: #1CAF9A;
+    font-size: 12px;
+    color: #fff;
+  }
+  .template-P {
+    border-radius: 100%;
+    background-color: #428bca;
+    font-size: 12px;
+    color: #fff;
+  }
+</style>

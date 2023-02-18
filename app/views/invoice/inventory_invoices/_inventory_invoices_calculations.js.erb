@@ -1,0 +1,416 @@
+const invoiceUType = "inventory_invoice"
+const datepicker_options = {
+  dateFormat: "dd/mm/yy",
+  maxDate: -0
+}
+// Add New Payment Received
+$("#add_payment_received").on("click", function(e) {
+  e.preventDefault();
+  let counter = $(".payment_received_row").length
+  let counter_visible = $(".payment_received_row:visible").length
+  let received_by = `<input type="hidden" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][received_by]" class="form-control payment_received_breakups_received_by p3_10" value="<%= current_user.id.to_s %>">`
+  let received_from = `<input type="hidden" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][received_from]" class="form-control payment_received_breakups_received_from p3_10" value="<%= @patient.id %>">`
+
+  let currency_fields = `
+      <input type="hidden" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][currency_symbol]" class="form-control payment_received_breakups_currency_symbol p3_10" value="<%= @currency.symbol %>">
+      <input type="hidden" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][currency_id]" class="form-control payment_received_breakups_currency_id p3_10" value="<%= @currency.id.to_s %>">`
+
+  let sno = `
+      <div class="col-md-1">
+        <span class="payment_received_breakups_sno">${counter_visible + 1}</span>
+      </div>`
+
+  let payer_master_id = $('.invoice_payer_master_id').val()
+  let payer_name = $('.invoice_payer_master_id').find('option:selected').html()
+  let payer_option = payer_master_id ? `<option value="${payer_master_id}">${payer_name}</option>` : ``
+
+  // let payee = `
+  //     <div class="col-md-2">
+  //       <select class="form-control payment_received_breakups_received_from" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][received_from]" style="height: 25px;padding:3px;">
+  //         <option value="<%= @patient.id %>" selected="selected"><%= @patient.fullname %></option>
+  //         ${payer_option}
+  //       </select>
+  //     </div>`
+
+  let mode_of_payment = `
+      <div class="col-md-2">
+        <% mop_list = Invoice::InvoicesHelper.mop_list(current_facility.country_id)%>
+          <select class="form-control payment_received_breakups_mode_of_payment" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][mode_of_payment]" style="height: 25px;padding:3px;" data-index="${counter}">
+          <option value=""></option>
+          <% mop_list.each do |mop| %>
+            <option value="<%= mop %>"><%= mop %></option>
+          <% end %>
+        </select>
+      </div>`
+
+  let date = `
+      <div class="col-md-3">
+        <input type="text" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][date]" class="form-control payment_received_breakups_date p3_10" value="<%= Date.current.strftime('%d/%m/%Y') %>" readonly="readonly">
+      </div>`
+
+  let time = `
+      <div class="col-md-3">
+        <div class="bootstrap-timepicker timepicker">
+          <input type="text" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][time]" class="form-control payment_received_breakups_time p3_10" value="<%= Time.current.strftime('%I:%M %p') %>" readonly="readonly">
+        </div>
+      </div>`
+
+  let amount = `
+      <div class="col-md-2">
+        <div class="input-group">
+          <span class="input-group-addon" style="padding: 5px 10px;font-size:10px;"><%= current_facility.currency_symbol %></span>
+          <input type="hidden" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][amount]" class="form-control payment_received_breakups_total_amount p3_10" min="0" value="0">
+          <input type="number" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][amount_received]" class="form-control payment_received_breakups_amount p3_10" min="0" value="0">
+        </div>
+      </div>`
+
+  let remove_button = `
+      <div class="col-md-1">
+        <button class="btn btn-link btn-xs remove_payment_received">&times;</button>
+      </div>`
+
+  let mop_details = `
+      <div class="col-md-4 col-md-offset-3 mt10 mop_details" style="display: none;border: 1px solid #ccc;padding: 5px;"></div>`
+
+  $("#payment_received_details").append(`
+      <div class="row payment_received_row mb10">
+        ${received_by}
+        ${received_from}
+        ${currency_fields}
+        ${sno}
+        ${mode_of_payment}
+        ${date}
+        ${time}
+        ${amount}
+        ${remove_button}
+        ${mop_details}
+      </div>`)
+
+  $(".payment_received_breakups_date").datepicker(datepicker_options);
+  $(".payment_received_breakups_time").timepicker({minuteStep: 5});
+})
+
+// Logic For Remove Reset Payment Index Keys
+function remove_reset_payment_logic(reset_location) {
+  if (reset_location == "received") {
+    let received_counter = $("#payment_received_details").find(".payment_received_row").length
+    let payment_received_row = $("#payment_received_details").find(".payment_received_row")
+    for (let i = payment_received_row.length - 1; i >= 0; i--) {
+      if ($(payment_received_row).is(":visible")) {
+        $(payment_received_row[i]).find(".payment_received_breakups_sno").html((received_counter) + ".")
+        received_counter = received_counter - 1
+      }
+      $(payment_received_row[i]).find(".payment_received_breakups_id").attr("name", "invoice_" + invoiceUType + "[payment_received_breakups_attributes][" + i + "][id]")
+      $(payment_received_row[i]).find(".payment_received_breakups_destroy").attr("name", "invoice_" + invoiceUType + "[payment_received_breakups_attributes][" + i + "][_destroy]")
+      $(payment_received_row[i]).find(".payment_received_breakups_received_by").attr("name", "invoice_" + invoiceUType + "[payment_received_breakups_attributes][" + i + "][received_by]")      
+      $(payment_received_row[i]).find(".payment_received_breakups_received_from").attr("name", "invoice_" + invoiceUType + "[payment_received_breakups_attributes][" + i + "][received_from]")
+      $(payment_received_row[i]).find(".payment_received_breakups_received_by").attr("name", "invoice_" + invoiceUType + "[payment_received_breakups_attributes][" + i + "][received_by]")
+      $(payment_received_row[i]).find(".payment_received_breakups_currency_symbol").attr("name", "invoice_" + invoiceUType + "[payment_received_breakups_attributes][" + i + "][currency_symbol]")
+      $(payment_received_row[i]).find(".payment_received_breakups_currency_id").attr("name", "invoice_" + invoiceUType + "[payment_received_breakups_attributes][" + i + "][currency_id]")
+      $(payment_received_row[i]).find(".payment_received_breakups_tax_deducted").attr("name", "invoice_" + invoiceUType + "[payment_received_breakups_attributes][" + i + "][tax_deducted]")
+      $(payment_received_row[i]).find(".payment_received_breakups_payer_difference").attr("name", "invoice_" + invoiceUType + "[payment_received_breakups_attributes][" + i + "][payer_difference]")
+      $(payment_received_row[i]).find(".payment_received_breakups_other_revenue_spilage").attr("name", "invoice_" + invoiceUType + "[payment_received_breakups_attributes][" + i + "][other_revenue_spilage]")
+      $(payment_received_row[i]).find(".payment_received_breakups_mode_of_payment").attr("name", "invoice_" + invoiceUType + "[payment_received_breakups_attributes][" + i + "][mode_of_payment]").attr("data-index", i)
+      $(payment_received_row[i]).find(".payment_received_breakups_date").attr("name", "invoice_" + invoiceUType + "[payment_received_breakups_attributes][" + i + "][date]")
+      $(payment_received_row[i]).find(".payment_received_breakups_time").attr("name", "invoice_" + invoiceUType + "[payment_received_breakups_attributes][" + i + "][time]")
+      $(payment_received_row[i]).find(".payment_received_breakups_total_amount").attr("name", "invoice_" + invoiceUType + "[payment_received_breakups_attributes][" + i + "][amount]")
+      $(payment_received_row[i]).find(".payment_received_breakups_amount").attr("name", "invoice_" + invoiceUType + "[payment_received_breakups_attributes][" + i + "][amount_received]")
+      $(payment_received_row[i]).find(".payment_received_breakups_cash").attr("name", "invoice_" + invoiceUType + "[payment_received_breakups_attributes][" + i + "][cash]")
+      $(payment_received_row[i]).find(".payment_received_breakups_card").attr("name", "invoice_" + invoiceUType + "[payment_received_breakups_attributes][" + i + "][card]")
+      $(payment_received_row[i]).find(".payment_received_breakups_card_number").attr("name", "invoice_" + invoiceUType + "[payment_received_breakups_attributes][" + i + "][card_number]")
+      $(payment_received_row[i]).find(".payment_received_breakups_card_transaction_note").attr("name", "invoice_" + invoiceUType + "[payment_received_breakups_attributes][" + i + "][card_transaction_note]")
+      $(payment_received_row[i]).find(".payment_received_breakups_total_amount").attr("name", "invoice_" + invoiceUType + "[payment_received_breakups_attributes][" + i + "][amount]")
+      $(payment_received_row[i]).find(".payment_received_breakups_amount").attr("name", "invoice_" + invoiceUType + "[payment_received_breakups_attributes][" + i + "][amount_received]")
+      $(payment_received_row[i]).find(".payment_received_breakups_transfer_date").attr("name", "invoice_" + invoiceUType + "[payment_received_breakups_attributes][" + i + "][transfer_date]")
+      $(payment_received_row[i]).find(".payment_received_breakups_transfer_note").attr("name", "invoice_" + invoiceUType + "[payment_received_breakups_attributes][" + i + "][transfer_note]")
+      $(payment_received_row[i]).find(".payment_received_breakups_other_note").attr("name", "invoice_" + invoiceUType + "[payment_received_breakups_attributes][" + i + "][other_note]")
+    }
+  } else if (reset_location == "pending") {
+    let pending_counter = $("#payment_pending_details").find(".payment_pending_row").length
+    let payment_pending_row = $("#payment_pending_details").find(".payment_pending_row")
+    for (let i = payment_pending_row.length - 1; i >= 0; i--) {
+      if ($(payment_pending_row).is(":visible")) {
+        $(payment_pending_row[i]).find(".payment_pending_breakups_sno").html((pending_counter) + ".")
+        pending_counter = pending_counter - 1
+      }
+      $(payment_pending_row[i]).find(".payment_pending_breakups_id").attr("name", "invoice_" + invoiceUType + "[payment_pending_breakups_attributes][" + i + "][id]")
+      $(payment_pending_row[i]).find(".payment_pending_breakups_destroy").attr("name", "invoice_" + invoiceUType + "[payment_pending_breakups_attributes][" + i + "][_destroy]")
+      $(payment_pending_row[i]).find(".payment_pending_breakups_received_from").attr("name", "invoice_" + invoiceUType + "[payment_pending_breakups_attributes][" + i + "][received_from]")
+      $(payment_pending_row[i]).find(".payment_pending_breakups_currency_symbol").attr("name", "invoice_" + invoiceUType + "[payment_pending_breakups_attributes][" + i + "][currency_symbol]")
+      $(payment_pending_row[i]).find(".payment_pending_breakups_currency_id").attr("name", "invoice_" + invoiceUType + "[payment_pending_breakups_attributes][" + i + "][currency_id]")
+      $(payment_pending_row[i]).find(".payment_pending_breakups_amount").attr("name", "invoice_" + invoiceUType + "[payment_pending_breakups_attributes][" + i + "][amount]")
+      $(payment_pending_row[i]).find(".payment_pending_breakups_date").attr("name", "invoice_" + invoiceUType + "[payment_pending_breakups_attributes][" + i + "][date]")
+      $(payment_pending_row[i]).find(".payment_pending_breakups_time").attr("name", "invoice_" + invoiceUType + "[payment_pending_breakups_attributes][" + i + "][time]")
+    }
+  }
+}
+
+// Remove Payment Received
+$(".payment-received-details").on("click", ".remove_payment_received", function(e) {
+  e.preventDefault();
+  if ( ($("#payment_received_details").find(".payment_received_row").length > 1) || ($('.invoice_type:checked').val() == 'credit') ){
+    let _destroy = $(this).closest(".payment_received_row").find(".payment_received_breakups_destroy")
+    if (_destroy.length > 0) {
+      $(_destroy).val("1")
+      $(this).closest(".payment_received_row").hide()
+    } else {
+      $(this).closest(".payment_received_row").remove()
+    }
+    remove_reset_payment_logic("received")
+
+    calculate_payment_received_total()
+  }
+})
+
+// Calculate Payment Received Total
+function calculate_payment_received_total() {
+  // Calculate PaymentReceived Total
+  let payment_received_breakups_amount = $(".payment_received_breakups_amount:visible")
+  let invoice_payment_received_total = 0
+  for (let i = payment_received_breakups_amount.length - 1; i >= 0; i--) {
+    amount = $(payment_received_breakups_amount[i]).val()
+    if (amount != "") {
+      invoice_payment_received_total = invoice_payment_received_total + parseFloat(amount)
+    }
+  }
+  $("#invoice_payment_received_total").val(invoice_payment_received_total)
+  change_invoice_total_payment()
+}
+
+// Payment Received Amount Changes
+$(".payment-received-details").on("keyup change", ".payment_received_breakups_amount", function() {
+  let payment_received_row = $(this).closest(".payment_received_row")
+  let received_amount = $(this).val()
+  payment_received_row.find('.payment_received_breakups_total_amount').val(received_amount)
+  let mode_of_payment = $(payment_received_row).find(".payment_received_breakups_mode_of_payment").val()
+  if (mode_of_payment == "Cash") {
+    $(payment_received_row).find(".payment_received_breakups_cash").val(received_amount)
+  } else if (mode_of_payment == "Card") {
+    $(payment_received_row).find(".payment_received_breakups_card").val(received_amount)
+  }
+
+  calculate_payment_received_total()
+})
+
+// Calculate Payment Pending Total
+function calculate_payment_pending_total(){
+  // Calculate PaymentPending Total
+  let payment_pending_breakups_amount = $(".payment_pending_breakups_amount:visible")
+  let invoice_payment_pending_total = 0
+  for (let i = payment_pending_breakups_amount.length - 1; i >= 0; i--) {
+    amount = $(payment_pending_breakups_amount[i]).val()
+    if(amount != ""){
+      invoice_payment_pending_total = invoice_payment_pending_total + parseFloat(amount)
+    }
+  }
+  $("#invoice_payment_pending_total").val(invoice_payment_pending_total)
+  change_invoice_total_payment()
+}
+
+  // Payment Pending Amount Changes
+  $(".payment-pending-details").on("keyup change", ".payment_pending_breakups_amount", function(){
+    calculate_payment_pending_total()
+  })
+
+// Advance Payment Amount Changes
+  $(".advance-payment-details").on("keyup change", ".advance_payment_breakups_amount", function(){
+    let advance_amount = $(this).closest(".advance_payment_row").find(".advance_payment_breakups_advance_amount").val()
+    if(parseFloat($(this).val()) > parseFloat(advance_amount)){
+      $(this).val(advance_amount)
+    }
+
+    calculate_advance_payment_total()
+  })
+
+// Calculate Total Payment(Advance + Received + Pending)
+function change_invoice_total_payment() {
+  let invoice_payment_pending_total = parseFloat($("#invoice_payment_pending_total").val()) || 0
+  let invoice_advance_payment_total = parseFloat($("#invoice_advance_payment_total").val()) || 0
+  let invoice_payment_received_total = parseFloat($("#invoice_payment_received_total").val()) || 0
+  let invoice_payment_received_total_bill = parseFloat($('#invoice_advance_payment_total_bill').val()) || 0
+  let total_payment_received = invoice_payment_received_total + invoice_payment_received_total_bill + invoice_advance_payment_total + invoice_payment_pending_total
+  // let invoice_payment_pending_total = parseFloat($("#invoice_payment_pending_total").val())
+  $("#invoice_total_payment").val(total_payment_received.toFixed(2))
+
+  let invoice_total_payment_remaining = parseFloat($("#grand_total_inc_discount").val()) - parseFloat($("#invoice_total_payment").val())
+  $("#invoice_total_payment_remaining").val(invoice_total_payment_remaining.toFixed(2))
+}
+
+// Calculate Advance Total
+  function calculate_advance_payment_total(){
+    // Calculate PaymentReceived Total
+    let advance_payment_breakups_amount = $(".advance_payment_breakups_amount")
+    let invoice_advance_payment_total = 0
+    for (let i = advance_payment_breakups_amount.length - 1; i >= 0; i--) {
+      amount = $(advance_payment_breakups_amount[i]).val()
+      if(amount != ""){
+        invoice_advance_payment_total = invoice_advance_payment_total + parseFloat(amount)
+      }
+    }
+    $("#invoice_advance_payment_total").val(invoice_advance_payment_total)
+    change_invoice_total_payment()
+  }
+
+// Get Fields for MOP
+$(".payment-received-details").on("change", ".payment_received_breakups_mode_of_payment", function() {
+  let payment_received_row = $(this).closest(".payment_received_row")
+  let mode_of_payment = $(this).val()
+  let counter = $(this).attr("data-index")
+  let amount = $(payment_received_row).find(".payment_received_breakups_amount").val()
+  let mopDetails = $(payment_received_row).find(".mop_details")
+  let mop_nil = reset_mop_fields(mode_of_payment, counter)
+
+  switch (mode_of_payment) {
+    case "Cash":
+      let mopCash = `
+          ${mop_nil}
+          <div class="row">
+            <div class="cash_details">
+              <input type="hidden" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][cash]" class="form-control payment_received_breakups_cash" value="${amount}">
+            </div>
+          </div>`
+      $(mopDetails).html(mopCash).hide()
+      break;
+    case "Card":
+      let mopCard = `
+          ${mop_nil}
+          <div class="row">
+            <div class="card_details">
+              <div class="col-md-6">
+                <b style="font-size:12px;">Card Number</b>
+                <input type="hidden" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][card]" class="form-control payment_received_breakups_card" value="${amount}">
+                <input type="text" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][card_number]" class="form-control payment_received_breakups_card_number p3_10" minlength="4" maxlength="4" onKeyPress="return event.charCode >= 48 && event.charCode <= 57" value="" placeholder="Card Number">
+              </div>
+              <div class='col-md-6'>
+                <b style="font-size:12px;">Transaction Note</b>
+                <input type="text" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][card_transaction_note]" class="form-control payment_received_breakups_card_transaction_note p3_10" placeholder="Transaction Note" value="">
+              </div>
+            </div>
+          </div>`
+      $(mopDetails).html(mopCard).show()
+      break;
+    case "Online Transfer":
+      let mopOnlineTransfer = `
+          ${mop_nil}
+          <div class="row">
+            <div class="transfer_details">
+              <div class="col-md-6">
+                <b style="font-size:12px;">Transfer Date</b>
+                <input type="text" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][transfer_date]" class="form-control payment_received_breakups_transfer_date p3_10" placeholder="Transfer Date" readonly="readonly">
+              </div>
+              <div class="col-md-6">
+                <b style="font-size:12px;">Transfer Note</b>
+                <input type="text" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][transfer_note]" class="form-control payment_received_breakups_transfer_note p3_10" value="" placeholder="Transfer Note">
+              </div>
+            </div>
+          </div>`
+      $(mopDetails).html(mopOnlineTransfer).show()
+      $(".payment_received_breakups_transfer_date").datepicker(datepicker_options)
+      break;
+    case "Others":
+      let mopOthers = `
+          ${mop_nil}
+          <div class="row">
+            <div class="other_details">
+              <div class="col-md-6">
+                <b style="font-size:12px;">Note</b>
+                <input type="text" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][other_note]" class="form-control payment_received_breakups_other_note p3_10" value="" placeholder="Note">
+              </div>
+            </div>
+          </div>`
+      $(mopDetails).html(mopOthers).show()
+      break;
+    case "Paytm":
+      let mopPaytm = `
+          ${mop_nil}
+          <div class="row">
+            <div class="paytm_details">
+              <div class="col-md-6">
+                <b>Transaction Id</b><input type="text" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][paytm_transaction_id]"  class="form-control payment_received_breakups_other_note p3_10" value="" placeholder="Transaction Id">
+              </div>
+              <div class="col-md-6">
+                <b>Transaction Note</b><input type="text" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][paytm_transaction_note]" class="form-control payment_received_breakups_other_note p3_10" value="" placeholder="Transaction Note">
+              </div>
+            </div>
+          </div>`
+      $(mopDetails).html(mopPaytm).show()
+      break;
+    case "Google Pay":
+      let mopGpay = `
+          ${mop_nil}
+          <div class="row">
+            <div class="paytm_details">
+              <div class="col-md-6">
+                <b>Transaction Id</b><input type="text" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][gpay_transaction_id]"  class="form-control payment_received_breakups_other_note p3_10" value="" placeholder="Transaction Id">
+              </div>
+              <div class="col-md-6">
+                <b>Transaction Note</b><input type="text" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][gpay_transaction_note]" class="form-control payment_received_breakups_other_note p3_10" value="" placeholder="Transaction Note">
+              </div>
+            </div>
+          </div>`
+      $(mopDetails).html(mopGpay).show()
+      break;
+    case "PhonePe":
+      let mopPhonePe = `
+          ${mop_nil}
+          <div class="row">
+            <div class="paytm_details">
+              <div class="col-md-6">
+                <b>Transaction Id</b><input type="text" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][phonepe_transaction_id]"  class="form-control payment_received_breakups_other_note p3_10" value="" placeholder="Transaction Id">
+              </div>
+              <div class="col-md-6">
+                <b>Transaction Note</b><input type="text" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][phonepe_transaction_note]" class="form-control payment_received_breakups_other_note p3_10" value="" placeholder="Transaction Note">
+              </div>
+            </div>
+          </div>`
+      $(mopDetails).html(mopPhonePe).show()
+      break;
+
+    default:
+      $(mopDetails).html(mop_nil)
+      $(mopDetails).hide()
+      break;
+  }
+});
+
+function reset_mop_fields(mode_of_payment, counter) {
+  let cash_nil = `<input type="hidden" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][cash]" class="form-control payment_received_breakups_cash" value="">`
+  let card_nil = `<input type="hidden" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][card]" class="form-control payment_received_breakups_card" value=""><input type="hidden" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][card_number]" class="form-control payment_received_breakups_card_number" value="">`
+  let transfer_nil = `<input type="hidden" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][transfer_date]" class="form-control payment_received_breakups_transfer_date" value=""><input type="hidden" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][transfer_note]" class="form-control payment_received_breakups_transfer_note" value="">`
+  let others_nil = `<input type="hidden" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][other_note]" class="form-control payment_received_breakups_other_note" value="">`
+
+  switch (mode_of_payment) {
+    case "Cash":
+      mop_nil = card_nil + transfer_nil + others_nil;
+      break;
+    case "Card":
+      mop_nil = cash_nil + transfer_nil + others_nil;
+      break;
+    case "Online Transfer":
+      mop_nil = cash_nil + card_nil + others_nil;
+      break;
+    case "Others":
+      mop_nil = cash_nil + card_nil + transfer_nil;
+      break;
+    default:
+      mop_nil = cash_nil + card_nil + transfer_nil + others_nil;
+      break;
+  }
+  return mop_nil
+}
+
+// Remove Payment Pending
+$(".payment-pending-details").on("click", ".remove_payment_pending", function(e){
+  e.preventDefault();
+  let _destroy = $(this).closest(".payment_pending_row").find(".payment_pending_breakups_destroy")
+  if(_destroy.length > 0){
+    $(_destroy).val("1")
+    $(this).closest(".payment_pending_row").hide()
+  } else {
+    $(this).closest(".payment_pending_row").remove()
+  }
+
+  remove_reset_payment_logic("pending")
+
+  calculate_payment_pending_total()
+})

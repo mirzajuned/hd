@@ -1,0 +1,497 @@
+<%= javascript_tag do %>
+  $(document).ready(function(){
+    $(".navbar-main").find("li").on('click', function(){
+      $(".navbar-main").find("li").removeClass("activate");
+      $(this).addClass("activate");
+    });
+    $(".logo").on('click', function(){
+      $(".navbar-main").find("li").removeClass("activate");
+    });
+  });
+<% end %>
+
+<!-- NEW NAVBAR GOES FROM HERE -->
+<% @current_user = current_user %>
+<% @current_facility = current_facility %>
+<% @current_organisation = current_organisation %>
+
+<nav class="navbar navbar-default navbar-fixed-top" style="background-color:#fff; height:40px;">
+  <% if ['ophthalmology_technician', 'technician','radiologist'].include?(@current_user.selected_role) %>
+    <%= render partial: 'navbar/roles/technician.html.erb' %>
+  <% else %>
+    <%= render partial: 'navbar/roles/' + @current_user.selected_role.split(',').join + '.html.erb' %>
+  <% end %>
+</nav>
+<!-- NEW NAVBAR ENDS HERE -->
+
+<style type="text/css">
+
+  #fac_arrow{
+    z-index: 10000;
+    position: absolute;
+    top: 31px;
+    right: 308px;
+    height: 50px;
+  }
+  .rightnav-link {
+    color: #14171a !important;
+    font-size: 14px;
+    line-height: 20px;
+    padding: 8px 16px;
+  }
+
+  .rightnav-link:hover {
+    color: #fff !important;
+    background-color: #1DA1F2 !important;
+  }
+
+  .statenav-link:hover {
+    color: #fff !important;
+    background-color: #eee !important;
+  }
+
+  .activate {
+    border-bottom: 3px solid #3cc1ff;
+  }
+
+  .activate .fa-color {
+    color: #3cc1ff;
+  }
+
+  .activate a .fa-color {
+    color: #3cc1ff;
+  }
+
+  .common-li-class:hover {
+    border-bottom: 3px solid #3cc1ff;
+  }
+
+  .common-li-class .hover-effect:hover {
+    background-color: #fff;
+  }
+
+  .common-li-class .hover-effect {
+    color: #666;
+    font-weight: bold;
+  }
+
+  .focus-set:focus {
+    outline: none !important;
+  }
+
+  .headermenu-referral .dropdown-menu ul {
+    border: 1px solid #ddd;
+    border-top: 0;
+    padding: 0 10px;
+    overflow-y: auto;
+    /*max-height: calc(500px);*/
+    /*max-height: calc($(window).height - 50px);*/
+  }
+  .headermenu-referral .dropdown-menu {
+    padding: 0;
+    min-width: 380px;
+  }
+
+  .headermenu-referral .dropdown-menu .title {
+    background: #636e7b;
+    color: #fff;
+    padding: 15px;
+    text-transform: uppercase;
+    font-size: 11px;
+    margin: 0;
+  }
+
+  .headermenu-referral .dropdown-menu li {
+    display: block;
+    margin: 0;
+    float: none;
+    background: none;
+    padding: 12px 5px;
+  }
+  .mini-li-dd {
+    text-align:center;
+    font-size:10px;
+    opacity:0.6;
+    border-bottom:1px solid #eee;
+    border-top:1px solid #eee;
+    margin-top: 5px;
+    color: #fff;
+  }
+
+  #search-patient-btn, #search-patient-btn:hover, #search-patient-btn:focus {
+    background: #3cc1ff;
+    border: #3cc1ff;
+  }
+  .username{
+    font-size: 18px;
+    line-height: 24px;
+    white-space: nowrap;
+    word-break: break-all;
+    color: #14171a;
+    font-weight: bold;
+    padding: 10px;
+  }
+  .username-subsection{
+    font-style: italic;
+    font-size: 12px;
+    color: #636e7b;
+  }
+  .facility_name{
+    font-size: 18px;
+    line-height: 24px;
+    white-space: nowrap;
+    word-break: break-all;
+    color: #14171a;
+    font-weight: bold;
+    padding: 10px;
+  }
+  .dropdown-divider{
+    padding-top: 1px;
+    margin: 5px 1px 6px;
+    border-bottom: 1px solid #e6ecf0;
+  }
+  .user_logo{
+    padding: 7px;
+    border-radius: 100%;
+    border: 1px solid #a8dfdf;
+    text-align: center;
+  }
+</style>
+<script>
+  jQuery(document).ready(function(){
+    // Search Function
+
+    function search_diagnosis_list() {
+      var search_filter =  $(".search-criteria").attr('data-search-filter')
+      jQuery('#master_search').autocomplete({
+        minLength: 4,
+
+        source: function(request, response) {
+          var template_id = $("#opdrecord_templateid").val()
+          var speciality_id = $("#opdrecord_specalityid").val()
+          if (speciality_id == undefined) {
+            speciality_id = '309988001'
+          }
+          console.log(speciality_id);
+          jQuery.ajax({
+            dataType: "json",
+            type : 'get',
+            url: '/icdtree/searchdiagnosis',
+            data: {q: request.term,template_id: template_id,speciality_id: speciality_id,  remote: "true" },
+            success: function(data) {
+              response( data);
+            },
+            error: function(data) {
+            }
+          });
+        },
+
+        select: function( event, ui ) {
+          var icdcode = ui.item["code"]
+          var name = ui.item["code"]
+          var icd_type = ui.item["icd_type"]
+
+          if (icd_type == "CustomIcdDiagnosis") {
+            pushPageState({x: "1"}, "", "/search/results/diagnoses?type="+icd_type+"&search_filter="+search_filter+"&icd_code="+name)
+          }
+          else {
+            pushPageState({x: "1"}, "", "/search/results/diagnoses?search_filter="+search_filter+"&icd_code="+name)
+          }
+
+          jQuery.ajax({
+            type: "GET",
+            dataType: "script",
+            data: {icd_code: icdcode, name: name, type: icd_type,search_filter: search_filter},
+            url: "/search/results/diagnoses/"
+          }).done(function(data){
+          })
+
+          setTimeout(function() {
+            jQuery("#master_search").val("")
+          }, 50);
+        },
+//        create: function () {
+//          $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+//            return $('<li>')
+//                .append('<a>' + item.label  + '&nbsp; &nbsp; &nbsp;' + "<span class=\"badge pull-right\">" + item.icd_type_label + "</span>" + '</a>')
+//                .appendTo(ul);
+//          };
+//        },
+        close: function() {
+        }
+
+      });
+    }
+
+    function search_procedures_list() {
+      var search_filter =  $(".search-criteria").attr('data-search-filter')
+      jQuery('#master_search').autocomplete({
+        minLength: 2,
+
+        source: function(request, response) {
+          var speciality_id =  '309988001'
+          jQuery.ajax({
+            dataType: "json",
+            type : 'get',
+            url: '/common_procedures/search',
+            data: {search: request.term,speciality_id: speciality_id,  remote: "true" },
+            success: function(data) {
+              response( data);
+            },
+            error: function(data) {
+            }
+          });
+        },
+
+        select: function( event, ui ) {
+          var code = ui.item["code"]
+          var name = ui.item["label"]
+          var procedure_type = ui.item["procedure_type"]
+
+          if (procedure_type == "CustomCommonProcedure") {
+            pushPageState({x: "1"}, "", "/search/results/procedures?type="+procedure_type+"&search_filter="+search_filter+"&code="+code)
+          }
+          else {
+            pushPageState({x: "1"}, "", "/search/results/procedures?search_filter="+search_filter+"&code="+code)
+          }
+
+          jQuery.ajax({
+            type: "GET",
+            dataType: "script",
+            data: {code: code, name: name, procedure_type: procedure_type,search_filter: search_filter},
+            url: "/search/results/procedures/"
+          }).done(function(data){
+          })
+
+          setTimeout(function() {
+            jQuery("#master_search").val("")
+          }, 50);
+        },
+//        create: function () {
+//          $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+//            return $('<li>')
+//                .append('<a>' + item.label  + '&nbsp; &nbsp; &nbsp;' + "<span class=\"badge pull-right\">" + item.icd_type_label + "</span>" + '</a>')
+//                .appendTo(ul);
+//          };
+//        },
+        close: function() {
+        }
+
+      });
+    }
+
+    // Search Criteria Code
+    $(".search-criteria-list").on('click', function(e){
+      e.preventDefault()
+      $('.master-search-box').val("")
+      var search_category = $(this).attr('data-search-category')
+      var search_filter = $(this).attr('data-search-filter')
+      var placeholder_message = $(this).attr('data-placeholder-message')
+
+      $(".search-criteria").attr('data-search-filter', search_filter)
+      $(".search-criteria").attr('data-search-category', search_category)
+      $('.master-search-box').attr("placeholder",placeholder_message)
+
+      // Search Criteria Changes
+      $(".search-criteria").find('.criteria-text').html(search_category.replace(/^(.)|\s(.)/g, function ($1) {
+        return $1.toUpperCase( );
+      }));
+
+      if (search_category == "patient") {
+        $('.master-search-button-grp').show()
+        $('.master-search-box').css("border-radius", "")
+      }
+      else{
+        $('.master-search-button-grp').hide()
+        $('.master-search-box').css("border-radius", "0px 3px 3px 0px")
+      }
+
+      master_search(search_category)
+    })
+
+
+    function master_search(search_category){
+      if (search_category == "diagnosis"){
+        $('#master_search').unbind("click keyup")
+        $('#master_search').keyup( jQuery.debounce( 200, search_diagnosis_list));
+      }
+      if (search_category == "procedure"){
+        $('#master_search').unbind("click keyup")
+        $('#master_search').keyup( jQuery.debounce( 200, search_procedures_list));
+      }
+      if (search_category == "patient"){
+
+        $("#master_search").on("hover",function(){
+          $(".master-search-box").attr("data-original-title", "")
+        })
+        $("#master_search").on("click keyup",function(){
+          if ($("#master_search").val()){
+            validate_search_box()
+          }
+        })
+
+      }
+    }
+
+    master_search($(".search-criteria").attr("data-search-category"))
+
+//    if (search_category == "patient"){
+//      $("#master_search").on("hover",function(){
+//        $(".master-search-box").attr("data-original-title", "")
+//      })
+//      $("#master_search").on("click keyup",function(){
+//        if ($("#master_search").val()){
+//          validate_search_box()
+//        }
+//      })
+//    }
+
+
+//    $("#master_search").on('keyup',function(){
+//      validate_search_box()
+//    })
+
+    function validate_search_box() {
+//      var search_filter = $(".search-box-patient").val()
+      var search_filter =  $(".search-criteria").attr('data-search-filter')
+
+      console.log(search_filter)
+
+      var search_query = $("#master_search").val()
+
+      if (search_filter == "mobile_no") {
+        if (isNaN(search_query)) {
+          $(".master-search-button").attr("disabled", "disabled")
+          $(".master-search-box").attr("data-original-title", "Please enter digits in mobile no.")
+          $("[data-toggle='tooltip-master-search-box']").tooltip('show');
+          $(".search-box-box div.tooltip .tooltip-inner").prepend("<i class='fa fa-exclamation-triangle'></i> ")
+
+        } else {
+          if (search_query.trim().length > 5 && search_query.trim().length < 11)  {
+            $(".master-search-button").removeAttr("disabled", "disabled")
+            $(".master-search-box").attr("data-original-title", "")
+            $("[data-toggle='tooltip-master-search-box']").tooltip('hide');
+          } else {
+            $(".master-search-button").attr("disabled", "disabled")
+            $(".master-search-box").attr("data-original-title", "Enter between 6-10 digits.")
+            $("[data-toggle='tooltip-master-search-box']").tooltip('show');
+            $(".search-box-box div.tooltip .tooltip-inner").prepend("<i class='fa fa-exclamation-triangle'></i> ")
+          }
+        }
+      } else {
+        if(search_query.trim().length > 5) {
+          $(".master-search-button").removeAttr("disabled","disabled");
+          $(".master-search-box").attr("data-original-title", "")
+          $("[data-toggle='tooltip-master-search-box']").tooltip('hide');
+        } else{
+          $(".master-search-button").attr("disabled","disabled")
+          $(".master-search-box").attr("data-original-title", "Enter atleast 6 characters.")
+          $("[data-toggle='tooltip-master-search-box']").tooltip('show');
+          $(".search-box-box div.tooltip .tooltip-inner").prepend("<i class='fa fa-exclamation-triangle'></i> ")
+        }
+      }
+    }
+
+
+
+    $(".master-search-button").on('click', function(){
+
+      $("#appointment-modal").html("<%= escape_javascript(render('/patients/search_patient_summary')) %>")
+      $("#appointment-modal").modal('show')
+
+      var btn = $(this);
+      btn.prop('disabled', true);
+
+//      btn.text("Searching")
+
+      var search_filter = $(".search-criteria").attr('data-search-filter')
+      var master_search = $("#master_search")
+
+      if(master_search.val().trim().length > 5){
+        var search_url
+        var search_type
+        if (search_filter == "mr_no") {
+          search_url = "/patients/search_patient_mr_no"
+          search_type = "mr_no"
+        }
+        else if (search_filter == "mobile_no") {
+          search_url = "/patients/search_patient_mobile_no"
+          search_type = "mobile_no"
+        }
+        else if (search_filter == "name") {
+          search_url = "/patients/search_patient_name"
+          search_type = "name"
+        }
+        else if (search_filter == "id") {
+          search_url = "/patients/search_patient_identifier"
+          search_type = "id"
+        }
+
+
+
+        $.ajax({
+          type: "GET",
+          dataType: "json",
+          url: search_url,
+          data: {search: master_search.val().replace(/[^\w\s]/gi, '').toLowerCase(), search_type: search_type
+          },
+          success: function(response){
+            setTimeout(function(){
+              $('.search-box-patient option[value='+search_type+']').attr("selected", "selected");
+              $(".search-patient-button").prop('disabled', false);
+              $("#search-patient").val(master_search.val())
+              master_search.val("")
+            }, 300);
+            $(".search-result").remove()
+
+            if(response.length > 0){
+              $('.patient-summary-search-results').prepend("<div class='col-md-12 mb10 search-result'>Select Patient</div>")
+
+              $.each(response, function(key, value) {
+                if(value[4]){
+                  $('.patient-summary-search-results').append("<div class='col-md-12 mb10 search-result'><button class='btn btn-default form-control patient-list-btn' data-patient-id='" + value[0] + "'><div class='col-sm-6 text-left'><b>" + value[1] + " | " + value[2] + "</b></div><div class='col-sm-6 text-right'><b>" + value[4] + " | " + value[3] + "</b></div></button></div>")
+                } else {
+                  $('.patient-summary-search-results').append("<div class='col-md-12 mb10 search-result'><button class='btn btn-default form-control patient-list-btn' data-patient-id='" + value[0] + "'><div class='col-sm-6 text-left'><b>" + value[1] + " | " + value[2] + "</b></div><div class='col-sm-6 text-right'><b>" + value[3] + "</b></div></button></div>")
+                }
+                // Hook for On Click
+                // $('.patient-summary-search-results').find(".patient-list-btn:first").on('click', function(){
+                //   var patient_id = $(this).attr('data-patient-id')
+                //   $.ajax({
+                //     type: "GET",
+                //     dataType: "script",
+                //     url: '/patient_summary/' + patient_id
+                //   })
+                //   history.pushState('', '', '/patient_summary/' + patient_id); // history.pushState([data], [title], [url]);
+                // })
+              });
+              $('.patient-list-btn').on('click', function(){
+                var patient_id = $(this).attr('data-patient-id')
+                $.ajax({
+                  type: "GET",
+                  dataType: "script",
+                  url: '/patient_summary/' + patient_id
+                })
+                history.pushState('', '', '/patient_summary/' + patient_id); // history.pushState([data], [title], [url]);
+              })
+            } else {
+              $('.patient-summary-search-results').prepend("<div class='col-md-12 mb10 search-result'>No Results Found</div>")
+            }
+          }
+        })
+      } else {
+        $(".search-result").remove()
+      }
+    })
+
+    $("#master_search").keypress(function(e){
+      if($(".master-search-button").attr("disabled") == undefined){
+        if(e.which == 13){
+          $(".master-search-button").click()
+        }
+      }
+    })
+  });
+
+  var width = $(window).width()
+  $('.select_search').css('width', width/4 + 'px')
+</script>

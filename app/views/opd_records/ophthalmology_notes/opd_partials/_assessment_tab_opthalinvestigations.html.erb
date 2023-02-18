@@ -1,0 +1,131 @@
+<div class="tab-pane <%= active%>" id="opthalinvestigations">
+  <% if @organisations_setting.mandatory_opd_templates == true && params[:templatetype] != "postop" %>
+    <div class="row mb5" id="div_investigations_advised">
+      <div class="col-md-12 col-sm-12 col-sm-offset-5">
+        <div class="ckbox ckbox-success">
+          <%= f.check_box :no_investigation_advised, {class: "investigations_advised", :value => opdrecord.read_attribute(:no_investigation_advised)}, "true", "false" %>
+          <label for="opdrecord_no_investigation_advised">No Investigations Advised</label>
+        </div>
+      </div>
+    </div>
+  <% end %>
+  <div class="row opthal_tab_row">
+    <div class="col-md-2 col-sm-1"></div>
+    <% unless @disable_default_investigation %>
+      <div class="rdio rdio-primary col-md-4 col-sm-5 col-xs-6">
+        <div id="standard_oph_inv" class="standard_oph_inv">
+            <%= radio_button_tag "ophthal_inv_type", "standard_opthal_investigation", true, {:class => 'ophthal_inv_type', :id => "OphthalRadio1"} %>
+            <label for="OphthalRadio1">Standard Ophthal Investigations</label>
+        </div>
+      </div>
+      <div class="rdio rdio-primary col-md-6 col-sm-6 col-xs-6 custom_oph_inv" id="custom_oph_inv">
+          <%= radio_button_tag "ophthal_inv_type", "custom_opthal_investigation", false, {:class => 'ophthal_inv_type', :id => "OphthalRadio2"} %>
+          <label for="OphthalRadio2">Custom Ophthal Investigations</label>
+      </div>
+    <% end %>
+    <div>
+      <div class="col-md-8"></div>
+      <div class="col-md-3">
+        <div class="input-group">
+          <input type="text" class="form-control" name="search_ophthal_investigations" id="search_ophthal_investigations" data-attr='all' placeholder="Search by any Ophthal Investigations Name" style= "width: 180%;" />
+        </div>
+      </div>
+    </div>
+  </div>
+  <br>
+
+  <div class="row opthal_tab_row">
+    <div class="col-md-6 col-sm-6 col-xs-12">
+      <div class="col-md-4 col-sm-4 col-xs-4">
+        <label for="comments-textarealabel">Ophthal Set</label>
+        <% oph_set = @ophthal_laboratory_set.pluck(:name, :id) %>
+        <select id="ophthal_set_tab" class="tabview tab_select_tag" style="display:none;">
+          <option value="">Please Select</option>
+          <% oph_set.each do |oph|%>
+            <option value="<%= oph[1]%>"><%= oph[0]%></option>
+          <% end %>
+        </select>
+        <%= select_tag  "ophthal_set", options_for_select(@ophthal_laboratory_set.pluck(:name, :id)) ,{ multiple: true, :style => 'height: 250px; width:100%', :class => 'form-control webview' } %>
+      </div>
+      <div class="standard-ophthal-investigations">
+        <div class="col-md-4 col-sm-4 col-xs-4 opdrecord_eyearea_label_select" id="opdrecord_eyearea_label_select">
+          <label for="comments-textarealabel">Eye Region</label>
+          <select id="opdrecord_eyearea_tab" class="tabview tab_select_tag" style="display:none;">
+            <option value="">Please Select</option>
+            <option value="all_region">All</option>
+            <option value="cornea###181162001">Cornea</option>
+            <option value="retina###5665001">Retina</option>
+            <option value="glaucoma###23986001">Glaucoma</option>
+            <option value="cataract###193570009">Cataract</option>
+            <option value="squint###22066006">Neuro-Ophthal & Squint</option>
+          </select>
+          <div class="webview">
+            <%= f.input :eyearea, collection: [ ["All", "all_region"], ["Cornea", "cornea###181162001"], ["Retina", "retina###5665001"], ["Glaucoma", "glaucoma###23986001"], ["Cataract", "cataract###193570009"], ["Neuro-Ophthal & Squint", "squint###22066006"] ], input_html: { multiple: true, :size => '15', :style => 'height: 100%; width: 100%; ', :class => 'form-control opdrecord_eyearea webview'}, as: :select, :label => false,  :item_wrapper_class => 'form-control', :required => false %>
+            </div>
+        </div>
+       <div class="col-md-4 col-sm-4 col-xs-4 opdrecord_ophthal_investigations_label_select" id="opdrecord_ophthal_investigations_label_select">
+          <label for="comments-textarealabel">Investigations</label>
+          <select class="opdrecord_eyeinvestigations_tab tabview tab_select_tag" id="opdrecord_eyeinvestigations_tab" value="Please Select"  style="display:none;">
+            <option value="">Please Select</option>
+          </select>
+          <div class="webview">
+            <%= f.input :eyeinvestigations, collection: [], input_html: { multiple: true, :size => '15', :style => 'height: 100%; width: 100%; ', :class => 'form-control opdrecord_eyeinvestigations webview'}, as: :select,  :label => false,  :item_wrapper_class => 'form-control', :required => false %>
+          </div>
+       </div>
+      </div>
+
+      <div class="custom-ophthal-investigations">
+        <% @custom_oph_inv_regions =  (CustomOphthalInvestigation.where(:organisation_id => current_user.organisation_id, '$or' => [{ level: 'organisation' }, { facility_id: current_facility.id.to_s, level: 'facility' }], is_deleted: false).pluck(:region)) %>
+        <% @custom_ophthal_investigations_regions = @custom_oph_inv_regions.flatten.map { |region| region.to_s.downcase }.uniq %>
+        <div class=" col-md-4 col-sm-4 col-xs-4 opdrecord_eyearea_label_select" id="opdrecord_eyearea_label_select">
+          <label for="comments-textarealabel">Eye Region</label>
+          <select class="opdrecord_eyearea tabview tab_select_tag" id="opdrecord_custom_eyearea_tab" style="display:none;">
+            <option value="">Please Select</option>
+            <% @custom_ophthal_investigations_regions.each do | data | %>
+              <% if data.blank?%>
+              <% else %>
+                <option value="<%= data %>"><%= data.capitalize%></option>
+              <% end %>
+            <% end %>
+
+          </select>
+          <%= select_tag "opdrecord_custom_eyearea", options_for_select( @custom_ophthal_investigations_regions.map { |region| [region.capitalize, region] } ) , {:class => 'form-control opdrecord_eyearea webview',:multiple => true, :style => "min-height: 250px; width: 88%"} %>
+        </div>
+        <div class="col-md-4 col-sm-4 col-xs-4  opdrecord_custom_ophthal_investigations_label_select" id="opdrecord_custom_ophthal_investigations_label_select">
+          <label for="comments-textarealabel">Investigations</label>
+          <select class="opdrecord_custom_eyeinvestigations_tab tabview tab_select_tag"  value="Please Select" style="display:none;"></select>
+          <select class='form-control opdrecord_custom_eyeinvestigations webview' name='ophthal_set' multiple='true' style="height:250px;width:100%;"></select>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6 col-sm-6 col-xs-12">
+      <div class="row">
+        <div class="col-md-12">
+          <table class="table table-striped table-bordered">
+            <tbody class="opthalinvestigations-added" id="opthalinvestigations-added">
+              <%= render partial: "opd_records/ophthalmology_notes/opd_partials/soap_assessment_tab_ophthalinvestigations" , locals: { f: f, ophthalinvestigationlist: @opdrecord.ophthalinvestigationlist, opdrecord: @opdrecord,  specalityfoldername: @speciality_folder_name, templatetype: @templatetype, opdspeciality: @opdspeciality } %>
+            </tbody>
+          </table>
+          <div class="opthalinvestigations-removed" style="display:none;"></div>
+        </div>
+      </div>
+      <% if @case_sheet.ophthal_investigations.where(:record_id.nin => [@opdrecord.id]).count > 0 %>
+        <div class="row">
+          <%= render partial: "opd_records/ophthalmology_notes/opd_partials/case_sheet_ophthal_investigations.html.erb" %>
+        </div>
+      <% end %>
+    </div>
+    <div class="col-md-12 col-sm-12 col-xs-12 mb30"></div>
+  </div>
+  <div class="row investigation_comment_row">
+    <div class="col-md-1 col-sm-2 col-xs-4 opthal_comment_row">Comments:</div>
+    <div class="col-md-6 col-sm-6 col-xs-8 opthal_comment_row">
+      <%= f.input :ophthalcomments, as: :text, :label => false, :required => false, :input_html => {:class => 'form-control', :rows => 2, :cols => 70, style: 'width:100%', :name => "opdrecord[ophthalcomments]", :value => @opdrecord.read_attribute(:ophthalcomments) } %>
+    </div>
+    <div class="col-md-4 col-sm-4 col-xs-12 pull-left opthal_tab_row" style=" display: inline-block; vertical-align: left;
+    float: none;text-align: left;">
+      <span class="badge col-md-1 col-sm-2">C</span><b style="cursor:default;color:#5bc0de;">&nbsp;Standard Ophthal Investigations </b><br>
+      <span class="badge col-md-1 col-sm-2">CC</span><b style="cursor:default;color:#5bc0de;"> &nbsp;Custom Ophthal Investigations</b><br>
+    </div>
+  </div>
+</div>

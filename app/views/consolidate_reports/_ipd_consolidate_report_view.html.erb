@@ -1,0 +1,191 @@
+<% @department = report.links[:ipdrecord][:department] %>
+<% @department_notes = report.links[:ipdrecord][:template_type] %>
+<% report.links[:ipdrecord] %>
+<% @organisation = report.links[:ipdrecord][:organisation_id] %>
+<% @admission = Admission.find_by(id: report.links[:ipdrecord][:admission_id]) %>
+<% @tpa = @admission %>
+<% @ipdrecord = Inpatient::IpdRecord.find_by(admission_id: @admission.id) %>
+<% @case_sheet = CaseSheet.find_by(id: @admission.case_sheet_id) %>
+<% if @ipdrecord.present? %>
+    <% @clinical_note = @ipdrecord.clinical_note %>
+    <% @operative_note = @ipdrecord.operative_notes.find_by(id: report.query[:_id]) %>
+    <% @discharge_note = @ipdrecord.discharge_note %>
+    <% @procedure = @ipdrecord.procedure.where(procedurestage: "P") %>
+    <% @diagnosislist = @ipdrecord.diagnosislist %>
+    <h3 class="text-center" style="border-bottom: 2px solid #000;border-top: 2px solid #000; padding: 2px;">
+      <% if @department_notes == 'Clinical Note' %>
+        <%= @department_notes.try(:upcase) %>
+        <span style="font-size: 13px;">
+        created <%= "by " + @ipdrecord.consultant_name.to_s if @ipdrecord.consultant_name.present? %>
+        at <%= @ipdrecord.created_at.strftime("%I:%M %p") %>
+        </span >
+      <% elsif @department_notes == 'Operative Note' %>
+        <%= @department_notes.try(:upcase) %>
+        <span style="font-size: 13px;">
+        created <%= "by " + @ipdrecord.consultant_name.to_s if @ipdrecord.consultant_name.present? %>
+        at <%= @ipdrecord.created_at.strftime("%I:%M %p") %>
+        </span >
+      <% else %>
+        <%= @department_notes.try(:upcase) %>
+        <span style="font-size: 13px;">
+        created <%= "by " + @ipdrecord.consultant_name.to_s if @ipdrecord.consultant_name.present? %>
+        at <%= @ipdrecord.created_at.strftime("%I:%M %p") %>
+        </span >
+      <% end %>
+    </h3>
+
+    <% if @department_notes == 'Clinical Note' %>
+      <div class="ipdsummary">
+        <div class="col-md-12">
+          <% if @clinical_note %>
+            <div class="text-left">
+              <% if @print_settings.count > 1 %>
+                <div class="btn-group">
+                  <button type="button" class="btn btn-primary btn-xs full_print dropdown-toggle" data-toggle="dropdown"><i class="fa fa-print mr5"></i> Summary <i class="fa fa-caret-down"></i></button>
+                  <ul class="dropdown-menu dropdown-left-manual" role="menu" aria-labelledby="summary-print-dropdown" style="">
+                    <% @print_settings.each do |print_setting| %>
+                      <li style="text-align:left" class="multi-print">
+                        <% print_summary = "inpatient_ipd_record_clinical_note_" + @speciality_folder_name + "_note_print_path(id: @clinical_note.id, " + @speciality_folder_name + "_note_id: @clinical_note.id, admission_id: @admission.id.to_s, view: 'Summary', format: 'pdf', print_setting_id: print_setting.id)" %>
+                        <%= link_to eval(print_summary), :class => "",:style => "color: #d9534f;",:target => "_blank", :data => {method: :get} do %> <i class="fa fa-print mr5"></i> <%= print_setting.name %> <% end %>
+                      </li>
+                    <% end %>
+                  </ul>
+                </div>
+                <div class="btn-group">
+                  <button type="button" class="btn btn-primary btn-xs full_print dropdown-toggle" data-toggle="dropdown"><i class="fa fa-print mr5"></i> Note <i class="fa fa-caret-down"></i></button>
+                  <ul class="dropdown-menu dropdown-left-manual" role="menu" aria-labelledby="summary-print-dropdown" style="">
+                    <% @print_settings.each do |print_setting| %>
+                      <li style="text-align:left" class="multi-print">
+                        <% print_note = "inpatient_ipd_record_clinical_note_" + @speciality_folder_name + "_note_print_path(id: @clinical_note.id, " + @speciality_folder_name + "_note_id: @clinical_note.id, admission_id: @admission.id.to_s, view: 'Note', format: 'pdf', print_setting_id: print_setting.id)" %>
+                        <%= link_to eval(print_note), :class => "",:style => "color: #d9534f;",:target => "_blank", :data => {method: :get} do %> <i class="fa fa-print mr5"></i> <%= print_setting.name %> <% end %>
+                      </li>
+                    <% end %>
+                  </ul>
+                </div>
+              <% else %>
+                <% print_summary = "inpatient_ipd_record_clinical_note_" + @speciality_folder_name + "_note_print_path(id: @clinical_note.id, " + @speciality_folder_name + "_note_id: @clinical_note.id, admission_id: @admission.id.to_s, view: 'Summary', format: 'pdf', print_setting_id: @print_settings[0].id)" %>
+                <%= link_to eval(print_summary), :class => "btn btn-primary btn-xs full_print",:target => "_blank", :data => {method: :get} do %> <i class="fa fa-print mr5"></i> Summary <% end %>
+
+                <% print_note = "inpatient_ipd_record_clinical_note_" + @speciality_folder_name + "_note_print_path(id: @clinical_note.id, " + @speciality_folder_name + "_note_id: @clinical_note.id, admission_id: @admission.id.to_s, view: 'Note', format: 'pdf', print_setting_id: @print_settings[0].id)" %>
+                <%= link_to eval(print_note), :class => "btn btn-primary btn-xs full_print",:target => "_blank", :data => {method: :get} do %> <i class="fa fa-print mr5"></i> Note <% end %>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+        <% if @clinical_note %>
+          <div class="paper_view">
+            <h4 class="text-center" style="padding-top:10px;text-transform: uppercase;">Admission Summary</h4>
+            <%= render partial: "inpatient/ipd_record/clinical_note/" + @speciality_folder_name + "_notes/view_body", locals: {view: "Summary", mail_job: false} %>
+          </div>
+          <div class="paper_view">
+            <h4 class="text-center" style="padding-top:10px;text-transform: uppercase;">Admission Note</h4>
+            <%= render partial: "inpatient/ipd_record/clinical_note/" + @speciality_folder_name + "_notes/view_body", locals: {view: "Note", mail_job: false} %>
+          </div>
+        <% else %>
+        <h3 class="text-center" style="padding-top:30px;">No Admission Note/Summary</h3>
+        <% end %>
+      </div>
+    <% elsif @department_notes == 'Operative Note' %>
+      <div class="ipdsummary">
+        <div class="col-md-12">
+          <% if @operative_note %>
+            <div class="text-left">
+              <% if @print_settings.count > 1 %>
+                <div class="btn-group">
+                  <button type="button" class="btn btn-primary btn-xs full_print dropdown-toggle" data-toggle="dropdown"><i class="fa fa-print mr5"></i> Summary <i class="fa fa-caret-down"></i></button>
+                  <ul class="dropdown-menu dropdown-left-manual" role="menu" aria-labelledby="summary-print-dropdown" style="">
+                    <% @print_settings.each do |print_setting| %>
+                      <li style="text-align:left" class="multi-print">
+                        <% print_summary = "inpatient_ipd_record_operative_note_" + @speciality_folder_name + "_note_print_path(id: @operative_note.id, " + @speciality_folder_name + "_note_id: @operative_note.id, admission_id: @admission.id.to_s, view: 'Summary', format: 'pdf', print_setting_id: print_setting.id)" %>
+                        <%= link_to eval(print_summary), :class => "",:style => "color: #d9534f;",:target => "_blank", :data => {method: :get} do %> <i class="fa fa-print mr5"></i> <%= print_setting.name %> <% end %>
+                      </li>
+                    <% end %>
+                  </ul>
+                </div>
+                <div class="btn-group">
+                  <button type="button" class="btn btn-primary btn-xs full_print dropdown-toggle" data-toggle="dropdown"><i class="fa fa-print mr5"></i> Note <i class="fa fa-caret-down"></i></button>
+                  <ul class="dropdown-menu dropdown-left-manual" role="menu" aria-labelledby="summary-print-dropdown" style="">
+                    <% @print_settings.each do |print_setting| %>
+                      <li style="text-align:left" class="multi-print">
+                        <% print_note = "inpatient_ipd_record_operative_note_" + @speciality_folder_name + "_note_print_path(id: @operative_note.id, " + @speciality_folder_name + "_note_id: @operative_note.id, admission_id: @admission.id.to_s, view: 'Note', format: 'pdf', print_setting_id: print_setting.id)" %>
+                        <%= link_to eval(print_note), :class => "",:style => "color: #d9534f;",:target => "_blank", :data => {method: :get} do %> <i class="fa fa-print mr5"></i> <%= print_setting.name %> <% end %>
+                      </li>
+                    <% end %>
+                  </ul>
+                </div>
+              <% else %>
+                <% print_summary = "inpatient_ipd_record_operative_note_" + @speciality_folder_name + "_note_print_path(id: @operative_note.id, " + @speciality_folder_name + "_note_id: @operative_note.id, admission_id: @admission.id.to_s, view: 'Summary', format: 'pdf', print_setting_id: @print_settings[0].id)" %>
+                <%= link_to eval(print_summary), :class => "btn btn-primary btn-xs full_print",:target => "_blank", :data => {method: :get} do %> <i class="fa fa-print mr5"></i> Summary <% end %>
+
+                <% print_note = "inpatient_ipd_record_operative_note_" + @speciality_folder_name + "_note_print_path(id: @operative_note.id, " + @speciality_folder_name + "_note_id: @operative_note.id, admission_id: @admission.id.to_s, view: 'Note', format: 'pdf', print_setting_id: @print_settings[0].id)" %>
+                <%= link_to eval(print_note), :class => "btn btn-primary btn-xs full_print",:target => "_blank", :data => {method: :get} do %> <i class="fa fa-print mr5"></i> Note <% end %>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+        <% if @operative_note %>
+          <div class="paper_view">
+              <h4 class="text-center" style="padding-top:10px;text-transform: uppercase;">Operative Summary</h4>
+              <%= render partial: "inpatient/ipd_record/operative_note/" + @speciality_folder_name + "_notes/view_body", locals: {view: "Summary",operative: @operative_note, mail_job: false} %>
+            </div>
+            <div class="paper_view">
+              <h4 class="text-center" style="padding-top:10px;text-transform: uppercase;">Operative Note</h4>
+              <%= render partial: "inpatient/ipd_record/operative_note/" + @speciality_folder_name + "_notes/view_body", locals: {view: "Note",operative: @operative_note, mail_job: false} %>
+            </div>
+        <% else %>
+        <h3 class="text-center" style="padding-top:30px;">No Admission Note/Summary</h3>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="ipdsummary">
+        <div class="col-md-12">
+          <% if @discharge_note %>
+            <div class="text-left">
+              <% if @print_settings.count > 1 %>
+                <div class="btn-group">
+                  <button type="button" class="btn btn-primary btn-xs full_print dropdown-toggle" data-toggle="dropdown"><i class="fa fa-print mr5"></i> Summary <i class="fa fa-caret-down"></i></button>
+                  <ul class="dropdown-menu dropdown-left-manual" role="menu" aria-labelledby="summary-print-dropdown" style="">
+                    <% @print_settings.each do |print_setting| %>
+                      <li style="text-align:left" class="multi-print">
+                        <% @print = "inpatient_ipd_record_discharge_note_" + @speciality_folder_name + "_note_print_path(id: @discharge_note.id, " + @speciality_folder_name + "_note_id: @discharge_note.id, admission_id: @admission.id.to_s, view: 'Summary', format: 'pdf', print_setting_id: print_setting.id)" %>
+                        <%= link_to eval(@print), :class => "",:style => "color: #d9534f;",:target => "_blank", :data => {method: :get} do %> <i class="fa fa-print mr5"></i> <%= print_setting.name %> <% end %>
+                      </li>
+                    <% end %>
+                  </ul>
+                </div>
+                <div class="btn-group">
+                  <button type="button" class="btn btn-primary btn-xs full_print dropdown-toggle" data-toggle="dropdown"><i class="fa fa-print mr5"></i> Note <i class="fa fa-caret-down"></i></button>
+                  <ul class="dropdown-menu dropdown-left-manual" role="menu" aria-labelledby="summary-print-dropdown" style="">
+                    <% @print_settings.each do |print_setting| %>
+                      <li style="text-align:left">
+                        <% @print = "inpatient_ipd_record_discharge_note_" + @speciality_folder_name + "_note_print_path(id: @discharge_note.id, " + @speciality_folder_name + "_note_id: @discharge_note.id, admission_id: @admission.id.to_s, view: 'Note', format: 'pdf', print_setting_id: print_setting.id)" %>
+                        <%= link_to eval(@print), :class => "",:style => "color: #d9534f;",:target => "_blank", :data => {method: :get} do %> <i class="fa fa-print mr5"></i> <%= print_setting.name %> <% end %>
+                      </li>
+                    <% end %>
+                  </ul>
+                </div>
+              <% else %>
+                <% print_summary = "inpatient_ipd_record_discharge_note_" + @speciality_folder_name + "_note_print_path(id: @discharge_note.id, " + @speciality_folder_name + "_note_id: @discharge_note.id, admission_id: @admission.id.to_s, view: 'Summary', format: 'pdf', print_setting_id: @print_settings[0].id)" %>
+                <%= link_to eval(print_summary), :class => "btn btn-primary btn-xs full_print",:target => "_blank", :data => {method: :get} do %> <i class="fa fa-print mr5"></i> Summary <% end %>
+
+                <% print_note = "inpatient_ipd_record_discharge_note_" + @speciality_folder_name + "_note_print_path(id: @discharge_note.id, " + @speciality_folder_name + "_note_id: @discharge_note.id, admission_id: @admission.id.to_s, view: 'Note', format: 'pdf', print_setting_id: @print_settings[0].id)" %>
+                <%= link_to eval(print_note), :class => "btn btn-primary btn-xs full_print",:target => "_blank", :data => {method: :get} do %> <i class="fa fa-print mr5"></i> Note <% end %>
+              <% end %>
+            </div>
+            <% end %>
+          </div>
+        <% if @discharge_note %>
+          <div class="paper_view">
+            <h4 class="text-center" style="padding-top:10px;text-transform: uppercase;">Discharge Summary</h4>
+            <%= render partial: "inpatient/ipd_record/discharge_note/" + @speciality_folder_name + "_notes/view_body", locals: {view: "Summary", mail_job: false} %>
+          </div>
+          <div class="paper_view">
+            <h4 class="text-center" style="padding-top:10px;text-transform: uppercase;">Discharge Note</h4>
+            <%= render partial: "inpatient/ipd_record/discharge_note/" + @speciality_folder_name + "_notes/view_body", locals: {view: "Note", mail_job: false} %>
+          </div>
+        <% else %>
+          <h3 class="text-center" style="padding-top:30px;">No Discharge Note/Summary</h3>
+        <% end %>
+      </div>
+    <% end %>
+<% end %>

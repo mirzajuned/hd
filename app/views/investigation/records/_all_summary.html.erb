@@ -1,0 +1,92 @@
+<div class="col-md-12 text-center">
+  <div class="pcs-entity-title"><span>Investigation Summary</span></div>
+</div>
+
+
+<div class="row mb10">
+  <div class="col-md-12">
+    <div class="row">
+      <div class="summary-line-border"></div>
+      <div class="col-md-4 text-left"><strong>INVESTIGATION </strong></div>
+      <% if ["RadiologyRecord","OphthalmologyRecord"].include?investigation_record[0]._type %>
+          <div class="col-md-8 text-center"><strong>FINDINGS</strong> </div>
+      <% else %>
+          <div class="col-md-4 text-center"><strong>RESULT</strong> </div>
+          <div class="col-md-4 text-center"><strong>NORMAL RANGE </strong></div>
+      <% end %>
+      <div class="summary-line-border" style="margin-top: 20px;"></div>
+    </div>
+  </div>
+
+  <% investigation_record.each do |record|%>
+      <div class="col-md-12" style="border-bottom: 1px solid #e5e5e5">
+        <div class="row">
+          <div class="col-md-4 text-left" style="text-decoration: underline"><b><%= record.investigation_name %></b> </div>
+          <%if record.specimen_type.present? %>
+              <div class="col-md-4 text-right">
+                Specimen Type:
+                <%= record.specimen_type %>
+              </div>
+              <%if record.specimen_date.blank? %>
+                <br>
+              <% end %>
+          <% end %>
+          <% if record.specimen_date.present? %>
+              <%if record.specimen_type.blank? %>
+                <div class="col-md-4"></div>
+              <% end %>
+              <div class="col-md-4 text-right">
+                Specimen Date:
+                <%= record.specimen_date %>
+              </div>
+          <% end %>
+        <% if record.panel_records.try(:size) > 0 %>
+          </div>
+          <%record.panel_records.each do |panel| %>
+              <% if !panel.investigation_val.blank? %>
+                  <div class="col-md-12">
+                    <div class="row">
+                      <div class="col-md-4 text-left"><%= panel.investigation_name %> :</div>
+                      <div class="col-md-4 text-center"><strong><%= panel.investigation_val %></strong> </div>
+                      <div class="col-md-4 text-center"><%= panel.normal_range %> </div>
+                    </div>
+                  </div>
+              <% end %>
+          <% end %>
+        <%else%>
+          <%if record.specimen_type.present? || record.specimen_date.present? %>
+            <div class="col-md-4"></div>
+          <% end %>
+          <% if ["RadiologyRecord","OphthalmologyRecord"].include?record._type %>
+              <div class="col-md-8 text-center"><strong><%= record.investigation_val %></strong> </div>
+          <% else %>
+              <div class="col-md-4 text-center"><strong><%= record.investigation_val %></strong> </div>
+              <div class="col-md-4 text-center"><%=  record.normal_range %> </div>
+          <% end %>
+          </div>
+        <% end %>
+        <% if !record.try(:investigation_comment).blank? %>
+            <div class="row">
+              <div class='col-md-4' ><b>Investigation Remark</b> :</div>
+              <% if ["RadiologyRecord","OphthalmologyRecord"].include?record._type %>
+                  <div class='col-md-8 text-center'><%= record.investigation_comment %></div>
+              <% else %>
+                  <div class='col-md-4 text-center'><%= record.investigation_comment %></div>
+              <% end %>
+            </div>
+        <% end %>
+      
+        <% @lab_tech = (User.find_by(id: record.template_created_by).role_ids.include?(159282002) if record.try(:template_created_by).present?) || false %>
+        <%if record.try(:state) == "reviewed"%>
+          <div class="col-md-12 pull-right" style="margin-top: 1%;">
+            <%= render partial: 'common/user_signature.html.erb',locals: {user_id: record.reviewed_by} %>
+            <!-- <span class="text-center pull-right"><%#= User.find_by(id: record.try(:reviewed_by)).try(:designation)%></span> -->
+          </div>
+        <%elsif record.try(:state) != "reviewed" && @lab_tech == true%>
+          <div class="col-md-12 pull-right" style="margin-top: 1%;">
+            <%= render partial: 'common/user_signature.html.erb',locals: {user_id: record.template_created_by} %>
+          </div>
+        <%end%>
+      </div>
+  <% end %>
+</div>

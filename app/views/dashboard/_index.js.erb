@@ -1,0 +1,192 @@
+window.onresize = function(event) {
+  view_resize()
+}
+
+view_resize()
+function view_resize() {
+  // console.log($(window).height())
+  // if($(window).height() <= 350){
+  //   $(".nav-dashboard").children().css('font-size', "8px")
+  //   $(".nav-dashboard").find('button').css('font-size', "8px")
+  // } else {
+  //   $(".nav-dashboard").children().css('font-size', "14px")
+  //   $(".nav-dashboard").find('button').css('font-size', "14px")
+  // }
+  $(".main-dashboard").css('height',$(window).height())
+  $(".main-others").css('height',$(window).height())
+}
+
+$('#dashboard-datepicker-inline').datepicker({
+  dateFormat: "dd/mm/yy", 
+  showOn: "button",
+  buttonText: '<i class="fa fa-calendar"></i>',
+  onSelect: function (dateText,obj) {
+    jQuery.ajax({
+      type: "GET",
+      dataType: "script",
+      url: "/dashboard?current_date="+moment(dateText, "DD/MM/YYYY").format('DD-MMMM-YYYY')+"&facility_id=" + $(".facility-dropdown").val() + "&user_id=" + $(".user-dropdown").val() + "&count=" + $(".show-dropdown").val() + "&sort=" + $(".sort-dropdown").val(),
+    })
+  }
+})
+$(".ui-datepicker-trigger").addClass("btn btn-danger calender-btn navbar-btn navbar-btn-calender navbar-btn-hover")
+
+$(".facility-dropdown").on('change', function(){
+  var fac_id = $(".facility-dropdown").val();
+  var user_id = "<%= @user.try(:id) || 0 %>";
+  $.ajax({
+    type: "GET",
+    dataType: "json",
+    url: "/dashboard/get_users",
+    data: {facility_id: fac_id, user_id: user_id},
+    success: function(response){
+      $('.user-dropdown').children().remove();
+      if(response.show_all == true) {
+        $('.user-dropdown').append($("<option></option>").attr("value",0).text("All Users"));
+      }
+      $.each(response.user, function(key, value) {
+        $('.user-dropdown').append($("<option></option>").attr("value",value[1]).text(value[0]));
+      });
+      if(response.active_user.length > 0){
+        if($('.user-dropdown').find("option[value=<%= @dashboard_settings.try(:default_user) %>]")){
+          $('.user-dropdown').find("option[value=<%= @dashboard_settings.try(:default_user) %>]").attr('selected', 'selected')
+        } else {
+          $('.user-dropdown').find("option[value=" + response.active_user + "]").attr('selected', 'selected')
+        }
+      } else {
+        $('.user-dropdown').find("option[value='<%= current_user.id.to_s %>']").attr('selected', 'selected')
+      }
+      $(".user-dropdown").trigger('change')
+    }
+  });
+})
+$(".facility-dropdown").trigger('change')
+
+
+$(".user-dropdown").on('change', function(){
+  loading_dots()
+  var facility_id = $(".facility-dropdown").val();
+  var user_id = $(this).val();
+  var count = $(".show-dropdown").val()
+  var sort = $(".sort-dropdown").val()
+  var current_date = '<%= @current_date %>'
+  $.ajax({
+    type: "GET",
+    dataType: "script",
+    url: "/dashboard/show",
+    data: {
+      facility_id: facility_id,
+      user_id: user_id,
+      count: count,
+      sort: sort,
+      current_date: current_date
+    },
+    success: function(){
+    }
+  });
+})
+
+$("#btn-dashboard-backdate").on('click',function(){
+  var facility_id = $(".facility-dropdown").val();
+  var user_id = $(".user-dropdown").val();
+  var count = $(".show-dropdown").val()
+  var sort = $(".sort-dropdown").val()
+  console.log(user_id)
+  $.ajax({
+    type: "GET",
+    dataType: "script",
+    data: {
+      current_date: "<%= @current_date.yesterday %>",
+      facility_id: facility_id,
+      user_id: user_id,
+      count: count,
+      sort: sort
+    },
+    url: "/dashboard"
+  })
+})
+
+$("#btn-dashboard-frontdate").on('click',function(){
+  var facility_id = $(".facility-dropdown").val();
+  var user_id = $(".user-dropdown").val();
+  var count = $(".show-dropdown").val()
+  var sort = $(".sort-dropdown").val()
+  console.log(user_id)
+  $.ajax({
+    type: "GET",
+    dataType: "script",
+    data: {
+      current_date: "<%= @current_date.tomorrow %>",
+      facility_id: facility_id,
+      user_id: user_id,
+      count: count,
+      sort: sort
+    },
+    url: "/dashboard"
+  })
+})
+
+$("#btn-dashboard-today").on('click',function(){
+  var facility_id = $(".facility-dropdown").val();
+  var user_id = $(".user-dropdown").val();
+  var count = $(".show-dropdown").val()
+  var sort = $(".sort-dropdown").val()
+  $.ajax({
+    type: "GET",
+    dataType: "script",
+    data: {
+      current_date: "<%= Date.current %>",
+      facility_id: facility_id,
+      user_id: user_id,
+      count: count,
+      sort: sort
+    },
+    url: "/dashboard"
+  })
+})
+
+
+$(".show-dropdown").on('change',function(){
+  loading_dots()
+  var facility_id = $(".facility-dropdown").val();
+  var user_id = $(".user-dropdown").val();
+  var count = $(this).val()
+  var sort = $(".sort-dropdown").val()
+  var current_date = '<%= @current_date %>'
+  $.ajax({
+    type: "GET",
+    dataType: "script",
+    data: {
+      current_date: current_date,
+      facility_id: facility_id,
+      user_id: user_id,
+      count: count,
+      sort: sort
+    },
+    url: "/dashboard/show"
+  })
+})
+
+$(".sort-dropdown").on('change',function(){
+  loading_dots()
+  var facility_id = $(".facility-dropdown").val();
+  var user_id = $(".user-dropdown").val();
+  var sort = $(this).val()
+  var count = $(".show-dropdown").val()
+  var current_date = '<%= @current_date %>'
+  $.ajax({
+    type: "GET",
+    dataType: "script",
+    data: {
+      current_date: current_date,
+      facility_id: facility_id,
+      user_id: user_id,
+      count: count,
+      sort: sort
+    },
+    url: "/dashboard/show"
+  })
+})
+
+function loading_dots(){
+  $(".dashboard-content").html("<div class='loading_dots'><span></span> <span></span> <span></span></div>")
+}

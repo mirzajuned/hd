@@ -1,0 +1,64 @@
+function tax_groups(item, qty, old_qty){
+  var groups = item.find('.tax_group')
+  var item_tax = 0.00
+  var discount_percentage = (parseFloat($('#inventory_transaction_return_invoice_discount_percentage').val())) || 0
+  groups.each(function(){
+    amount = parseFloat($(this).attr('data-amount')) || 0.00
+    new_amount = amount/old_qty*qty
+    console.log('tax-grp', new_amount)
+    $(this).find('.item-tax-group-amount').val(new_amount)
+    item_tax += new_amount
+  });
+  item.find('.item-tax-amount').text(item_tax.toFixed(2))
+  item.find('.item_total_tax_amount').val(item_tax)
+  return item_tax
+}
+
+$("#add-unit-lot-modal").modal("hide")
+var tr_class = '<%= params[:tr_class_val] %>'
+parent = $('.' + tr_class)
+
+var return_quantity = parseInt('<%= @received_lot_units&.size.to_i %>')
+var max_quantity = parseInt(parent.find('.item_max_quantity').val())
+var final_return_quantity = return_quantity < max_quantity ? return_quantity : max_quantity
+parseInt(parent.find('.item_quantity').val(final_return_quantity))
+var actual_quantity = parseInt(parent.find('.quantity').val())
+var item_unit_cost = parseFloat(parent.find('.item_unit_cost').val())
+var item_unit_taxable_amount = parseFloat(parent.find('.item_unit_taxable_amount').val())
+var item_total_cost = item_unit_cost * final_return_quantity
+
+var item_tax = tax_groups(parent, final_return_quantity, max_quantity)
+var item_discount = (parseFloat($('#inventory_transaction_return_invoice_discount_percentage').val()) * item_total_cost)
+var item_gross = (item_unit_taxable_amount * final_return_quantity + item_tax) || 0
+parent.find('.item-discount').text(item_discount.toFixed(2))
+parent.find('.item-discount-input').val(item_discount.toFixed(2))
+parent.find('.discount_amount').val(item_discount)
+parent.find(".price_including_tax").val(item_gross.toFixed(1))
+parent.find(".price_including_tax_label").text(item_gross.toFixed(1))
+calTotalPrice()
+$('.return-changes').trigger('change')
+
+function calTotalPrice() {
+  var each_item_totals = 0;
+  $('.price_including_tax_label').each(function(){
+    each_item_totals += parseFloat($(this).text()) || 0;
+  });
+  $("#inventory_transaction_return_total_cost").val(each_item_totals.toFixed(2))
+  $("#inventory_transaction_return_return_amount").val(each_item_totals.toFixed(2))
+}
+
+let lot_unit_ids = '<%= params[:lot_unit_ids] %>'
+let data_1 = JSON.parse(lot_unit_ids.replace(/&quot;/g,'"'));
+var _href = '/inventory/transaction/returns/filter_item?'
+if (return_quantity > 0) {
+	let selected_lot_unit_ids = '<%= @received_lot_units %>'
+	var data = JSON.parse(selected_lot_unit_ids.replace(/&quot;/g,'"'));
+	$('.' + tr_class).attr("href", _href +`&selected_lot_unit_ids=${data}`+`&lot_unit_ids=${data_1}`+`&tr_class_val=${tr_class}`);
+} else {
+	$('.' + tr_class).attr("href", _href +`&lot_unit_ids=${data_1}`+`&tr_class_val=${tr_class}`);
+}
+
+parent.find('.selected-lot-units').val('')
+data.forEach(function(item) {
+	parent.find('.selected-lot-units').append(`<option selected="selected" value="${item}">${item}</option>`);
+})

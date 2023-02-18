@@ -1,0 +1,54 @@
+<% active_user = current_user %>
+<% if @admission_list_view.sm_state != 'discharged' && ['receptionist', 'nurse', 'doctor', 'counsellor', 'tpa'].include?(current_user.primary_role.to_s) %>
+  <div class="col-sm-12">
+    <div class="row no_margin">
+      <% if @admission_list_view.user_id == active_user.id %>
+        <% if @admission_list_view.message.present? && @transition_users.present? %>
+          <% messaging_user = @transition_users.find { |user| user[:id] == @state_transitions[-2].try(:user_id) } %>
+          <div class="col-xs-12 no_padding mb10">
+            <b><i>Message <%= "from #{messaging_user[:name]}" if messaging_user.present? %>:</i></b><br>
+            <b style="color:#f00;"><i>&#10077; <%= @admission_list_view.message.to_s %> &#10078;</i></b>
+          </div>
+        <% end %>
+        <% if @admission_list_view.sm_state != 'scheduled' %>
+          <div class="col-xs-2 no_padding"><span>Send To :</span></div>
+          <div class="col-xs-10 no_padding">
+            <% @dropdown_users.each do |role, details| %>
+              <div class="<%= role %> dropdown" style="display: inline;margin-right:15px;">
+                <button class="btn btn-xs btn-primary dropdown-toggle <%= role %>-button user_button" type="button" data-toggle="dropdown" style="padding: 0 0 0 5px;margin-bottom:5px;"><%= role == 'tpa' ? 'TPA' : role.to_s.titleize %>&nbsp;&nbsp;<span class="caret"></span>&nbsp;&nbsp;</button>
+                <ul class="dropdown-menu" style="margin-top: 7px;;max-height: 300px;overflow-y: auto">
+                  <% if details.count > 0 %>
+                    <% details.each do |detail| %>
+                      <% if detail[0] != active_user.id.to_s %>
+                        <% user_state = { active_state: detail[3], state_color: detail[4] } %>
+                        <% offline_style = user_state[:active_state] == 'Offline' ? 'opacity:0.5;text-decoration: line-through;' : '' %>
+                        <li>
+                          <%= link_to new_message_admission_list_view_path(id: @admission_list_view.id, to_state: role, to_user: detail[0]), data: { remote: true, toggle: 'modal', target: '#admission-modal' }, style: offline_style do %>
+                            <% if current_facility.show_user_state && user_state %>
+                              <span><i class="fa fa-circle" style="color: <%= user_state[:state_color] %>">&nbsp;&nbsp;</i></span>
+                            <% end %>
+                            <span><%= detail[1] %></span>&nbsp;&nbsp;<label class="label label-primary" style="border-radius:25px;font-size:12px;"><%= detail[5].to_i %></label>
+                          <% end %>
+                        </li>
+                      <% end %>
+                    <% end %>
+                  <% else %>
+                    <li class="text-center"><span>No Users Found</span></li>
+                  <% end %>
+                </ul>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+      <% elsif @admission_list_view.sm_state != 'scheduled' %>
+        <div class="col-md-12 text-right">
+          
+          <% if @state_transitions[-2].try(:user_id) == active_user.id %>
+            <%= link_to undo_state_admission_list_view_path(id: @admission_list_view.id), data: { remote: true }, class: 'btn btn-danger btn-xs' do %>Undo<% end %>
+          <% end %>
+          <%= link_to change_state_admission_list_view_path(id: @admission_list_view.id, to_state: active_user.primary_role, to_user: active_user.id, from_user: @admission_list_view.user_id), data: { remote: true }, class: 'btn btn-primary btn-xs' do %>Get Patient<% end %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+<% end %>

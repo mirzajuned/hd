@@ -1,0 +1,186 @@
+$("#search-procedure").on('keyup', function(){
+  procedure_list = $(".main-procedure-list");
+  search = $(this).val().toUpperCase().trim();
+  count = 0
+  for (var i = procedure_list.length - 1; i >= 0; i--) {
+    procedure_name = $(procedure_list[i]).find(".procedure_name")
+    if($(procedure_name).html().toUpperCase().indexOf(search) > -1) {
+      $(procedure_list[i]).css("display", "");
+      count += 1
+    } else {
+      $(procedure_list[i]).css("display", "none");
+    }
+  }
+  if (count > 0){
+    $('input[id="save-multiple-procedure"]').show()
+  } else {
+    $('input[id="save-multiple-procedure"]').hide()
+  }
+})
+
+$(".procedure-service-body").on("click", ".btn-add-procedure-service", function(e){
+  e.preventDefault();
+  var add_procedure_service = $(this).closest(".add-procedure-service")
+  var service_type_code = $(this).closest(".procedure-service-details").find('.service_type_code').val()
+  var service_type_code_name = $(this).closest(".procedure-service-details").find('.service_type_code_name').val()
+  var service_type_code_type = $(this).closest(".procedure-service-details").find('.service_type_code_type').val()
+
+  var counter = $(".procedure-service-details").length
+
+  var procedure_service = `
+    <div class="row procedure-service-details mb10">
+      <input type='hidden' name='service_master[${counter}][is_updated]' value='false' class='is_updated'>
+      <input type='hidden' name='service_master[${counter}][service_type]' value='Procedure' class='service_type'>
+      <input type='hidden' name='service_master[${counter}][service_type_code]' value='${service_type_code}' class='service_type_code'>
+      <input type='hidden' name='service_master[${counter}][service_type_code_name]' value='${service_type_code_name}' class='service_type_code_name'>
+      <input type='hidden' name='service_master[${counter}][service_type_code_type]' value='${service_type_code_type}' class='service_type_code_type'>
+      <div class="col-md-2">
+        <select name='service_master[${counter}][service_group_id]' class='form-control service_group_list p5_10' style='height:30px;'>
+          <option value=''>Select Group</option>
+          <% @service_groups_attributes.each do |service_group| %>
+            <option value='<%= service_group[:id].to_s %>'>
+              <%= service_group[:name].to_s %>
+            </option>
+          <% end %>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <select name='service_master[${counter}][service_sub_group_id]' class='form-control service_sub_group_list p5_10' style='height:30px;'>
+          <option value=''>Select Sub Group</option>
+          <% @service_sub_groups_attributes.each do |service_sub_group| %>
+            <option value='<%= service_sub_group[:id].to_s %>'>
+              <%= service_sub_group[:name].to_s %>
+            </option>
+          <% end %>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <input type='text' name='service_master[${counter}][service_name]' class='form-control service_name p5_10'>
+      </div>
+      <div class="col-md-2 col-md-3-shared">
+        <input type='text' name='service_master[${counter}][organisation_service_code]' class='form-control organisation_service_code p5_10'>
+      </div>
+      <div class="col-md-2 col-md-3-shared">
+        <input type='text' name='service_master[${counter}][service_amount]' class='form-control service_amount p5_10' onKeyPress='return event.charCode >= 46 && event.charCode <= 57'>
+      </div>
+      <div class="col-md-2">
+        <select name='service_master[${counter}][department_ids]' class='form-control department_dropdown' multiple=true>
+          <option value='485396012'>OPD</option>
+          <option value='486546481'>IPD</option>
+        </select>
+      </div>
+      <div class="col-md-1">
+        <button class='btn btn-danger btn-remove-procedure-service btn-xs' style='display:inline-block;'>&times;</button>
+        <button class='btn btn-primary btn-xs btn-add-procedure-service' style='display:inline-block;'><i class='fa fa-plus'></i></button>
+      </div>
+    </div>
+  `
+
+  $(add_procedure_service).append(procedure_service)
+  $(add_procedure_service).find('.department_dropdown').select2();
+
+  _renumber_service_row()
+  add_remove_button(add_procedure_service)
+})
+
+$(".procedure-service-body").on("click", ".btn-remove-procedure-service", function(e){
+  e.preventDefault();
+  var add_procedure_service = $(this).closest(".add-procedure-service")
+  var procedure_service_details = $(this).closest(".procedure-service-details")
+  var is_active = $(procedure_service_details).find(".is_active")
+
+  $(procedure_service_details).find(".is_updated").val('true')
+  if(is_active.length > 0){
+    is_active.val("false")
+    $(this).hide();
+    $(procedure_service_details).find(".btn-activate-procedure-service").show()
+  } else {
+    $(procedure_service_details).remove()
+  }
+
+  _renumber_service_row()
+  add_remove_button(add_procedure_service)
+})
+
+$(".procedure-service-body").on("click", ".btn-activate-procedure-service", function(e){
+  e.preventDefault();
+  var procedure_service_details = $(this).closest(".procedure-service-details")
+  $(procedure_service_details).find(".is_active").val("true")
+  $(procedure_service_details).find(".is_updated").val('true')
+
+  $(this).hide();
+  $(procedure_service_details).find(".btn-remove-procedure-service").show()
+})
+
+$(".procedure-service-body").on("change", ".service_group_list", function(){
+  change_is_update(this)
+})
+
+$(".procedure-service-body").on("change", ".service_sub_group_list", function(){
+  change_is_update(this)
+})
+
+$(".procedure-service-body").on("keyup", ".service_name", function(){
+  change_is_update(this)
+})
+
+$(".procedure-service-body").on("keyup", ".organisation_service_code", function(){
+  change_is_update(this)
+})
+
+$(".procedure-service-body").on("keyup", ".service_amount", function(){
+  change_is_update(this)
+})
+
+$(".procedure-service-body").on("change", ".department_dropdown", function(){
+  change_is_update(this)
+})
+
+function change_is_update(_this){
+  $(_this).closest(".procedure-service-details").find(".is_updated").val("true")
+}
+
+var add_procedure_service = $(".add-procedure-service")
+for (var i = add_procedure_service.length - 1; i >= 0; i--) {
+  add_remove_button(add_procedure_service[i]);
+}
+
+function add_remove_button(add_procedure_service){
+  $(add_procedure_service).find(".btn-add-procedure-service").hide()
+  $(add_procedure_service).find(".btn-add-procedure-service:last").show()
+
+  if($(add_procedure_service).find(".is_active").val() == undefined){
+    if($(add_procedure_service).find(".procedure-service-details").length > 1){
+      $(add_procedure_service).find(".btn-remove-procedure-service:first").show()
+    } else {
+      $(add_procedure_service).find(".btn-remove-procedure-service").hide()
+    }
+  } else {
+    if($(add_procedure_service).find(".is_active").val() == "true"){
+      $(add_procedure_service).find(".btn-remove-procedure-service:first").show()
+      $(add_procedure_service).find(".btn-activate-procedure-service:first").hide()
+    } else {
+      $(add_procedure_service).find(".btn-remove-procedure-service:first").hide()
+      $(add_procedure_service).find(".btn-activate-procedure-service:first").show()
+    }
+  }
+}
+
+function _renumber_service_row(){
+  var services = $(".procedure-service-details")
+  for (var i = services.length - 1; i >= 0; i--) {
+    $(services[i]).find(".service_id").attr("name", `service_master[${i}][id]`)
+    $(services[i]).find(".is_active").attr("name", `service_master[${i}][is_active]`)
+    $(services[i]).find(".is_updated").attr("name", `service_master[${i}][is_updated]`)
+    $(services[i]).find(".service_type").attr("name", `service_master[${i}][service_type]`)
+    $(services[i]).find(".service_type_code").attr("name", `service_master[${i}][service_type_code]`)
+    $(services[i]).find(".service_type_code_name").attr("name", `service_master[${i}][service_type_code_name]`)
+    $(services[i]).find(".service_type_code_type").attr("name", `service_master[${i}][service_type_code_type]`)
+    $(services[i]).find(".service_group_list").attr("name", `service_master[${i}][service_group_id]`)
+    $(services[i]).find(".service_sub_group_list").attr("name", `service_master[${i}][service_sub_group_id]`)
+    $(services[i]).find(".service_name").attr("name", `service_master[${i}][service_name]`)
+    $(services[i]).find(".organisation_service_code").attr("name", `service_master[${i}][organisation_service_code]`)
+    $(services[i]).find(".service_amount").attr("name", `service_master[${i}][service_amount]`)
+    $(services[i]).find(".department_dropdown").attr("name", `service_master[${i}][department_ids][]`)
+  }
+}

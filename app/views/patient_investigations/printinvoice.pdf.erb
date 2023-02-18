@@ -1,0 +1,156 @@
+
+<div class="container-fluid">
+  <div class="row mb5">
+    <span style="font-size:12px;" class="text-center col-md-12"><b>Investigation Receipt</b></span>
+  </div>
+<div class="print-template" style="font-family: <%= UsersSetting.find_by(user_id: current_user.id).font_style %>">
+
+  <!-- <div class="pcs-entity-title"><span>Receipt</span></div> -->
+
+  
+
+  <div class="row mb10" style="border:1px solid #666;padding:5px;">
+  <div class="col-md-3">
+    <p><b>Patient Name</b></p>
+    <p><b>Patient ID </b></p>
+    <p><b>Mobile </b></p>
+    <p><b>Age / Gender </b></p>
+    <p><b>Address </b></p>
+  </div>
+  <div class="col-md-3">
+    <p><b>:</b>&nbsp; <%= @patient_details[:fullname].upcase %></p>
+    <p><b>:</b>&nbsp; <%= PatientIdentifier.find_by(:patient_id => @patient_details.id,:organisation_id => current_user.organisation_id).try(:patient_org_id) %></p>
+    <p><b>:</b>&nbsp; 
+      <% p_mobilenumber_counter = 0 %>
+      <% if @patient_details[:mobilenumber].length > 0 %>
+          <% p_mobilenumber_counter = p_mobilenumber_counter + 1 %>
+      <% end %>
+      <% if p_mobilenumber_counter > 0 %>
+      <span>+91<%= @patient_details[:mobilenumber] %></span><br>
+      <% end %>
+    </p>
+    <p><b>:</b>&nbsp; <%if @patient.calculate_age.present? || @patient.gender.present?%><%= @patient.calculate_age %>/<%= @patient.gender %><% else %> Unavailable<% end %> </p>
+    <p><b>:</b>&nbsp; 
+      <% p_address_counter = 0 %> <% p_address_1 = "" %> <% p_address_2 = "" %> <% p_address_city = "" %> <% p_address_state = "" %> <% p_address_pincode = "" %>
+        <% if @patient_details.read_attribute(:"address_1").length > 0 %>
+            <% p_address_counter = p_address_counter + 1 %>
+        <% end %>
+        <% if @patient_details.read_attribute(:"address_2").length > 0 %>
+            <% p_address_counter = p_address_counter + 1 %>
+        <% end %>
+        <% if @patient_details.read_attribute(:"city").length > 0 %>
+            <% p_address_counter = p_address_counter + 1 %>
+        <% end %>
+        <% if @patient_details.read_attribute(:"state").length > 0 %>
+            <% p_address_counter = p_address_counter + 1 %>
+        <% end %>
+        <% if !@patient_details.read_attribute(:"pincode").nil? %>
+            <% p_address_counter = p_address_counter + 1 %>
+        <% end %>
+        <% if p_address_counter > 0 %>
+        <span id="tmp_billing_address" style="white-space: pre-wrap;"><% if @patient_details[:address_1].length > 0 %><%= @patient_details[:address_1] %><% end %>
+          <% if @patient_details[:address_2].length > 0 %><%= @patient_details[:address_2] %><% end %>
+          <% if @patient_details[:city].length > 0 %><%= @patient_details[:city] %><% end %>
+          <% if @patient_details.try(:state) && @patient_details.try(:pincode) %><%= @patient_details[:state]+" - "+@patient_details[:pincode].to_s %><% end %>
+        </span>
+      <% end %>
+    </p>
+  </div>
+  <div class="col-md-3">
+    <p><b>Doctor </b></p>
+    <p><b>Bill Date </b></p>
+    <p><b>Bill No. </b></p>
+    <p><b>Department</b></p>
+  </div>
+  <div class="col-md-3">
+    <p><b>:&nbsp;</b><%= User.find(@patient_ophthal_investigation.user_id).fullname.upcase %></p>
+    <p><b>:&nbsp;</b><%= @invoice.created_at.strftime("%d %b'%y %H:%M %p") %></p>
+    <p><b>:&nbsp;</b><%= @invoice.bill_number %></p>
+    <p><b>:&nbsp;</b><%= @patient_ophthal_investigation.specalityname.upcase%></p>
+  </div>
+</div>
+<br><br>
+<div class="row">
+  <div class="row mb5" style="border-bottom:1px solid #eee;">
+    <div class="col-md-1"><b style="color:#000;">S.No</b></div>
+    <div class="col-md-3"><b style="color:#000;">Investigation Name</b></div>
+    <div class="col-md-2"> <b>Advise Date</b></div>
+    <div class="col-md-2"><b>Unit price</b></div>
+    <div class="col-md-2"><b>Total Unit</b></div>
+    <div class="col-md-2"><b style="color:#000;">Total</b></div>
+  </div>
+</div>
+  <div class="row" style="border-bottom:1px solid #eee;">
+
+    
+      <% detail_count = 1 %>
+      <% @invoice.services.map do |each_detail| %>
+        <div class="row mb5" style="border-bottom:1px dashed #eee;">
+          <div class="col-md-1"><%= detail_count %></b></div>
+          <div class="col-md-3"><%= each_detail['label'] %></b></div>
+          <div class="col-md-2"><%= @patient_ophthal_investigation.created_at.strftime("%d %b'%y")%></div>
+          <div class="col-md-2"><%= each_detail['unit_price'] %></div>
+          <div class="col-md-2">1</div>
+          <div class="col-md-2"><%= each_detail['unit_price'] %></b></div>
+          
+        </div>
+      <%  detail_count+=1
+          end %>
+  <br><br>
+  </div><br><br>
+  <div class="row invoice_calculation_list">
+    <div class="row mb5">
+      <div class="col-md-3 col-md-offset-7 text-right">
+        <b>Gross Bill Total :</b>
+      </div>
+      <div class="col-md-2 text-right">
+        <b style="color:#000;"><%= @invoice.total %>0</b>
+      </div>
+    </div>
+    <div class="row mb5">
+      <div class="col-md-3 col-md-offset-7 text-right">
+        <b>Discount :</b>
+      </div>
+      <div class="col-md-2 text-right">
+        <b><%= @invoice.additional_discount %>0</b>
+      </div>
+    </div>
+    <div class="row mb5">
+      <div class="col-md-7">
+        <b>Mode Of Payment: </b> <%= @invoice.mode_of_payment %>
+      </div>
+      <div class="col-md-3  text-right">
+        <b>Net Amount :</b>
+      </div>
+      <div class="col-md-2 text-right">
+        <b style="color:#000;"><%= @invoice.total %>0</b>
+      </div>
+    </div>
+    <div class="row mb5">
+    <br><br>
+      <div class="col-md-2 col-md-offset-10 text-right" style="border-bottom:1px solid #000;">
+    </div>
+    <div class="row mb5">
+      <div class="col-md-2 col-md-offset-10 text-right"> <b>Signature</b></div>
+    </div>
+    
+  </div>
+
+    
+
+
+
+  </div>
+ 
+
+</div>
+<style type="text/css">
+  .container-fluid {
+    font-size: 8px;
+      font-family: <%= UsersSetting.find_by(user_id: current_user.id).font_style %>;
+  }
+
+  .page_breaker {
+    page-break-after: always;
+  }
+</style>

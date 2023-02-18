@@ -1,0 +1,1382 @@
+$("#inventory_store_country_id").select2();
+$("#inventory_store_billing_country_id").select2();
+$("#inventory_store_department_id").select2();
+$("#inventory_store_facility_id").select2();
+$('#inventory_store_entity_group_id').select2();
+$('#inventory_store_requisition_requested_store_id').select2();
+
+
+$('.vietnam-facility').hide();
+$("#inventory_store_country_id").on('change', function() {
+  var country_id = $('option:selected', this).attr('value');
+  check_address();
+  autocomplete_check(country_id);
+});
+
+$("#inventory_store_billing_country_id").on('change', function() {
+  var country_id = $('option:selected', this).attr('value');
+  check_billing_address();
+  autocomplete_billing_check(country_id);
+});
+
+$("#inventory_store_department_id").on('change', function() {
+  check_store_type();
+});
+
+$("input[name = 'inventory_store[enable_stock_management]']").on("click",function() {
+
+  if ($(this).val() == "true"){
+    $("#inventory_store_billable_transaction_true").prop("checked", true)
+    $("#inventory_store_enable_stock_entry_true").prop("checked", true)
+    $(".toggle-stock-management").show()
+  }
+  else {
+    $("#inventory_store_billable_transaction_false").prop("checked", true)
+    $("#inventory_store_enable_stock_entry_false").prop("checked", true)
+
+    $(".toggle-stock-management").hide()
+  }
+
+})
+
+function check_central_hub(val) {
+  if (val == "true"){
+    $('.auto-requisition-central-hub').show()
+  }
+  else {
+    $('.auto-requisition-central-hub').hide()
+  }
+}
+
+$("input[name = 'inventory_store[auto_requisition]']").on("click",function() {
+  let val = $(this).val()
+  check_central_hub(val)
+})
+
+check_central_hub('<%= @store.auto_requisition %>')
+
+function check_auto_requisition(val) {
+  if (val == "true"){
+    $('.enable-disable-auto-requisition').show()
+    if ($("#inventory_store_auto_requisition_true").prop('checked')) {
+      $('.auto-requisition-central-hub').show()
+    } else {
+      $('.auto-requisition-central-hub').hide()
+    }
+  }
+  else {
+    $('.enable-disable-auto-requisition').hide()
+    $('.auto-requisition-central-hub').hide()
+  }
+}
+
+$("input[name = 'inventory_store[requisition]']").on("click",function() {
+  let val = $(this).val()
+  check_auto_requisition(val)
+})
+
+check_auto_requisition('<%= @store.requisition %>')
+
+function check_tax_invoice(val) {
+  if (val == "true"){
+    $('.enable-tax-invoice').show()
+    $("#inventory_store_enable_tax_invoice_true").prop('checked', true)
+  }
+  else {
+    $('.enable-tax-invoice').hide()
+    $("#inventory_store_enable_tax_invoice_true").prop('checked', false)
+  }
+}
+
+$("input[name = 'inventory_store[enable_transfer]']").on("click",function() {
+  let val = $(this).val()
+  check_tax_invoice(val)
+})
+
+check_tax_invoice('<%#= @store.enable_tax_invoice %>')
+
+$('#inventory_store_requisition_requested_store_id').on('change', function() {
+  let store_name = $('#inventory_store_requisition_requested_store_id option:selected').text()
+  $('#inventory_store_requisition_requested_store_name').val(store_name)
+})
+
+$("#inventory_store_department_id").on("change", function(){
+  var department_name = $("#inventory_store_department_id option:selected").text()
+  if (department_name == 'OT Store') {
+    $("#inventory_store_department_name").val('IPD')
+  } else {
+    $("#inventory_store_department_name").val(department_name)
+  }
+})
+
+
+
+// Validation
+function validate_inventory_store_form() {
+  $('#inventory_store_form').validate({
+    rules: {
+      "inventory_store[name]": {
+        required: true,
+      },
+      "inventory_store[abbreviation_name]": {
+        required: true,
+      },
+      "inventory_store[department_id]": {
+        required: true,
+      },
+      "inventory_store[billable_transaction]": {
+        required: true,
+      },
+      "inventory_store[enable_stock_entry]": {
+        required: true,
+      },
+      "inventory_store[enable_transfer]": {
+        required: true,
+      },
+      "inventory_store[enable_purchase_order]": {
+        required: true,
+      },
+      "inventory_store[enable_transfer_order]": {
+        required: true,
+      },
+      "inventory_store[enable_receiving_order]": {
+        required: true,
+      },
+      "inventory_store[facility_ids][]": {
+        required: true,
+      },
+      "inventory_store[enable_receiving]": {
+        required: true,
+      },
+      "inventory_store[mobilenumber]": {
+        required: true,
+      },
+      "inventory_store[country_id]": {
+        required: true,
+      },
+      "inventory_store[billing_country_id]": {
+        required: true,
+      },
+      "inventory_store[address]": {
+        required: true,
+      },
+      "inventory_store[billing_address]": {
+        required: true,
+      },
+      "inventory_store_facility_id[]": {
+        required: true,
+      },
+      // "inventory_store[city]": {
+      //   required: true,
+      //   minlength: 3,
+      //   "remote":  {
+      //     url: '/locations/check_city',
+      //     type: "get",
+      //     data: { country_id: function(){ return $('#inventory_store_country_id option:selected').attr('value') } }
+      //   }
+      // },
+      // "inventory_store[billing_city]": {
+      //   required: true,
+      //   minlength: 3,
+      //   "remote":  {
+      //     url: '/locations/check_city',
+      //     type: "get",
+      //     data: { country_id: function(){ return $('#inventory_store_billing_country_id option:selected').attr('value') } }
+      //   }
+      // },
+      // "inventory_store[state]": {
+      //   required: true,
+      //   minlength: 3,
+      //   "remote":  {
+      //     url: '/locations/check_state',
+      //     type: "get",
+      //     data: { country_id: function(){ return $('#inventory_store_country_id option:selected').attr('value') } }
+      //   }
+      // },
+      // "inventory_store[billing_state]": {
+      //   required: true,
+      //   minlength: 3,
+      //   "remote":  {
+      //     url: '/locations/check_state',
+      //     type: "get",
+      //     data: { country_id: function(){ return $('#inventory_store_billing_country_id option:selected').attr('value') } }
+      //   }
+      // },
+      // "inventory_store[pincode]": {
+      //   required: true,
+      //   minlength: 3,
+      //   "remote":  {
+      //     url: '/locations/check_pincode',
+      //     type: "get",
+      //     data: { country_id: function(){ return $('#inventory_store_country_id option:selected').attr('value') } }
+      //   }
+      // },
+      // "inventory_store[billing_pincode]": {
+      //   required: true,
+      //   minlength: 3,
+      //   "remote":  {
+      //     url: '/locations/check_pincode',
+      //     type: "get",
+      //     data: { country_id: function(){ return $('#inventory_store_billing_country_id option:selected').attr('value') } }
+      //   }
+      // },
+      // "inventory_store[district]": {
+      //   required: true,
+      //   minlength: 2,
+      //   "remote":  {
+      //     url: '/locations/check_district',
+      //     type: "get",
+      //     data: { country_id: function(){ return $('#inventory_store_country_id option:selected').attr('value') } }
+      //   }
+      // },
+      // "inventory_store[billing_district]": {
+      //   required: true,
+      //   minlength: 2,
+      //   "remote":  {
+      //     url: '/locations/check_district',
+      //     type: "get",
+      //     data: { country_id: function(){ return $('#inventory_store_billing_country_id option:selected').attr('value') } }
+      //   }
+      // },
+      // "inventory_store[commune]": {
+      //   required: true,
+      //   minlength: 2,
+      //   "remote":  {
+      //     url: '/locations/check_commune',
+      //     type: "get",
+      //     data: { country_id: function(){ return $('#inventory_store_country_id option:selected').attr('value') } }
+      //   }
+      // },
+      // "inventory_store[billing_commune]": {
+      //   required: true,
+      //   minlength: 2,
+      //   "remote":  {
+      //     url: '/locations/check_commune',
+      //     type: "get",
+      //     data: { country_id: function(){ return $('#inventory_store_billing_country_id option:selected').attr('value') } }
+      //   }
+      // },
+      "inventory_store[entity_group_id]": {
+        required: true,
+      }
+    },
+    messages: {
+      "inventory_store[name]": {
+        required: "Required."
+      },
+      "inventory_store[abbreviation_name]": {
+        required: "Required."
+      },
+      "inventory_store[department_id]": {
+        required: "Required"
+      },
+      "inventory_store[billable_transaction]": {
+        required: "Required."
+      },
+      "inventory_store[enable_stock_entry]": {
+        required: "Required."
+      },
+      "inventory_store[enable_transfer]": {
+        required: "Required",
+      },
+      "inventory_store[enable_receiving]": {
+        required: "Required",
+      },
+      "inventory_store[facility_ids][]": {
+        required: "Required",
+      },
+      "inventory_store[mobilenumber]": {
+        required: "Mobile Required",
+      },
+      "inventory_store[country_id]": {
+        required: "Country Required",
+      },
+      "inventory_store[billing_country_id]": {
+        required: "Country Required",
+      },
+      "inventory_store[address]": {
+        required: "Address Required",
+      },
+      "inventory_store[billing_address]": {
+        required: "Address Required",
+      },
+      "inventory_store[state]": {
+        required: "State Required",
+        remote: "Search and Select"
+      },
+      "inventory_store[billing_state]": {
+        required: "State Required",
+        remote: "Search and Select"
+      },
+      "inventory_store[city]": {
+        required: "City Required",
+        remote: "Search and Select"
+      },
+      "inventory_store[billing_city]": {
+        required: "City Required",
+        remote: "Search and Select"
+      },
+      "inventory_store[pincode]": {
+        required: "Pincode Required",
+        remote: "Search and Select"
+      },
+      "inventory_store[billing_pincode]": {
+        required: "Pincode Required",
+        remote: "Search and Select"
+      },
+      "inventory_store[district]": {
+        required: "District Required",
+        remote: "Search and Select"
+      },
+      "inventory_store[billing_district]": {
+        required: "District Required",
+        remote: "Search and Select"
+      },
+      "inventory_store[commune]": {
+        required: "Commune Required",
+        remote: "Search and Select"
+      },
+      "inventory_store[billing_commune]": {
+        required: "Commune Required",
+        remote: "Search and Select"
+      },
+      "inventory_store_facility_id[]": {
+        required: "Select Atleast One Facility"
+      },
+      "inventory_store[entity_group_id]": {
+        required: 'Select Entity Group',
+      }
+    },
+    errorPlacement: function (error, element) {
+      var elem = $(element);
+      error.insertAfter(element);
+      if(elem.hasClass("select2-hidden-accessible")) {
+        element = $("#select2-" + elem.attr("id") + "-container").parent();
+        error.insertAfter(element);
+      } else {
+        error.insertAfter(element);
+      }
+    }
+  });
+}
+validate_inventory_store_form()
+
+$.validator.addMethod('isLocalName', function(value, element) {
+  return !(value.indexOf('@') > 0)
+}, 'Please provide local name only')
+
+$.validator.addClassRules("email_local", { isLocalName: true });
+
+//Search For India and others starts//
+$('#search_state_other').autocomplete({
+  minLength: 3,
+  source: function(request, response) {
+    var country_id = $("#inventory_store_country_id").val()
+    $.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/locations/search_state',
+      data: {q: request.term, country_id: country_id, remote: "true" },
+      success: function(data) {
+        response(data);
+      },
+      error: function(data) {
+      }
+    });
+  },
+  select: function( event, ui ) {
+    state = ui.item["state"]
+    setTimeout(function() {
+      $(".state").val(state)
+      $('.state').blur()
+    }, 20);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+      return $('<li>')
+        .append('<a style=\"color:#000;text-shadow: 2px\">' + item.state  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+        .appendTo(ul);
+    };
+  }
+});
+
+$('#search_city_other').autocomplete({
+  minLength: 3,
+  source: function(request,response){
+    var country_id = $("#inventory_store_country_id").val()
+    var state = $('#search_state_other').val();
+    $.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/locations/search_city',
+      data: {q: request.term, country_id: country_id, state: state, remote: "true"},
+      success: function(data){
+        response(data);
+      },
+      error: function(data){
+      }
+    });
+  },
+  select: function( event, ui ) {
+    city  = ui.item["city"]
+    state = ui.item["state"]
+    setTimeout(function() {
+      $(".facility-city").val(city)
+      $(".state").val(state)
+      $('.facility-city').blur()
+    }, 20);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+      return $('<li>')
+        .append('<a style=\"color:#000;text-shadow: 2px\">' + item.city  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+        .appendTo(ul);
+    };
+  }
+});
+
+$('#search_pincode_other').autocomplete({
+  minLength: 3,
+  source: function(request,response){
+    var country_id = $("#inventory_store_country_id").val()
+    var state = $('#search_state_other').val();
+    var city = $('#search_city_other').val();
+    $.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/locations/search_pincode',
+      data: {q: request.term, country_id: country_id, state: state, city: city, remote: "true"},
+      success: function(data){
+        response(data);
+      },
+      error: function(data){
+      }
+    });
+  },
+  select: function( event, ui ) {
+    pincode = ui.item["pincode"]
+    city  = ui.item["city"]
+    state = ui.item["state"]
+    gst_state_code = ui.item["gst_state_code"]
+    alpha_code = ui.item["alpha_code"]
+    is_union_territory = ui.item["is_union_territory"]
+    is_utgst_applicable = ui.item["is_utgst_applicable"]
+    setTimeout(function() {
+      $(".pincode").prop('readonly',true).val(pincode)
+      $(".state").prop('readonly', true).val(state)
+      $(".gst_state_code").val(gst_state_code)
+      $(".alpha_code").val(alpha_code)
+      $(".is_union_territory").val(is_union_territory)
+      $(".is_utgst_applicable").val(is_utgst_applicable)
+      $(".facility-city").prop('readonly', true).val(city)
+      $(".clear-pincode").show()
+      $('.pincode').blur()
+    }, 20);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+    return $('<li>')
+      .append('<a style=\"color:#000;text-shadow: 2px; text-align: center;\">' + item.pincode  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+      .appendTo(ul);
+    };
+  }
+});
+
+// Search for India and Others Starts for billing address//
+$('#search_billing_state_other').autocomplete({
+  minLength: 3,
+  source: function(request, response) {
+    var country_id = $("#inventory_store_billing_country_id").val()
+    $.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/locations/search_state',
+      data: {q: request.term, country_id: country_id, remote: "true" },
+      success: function(data) {
+        response(data);
+      },
+      error: function(data) {
+      }
+    });
+  },
+  select: function( event, ui ) {
+    state = ui.item["state"]
+    setTimeout(function() {
+      $(".billing-state").val(state)
+      $('.billing-state').blur()
+    }, 20);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+      return $('<li>')
+        .append('<a style=\"color:#000;text-shadow: 2px\">' + item.state  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+        .appendTo(ul);
+    };
+  }
+});
+
+$('#search_billing_city_other').autocomplete({
+  minLength: 3,
+  source: function(request,response){
+    var country_id = $("#inventory_store_billing_country_id").val()
+    var state = $('#search_billing_state_other').val();
+    $.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/locations/search_city',
+      data: {q: request.term, country_id: country_id, state: state, remote: "true"},
+      success: function(data){
+        response(data);
+      },
+      error: function(data){
+      }
+    });
+  },
+  select: function( event, ui ) {
+    city  = ui.item["city"]
+    state = ui.item["state"]
+    setTimeout(function() {
+      $(".billing-facility-city").val(city)
+      $(".billing-state").val(state)
+      $('.billing-facility-city').blur()
+    }, 20);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+      return $('<li>')
+        .append('<a style=\"color:#000;text-shadow: 2px\">' + item.city  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+        .appendTo(ul);
+    };
+  }
+});
+
+$('#search_billing_pincode_other').autocomplete({
+  minLength: 3,
+  source: function(request,response){
+    var country_id = $("#inventory_store_billing_country_id").val()
+    var state = $('#search_billing_state_other').val();
+    var city = $('#search_billing_city_other').val();
+    $.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/locations/search_pincode',
+      data: {q: request.term, country_id: country_id, state: state, city: city, remote: "true"},
+      success: function(data){
+        response(data);
+      },
+      error: function(data){
+      }
+    });
+  },
+  select: function( event, ui ) {
+    pincode = ui.item["pincode"]
+    city  = ui.item["city"]
+    state = ui.item["state"]
+    setTimeout(function() {
+      $(".billing-pincode").prop('readonly',true).val(pincode)
+      $(".billing-state").prop('readonly', true).val(state)
+      $(".billing-facility-city").prop('readonly', true).val(city)
+      $(".billing-clear-pincode").show()
+      $('.billing-pincode').blur()
+    }, 20);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+    return $('<li>')
+      .append('<a style=\"color:#000;text-shadow: 2px; text-align: center;\">' + item.pincode  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+      .appendTo(ul);
+    };
+  }
+});
+//Search For India and others ends for billing address//
+
+//Search For Vietnam starts//
+$('#search_district_vietnam').autocomplete({
+  minLength: 2,
+  source: function(request,response) {
+    var country_id = jQuery('#inventory_store_country_id').val()
+    var city = jQuery('#search_city_vietnam').val();
+    jQuery.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/locations/search_district',
+      data: {q: request.term, city: city, country_id: country_id, remote: "true"},
+      success: function(data){
+        response(data);
+      },
+      error: function(data){
+      }
+    });
+  },
+  select: function( event, ui ) {
+    district = ui.item["district"]
+    city  = ui.item["city"]
+    setTimeout(function() {
+      jQuery(".district").val(district)
+      jQuery(".facility-city").val(city)
+      jQuery('.district').blur()
+    }, 20);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+      return $('<li>')
+        .append('<a style=\"color:#000;text-shadow: 2px\">' + item.district  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+        .appendTo(ul);
+    };
+  }
+});
+
+$('#search_city_vietnam').autocomplete({
+  minLength: 3,
+  source: function(request,response){
+    var country_id = $("#inventory_store_country_id").val()
+    $.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/locations/search_city',
+      data: {q: request.term, country_id: country_id, remote: "true"},
+      success: function(data){
+        response(data);
+      },
+      error: function(data){
+      }
+    });
+  },
+  select: function( event, ui ) {
+    city  = ui.item["city"]
+    setTimeout(function() {
+      $(".facility-city").val(city)
+      $('.facility-city').blur()
+    }, 20);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+      return $('<li>')
+        .append('<a style=\"color:#000;text-shadow: 2px\">' + item.city  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+        .appendTo(ul);
+    };
+  }
+});
+
+$('#search_commune_vietnam').autocomplete({
+  minLength: 2,
+  source: function(request,response) {
+    var country_id = jQuery('#inventory_store_country_id').val()
+    var city = jQuery('#search_city_vietnam').val();
+    var district = jQuery('#search_district_vietnam').val();
+    jQuery.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/locations/search_commune',
+      data: {q: request.term, city: city, district: district, country_id: country_id, remote: "true"},
+      success: function(data){
+        response(data);
+      },
+      error: function(data){
+
+      }
+    });
+  },
+  select: function( event, ui ) {
+    commune = ui.item["commune"]
+    district  = ui.item["district"]
+    city = ui.item["city"]
+    setTimeout(function() {
+      jQuery(".commune").prop('readonly',true).val(commune)
+      jQuery(".facility-city").prop('readonly', true).val(city)
+      jQuery(".district").prop('readonly', true).val(district)
+      jQuery(".clear-commune").show()
+      jQuery('.commune').blur()
+    }, 20);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+      return $('<li>')
+        .append('<a style=\"color:#000;text-shadow: 2px; text-align: center;\">' + item.commune + ' (' + item.district + ')' + '&nbsp; &nbsp; &nbsp;' + '</a>')
+        .appendTo(ul);
+    };
+  }
+});
+//Search For Vietnam ends//
+
+//Search For Vietnam billing address starts//
+$('#search_billing_district_vietnam').autocomplete({
+  minLength: 2,
+  source: function(request,response) {
+    var country_id = jQuery('#inventory_store_billing_country_id').val()
+    var city = jQuery('#search_billing_city_vietnam').val();
+    jQuery.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/locations/search_district',
+      data: {q: request.term, city: city, country_id: country_id, remote: "true"},
+      success: function(data){
+        response(data);
+      },
+      error: function(data){
+      }
+    });
+  },
+  select: function( event, ui ) {
+    district = ui.item["district"]
+    city  = ui.item["city"]
+    setTimeout(function() {
+      jQuery(".billing-district").val(district)
+      jQuery(".billing-facility-city").val(city)
+      jQuery('.billing-district').blur()
+    }, 20);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+      return $('<li>')
+        .append('<a style=\"color:#000;text-shadow: 2px\">' + item.district  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+        .appendTo(ul);
+    };
+  }
+});
+
+$('#search_billing_city_vietnam').autocomplete({
+  minLength: 3,
+  source: function(request,response){
+    var country_id = $("#inventory_store_billing_country_id").val()
+    $.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/locations/search_city',
+      data: {q: request.term, country_id: country_id, remote: "true"},
+      success: function(data){
+        response(data);
+      },
+      error: function(data){
+      }
+    });
+  },
+  select: function( event, ui ) {
+    city  = ui.item["city"]
+    setTimeout(function() {
+      $(".billing-facility-city").val(city)
+      $('.billing-facility-city').blur()
+    }, 20);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+      return $('<li>')
+        .append('<a style=\"color:#000;text-shadow: 2px\">' + item.city  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+        .appendTo(ul);
+    };
+  }
+});
+
+$('#search_billing_commune_vietnam').autocomplete({
+  minLength: 2,
+  source: function(request,response) {
+    var country_id = jQuery('#inventory_store_billing_country_id').val()
+    var city = jQuery('#search_billing_city_vietnam').val();
+    var district = jQuery('#search_billing_district_vietnam').val();
+    jQuery.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/locations/search_commune',
+      data: {q: request.term, city: city, district: district, country_id: country_id, remote: "true"},
+      success: function(data){
+        response(data);
+      },
+      error: function(data){
+
+      }
+    });
+  },
+  select: function( event, ui ) {
+    commune = ui.item["commune"]
+    district  = ui.item["district"]
+    city = ui.item["city"]
+    setTimeout(function() {
+      jQuery(".billing-commune").prop('readonly',true).val(commune)
+      jQuery(".billing-facility-city").prop('readonly', true).val(city)
+      jQuery(".billing-district").prop('readonly', true).val(district)
+      jQuery(".billing-clear-commune").show()
+      jQuery('.billing-commune').blur()
+    }, 20);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+      return $('<li>')
+        .append('<a style=\"color:#000;text-shadow: 2px; text-align: center;\">' + item.commune + ' (' + item.district + ')' + '&nbsp; &nbsp; &nbsp;' + '</a>')
+        .appendTo(ul);
+    };
+  }
+});
+//Search For Vietnam billing address ends //
+
+//Search For Cambodia starts//
+$('#search_pincode_cambodia').autocomplete({
+  minLength: 3,
+  source: function(request,response){
+    var country_id = $("#inventory_store_country_id").val()
+    var state = $('#search_state_cambodia').val();
+    var district = $('#search_district_cambodia').val();
+    var commune = $('#search_commune_cambodia').val();
+    $.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/locations/search_pincode',
+      data: {q: request.term, country_id: country_id, state: state, district: district, commune: commune, remote: "true"},
+      success: function(data){
+        response(data);
+      },
+      error: function(data){
+      }
+    });
+  },
+  select: function( event, ui ) {
+    pincode = ui.item["pincode"]
+    state = ui.item["state"]
+    district = ui.item["district"]
+    commune = ui.item["commune"]
+    setTimeout(function() {
+      $(".pincode").prop('readonly',true).val(pincode)
+      $(".state").prop('readonly', true).val(state)
+      $(".district").prop('readonly', true).val(district)
+      $(".commune").prop('readonly', true).val(commune)
+      $(".clear-pincode").show()
+      $('.pincode').blur()
+    }, 20);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+    return $('<li>')
+      .append('<a style=\"color:#000;text-shadow: 2px; text-align: center;\">' + item.pincode  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+      .appendTo(ul);
+    };
+  }
+});
+
+$('#search_state_cambodia').autocomplete({
+  minLength: 3,
+  source: function(request, response) {
+    var country_id = $("#inventory_store_country_id").val()
+    $.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/locations/search_state',
+      data: {q: request.term, country_id: country_id, remote: "true" },
+      success: function(data) {
+        response(data);
+      },
+      error: function(data) {
+      }
+    });
+  },
+  select: function( event, ui ) {
+    state = ui.item["state"]
+    setTimeout(function() {
+      $(".state").val(state)
+      $('.state').blur()
+    }, 20);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+      return $('<li>')
+        .append('<a style=\"color:#000;text-shadow: 2px\">' + item.state  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+        .appendTo(ul);
+    };
+  }
+});
+
+$('#search_district_cambodia').autocomplete({
+  minLength: 2,
+  source: function(request,response) {
+    var country_id = jQuery('#inventory_store_country_id').val()
+    var state = jQuery('#search_state_cambodia').val();
+    jQuery.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/locations/search_district',
+      data: {q: request.term, state: state, country_id: country_id, remote: "true"},
+      success: function(data){
+        response(data);
+      },
+      error: function(data){
+      }
+    });
+  },
+  select: function( event, ui ) {
+    district = ui.item["district"]
+    state  = ui.item["state"]
+    setTimeout(function() {
+      jQuery(".district").val(district)
+      jQuery(".state").val(state)
+      jQuery('.district').blur()
+    }, 20);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+      return $('<li>')
+        .append('<a style=\"color:#000;text-shadow: 2px\">' + item.district  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+        .appendTo(ul);
+    };
+  }
+});
+
+$('#search_commune_cambodia').autocomplete({
+  minLength: 2,
+  source: function(request,response) {
+    var country_id = jQuery('#inventory_store_country_id').val()
+    var state = jQuery('#search_state_cambodia').val();
+    var district = jQuery('#search_district_cambodia').val();
+    jQuery.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/locations/search_commune',
+      data: {q: request.term, state: state, district: district, country_id: country_id, remote: "true"},
+      success: function(data){
+        response(data);
+      },
+      error: function(data){
+
+      }
+    });
+  },
+  select: function( event, ui ) {
+    commune = ui.item["commune"]
+    district  = ui.item["district"]
+    state = ui.item["state"]
+    setTimeout(function() {
+      jQuery(".commune").prop('readonly',true).val(commune)
+      jQuery(".state").prop('readonly', true).val(state)
+      jQuery(".district").prop('readonly', true).val(district)
+      jQuery(".clear-commune").show()
+      jQuery('.commune').blur()
+    }, 20);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+      return $('<li>')
+        .append('<a style=\"color:#000;text-shadow: 2px; text-align: center;\">' + item.commune + ' (' + item.district + ')' + '&nbsp; &nbsp; &nbsp;' + '</a>')
+        .appendTo(ul);
+    };
+  }
+});
+//Search For Cambodia ends//
+
+//Search For Cambodia starts for billing address//
+$('#search_billing_pincode_cambodia').autocomplete({
+  minLength: 3,
+  source: function(request,response){
+    var country_id = $("#inventory_store_billing_country_id").val()
+    var state = $('#search_billing_state_cambodia').val();
+    var district = $('#search_billing_district_cambodia').val();
+    var commune = $('#search_billing_commune_cambodia').val();
+    $.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/locations/search_pincode',
+      data: {q: request.term, country_id: country_id, state: state, district: district, commune: commune, remote: "true"},
+      success: function(data){
+        response(data);
+      },
+      error: function(data){
+      }
+    });
+  },
+  select: function( event, ui ) {
+    pincode = ui.item["pincode"]
+    state = ui.item["state"]
+    district = ui.item["district"]
+    commune = ui.item["commune"]
+    setTimeout(function() {
+      $(".billing-pincode").prop('readonly',true).val(pincode)
+      $(".billing-state").prop('readonly', true).val(state)
+      $(".billing-district").prop('readonly', true).val(district)
+      $(".billing-commune").prop('readonly', true).val(commune)
+      $(".billing-clear-pincode").show()
+      $('.billing-pincode').blur()
+    }, 20);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+    return $('<li>')
+      .append('<a style=\"color:#000;text-shadow: 2px; text-align: center;\">' + item.pincode  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+      .appendTo(ul);
+    };
+  }
+});
+
+$('#search_billing_state_cambodia').autocomplete({
+  minLength: 3,
+  source: function(request, response) {
+    var country_id = $("#inventory_store_billing_country_id").val()
+    $.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/locations/search_state',
+      data: {q: request.term, country_id: country_id, remote: "true" },
+      success: function(data) {
+        response(data);
+      },
+      error: function(data) {
+      }
+    });
+  },
+  select: function( event, ui ) {
+    state = ui.item["state"]
+    setTimeout(function() {
+      $(".billing-state").val(state)
+      $('.billing-state').blur()
+    }, 20);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+      return $('<li>')
+        .append('<a style=\"color:#000;text-shadow: 2px\">' + item.state  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+        .appendTo(ul);
+    };
+  }
+});
+
+$('#search_billing_district_cambodia').autocomplete({
+  minLength: 2,
+  source: function(request,response) {
+    var country_id = jQuery('#inventory_store_billing_country_id').val()
+    var state = jQuery('#search_billing_state_cambodia').val();
+    jQuery.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/locations/search_district',
+      data: {q: request.term, state: state, country_id: country_id, remote: "true"},
+      success: function(data){
+        response(data);
+      },
+      error: function(data){
+      }
+    });
+  },
+  select: function( event, ui ) {
+    district = ui.item["district"]
+    state  = ui.item["state"]
+    setTimeout(function() {
+      jQuery(".billing-district").val(district)
+      jQuery(".billing-state").val(state)
+      jQuery('.billing-district').blur()
+    }, 20);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+      return $('<li>')
+        .append('<a style=\"color:#000;text-shadow: 2px\">' + item.district  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+        .appendTo(ul);
+    };
+  }
+});
+
+$('#search_billing_commune_cambodia').autocomplete({
+  minLength: 2,
+  source: function(request,response) {
+    var country_id = jQuery('#inventory_store_billing_country_id').val()
+    var state = jQuery('#search_billing_state_cambodia').val();
+    var district = jQuery('#search_billing_district_cambodia').val();
+    jQuery.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/locations/search_commune',
+      data: {q: request.term, state: state, district: district, country_id: country_id, remote: "true"},
+      success: function(data){
+        response(data);
+      },
+      error: function(data){
+
+      }
+    });
+  },
+  select: function( event, ui ) {
+    commune = ui.item["commune"]
+    district  = ui.item["district"]
+    state = ui.item["state"]
+    setTimeout(function() {
+      jQuery(".billing-commune").prop('readonly',true).val(commune)
+      jQuery(".billing-state").prop('readonly', true).val(state)
+      jQuery(".billing-district").prop('readonly', true).val(district)
+      jQuery(".billing-clear-commune").show()
+      jQuery('.billing-commune').blur()
+    }, 20);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+      return $('<li>')
+        .append('<a style=\"color:#000;text-shadow: 2px; text-align: center;\">' + item.commune + ' (' + item.district + ')' + '&nbsp; &nbsp; &nbsp;' + '</a>')
+        .appendTo(ul);
+    };
+  }
+});
+//Search For Cambodia ends for billing address//
+
+// Clear pincode
+$(".clear-pincode").on('click', function(e){
+  e.preventDefault()
+  $(".pincode").prop('readonly',false).val("")
+  $(".state").prop('readonly', false).val("")
+  $(".facility-city").prop('readonly', false).val("")
+  $(".district").prop('readonly',false).val("")
+  $(".commune").prop('readonly', false).val("")
+  $(".clear-pincode").hide()
+});
+
+// Clear pincode for billing address
+$(".billing-clear-pincode").on('click', function(e){
+  e.preventDefault()
+  $(".billing-pincode").prop('readonly',false).val("")
+  $(".billing-state").prop('readonly', false).val("")
+  $(".billing-facility-city").prop('readonly', false).val("")
+  $(".billing-district").prop('readonly',false).val("")
+  $(".billing-commune").prop('readonly', false).val("")
+  $(".billing-clear-pincode").hide()
+});
+
+// Clear pincode
+$(".clear-commune").on('click', function(e){
+  e.preventDefault()
+  $(".commune").prop('readonly',false).val("")
+  $(".district").prop('readonly', false).val("")
+  $(".facility-city").prop('readonly', false).val("")
+  $(".state").prop('readonly', false).val("")
+  $(".pincode").prop('readonly',false).val("")
+  $(".clear-commune").hide()
+});
+
+// Clear pincode for billing address
+$(".billing-clear-commune").on('click', function(e){
+  e.preventDefault()
+  $(".billing-commune").prop('readonly',false).val("")
+  $(".billing-district").prop('readonly', false).val("")
+  $(".billing-facility-city").prop('readonly', false).val("")
+  $(".billing-state").prop('readonly', false).val("")
+  $(".billing-pincode").prop('readonly',false).val("")
+  $(".billing-clear-commune").hide()
+});
+
+//inventory_store country id check_
+function autocomplete_check(country_id){
+  if (country_id == 'IN_108') {
+    $('#search_state_other').autocomplete("enable");
+    $('#search_city_other').autocomplete("enable");
+    $('#search_pincode_other').autocomplete("enable");
+  } else if (country_id == 'VN_254') {
+    $('#search_district_vietnam').autocomplete("enable");
+    $('#search_city_vietnam').autocomplete("enable");
+    $('#search_commune_vietnam').autocomplete("enable");
+  } else if (country_id == 'KH_039') {
+    $('#search_pincode_cambodia').autocomplete("enable");
+    $('#search_state_cambodia').autocomplete("enable");
+    $('#search_district_cambodia').autocomplete("enable");
+    $('#search_commune_cambodia').autocomplete("enable");
+  } else {
+    $('#search_state_other').autocomplete("disable");
+    $('#search_city_other').autocomplete("disable");
+    $('#search_pincode_other').autocomplete("disable");
+    $('#search_district_vietnam').autocomplete("disable");
+    $('#search_city_vietnam').autocomplete("disable");
+    $('#search_commune_vietnam').autocomplete("disable");
+    $('#search_pincode_cambodia').autocomplete("disable");
+    $('#search_state_cambodia').autocomplete("disable");
+    $('#search_district_cambodia').autocomplete("disable");
+    $('#search_commune_cambodia').autocomplete("disable");
+  }
+}
+
+//inventory_store country id check_ for billing address
+function autocomplete_billing_check(country_id){
+  if (country_id == 'IN_108') {
+    $('#search_billing_state_other').autocomplete("enable");
+    $('#search_billing_city_other').autocomplete("enable");
+    $('#search_billing_pincode_other').autocomplete("enable");
+  } else if (country_id == 'VN_254') {
+    $('#search_billing_district_vietnam').autocomplete("enable");
+    $('#search_billing_city_vietnam').autocomplete("enable");
+    $('#search_billing_commune_vietnam').autocomplete("enable");
+  } else if (country_id == 'KH_039') {
+    $('#search_billing_pincode_cambodia').autocomplete("enable");
+    $('#search_billing_state_cambodia').autocomplete("enable");
+    $('#search_billing_district_cambodia').autocomplete("enable");
+    $('#search_billing_commune_cambodia').autocomplete("enable");
+  } else {
+    $('#search_billing_state_other').autocomplete("disable");
+    $('#search_billing_city_other').autocomplete("disable");
+    $('#search_billing_pincode_other').autocomplete("disable");
+    $('#search_billing_district_vietnam').autocomplete("disable");
+    $('#search_billing_city_vietnam').autocomplete("disable");
+    $('#search_billing_commune_vietnam').autocomplete("disable");
+    $('#search_billing_pincode_cambodia').autocomplete("disable");
+    $('#search_billing_state_cambodia').autocomplete("disable");
+    $('#search_billing_district_cambodia').autocomplete("disable");
+    $('#search_billing_commune_cambodia').autocomplete("disable");
+  }
+}
+
+// Get autocomplete status
+$("#inventory_store_country_id").on('change', function(){
+  var country_id = $('option:selected', this).attr('value');
+  autocomplete_check(country_id)
+  $('.state').val('');
+  $('.pincode').val('');
+  $('.district').val('');
+  $('.commune').val('');
+  $('#facility_address').val('');
+  $('.facility-city').val('');
+  $('#inventory_store_address').val('');
+})
+
+// Get autocomplete status for billing address
+$("#inventory_store_billing_country_id").on('change', function(){
+  var country_id = $('option:selected', this).attr('value');
+  autocomplete_billing_check(country_id)
+  $('.billing-state').val('');
+  $('.billing-pincode').val('');
+  $('.billing-district').val('');
+  $('.billing-commune').val('');
+  $('#facility_address').val('');
+  $('.billing-facility-city').val('');
+  $('#inventory_store_billing_address').val('');
+})
+var country_id = $('#inventory_store_country_id option:selected').attr('value');
+autocomplete_check(country_id)
+check_address();
+
+var billing_country_id = $('#inventory_store_billing_country_id option:selected').attr('value');
+autocomplete_billing_check(billing_country_id)
+check_billing_address();
+
+check_store_type();
+
+function check_store_type() {
+  let department_id = $('#inventory_store_department_id').val();
+  if (department_id == "") {
+   $('.dl-number').hide();
+  } else if (department_id == "284748001") {
+    $('.dl-number').show();
+  } else {
+    $('.dl-number').hide();
+  }
+}
+
+function check_address() {
+  var country_id = $('#inventory_store_country_id').val();
+  if (country_id == "") {
+    $('.other_facility').show();
+    $('.vietnam_facility').hide();
+    $('.cambodia_facility').hide();
+    $('.gst-number').hide();
+  } else if (country_id == 'VN_254') {
+    $('.other_facility').hide();
+    $('.cambodia_facility').hide();
+    $('.vietnam_facility').show();
+    $('.vietnam-city').prop('disabled', false);
+    $('.city').prop('disabled', true);
+    $('.gst-number').hide();
+  } else if(country_id == 'KH_039') {
+    $('.cambodia_facility').show();
+    $('.vietnam_facility').hide();
+    $('.other_facility').hide();
+    $('.city').prop('disabled', true);
+    $('.vietnam-city').prop('disabled', true);
+    $('.gst-number').hide();
+  } else {
+    $('.vietnam_facility').hide();
+    $('.other_facility').show();
+    $('.cambodia_facility').hide();
+    $('.city').prop('disabled', false);
+    $('.vietnam-city').prop('disabled', true);
+    $('.gst-number').hide();
+  }
+}
+
+function check_billing_address() {
+  var country_id = $('#inventory_store_billing_country_id').val();
+  if (country_id == "") {
+    $('.billing_other_facility').show();
+    $('.billing_vietnam_facility').hide();
+    $('.billing_cambodia_facility').hide();
+    $('.gst-number').hide();
+  } else if (country_id == 'VN_254') {
+    $('.billing_other_facility').hide();
+    $('.billing_cambodia_facility').hide();
+    $('.billing_vietnam_facility').show();
+    $('.vietnam-city').prop('disabled', false);
+    $('.city').prop('disabled', true);
+    $('.gst-number').hide();
+  } else if(country_id == 'KH_039') {
+    $('.billing_cambodia_facility').show();
+    $('.billing_vietnam_facility').hide();
+    $('.billing_other_facility').hide();
+    $('.city').prop('disabled', true);
+    $('.vietnam-city').prop('disabled', true);
+    $('.gst-number').hide();
+  } else {
+    $('.billing_vietnam_facility').hide();
+    $('.billing_other_facility').show();
+    $('.billing_cambodia_facility').hide();
+    $('.city').prop('disabled', false);
+    $('.vietnam-city').prop('disabled', true);
+    $('.gst-number').show();
+  }
+}
+
+function readURL(input) {
+  $(".clear-organisation-asset").show()
+  if (input.files && input.files[0]) {
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      $(input).parent().find(".thumb").attr('src', e.target.result);
+    }
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+
+let action = '<%= params[:action] %>'
+if (action == 'edit') {
+  $('#inventory_store_department_id').prop('disabled', true)
+  $('#inventory_store_facility_id').prop('disabled', true)
+}
+
+function check_invoice_creation() {
+  var department_id = $('#inventory_store_department_id').val()
+  if (department_id == '384748001') {
+    $('.invoice-creation').hide();
+    $('.store-consumption').hide();
+    $('.house-consumption').show();
+  } else {
+    $('.invoice-creation').show();
+    $('.house-consumption').hide();
+    $('.store-consumption').hide();
+  }
+  if (department_id == '334046963' || department_id == '384748002' || department_id == '384748003' || department_id == '384748004' || department_id == '384748005') {
+    $('.store-consumption').show();
+    $('.invoice-creation').hide();
+  }
+}
+
+$('.house-consumption').hide();
+$('#inventory_store_department_id').on('change', function() {
+  check_invoice_creation()
+})
+
+check_invoice_creation()
+
+const setEmail = () => {
+  let emailLocal = $('.email_local');
+  let emailDomain = $('.email_domain');
+  let email = $('#inventory_store_email');
+
+  if (emailLocal.val() != '' && emailDomain.val() != '') {
+    email.val(`${emailLocal.val()}@${emailDomain.val()}`)
+  } else {
+    email.val('')
+  }
+}
+
+$('.email_local').on('keyup', function() {
+  setEmail()
+});
+
+$('.email_domain').on('change', function() {
+  setEmail()
+}).trigger('change');

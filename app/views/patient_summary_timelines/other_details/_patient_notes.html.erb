@@ -1,0 +1,65 @@
+<!-- Patient Note List -->
+<div id="panel_notes_appointment">
+  <% if @patient_note.size > 0 %>
+    <% @patient_note.each.with_index do |shownote,i| %>
+      <div class="col-md-12 row mb5 notes" style="padding: 3px;border-radius: 5px;border: #428bca 2px solid;">
+        <span style="font-size:12px;padding-right: 3px"><strong><%= shownote.created_by.try(:capitalize) %>:</strong></span>
+        <% if shownote.is_complete == false %>
+          <span style="font-size:12px;padding-right: 3px; color: #428bca" id="task_comment_<%=shownote.id%>" > <%= shownote.comment %></span>
+        <% else %>
+          <span style="font-size:12px;padding-right: 3px; color: #428bca ; text-decoration: line-through" id="task_comment_<%=shownote.id%>" > <%= shownote.comment %></span>
+        <%end%>
+        <span style="font-size: 9px;padding-right: 3px;color: #999;">  <strong><%= shownote.created_at.strftime("%I:%M %P %d-%m-%y") %></strong></span>
+        <% if current_user.id.to_s == shownote.user_id.to_s || current_user.role_ids.any?{|i| [160943002,6868009].include?i} %>
+          <a href="/opd_appointments/delete_note?patient_id=<%= @patientid %>&note_id=<%= shownote.id %>" method = "get" data-remote="true" class="btn btn-link btn-xs pull-right" style="padding: 2px 0px" id="delete"><span style="color: red;padding: 2px 0px;" class="glyphicon glyphicon-trash" method="delete" ></span></a>
+        <% end %>
+      </div>
+    <% end %>
+  <%else%>
+    No Note Present
+  <%end%>
+</div>  
+
+<input type="hidden" name="count" class="count" value="<%=@count if @count.present? || @count=0%>">
+<% if @patient_note.size > 5 %>
+  <div class="show-more-notes" style="margin:20px 2px;">
+    <div class="col-md-12 load-more-container" style="border: thick;">
+      <a class="col-sm-12", href="javascript:;", id="show_more_notes", data-count = "0" , style="text-align: center; padding: 10px; text-decoration: none;">
+        <i class="spinner " id="click_to_load"></i> Click To Load More ...
+      </a>
+    </div>
+  </div>
+<%end%>
+
+<script type="text/javascript">
+var hide_show =  $('.notes').length;
+var total = '<%= @patient_note.size %>'
+if(hide_show==total){
+  $("#show_more_notes").hide();
+}
+  $("#show_more_notes").on('click',function(e){
+    e.preventDefault();
+    var count = $('.notes').length;
+    $("#click_to_load").addClass('fa fa-spinner fa-spin');
+    $.ajax({
+      type: "GET",
+      dataType: "script",
+      data: {
+        patient_id: "<%= @patientid %>",
+        count: count
+      },
+      url: "/opd_appointments/show_more_notes_appointment",
+      success: function(){
+        var total_notes = '<%= @patient_note.size %>'
+        var present_size = $('.notes').length;
+        if(present_size==total_notes){
+          $('#show_more_notes').hide()
+        }
+      }
+    })
+    
+  })
+
+
+</script>
+

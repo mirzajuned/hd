@@ -1,0 +1,91 @@
+<% unless @ot.is_deleted %>
+  <input type="hidden" name="none" id="ot_refresher" value="<%= @ot.id.to_s %>">
+  <input type="hidden" name="none" id="ot_refresher_date" value="<%= @ot.otdate.to_s %>">
+  <div class="row no_margin text-center" style="background-color: yellowgreen;padding: 5px;color: #fff;">
+    <span style="font-size: 18px;">Admission not created for this OT.</span>
+  </div>
+  <div class="row no_margin" style="padding: 10px 5px;">
+    <div class="row no_margin no_padding" style="padding: 5px;">
+      <%= render partial: 'inpatients/ot/ot_details/patient_details.html.erb' %>
+    </div>
+    <div class="row no_margin">
+      <div class="col-md-12 text-right">
+        <% if @admission_list_views.count > 0 %>
+          <button class="btn btn-danger btn-xs" data-toggle="dropdown"> Link To Admission &nbsp;&nbsp;<i class="fa fa-caret-down"></i></button>
+          <ul class="dropdown-menu dropdown-menu-right" role="menu" aria-labelledby="admissions-dropdown">
+            <li class="text-center">
+              <%= link_to new_admission_path(patient_id: @ot.patient_id, direct: true, case_sheet_id: @case_sheet.id, specialty_id: @ot.specialty_id, facility_id: @ot.facility_id), data: { :remote => true, 'toggle' => 'modal', 'target' => '#admission-modal' } do %>New Admission<% end %>
+            </li>
+            <% @admission_list_views.each do |alv| %>
+              <% admission_case_sheet = alv.admission.case_sheet %>
+              <% if admission_case_sheet.id.to_s != @ot.case_sheet_id.to_s %>
+                <% confirm_message = "<ul><li>ADMISSION CASE : #{admission_case_sheet&.case_id} - #{admission_case_sheet&.case_name}(#{admission_case_sheet&.start_date&.strftime('%d/%m/%Y')})</li><li>OT CASE : #{@ot.case_sheet.case_id} - #{@ot.case_sheet.case_name}(#{@ot.case_sheet&.start_date&.strftime('%d/%m/%Y')})</li><li>The Cases of OT & Admission are not same. This may result into changes in OT case ID changing to Admission Case ID.Please make sure you want to this change?</li></ul>".html_safe %>
+                <li>
+                  <%= link_to ot_link_ot_path(id: @ot.id,ot_id: @ot.id, admission_id: alv.admission_id), title: 'Link this OT ?', data: { remote: true, confirm: confirm_message, commit: 'I am Aware' } do %><%= alv.admission_time.strftime('%I:%M %p, %d/%m/%Y') %><% end %>
+                </li>
+              <% else %>
+                <li class="text-center">
+                  <%= link_to ot_link_ot_path(id: @ot.id, ot_id: @ot.id, admission_id: alv.admission_id), method: 'get', data: { remote: true } do %><%= alv.admission_time.strftime('%I:%M %p, %d/%m/%Y') %><% end %>
+                </li>
+              <% end %>
+            <% end %>
+          </ul>
+        <% else %>
+          <%= link_to new_admission_path(patient_id: @ot.patient_id, direct: true, case_sheet_id: @case_sheet.id, specialty_id: @ot.specialty_id, facility_id: @ot.facility_id), class: 'btn btn-danger btn-xs', data: { :remote => true, 'toggle' => 'modal', 'target' => '#admission-modal' } do %>Schedule Admission<% end %>
+        <% end %>
+      </div>
+    </div>
+    <hr style="border: 0.5 dotted #ababab; margin: 10px;">
+    <div class="row no_margin no_padding" style="padding: 5px;">
+      <%= render partial: 'inpatients/ot/ot_details/case_details.html.erb' %>
+    </div>
+    <hr style="border: 0.5 dotted #ababab; margin: 10px;">
+    <div class="row no_margin">
+      <%= render partial: 'inpatients/ot/ot_details/ot_appointment_details.html.erb' %>
+    </div>
+    <hr style="margin: 10px;">
+    <div class="row no_margin no_padding" style="padding: 5px;">
+      <div class="col-xs-6">
+        <%= render partial: 'inpatients/ot/ot_details/admission_ot_list.html.erb' %>
+      </div>
+      <div class="col-xs-6">
+        <%= render partial: 'outpatients/appointment/appointment_details/patient_notes_details.html.erb', locals: { :@patientid => @ot.patient.id } %>
+      </div>
+    </div>
+    <hr style="margin: 10px;">
+  </div>
+
+  <script type="text/javascript">
+    $("#patient-summary-timeline-link").on('click', function(){
+      var doctor_id = $("#sidebar_doctors_ot .active").find('a').attr('data-user-id')
+      var active_tab = $(".tab_active").find(".active").attr('data-tab-id')
+      var users_list = $(".toggle-sidebar-users").attr('data-toggle-position')
+      $.ajax({
+        type: "GET",
+        dataType: "script",
+        url: "/patient_summary/<%= @patient.id.to_s %>",
+        data: {
+          ot_id: "<%= @ot.id.to_s %>",
+          active_tab: active_tab,
+          active_doctor: doctor_id,
+          users_list: users_list,
+          current_date: "<%= @current_date %>",
+          url: "/inpatients/ot_management"
+        }
+      });
+      history.pushState('', '', '/patient_summary/<%= @patient.id.to_s %>'); // history.pushState([data], [title], [url]);
+    })
+  </script>
+<% else %>
+  <script type="text/javascript">
+    if ($('.ui-pnotify').length == 0) {
+      notice = new PNotify({
+        title: 'Admission Deleted',
+        text: 'Seems like someone deleted this OT.',
+        type: 'success'
+      });
+      notice.get().click(function(){ notice.remove() });
+    }
+    $("#btn-ot-management-refresh").trigger('click')
+  </script>
+<% end %>

@@ -1,0 +1,275 @@
+<% if mail_job == true %>
+  <% @inventory_store = inventory_store %>
+  <% @inventory_return_invoice = inventory_return_invoice %>
+  <% @invoice_setting = invoice_setting %>
+  <% @patient = patient %>
+<% end %>
+<% template_settings = OrganisationsSetting.find_by(organisation_id: current_user.organisation_id).custom_template_header_options["#{@inventory_return_invoice.department_name&.downcase}_settings"] %>
+<% if template_settings.present? %>
+  <% template_fields = template_settings[:invoices][0].select{ |key, value| value == true } %>
+<% end %>
+<% if template_fields.present? %>
+  <% fields_names = OrganisationSettingsHelper.get_data("#{@inventory_return_invoice.department_name&.downcase}_invoices", template_fields).keys %>
+<% end %>
+
+<div style="border:1px solid #ccc;">
+  <div class="row" style="border-bottom:1px solid #ccc;">
+    <div class="col-md-3 text-left">
+      <% if @inventory_store.asset_path.url %>
+        <% unless @inventory_store.asset_path.url.split('/').last == '_old_' %>
+          <img width="80" height="80" src="<%= @inventory_store.asset_path.url %>">
+        <% end %>
+      <%end%>
+    </div>
+    <div class="col-sm-6 text-center">
+      <% if @inventory_store.name ==nil || @inventory_store.name == "" || @inventory_store.shop_name == 'org-name' %>
+        <h3 style="margin:0px"><%= current_facility.name %></h3>
+      <%else%>
+        <h3 style="margin:0px"><%= @inventory_store.shop_name %></h3>
+      <%end%>
+    </div>
+    <div class="col-sm-3 text-right">
+      <% unless @inventory_store.address == 'org-address' %>
+        <h5 style="margin: 0px"><%= @inventory_store.address %></h5>
+      <%end%>
+      <% if @inventory_store.email.present? %>
+        <p> <h5 style="margin: 0px"><%= @inventory_store.email %></h5> </p>
+      <%end%>
+      <% if @inventory_store.mobilenumber.present? %>
+        <p> <h5 style="margin: 0px"><%= @inventory_store.mobilenumber %></h5> </p>
+      <%end%>
+    </div>
+
+    <div class="row">
+      <div class="col-sm-12 text-center">
+        <b><%= @inventory_return_invoice.department_name&.upcase %> RETURN RECEIPT</b>
+      </div>
+    </div>
+  </div>
+  <div class="row mb5">
+    <% if template_fields.present? %>
+      <% template_fields.each_with_index do |(key, value), i| %>
+        <% field_name = fields_names[i] %>
+
+        <% if key == 'recipient' %>
+          <% field_value = @inventory_return_invoice.recipient&.upcase %>
+
+        <% elsif key == 'doctor_name' %>
+          <% field_value = 'NA' %>
+
+        <% elsif key == 'bill_number' %>
+          <% field_value = @inventory_return_invoice.return_bill_number.present? ? @inventory_return_invoice.return_bill_number : '-' %>
+
+        <% elsif key == 'mr_no' %>
+          <% field_value = @mr_no.present? ? @mr_no : 'NA' %>
+
+        <% elsif key == 'date_time' %>
+          <% field_value = @inventory_return_invoice.created_at.strftime("%d %b'%y, %I:%M %p") %>
+
+        <% elsif key == 'patient_identifier' %>
+          <% field_value = @inventory_return_invoice.patient_identifier %>
+
+        <% elsif key == 'calculate_age_gender' %>
+          <% field_value = @patient.calculate_age.present? || @patient.gender.present? ? @patient.calculate_age.to_s + '/' + @patient.gender.to_s : 'Unavailable' %>
+
+        <% elsif key == 'mobilenumber' %>
+          <% field_value = @patient.mobilenumber %>
+
+        <% elsif key == 'address' %>
+          <% if @patient.address_1.present? || @patient.address_2.present? || @patient.city.present? || @patient.state.present? %>
+            <% field_value = @patient.patient_full_address %>
+          <% else %>
+            <% field_value = 'Unavailable' %>
+          <% end %>
+        <% elsif  key == 'bill_type' && @inventory_invoice%>
+          <% field_value = @inventory_invoice.invoice_type&.capitalize %>
+        <% elsif  key == 'claim_processor' && @inventory_invoice%>
+          <% field_value = if @inventory_invoice.payer_master_id.present?
+              "#{@inventory_invoice.payer_master&.display_name} (#{@inventory_invoice.contact_group&.name})"
+            else 
+              "N.A"
+            end %>
+        <% elsif key == 'insurer' && @inventory_invoice%>
+          <% field_value = if @inventory_invoice.insurer_id.present?
+              "#{@inventory_invoice.insurer&.display_name} (#{@inventory_invoice.insurer_group&.name})"
+             else
+              "N.A"
+             end %>
+        <% end %>
+        <% flag = if ['insurer', 'claim_processor'].include?(key)
+              @inventory_invoice&.invoice_type == 'credit'
+           else
+             true
+           end
+           flag = false if key == 'bill_type' && field_value.blank?
+         %>
+        <% if field_name.present? && flag == true%>
+          <div class="col-sm-2 font_size" style="width: 18%;">
+            <b><%= field_name %></b>&nbsp;:
+          </div>
+          <div class="col-sm-4 font_size" style="width: 30%;">
+            <%= field_value.try(:html_safe) %>
+          </div>
+        <% end %>
+      <% end %>
+    <% end %>
+  </div><!-- row -->
+
+  <table class="font_size"  style="border: 1px solid #ccc;width: 100%;">
+    <thead>
+      <tr>
+        <th><b>S.No</b></th>
+        <th><b>Description</b></th>
+        <th><b>QTY</b></th>
+        <th><b>Batch No.</b></th>
+        <% unless @inventory_store.department_id == '284748001' %>
+          <th><b>Model No.</b></th>
+        <% end %>
+        <th><b>U.Price with Tax</b></th>
+        <th><b>Discount</b></th>
+        <th class="text-right"><b>Return Amt</b></th>
+      </tr>
+    </thead>
+    <tbody>
+    <% grand_total_price = 0 %>
+    <% grand_total_tax = 0 %>
+    <% if @inventory_return_invoice.return_charges %>
+      <% return_charges = @inventory_return_invoice.return_charges %>
+    <% else %>
+      <% return_charges = 0 %>
+    <% end %>
+
+    <%@item_arr = []%>
+    <% @inventory_return_invoice.items.each.with_index do |item, i| %>
+      <%if item.try(:stock).to_f > 0%>
+        <%@item_arr << item%>
+      <%end%>
+    <% end %>
+
+    <%@item_arr.each.with_index do |item,i|%>
+      <tr>
+        <td><%= i+1 %></td>
+        <td><%= item.description %></td>
+        <td><%= item.stock %></td>
+        <td><%= item.batch_no %></td>
+        <% unless @inventory_store.department_id == '284748001' %>
+          <td><%= item.model_no %></td>
+        <% end %>
+        <td><%= item.list_price%></td>
+        <td>
+          <% discount = item.discount_display_amount ||  item.discount_amount || 0 %>
+          <%= discount.zero? ? '-' : number_with_precision(discount, precision: 2) %>
+        </td>
+        <td class="text-right">
+          <% total = (item.total_list_price || (item.list_price&.to_f * item.stock&.to_f) ) - discount %>
+          <%= number_with_precision total, precision: 2 %>
+        </td>
+    </tr>
+  <%end%>
+    </tbody>
+  </table>
+
+  <div class="row mb5" style="border-bottom:1px solid #ccc;">
+  </div>
+
+  <div class="row mb5">
+    <div class="col-sm-offset-6 col-sm-6 text-right">
+
+      <div class="col-sm-6 font_size">
+        <b>Gross Return Amt.</b>
+      </div>
+      <div class="col-sm-2 text-center font_size">
+        :
+      </div>
+      <div class="col-sm-4 font_size">
+        <% if @inventory_return_invoice.return_amount.present? %>
+          <%= number_with_precision(@inventory_return_invoice.total_cost.to_f.round(2), precision: 2) %>
+        <% else %>
+          <%= number_with_precision (@inventory_return_invoice.try(:total).to_f.round(2) - return_charges.round(2)), precision: 2 %>
+        <% end %>
+      </div>
+
+      <% if @inventory_return_invoice.return_charges.present? %>
+        <div class="col-sm-6 font_size">
+          <b>Return Charges</b>
+        </div>
+        <div class="col-sm-2 text-center font_size">
+          :
+        </div>
+        <div class="col-sm-4 font_size">
+          <%= number_with_precision (return_charges.to_f&.round(2) || 0), precision: 2 %>
+        </div>
+      <%end%>
+
+      <div class="col-sm-6 font_size">
+        <b>Net Return Value</b>
+      </div>
+      <div class="col-sm-2 text-center font_size">
+        :
+      </div>
+      <div class="col-sm-4 font_size">
+        <% if @inventory_return_invoice.return_amount.present? %>
+          <%= number_with_precision @inventory_return_invoice.return_amount.to_f.round(2), precision: 2 %>
+        <% else %>
+          <%= number_with_precision @inventory_return_invoice.total_cost.to_f.round(2), precision: 2 %>
+        <% end %>
+      </div>
+
+    </div>
+    <% unless @inventory_return_invoice.note.nil? or @inventory_return_invoice.note.empty? %>
+      <div class="col-md-12 text-center mt10" style="background-color:#eee;padding:0 auto">
+        <span style="font-size:11px;"><b>Additional Note:</b> <%= @inventory_return_invoice.note %></span>
+      </div>
+    <% end %>
+  </div><!--row-->
+  <div class="row" style="margin-top:50px;">
+    <div class="col-sm-offset-10 col-sm-2 font_size text-center">
+      <b>___________________</b><br>
+      <b>Q. P Signature</b>
+    </div>
+  </div>
+</div>
+
+<div>
+  <div class="row" style="border-bottom:1px solid #ccc;">
+    <div class="col-md-4 font_size">
+      <p><%if @inventory_return_invoice.department_id == "284748001" %>PHARMACIST <%elsif @inventory_return_invoice.department_id == "50121007"%>OPTICIAN<%end%> : <b><% if @inventory_store.username %><%= @inventory_store.try(:username) %><% else %> <%= current_user.fullname %><% end %></b></p>
+    </div>
+    <div class="col-md-4 font_size text-center">
+      <%if @inventory_store.dl_number %><p>DL NO : <b><%= @inventory_store.dl_number %><% else %>__-___-_______,______,______</b></p><% end %>
+    </div>
+    <div class="col-md-4 font_size text-center">
+      <%if @inventory_store.gst.present? %><p>GST NO : <b><%= @inventory_store.gst %></b></p><% end %>
+    </div>
+  </div>
+  <div clas="row">
+    <div class="col-md-12">
+      <ul class="med_rules">
+        <li>ALL DISPUTES SUBJECT TO <% if current_facility.city != nil %><%= current_facility.city.upcase %>CITY<% end %> JURISDICTION ONLY.</li>
+        <li>MEDICINES WITHOUT BATCH NO., EXP DT. & LOOSE TABLETS WILL NOT BE TAKEN BACK.</li>
+        <li>PLEASE CONSULT DOCTOR BEFORE USING THE MEDICINES</li>
+        <li>MEDICINE WITHOUT BILL WILL NOT BE TAKEN BACK</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<style type="text/css">
+  .font_size {
+    font-size: 12px;
+  }
+  .med_rules {
+    font-size: 10px;
+  }
+  tr{
+    border-bottom: 1px solid #ccc;
+  }
+  td{
+    padding: 2px;
+    text-align: center;
+  }
+  th{
+    padding: 5px 2px  0 2px;
+    text-align: center;
+  }
+</style>

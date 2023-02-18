@@ -1,0 +1,250 @@
+jQuery("#custom-icd-modal").html("<%= escape_javascript(render 'new') %>")
+
+jQuery(document).ready(function() {
+  jQuery("#custom_new_icd").hide();
+  jQuery("#attach_standard_icd").hide();
+  jQuery("#custom_new_icd_name").hide();
+  jQuery("#translated_icd_diagnosis").hide();
+   
+  jQuery("input[name='custom_icd_type']").on('click', function () {
+    var custom_type = jQuery("input[name='custom_icd_type']:checked").val();
+    if (custom_type == 'create_new_icd') {
+      jQuery("#custom_new_icd_name").fadeIn();
+      jQuery("#custom_new_icd").fadeIn();
+      jQuery("#attach_standard_icd").hide();
+      jQuery("#translated_icd_diagnosis").hide();
+      jQuery("#search_icd").val("");
+      jQuery("#search_icd_code").val("")
+    } else if (custom_type == 'attach_icd'){
+        jQuery("#custom_new_icd").hide();
+        jQuery("#translated_icd_diagnosis").hide();
+        jQuery("#attach_standard_icd").fadeIn();
+        jQuery("#custom_new_icd_name").fadeIn();
+      if($('#add_laterality').attr('checked')){
+        $('#add_laterality').removeAttr('checked')
+      }
+    } else if (custom_type == 'translated_icd') {
+      jQuery("#translated_icd_diagnosis").fadeIn();
+      jQuery("#attach_standard_icd").hide();
+      jQuery("#custom_new_icd").hide();
+    }
+  });
+});
+
+jQuery('#search_icd').autocomplete({
+  minLength: 3,
+  source: function(request, response) {
+    var template_id = 244486005
+    var speciality_id = $("#custom_icd_diagnosis_specialty_id").val()
+    jQuery.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/icdtree/searchdiagnosis',
+      data: {q: request.term, template_id: template_id, speciality_id: speciality_id, remote: "true" },
+      success: function(data) {
+        response( data);
+      },
+      error: function(data) {
+      }
+    });
+  },
+  select: function( event, ui ) {
+    params = ui.item["code"]
+    name = ui.item["label"]
+    icd_type = ui.item["icd_type"]
+
+    jQuery("#search_icd").val(name)
+    var search_icd_code = ui.item["code"]
+    jQuery("#search_icd_code").val(search_icd_code)
+    jQuery("#search_icd_type").val(icd_type)
+    jQuery("#search_icd_code_display").val(search_icd_code)
+
+    $("#search_icd_code_display").val(function(i,val) {
+      return val.toUpperCase();
+    });
+  },
+  create: function() {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+      return $('<li>')
+          .append('<a>' + item.label  + '&nbsp; &nbsp; &nbsp;' + "<span class=\"badge pull-right\">" + item.icd_type_label + "</span>" + '</a>')
+          .appendTo(ul);
+    };
+  },
+  close: function() {
+  }
+});
+
+
+function validate_custom_icd_page() {
+  $("#new_custom_icd_diagnosis").validate({
+    rules: {
+      "custom_icd_diagnosis[fullname]": {
+        remote:"/custom_icd_diagnoses/name_validation?icd_from=custom",
+        required: true,
+        minlength: 3
+      },
+
+      "synonym_icd_diagnosis[search_icd_name]": {
+        required: true
+      },
+      "searched_code_display": {
+        required: true
+      },
+      "synonym_icd_diagnosis[fullname][0]": {
+        required: true,
+        remote:"/custom_icd_diagnoses/name_validation?icd_from=synonym",
+        minlength: 3
+      },
+      "synonym_icd_diagnosis[fullname][1]": {
+        required: true,
+        remote:"/custom_icd_diagnoses/name_validation?icd_from=synonym",
+        minlength: 3
+      },
+      "synonym_icd_diagnosis[fullname][2]": {
+        required: true,
+        remote:"/custom_icd_diagnoses/name_validation?icd_from=synonym",
+        minlength: 3
+      },
+      "custom_icd_diagnosis[specialty_id]": {
+        required: true,
+      },
+      "translated_icd_diagnosis[search_icd_name]": {
+        required: true
+      },
+      "translated_icd_diagnosis[data][0][fullname]": {
+        required: true
+      },
+      "translated_icd_diagnosis[translated_language]": {
+        required: true
+      }
+    },
+    messages: {
+      "custom_icd_diagnosis[fullname]": {
+        required: "Please fill the ICD name.",
+        remote: "Name already exist in Custom/ Synonym, type another"
+      },
+      "synonym_icd_diagnosis[search_icd_name]": {
+        required: "This field is required."
+      },
+      "searched_code_display": {
+        required: "Code cant'be empty, choose ICD from Dropdown by Search"
+      },
+      "synonym_icd_diagnosis[fullname][0]": {
+        required: "Please enter ICD name",
+        remote: "Name already exist in Custom/ Synonym, type another"
+      },
+      "synonym_icd_diagnosis[fullname][1]": {
+        required: "Please enter ICD name",
+        remote: "Name already exist in Custom/ Synonym, type another"
+      },
+      "synonym_icd_diagnosis[fullname][2]": {
+        required: "Please enter ICD name",
+        remote: "Name already exist in Custom/ Synonym, type another"
+      },
+      "custom_icd_diagnosis[specialty_id]": {
+        required: "Please select any Specialty",
+      },
+      "translated_icd_diagnosis[search_icd_name]": {
+        required: "This field is required."
+      },
+      "translated_icd_diagnosis[data][0][fullname]": {
+        required: "Please enter ICD name"
+      },
+      "translated_icd_diagnosis[translated_language]": {
+        required: "Please select any language"
+      }
+    }
+  });
+}
+
+validate_custom_icd_page()
+
+//for creating new synonym names
+jQuery(".custom_icd_diagnosis_fields").on('click',"#add_custom_synonym_name",function(e){
+  var total_rows = $('.synonym_new_icd_name_rows').find('.new_icd_name_row').length
+  total_synonym_rows = total_rows + 1
+  var single_row_html = '<div class="col-md-12 row new_icd_name_row synonym_new_icd_name_field" id="new_icd_name_row" style="margin-bottom: 10px;">' +
+      '<div class="col-md-3"></div>'+
+      '<div class="col-md-6">' +
+      '<input class="form-control synonym_new_icd_name_field" name="synonym_icd_diagnosis[fullname]['+total_synonym_rows+']" id="synonym_new_icd_name_field_'+total_synonym_rows+' " type="text" placeholder="Enter new ICD name">' +
+      '</div>' +
+      '<div class="col-md-1"><span id="remove_custom_synonym_name_'+total_synonym_rows+'" class="btn btn-sm btn-primary btn-danger glyphicon glyphicon-remove remove-icon">' +
+      '</span>' +
+      '</div>'+
+      '</div>'
+  jQuery(single_row_html).appendTo(".synonym_new_icd_name_rows")
+  if ($(".synonym_new_icd_name_rows").find('.remove-icon').length == 2){
+    $('.add-icon').hide()
+  }
+})
+
+jQuery("body").on('click',"[id^=remove_custom_synonym_name_]",function(e){
+  var id = e.currentTarget.id
+
+  jQuery("#"+id).closest('#new_icd_name_row').remove()
+    if ($(".synonym_new_icd_name_rows").find('.remove-icon').length < 2){
+      $('.add-icon').show()
+    }
+})
+
+jQuery('#search_translated_icd').autocomplete({
+  minLength: 3,
+  source: function(request, response) {
+    var search_type = 'translated'
+    var template_id = 244486005
+    var speciality_id = $("#custom_icd_diagnosis_specialty_id").val()
+    jQuery.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/icdtree/searchdiagnosis',
+      data: {q: request.term, template_id: template_id, speciality_id: speciality_id, remote: "true", search_type },
+      success: function(data) {
+        response(data);
+      },
+      error: function(data) {
+      }
+    });
+  },
+  select: function( event, ui ) {
+    params = ui.item["code"]
+    name = ui.item["label"]
+    icd_type = ui.item["icd_type"]
+    icd_diagnosis_details(params);
+    jQuery("#search_translated_icd").val(name)
+    jQuery("#search_diagnosis_icd_code").val(params)
+    var search_translated_icd_code = ui.item["code"]
+    jQuery("#search_translated_icd_code").val(search_translated_icd_code)
+    jQuery("#search_translated_icd_type").val(icd_type)
+    jQuery("#search_translated_icd_code_display").val(search_translated_icd_code)
+    jQuery('.child-icd-diagnosis-details').remove();
+    jQuery('.child-icd-diagnosis-details').show();
+    $("#search_translated_icd_code_display").val(function(i, val) {
+      return val.toUpperCase();
+    });
+  },
+  create: function() {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+      return $('<li>')
+          .append('<a>' + item.label  + '&nbsp; &nbsp; &nbsp;' + "<span class=\"badge pull-right\">" + item.icd_type_label + "</span>" + '</a>')
+          .appendTo(ul);
+    };
+  },
+  close: function() {
+  }
+});
+
+$('#translated_icd_diagnosis_translated_language').select2();
+
+function icd_diagnosis_details(code) {
+  jQuery.ajax({
+    dataType: "html",
+    type : 'get',
+    url: '/icdtree/icd_diagnosis_details',
+    data: { code: code, remote: "true" },
+    success: function(data) {
+      $('.child_translated_icd_diagnosis').append(data);
+    },
+    error: function(data) {
+    }
+  });
+}

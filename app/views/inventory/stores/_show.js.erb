@@ -1,0 +1,314 @@
+
+<!--adjust_height()-->
+<!--function adjust_height(){-->
+<!--    inventoryHeight = $(window).height() - $(".navbar").height() - 3-->
+<!--    $(".sidebar-main").height(inventoryHeight)-->
+<!--    $(".store-content").height(inventoryHeight)-->
+<!--}-->
+
+<!--$(window).resize(function() {-->
+<!--    adjust_height()-->
+<!--})-->
+
+
+$('.li-sidebar-filter').on('click', function(){
+  filter_type = $(this).find('.filter_type').attr('filter')
+  _this = this
+  $.ajax({
+    type: "GET",
+    data: {
+      item_type: filter_type,
+      store_id: "<%=@inventory_store.id %>",
+    },
+    url: "/inventory/items",
+    success: function(data) {
+//      $(_this).closest('.'+department_id).find('.filter_type').find("i").addClass("fa-toggle-off").removeClass("fa-toggle-on")
+
+      $(_this).parents('.item-filters').find('.filter_type').find("i").addClass("fa-toggle-off").removeClass("fa-toggle-on")
+      $(_this).addClass("active");
+      $(_this).find("i").addClass("fa-toggle-on").removeClass("fa-toggle-off")
+    }
+  })
+})
+
+
+$("#refresh_inventory").unbind();
+$("#refresh_inventory").on("click", function () {
+  $("#inventory_search").val("")
+  $(this).html("Reloading...&nbsp;&nbsp;<i class='fa fa-refresh' style='color: white;'></i>")
+  $(this).find("i").addClass("fa-spin fa-fw")
+  department_id = $('#inventory_controller_department').val()
+  filter_type = $(".fa-toggle-on").parents('.filter_type').attr('filter')
+  query = $(this).val()
+//  if (query.length > 2) {
+  $.ajax({
+    type : 'get',
+    url: '/inventory/refresh_inventory_list',
+    data: {q: query, department_id: department_id,item_type: filter_type, remote: "true" },
+    success: function(){
+      $("#refresh_inventory").html("Reload&nbsp;&nbsp;<i class='fa fa-refresh' style='color: white;'></i>")
+      $("#refresh_inventory").find("i").removeClass("fa-spin")
+    }
+  })
+//  }
+})
+
+
+$(".btnItemToCart").on("click",function(){
+  var item_id = $(this).attr("data-model")
+  var in_cart
+  if ($(this).hasClass("btnAddItemToCart")) {
+    in_cart = "true"
+  }
+  else {
+    in_cart = "false"
+  }
+  $.ajax({
+    type: "GET",
+    data: {
+      item_id: item_id,
+      in_cart: in_cart
+    },
+    url: "inventory/items/update_cart",
+    success: function(data) {
+      $("#items_checkout_collection").find(".badge").text(data.cart_count)
+    }
+  })
+  $(this).toggleClass("btnAddItemToCart btnRemoveItemFromCart");
+  $(this).find('i').toggleClass('fa-plus fa-minus')
+  $(this).toggleClass("btn-primary btn-warning")
+  $("#items_checkout_collection").find(".fa-shopping-bag").addClass('hvr-push');
+  setTimeout(function() {
+    return $("#items_checkout_collection").find(".fa-shopping-bag").removeClass('hvr-push');
+  }, 400);
+//  $("#items_checkout_collection").find(".badge").text($(".btnRemoveItemFromCart").length)
+})
+
+
+
+
+
+// Toggle Left Menu
+jQuery('.nav-parent > a').click(function() {
+
+    var parent = jQuery(this).parent();
+    var sub = parent.find('> ul');
+
+    // Dropdown works only when leftpanel is not collapsed
+    if(!jQuery('body').hasClass('leftpanel-collapsed')) {
+        if(sub.is(':visible')) {
+            sub.slideUp(200, function(){
+                parent.removeClass('nav-active');
+                adjustleftpanelheight();
+            });
+        } else {
+            closeVisibleSubMenu();
+            parent.addClass('nav-active');
+            sub.slideDown(200, function(){
+                adjustleftpanelheight();
+            });
+        }
+    }
+    return false;
+});
+
+function closeVisibleSubMenu() {
+    jQuery('.nav-parent').each(function() {
+        var t = jQuery(this);
+        if(t.hasClass('nav-active')) {
+            t.find('> ul').slideUp(200, function(){
+                t.removeClass('nav-active');
+            });
+        }
+    });
+}
+
+
+
+function adjustleftpanelheight() {
+    // Adjust leftpanel height
+
+    jQuery('.leftpanel').css({height: ''});
+    var docHeight = jQuery(document).height();
+    if(docHeight > jQuery('.mainpanel').height())
+        jQuery('.leftpanel').height(docHeight);
+}
+adjustleftpanelheight()
+
+// Tooltip
+jQuery('.tooltips').tooltip({ container: 'body'});
+
+// Popover
+jQuery('.popovers').popover();
+
+
+// Add class everytime a mouse pointer hover over it
+jQuery('.nav-bracket > li').hover(function(){
+    jQuery(this).addClass('nav-hover');
+}, function(){
+    jQuery(this).removeClass('nav-hover');
+});
+
+
+
+$(".nav-bracket a").on("click",function(){
+    if(!$(this).parent().hasClass("nav-parent")) {
+        $(".nav-bracket li").removeClass("nav-active active")
+        $(this).parent().addClass("active")
+    }
+
+})
+
+jQuery("ul.nav-bracket > li").on("click", function () {
+    jQuery("ul.nav-bracket > li[class='active']").removeClass("active");
+    jQuery(this).addClass("active");
+});
+
+$(".nav-bracket >.nav-parent").on("click",function(){
+    $(this).addClass("nav-active")
+})
+
+$(".nav-bracket .children > li").on("click",function(){
+    $(this).addClass("active")
+})
+
+
+// Menu Toggle
+jQuery('.menutoggle').click(function(){
+
+    var body = jQuery('body');
+    var bodypos = body.css('position');
+
+    if(bodypos != 'relative') {
+
+        if(!body.hasClass('leftpanel-collapsed')) {
+            body.addClass('leftpanel-collapsed');
+            jQuery('.nav-bracket ul').attr('style','');
+
+            jQuery(this).addClass('menu-collapsed');
+
+        } else {
+            body.removeClass('leftpanel-collapsed chat-view');
+            jQuery('.nav-bracket li.active ul').css({display: 'block'});
+
+            jQuery(this).removeClass('menu-collapsed');
+
+        }
+    } else {
+
+        if(body.hasClass('leftpanel-show'))
+            body.removeClass('leftpanel-show');
+        else
+            body.addClass('leftpanel-show');
+
+        adjustleftpanelheight();
+    }
+
+});
+
+
+
+
+function filter_index(query) {
+  if (query.length > 0){
+    $(".inventory_search_panel").find(".fa").show()
+  }
+  else {
+    $(".inventory_search_panel").find(".fa").hide()
+  }
+  $('#show_more_inventory').show();
+  $.ajax({
+    type : 'get',
+    url: '/inventory/items/filter_index',
+    data: {q: query, store_id: "<%=@store_id %>",item_type: "<%=@category %>", remote: "true" },
+  })
+}
+
+$(".inventory_search_panel").find(".fa").on('click',function(){
+  $("#inventory_search").val("")
+  filter_index("")
+})
+
+$("#inventory_search").on("keyup", function () {
+  query = $(this).val()
+  filter_index(query)
+})
+
+$(".btn-inventory-refresh").on("click", function () {
+  query = $("#inventory_search").val()
+  filter_index(query)
+})
+
+adjust_height()
+function adjust_height(){
+  inventoryHeight = $(window).height() - $(".navbar").height() - 3
+  $(".sidebar-main").height(inventoryHeight)
+  $(".store-content").height(inventoryHeight)
+  toolbar2Height = $(".inventory-toolbar2").height()
+  $(".inventory-show-panel").height(inventoryHeight - toolbar2Height)
+  storeListHeight = inventoryHeight - $('.inventory-toolbar').height()
+  storeBodyHeight = storeListHeight - $('.inventory-table-head').height()
+  $('.inventory-table-body').height(storeBodyHeight)
+}
+
+
+$(window).resize(function() {
+  adjust_height()
+})
+
+$('.inventory-list-row').unbind()
+$('.inventory-list-row').on('click', function(e){
+  e.preventDefault();
+  var _id =  $(this).attr('id');
+  $('.inventory-list-row').css('background-color', '')
+  $(this).css('background-color', '#f0f0f0')
+  $.ajax({
+    type: 'GET',
+    data: {
+      remote: true
+    },
+    url: '/inventory/items/'+_id,
+    success: function(){
+    }
+  })
+})
+
+function isScrolledIntoLastRow(last_row_elem, scrollable_container) {
+  if (last_row_elem.length == 1) {
+    var top_of_element = $(last_row_elem).offset().top - $(scrollable_container).offset().top ;
+    var table_height = $(scrollable_container).innerHeight()
+    return top_of_element <= table_height
+  }
+}
+
+scrollinventory()
+function scrollinventory(){
+  $(".inventory-table-body").scroll(function() {
+    last_row_elem = $('.inventory-table-body').find('tr:nth-last-child(1)')
+    scrollable_container = $(".inventory-table-body")
+
+    if (isScrolledIntoLastRow(last_row_elem, scrollable_container)){
+      $("#show_more_inventory:visible").trigger("click")
+      $(".inventory-table-body").off('scroll');
+      setTimeout(function() {   //calls click event after a certain time
+        scrollinventory()
+      }, 500);
+    }
+  })
+}
+$("#show_more_inventory:visible").on('click', function(e){
+  e.preventDefault();
+  var total_count_row =  $('.inventory-table-body tr').length;
+  var query =  $("#inventory_search").val()
+  $.ajax({
+    type: "GET",
+    dataType: "script",
+    data: {
+      total_count_row: total_count_row,
+      item_type: "<%=  @category %>",
+      store_id: "<%= @store_id %>",
+      q:query
+    },
+    url: "/inventory/items/append_index",
+  })
+})

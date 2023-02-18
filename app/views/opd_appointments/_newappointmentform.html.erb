@@ -1,0 +1,257 @@
+<div class="modal-body add-appointment-modal-body">
+
+  <div id="opdappointmentvisittype" class="opdappointmentvisittype">
+
+    <div class="row mb20">
+
+      <div class="col-md-6">
+
+        <div class="row">
+
+          <div class="col-sm-3">
+
+            <label class="control-label">Patient Type</label>
+
+          </div>
+
+          <div class="col-sm-10">
+
+            <div class="rdio rdio-primary col-md-6">
+              <%= radio_button_tag "patientappointmenttype", "Fresh", false, {:class => 'patientappointmenttype', :id => "patientAppointmentTypeRadio1"} %>
+              <label for="patientAppointmentTypeRadio1">New Patient</label>
+            </div>
+
+            <div class="rdio rdio-primary col-md-6">
+              <%= radio_button_tag "patientappointmenttype", "Followup", false, {:class => 'patientappointmenttype', :id => "patientAppointmentTypeRadio2"} %>
+              <label for="patientAppointmentTypeRadio2">Registered Patient</label>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+      <div class="col-md-4" style="margin-left:-100px;">
+        <div id="searchpatientform" class="searchpatientform" style="margin-top:15px;">
+
+          <div class="ui-widget">
+            <input type="text" class="form-control" name="searchpatientkeyword" id="searchpatientkeyword" placeholder="Search patient by Name,Number,Id(MRN)" />
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <div id="signuppatient" class="signuppatient">
+
+    <div id="siguppatientform" class="signuppatientform">
+
+    </div>
+
+    <!-- <div id="available-appointment-slots" class="available-appointment-slots">
+
+    </div> -->
+
+    <div id="showpatient" class="showpatient">
+
+    </div>
+
+  </div>
+
+
+  <div id="followup-searchpatientresult" class="followup-searchpatientresult">
+
+    <div id="searchpatientresult" class="searchpatientresult">
+
+    </div>
+
+    <div id="followup-available-appoointment-slots" class="followup-available-appoointment-slots">
+
+    </div>
+
+  </div>
+
+
+  <button aria-hidden="true" class="btn btn-info opd-appointment-visittype-close" data-dismiss="modal">Close</button>
+
+</div>
+<%= javascript_include_tag "bootstrap-timepicker.min", "data-turbolinks-track" => true %>
+<%= javascript_include_tag "bootstrap-fileupload.min", "data-turbolinks-track" => true %>
+<%= javascript_include_tag "bootstrap-wizard.min", "data-turbolinks-track" => true %>
+<script>
+    jQuery(document).ready(function() {
+        jQuery("#siguppatientform").hide();
+        jQuery("#searchpatientform").hide();
+        jQuery("#searchpatientresult").hide();
+        jQuery("input[name='patientappointmenttype']").on('click', function() {
+            var patientappointmenttype = jQuery("input[name='patientappointmenttype']:checked").val();
+            if (patientappointmenttype == 'Fresh') {
+                jQuery("#siguppatientform").show();
+                jQuery("#searchpatientform").hide();
+                jQuery("#searchpatientresult").hide();
+                jQuery.ajax({
+                    type: "GET",
+                    dataType: "script",
+                    data:{
+                        current_doctor: $("#sidebar_doctors .current_doctor").find("a").attr("data-doctor-id")
+                    },
+                    url: "/opd_appointments/freshappointmentype?appointment_date=<%=@appointment_date %>&start_time=<%= @start_time %>&end_time=<%= @end_time %>"
+                });
+            }
+            else if (patientappointmenttype == 'Followup') {
+                jQuery(".opd-appointment-visittype-close").show();
+                jQuery("#siguppatientform").hide();
+                jQuery("#searchpatientform").show();
+                jQuery("#searchpatientresult").hide();
+            }
+        });
+
+        function search_patient_list(){
+          jQuery("#searchpatientkeyword").autocomplete({
+              minLength: 3,
+              source: function(request, response) {
+                  jQuery.ajax({
+                      dataType: "json",
+                      type : 'get',
+                      url: '/opd_appointments/searchpatient',
+                      //data: {searchpatient: params, remote: "true" },
+                      data: {q: request.term.replace(/[^\w\s]/gi, ''), remote: "true" },
+                      success: function(data) {
+                          //jQuery('#searchpatientkeyword').removeClass('ui-autocomplete-loading')
+                          response(data);
+                      },
+                      error: function(data) {
+                          //jQuery('#searchpatientkeyword').removeClass('ui-autocomplete-loading');
+                      }
+                  });
+              },
+              focus: function( event, ui ) {
+                  var params = { patientid: ui.item["id"] };
+                  jQuery.ajax({
+                      type: "GET",
+                      dataType: "script",
+                      url: "/opd_appointments/searchpatientresultfocus",
+                      data: {searchresultfocus: params, remote: "true" }
+                  });
+              },
+              select: function( event, ui ) {
+                  var params = { patientid: ui.item["id"] };
+                  jQuery.ajax({
+                      type: "GET",
+                      dataType: "script",
+                      url: "/opd_appointments/searchpatientresultselect",
+                      data: {
+                        searchresultselect: params,
+                        current_doctor: $("#sidebar_doctors .current_doctor").find("a").attr("data-doctor-id"),
+                        remote: "true",
+                        appointment_date: "<%=@appointment_date %>",
+                        start_time: "<%=@start_time%>",
+                        end_time: "<%=@end_time%>",
+                      }
+                  });
+              },
+              create: function () {
+                $(this).data('ui-autocomplete')._renderItem = function (ul, patient) {
+                  $(ul).css("border","1px solid #000").css("border-top","none")
+                  return $('<li>')
+                    .append('<hr style="margin:0 0 5px;padding:0;border-color:#354670;"><a style="color:#428bca"><b><span>' + patient.label + '</span><span class="badge badge-primary pull-right">' + patient.patient_display_id + '</span><br/><span class="">' + patient.mobile_number + '</span><span class="badge badge-danger pull-right">' + patient.patient_mrn + '</span></b></a>')
+                    .appendTo(ul);
+                }
+              },
+              close: function() {
+                var today = new Date();
+                var dd = today.getDate();
+                var mm = today.getMonth()+1; //January is 0!
+                var yyyy = today.getFullYear();
+                if(dd<10) {
+                  dd='0'+dd
+                }
+                if(mm<10) {
+                  mm='0'+mm
+                }
+
+                var hours = today.getHours();
+                var minutes = today.getMinutes();
+                var ampm = hours >= 12 ? 'PM' : 'AM';
+                hours = hours % 12;
+                hours = hours ? hours : 12; // the hour '0' should be '12'
+                minutes = minutes < 10 ? '0'+minutes : minutes;
+                strTime = hours + ':' + minutes + ' ' + ampm;
+
+                today = dd+'/'+mm+'/'+yyyy;
+
+                if ($("#followupappointmentdate").val() == "") {
+                  $("#followupappointmentdate").val("<%=(Date.parse @appointment_date).strftime("%d/%m/%Y")%>" || today);
+
+
+                }
+
+                if ($("#followupappointmenttime").val() == "") {
+                 // alert ($("#followupappointmenttime").val())
+
+                 // if ("<%=@start_time%>" != "" && "<%=@start_time%>" != undefined){
+                 //   start_time = ss
+                 // }
+
+                  $("#followupappointmenttime").val( "<%=@start_time%>" || strTime)
+
+                 // alert ("start")
+                  timepicker_options = {defaultTime: false, minuteStep: 5}
+                 // alert ("middle")
+                  time = $("#followupappointmenttime").val()
+
+
+
+
+                 // alert ("end")
+                }
+
+
+                jQuery('#followupappointmentdate').datepicker({
+                  dateFormat: "dd/mm/yy",
+                 // minDate: 0
+                })
+
+
+
+              }
+          });
+          jQuery("#searchpatientkeyword").autocomplete( "option", "appendTo", ".add-appointment-modal-body" );
+        }
+        $('#searchpatientkeyword').keyup( jQuery.debounce( 200, search_patient_list ) );
+// changes in the user controller code as user was changing with the location in case of doctor(by anoop).
+        jQuery('#siguppatientform').on("change", '#appointment-facility-filter',function(){
+            jQuery.ajax({
+                type: "GET",
+                dataType: "html",
+                url: "/users/get_users_for_department_facility",
+                data: {facility_id: jQuery("#appointment-facility-filter").val(), department_id: jQuery("#patient_appointments_attributes_0_department_id").val()},
+                success: function(data) {
+                    jQuery("#doctors-filter").html(data)
+                    //jQuery("#department-filter").trigger("change")
+                }
+            })
+        });
+
+        jQuery('#searchpatientresult').on("change", '#appointment-facility-filter',function(){
+            jQuery.ajax({
+                type: "GET",
+                dataType: "html",
+                url: "/users/get_users_for_department_facility",
+                data: {facility_id: jQuery("#appointment-facility-filter").val(), department_id: jQuery("#department-filter").val()},
+                success: function(data) {
+                    jQuery("#doctors-filter").html(data)
+                    //jQuery("#department-filter").trigger("change")
+                }
+            })
+        });
+
+
+
+    });
+</script>

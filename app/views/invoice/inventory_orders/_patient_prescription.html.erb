@@ -1,0 +1,291 @@
+<div class="row">
+  <%prescription = @patient_prescription%>
+  <div class="row no_margin" style="padding: 0% 2%">
+    <div class="row">
+      <span style="font-size: 12px"><b>MEDICATION(Rx)</b>&nbsp;(Last updated on <%= prescription.updated_at.strftime("%d %b,%Y")%> &nbsp;at <%= prescription.updated_at.strftime("%I:%M %p")%>)(Patient's Prescription)</span>
+      <% if prescription.encountertype == "OPD" %>
+          <span class="pull-right">
+            <% if @print_settings.count > 1 %>
+              <div class="btn-group">
+                <button type="button" class="btn btn-xs btn-link full_print dropdown-toggle" data-toggle="dropdown"><i class="fa fa-print mr5"></i> Print Receipt <i class="fa fa-caret-down"></i></button>
+                <ul class="dropdown-menu dropdown-left-manual" role="menu" aria-labelledby="summary-print-dropdown" style="">
+                  <% @print_settings.each do |print_setting| %>
+                    <li style="text-align:left">
+                      <%= link_to opd_records_print_medication_path(:opdrecordid => prescription.record_id.to_s, :patientid => prescription.patient_id.to_s, :appointmentid => prescription.appointment_id, :templatetype => "eye", :specality => "ophthalmology", print_setting_id: print_setting.id, :format => :pdf), :class => "",:target => "_blank", :data => {method: :get} do %> <i class="fa fa-print mr5"></i> <%= print_setting.name %> <% end %>
+                    </li>
+                  <% end %>
+                </ul>
+              </div>
+            <% else %>
+              <%= link_to opd_records_print_medication_path(:opdrecordid => @patient_prescription.record_id.to_s, :patientid => @patient_prescription.patient_id.to_s, :appointmentid => @patient_prescription.appointment_id, :templatetype => "eye", :specality => "ophthalmology", print_setting_id: @print_settings[0].id, :format => :pdf),:target => "_blank", :data => {method: :get}, class: "btn btn-xs btn-link pull-right" do %> <i class="fa fa-print mr5"></i> Print <% end %>
+            <% end %>
+          </span>
+        <!-- <a class="btn btn-xs btn-link pull-right" target="_blank" data-method="get" href="/opd_records/print_medication.pdf?appointmentid=<%#= prescription.appointment_id%>&amp;opdrecordid=<%#= prescription.record_id.to_s%>&amp;patientid=<%#= prescription.patient_id.to_s%>&amp;specality=ophthalmology&amp;templatetype=eye"> <i class="fa fa-print"></i> Print</a> -->
+      <% else %>
+          <span class="pull-right">
+            <% if @print_settings.count > 1 %>
+              <div class="btn-group">
+                <button type="button" class="btn btn-xs btn-link full_print dropdown-toggle" data-toggle="dropdown"><i class="fa fa-print mr5"></i> Print Receipt <i class="fa fa-caret-down"></i></button>
+                <ul class="dropdown-menu dropdown-left-manual" role="menu" aria-labelledby="summary-print-dropdown" style="">
+                  <% @print_settings.each do |print_setting| %>
+                    <% @print_medication = "inpatient_ipd_record_discharge_note_ophthalmology_note_print_path(id: prescription.record_id, ophthalmology_note_id: prescription.record_id, admission_id: prescription.admission_id.to_s, print_setting_id: print_setting.id.to_s, view: 'Medication', format: 'pdf')" %>
+                    <li style="text-align:left">
+                      <%= link_to eval(@print_medication), :class => "",:target => "_blank", :data => {method: :get} do %> <i class="fa fa-print mr5"></i> <%= print_setting.name %> <% end %>
+                    </li>
+                  <% end %>
+                </ul>
+              </div>
+            <% else %>
+              <% @print_medication = "inpatient_ipd_record_discharge_note_ophthalmology_note_print_path(id: prescription.record_id, ophthalmology_note_id: prescription.record_id, admission_id: prescription.admission_id.to_s, print_setting_id: @print_settings[0].id.to_s, view: 'Medication', format: 'pdf')" %>
+              <%= link_to eval(@print_medication), :target => "_blank", :data => {method: :get}, class: "btn btn-xs btn-link pull-right" do %> <i class="fa fa-print mr5"></i> Print <% end %>
+            <% end %>
+          </span>
+        <%#= link_to eval(@print_medication), :class => "btn btn-xs btn-link pull-right", :target => "_blank", :data => {method: :get} do %> <!-- <i class="fa fa-print"></i> --> <%# end %>
+      <% end %>
+      <div class="summary-line-border"></div>
+    </div>
+
+    <% if @medication_groups %>
+      <% [nil, 'C', 'D'].each do |mg| %>
+        <% if @medication_groups.to_h[mg.to_s] %>
+          <div class="row"><div class="medication_heading"><strong><%= OpdRecordsHelper.translate_medication_status(mg, @translated_language) %></strong></div></div>
+
+          <div class="row check_font" style="max-height: 250px; overflow-y: auto; font-size: 10px">
+            <table class="table table-bordered">
+              <thead>
+                <tr>
+                  <th><%= LanguageHelper.translation('sr_no', @translated_language)%></th>
+                  <th><%= LanguageHelper.translation('name', @translated_language)%></th>
+                  <th><%= LanguageHelper.translation('quantity', @translated_language)%></th>
+                  <th class="text-center"><%= LanguageHelper.translation('frequency', @translated_language)%></th>
+                  <th><%= LanguageHelper.translation('duration', @translated_language)%></th>
+                  <th><%= LanguageHelper.translation('eye', @translated_language)%></th>
+                  <th><%= LanguageHelper.translation('instruction', @translated_language)%></th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @medication_groups.to_h[mg.to_s].each_with_index do |medication, i| %>
+                  <% pharmacy_item_variant =  Inventory::Item::Variant.find_by(id: medication['pharmacy_item_id'], store_id: @inventory_store.id) %>
+                  <% if pharmacy_item_variant.present? %>
+                    <% pharmacy_item_variant_count = pharmacy_item_variant.try(:stock).to_i%>
+                  <%else%>
+                    <%pharmacy_item_variant_count = 0 %>
+                  <%end%>
+                  <% if pharmacy_item_variant_count == 0 %>
+                    <%row_color = '#ff000030'%>
+                  <% else %>
+                    <%row_color = '00800052'%>
+                  <% end %>
+
+                  <tr style= "background: <%=row_color%>">
+                    <td><%= i + 1 %></td>
+                    <td><%= medication['medicinename'] %><% if medication['medicinetype'].present? %> - <%= medication['medicinetype'] %><% end %></td>
+                    <% if medication['taper_id'] == "0" || medication['taper_id'] == nil || medication['taper_id'] == "" %>
+                      <td class="text-right"><%= medication['medicinequantity'] %></td>
+                      <td class="text-center">
+                        <% if Array["1-1-1", "1-1-0", "1-0-1", "0-1-1", "1-0-0", "0-1-0", "0-0-1", "1-1-1-1"].include?(medication['medicinefrequency']) %>
+                          <% frequency = medication['medicinefrequency'].split('-') %>
+                          <% unless frequency[3] == nil %>
+                            <div class="row">
+                              <div class="col-md-2 text-center"><b><%= frequency[0] %></b><br>Mrng</div>
+                              <div class="col-md-1">-</div>
+                              <div class="col-md-2 text-center"><b><%= frequency[1] %></b><br>Noon</div>
+                              <div class="col-md-1">-</div>
+                              <div class="col-md-2 text-center"><b><%= frequency[2] %></b><br>Evng</div>
+                              <div class="col-md-1">-</div>
+                              <div class="col-md-2 text-center"><b><%= frequency[3] %></b><br>Night</div>
+                            </div>
+                          <% else %>
+                            <div class="row">
+                              <div class="col-md-3 text-center"><b><%= frequency[0] %></b><br>Morning</div>
+                              <div class="col-md-1">-</div>
+                              <div class="col-md-3 text-center"><b><%= frequency[1] %></b><br>Afternoon</div>
+                              <div class="col-md-1">-</div>
+                              <div class="col-md-3 text-center"><b><%= frequency[2] %></b><br>Evening</div>
+                            </div>
+                          <% end %>
+                        <% else %>
+                          <%= medication['medicinefrequency'] %>
+                        <% end %>
+                      </td>
+                      <td>
+                        <% unless medication['medicinedurationoption'] == "F" %>
+                          <% if medication['medicinedurationoption'] == "W" %>
+                            <%= pluralize(medication['medicineduration'], 'Week') %>
+                          <% elsif medication['medicinedurationoption'] == "M" %>
+                            <%= pluralize(medication['medicineduration'], 'Month') %>
+                          <% else medication['medicinedurationoption'] == "D" %>
+                            <%= pluralize(medication['medicineduration'], 'Day') %>
+                          <% end %>
+                        <% else %>
+                          Next Followup
+                        <% end %>
+                      </td>
+                    <% else %>
+                      <td colspan="3" class="text-center">
+                        As advised below
+                      </td>
+                    <% end %>
+                    <td>
+                      <%= (medication['eyeside'].present?) ? medication['eyeside'] : '-' %>
+                    </td>
+                    <td><%= medication['medicineinstructions'] %></td>
+                  </tr>
+                  <% unless medication['taper_id'] == "0" || medication['taper_id'] == nil || medication['taper_id'] == "" %>
+                    <tr style="background-color:#bbb">
+                      <td colspan="7" style="padding:5px 10px 2px;">
+                        <% @taper = TaperingKit.find_by(id: medication['taper_id']) %>
+                        <% @tapering_set = @taper.tapering_set %>
+                        <% if @taper.taper_by == "Dosage" %>
+                          <table class="table table-bordered" style="margin: 0 0 5px;">
+                            <thead>
+                              <tr>
+                                <th>Sr No.</th>
+                                <th>No of Days</th>
+                                <th>Start Date</th>
+                                <th>End Date</th>
+                                <th>Start Time</th>
+                                <th>End Time</th>
+                                <th width="16%">Dosage</th>
+                                <th width="16%">Interval</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <% @tapering_set.each.with_index do |taper, i| %>
+                                <tr class="taper_row">
+                                  <td>
+                                    <%= i.to_i + 1 %>
+                                  </td>
+                                  <td>
+                                    <%= taper.number_of_days %>
+                                  </td>
+                                  <td>
+                                    <%= taper.try(:start_date).try(:strftime, '%d/%m/%Y') %>
+                                  </td>
+                                  <td>
+                                    <%= taper.try(:end_date).try(:strftime, '%d/%m/%Y') %>
+                                  </td>
+                                  <td>
+                                    <%= taper.try(:start_time).try(:strftime, '%I:%M %p') %>
+                                  </td>
+                                  <td>
+                                    <%= taper.try(:end_time).try(:strftime, '%I:%M %p') %>
+                                  </td>
+                                  <td>
+                                    <%= taper.dosage %>
+                                  </td>
+                                  <td>
+                                    <%= taper["interval"].to_i > 0 ? 'Every '+ pluralize(taper["interval"], 'hour') : '-'  %>
+                                  </td>
+                                </tr>
+                              <% end %>
+                            </tbody>
+                          </table>
+                        <% else %>
+                          <table class="table table-bordered" style="margin: 0 0 5px;">
+                            <thead>
+                              <tr>
+                                <th>Sr No.</th>
+                                <th>Day</th>
+                                <th>Start Date</th>
+                                <th>End Date</th>
+                                <th>Start Time</th>
+                                <th>End Time</th>
+                                <th width="16%">Frequency</th>
+                                <th width="16%">Interval</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <% @tapering_set.each.with_index do |taper, i| %>
+                                <% unless (taper.frequency).to_i == 0 %>
+                                <tr class="taper_row">
+                                  <td>
+                                    <%= i.to_i + 1 %>
+                                  </td>
+                                  <td>
+                                    <%= taper.number_of_days %>
+                                  </td>
+                                  <td>
+                                    <%= taper.try(:start_date).try(:strftime, '%d/%m/%Y') %>
+                                  </td>
+                                  <td>
+                                    <%= taper.try(:end_date).try(:strftime, '%d/%m/%Y') %>
+                                  </td>
+                                  <td>
+                                    <%= taper.try(:start_time).try(:strftime, '%I:%M %p') %>
+                                  </td>
+                                  <td>
+                                    <%= taper.try(:end_time).try(:strftime, '%I:%M %p') %>
+                                  </td>
+                                  <td>
+                                    <%= pluralize(taper["frequency"], 'time') %> a day
+                                  </td>
+                                  <td>
+                                    <%= taper["interval"].to_i > 0 ? 'Every '+ pluralize(taper["interval"], 'hour') : '-'  %>
+                                  </td>
+                                </tr>
+                                <% end %>
+                              <% end %>
+                            </tbody>
+                          </table>
+                        <% end %>
+                      </td>
+                    </tr>
+                  <% end %>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        <% end %>
+      <% end %>
+    <% end %>
+
+    <%if prescription.medication_comment.present? %>
+      <li><%= prescription.medication_comment %></li>
+    <% end %>
+  </div>
+</div>
+
+<style type="text/css">
+  .font_size {
+    font-size: 11px;
+  }
+
+  input[type=number]::-webkit-inner-spin-button,
+  input[type=number]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  input.error, select.error {
+    border-color: #b94a48;
+    background-image: none;
+  }
+
+  input.valid, select.valid {
+    border-color: #468847;
+    background-image: none;
+  }
+
+  label.error {
+    white-space: nowrap;
+  }
+
+
+  .check_font * {
+    font-size: 10px;
+  }
+
+  .medication_title {
+    font-size: 12px;
+  }
+
+  .check_font table tr th {
+    padding: 2px 5px;
+  }
+
+  .check_font table tr td {
+    padding: 2px 5px;
+  }
+
+</style>

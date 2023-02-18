@@ -1,0 +1,132 @@
+<div class="services_items_invoice_opd" id="services_items_invoice_opd">
+  <!-- Display Once -->
+  <% @service_total = 0 %>
+  <% if @template_services %>
+    <% @template_services.each do |i, ser| %>
+    <% @service_total = ser['service_total'].to_i + @service_total %>
+    <div class="service_row_count mb5 mt5" title=<%= i %>>
+      <div class="row service_row mb10">
+        <div class="col-md-3">
+          <% if InvoiceServiceCard.find(ser['name']).card_deleted == false %>
+            <select class="form-control service_name" name="invoice_opd[services][<%= i %>][name]">
+              <% @invoiceservicecard.each do |servicecard| %>
+                <option value="<%= servicecard.id.to_s %>" <% if(ser['name'] == servicecard.id.to_s) %> selected="selected"<% end %>><%= servicecard.service_name %></option>
+              <% end %>
+            </select>
+          <% else %>
+            <select class="form-control service_name" name="invoice_opd[services][<%= i %>][name]">
+              <% @invoiceservicecard.each do |servicecard| %>
+                <option value="<%= servicecard.id.to_s %>" <% if(ser['name'] == servicecard.id.to_s) %> selected="selected"<% end %>><%= servicecard.service_name %></option>
+              <% end %>
+            </select>
+          <% end %>
+        </div>
+        <div class='col-md-4'>
+          <button class="btn btn-primary btn-xs add_service_item" style="padding:0 5px;margin-top:3px;"><i class="fa fa-plus"></i> New Item</button>
+        </div>
+        <div class="col-md-3">
+          <input style="padding:5px 10px;" class="form-control service_total text-right" placeholder="Service Total" type="text" name="invoice_opd[services][<%= i %>][service_total]" readonly="readonly" value="<%= ser['service_total'] %>">
+        </div>
+        <div class="col-md-2 text-right">
+          <button class="btn btn-danger btn-xs remove_service_item" style="padding:0 5px;margin-top:3px;"><i class="fa fa-trash-alt"></i> Remove Service</button>
+        </div>
+      </div>
+      <div class="item_name_flag">
+        <div class="row" style="padding-left:20px;">
+          <div class="col-md-2 col-md-5-shared">
+            <b>Description</b>
+          </div>
+          <div class="col-md-1">
+            <b>Quantity</b>
+          </div>
+          <div class="col-md-2 col-md-3-shared text-right">
+            <b>Unit Price</b>
+          </div>
+          <div class="col-md-2 col-md-3-shared">
+            <b>Tax Group</b>
+          </div>
+          <div class="col-md-1">
+           Tax Incl.
+          </div>
+          <div class="col-md-1 text-right">
+            <b>Tax</b>
+          </div>
+          <div class="col-md-2 col-md-3-shared text-right">
+            <b>Total Amount</b>
+          </div>
+          <div class="col-md-2">
+            <b>Action</b>
+          </div>
+        </div>
+      </div>
+      <div class="service_item_row_count mb10" id="service_item_row">
+        <% if ser['items'] %>
+          <% ser['items'].each do |j, it| %>
+            <div class="invoice_service_item_row row mt5" id="invoice_service_item_row" style="padding-left:20px;">
+              <div class="field_for_date">
+                <div class="tax_fields"></div>
+                <input name="invoice_opd[services][<%= i %>][items][<%= j %>][item_entry_date]" style="padding:5px 10px;" class="form-control i_item_entry_date" type="hidden" value="<%= Time.current %>">
+              </div>
+              <div class="col-md-2 col-md-5-shared field_for_description">
+                <% @iic = InvoiceItemCard.find_by(id: it['description']) %>
+                <% @isc = InvoiceServiceCard.find(@iic.invoice_service_card_id.to_s).id.to_s %>
+                <% if InvoiceServiceCard.find(ser['name']).card_deleted == true || InvoiceItemCard.find(it['description']).card_deleted == true %>
+                  <select class="form-control i_description" name="invoice_opd[services][<%= i %>][items][<%= j %>][description]">
+                    <% InvoiceItemCard.where(invoice_service_card_id: @isc).each do |iic| %>
+                      <option value="<%= iic.id.to_s %>" <% if iic.id.to_s == it['description'] %> selected="selected"<% end %>>
+                        <%= iic.item_name %> <% if iic.user_name %> - <%= iic.user_name %><% end %>
+                      </option>
+                    <% end %>
+                  </select>
+                <% else %>
+                  <select class="form-control i_description" name="invoice_opd[services][<%= i %>][items][<%= j %>][description]">
+                    <% InvoiceItemCard.where(invoice_service_card_id: @isc, card_deleted: false).each do |iic| %>
+                      <option value="<%= iic.id.to_s %>" <% if iic.id.to_s == it['description'] %> selected="selected"<% end %>>
+                        <%= iic.item_name %> <% if iic.user_name %> - <%= iic.user_name %><% end %>
+                      </option>
+                    <% end %>
+                  </select>
+                <% end %>
+              </div>
+              <div class="col-md-1 field_for_quantity">
+                <input name="invoice_opd[services][<%= i %>][items][<%= j %>][quantity]" style="padding:5px 10px;" class="form-control i_quantity" placeholder="Quantity" maxlength="4" value="<%= it['quantity'] %>" type="text">
+              </div>
+              <div class="col-md-2 col-md-3-shared field_for_unit_price">
+                <input name="invoice_opd[services][<%= i %>][items][<%= j %>][unit_price]" style="padding:5px 10px;" class="form-control i_unit_price" value="<%= it['unit_price'] %>" placeholder="Unit Price" maxlength="12" type="text">
+              </div>
+              <div class="col-md-2 col-md-3-shared field_for_tax_group_id">
+                <select name="invoice_opd[services][<%= i %>][items][<%= j %>][tax_group_id]" class='form-control i_tax_group'>
+                  <option value="" data-tax-rate='0'> </option>
+                  <% @tax_groups.each do |tax_group| %>
+                    <option value="<%= tax_group.id.to_s %>" data-tax-rate='<%= tax_group.rate %>'><%= tax_group.name %> - <%= tax_group.rate %>%</option>
+                  <% end %>
+                </select>
+              </div>
+              <div class="col-md-1 field_for_tax_inclusive">
+                <input type="hidden" name="invoice_opd[services][<%= i %>][items][<%= j %>][tax_inclusive]" value="false">
+                <div class="ckbox ckbox-primary">
+                  <input type="checkbox" name="invoice_opd[services][<%= i %>][items][<%= j %>][tax_inclusive]" id='tax_inclusive_<%= i %><%= j %>' class="i_tax_inclusive" value='true'>
+                  <label for='tax_inclusive_<%= i %><%= j %>'></label>
+                </div>
+              </div>
+              <div class="col-md-1 field_for_taxable_amount">
+                <input name="invoice_opd[services][<%= i %>][items][<%= j %>][non_taxable_amount]" style="padding:5px 10px;" class="form-control i_non_taxable_amount text-right" id="i_non_taxable_amount" placeholder="Total" readonly="readonly" type="hidden" value="<%= it['price'] %>">
+                <input name="invoice_opd[services][<%= i %>][items][<%= j %>][taxable_amount]" style="padding:5px 10px;" class="form-control i_taxable_amount text-right" id="i_taxable_amount" placeholder="Total" readonly="readonly" type="text" value="0">
+              </div>
+              <div class="col-md-2 col-md-3-shared field_for_price">
+                <input name="invoice_opd[services][<%= i %>][items][<%= j %>][price]" style="padding:5px 10px;" class="form-control i_price" value="<%= it['price'] %>" placeholder="Total" readonly="readonly" type="text">
+              </div>
+              <div class="col-md-2">
+                <button class="btn btn-danger btn-xs remove_item" style="padding:0 5px;margin-top:3px;"><i class="fa fa-trash-alt"></i> Remove Item</button>
+              </div>
+            </div>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+    <% end %>
+  <% end %>
+</div>
+<div class="row" style="margin-left:0px;">
+  <button class="btn btn-primary btn-xs" id="add_service_invoice_opd" style="padding:0 5px;"><i class="fa fa-plus"></i> Add Service</button>
+</div>

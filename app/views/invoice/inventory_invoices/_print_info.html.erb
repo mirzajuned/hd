@@ -1,0 +1,65 @@
+<div class="appointment-patient-details mb10 mt10" style="border: 1px solid #666;padding: 2px;">
+  <div class="row">
+    <% if @template_active_headers.present? %>
+      <% fields_names = OrganisationSettingsHelper.get_data("#{@inventory_invoice.department_name&.downcase}_invoices", @template_active_headers).keys %>
+    <% end %>
+
+    <% @template_fields.each_with_index do |key, index|
+      title = fields_names[index]
+      content =  case key
+        when 'recipient'
+          @inventory_invoice.recipient
+        when 'patient_identifier'
+          @inventory_invoice.patient_identifier
+        when 'doctor_name'
+          (@inventory_invoice.doctor_name.blank? ? "N.A" : @inventory_invoice.doctor_name)
+        when 'bill_number'
+          @inventory_invoice.bill_number
+        when 'claim_processor'
+          if @inventory_invoice.payer_master_id.present?
+            "#{@inventory_invoice.payer_master&.display_name} (#{@inventory_invoice.contact_group&.name})"
+          else
+            "N.A"
+          end
+        when 'bill_type'
+          @inventory_invoice.invoice_type&.capitalize
+        when 'insurer'
+          insurer = if @inventory_invoice.insurer_id.present?
+            "#{@inventory_invoice.insurer&.display_name} (#{@inventory_invoice.insurer_group&.name})"
+          else
+            "N.A"
+          end
+        when 'mr_no'
+          @mr_no.present? ? @mr_no : 'NA'
+        when 'mobilenumber'
+          @inventory_invoice.recipient_mobile
+        when 'address'
+          if @patient.address_1.present? || @patient.address_2.present? || @patient.city.present? || @patient.state.present?
+            field_value = @patient.patient_full_address
+          else
+            field_value = 'Unavailable'
+          end
+        when 'date_time'
+          @inventory_invoice.try(:order_date).try(:strftime, "%d/%m/%Y")
+        when 'calculate_age_gender'
+          @patient.calculate_age.present? || @patient.gender.present? ? @patient.calculate_age.to_s + '/' + @patient.gender.to_s : 'Unavailable'
+        else
+          nil
+        end
+        flag = if ['insurer', 'claim_processor'].include?(key)
+              @inventory_invoice&.invoice_type == 'credit'
+           else
+             true
+           end
+         %>
+        <% if content.present? && flag == true %>
+          <div class="col-xs-2" style="text-overflow: ellipsis; white-space: normal; word-wrap: break-word;padding: 0px 2px;">
+            <b><%= title %></b>&nbsp;:
+          </div>
+          <div class="col-xs-4" style="text-overflow: ellipsis; white-space: normal; word-wrap: break-word;padding: 0px 2px;">
+            <%= content %>
+          </div>
+        <% end %>
+    <% end %>
+  </div>
+</div>

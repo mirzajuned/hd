@@ -1,0 +1,176 @@
+<div class="row order-common-fields" style="">
+  <div class="row p7_10">
+    <div class="col-md-6 col-lg-3">
+      <div class="row">
+        <div class="col-sm-4"><strong>Vendor:</strong></div>
+        <div class="col-sm-8">
+          <select class="form-control" name="inventory_transaction_purchase_bill[vendor_location_id]" id="inventory_transaction_purchase_bill_vendor_location_id" required="true" value="<%= @purchase_bill.vendor_location_id %>">
+            <option value="">Select</option>
+            <% @vendor_locations.each do |vendor_location| %>
+              <% if params[:vendor_location_id].present?  %>
+                <% selected_vendor = params[:vendor_location_id] %>
+              <% elsif  @purchase_bill.vendor_location_id.present? %>
+                <% selected_vendor = f.object.try(:vendor_location_id).to_s %>
+              <% else %>
+              <% selected_vendor = '' %>
+              <% end %>
+              <option value="<%= vendor_location.id %>" <%= 'selected' if vendor_location.id.to_s == selected_vendor %>>
+                <%= po_vendor_format(vendor_location) %>
+              </option>
+            <% end %>
+          </select>
+        <%= f.hidden_field :vendor_name %>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+      <div class="row">
+        <div class="col-sm-5"><strong>Create against:</strong></div>
+        <div class="col-sm-7">
+          <select class="form-control" name="inventory_transaction_purchase_bill[create_against]" id="inventory_transaction_purchase_bill_create_against" required="true" value="<%= @purchase_bill.create_against %>">
+            <% if params[:create_against].present? %>
+              <% selected_create_against =  params[:create_against] %>
+            <% elsif @purchase_bill.create_against.present? %>
+              <% selected_create_against =  f.object.try(:create_against) %>
+            <% else %>
+              <% selected_create_against =  "" %>
+            <% end %>
+           
+            <% create_againsts = [["GRN with Bill No.", "bill"],["GRN with Challan No.","challan"]] %>
+            <option value="">Select</option>
+            <% create_againsts.each do |create_against| %>
+              <option value="<%= create_against[1] %>" <%= 'selected' if create_against[1] == selected_create_against %>><%= create_against[0] %></option>
+            <% end %>
+        </select>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+      <div class="col-sm-4"><strong>PB Date:</strong></div>
+      <div class="col-sm-8">
+        <% unless Authorization::PolicyHelper.verification(current_user.id,"HGP-100-103-104") %>
+          <%= f.text_field :transaction_date, { value: Date.current.strftime("%d/%m/%Y"), class: 'form-control p7_10 fullname ', placeholder: "Date of transition", readonly: true } %>
+        <% else %>
+          <%= f.text_field :transaction_date, { value: Date.current.strftime("%d/%m/%Y"), class: 'form-control p7_10 transaction-datepicker', placeholder: "Date of transition" } %>
+        <% end %>
+        <%= f.hidden_field :transaction_time, { value: Time.current } %>
+      </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+      <div class="col-sm-4"><strong>PB Time:</strong></div>
+      <div class="col-sm-8">
+        <% if !Authorization::PolicyHelper.verification(current_user.id,"HGP-100-103-104") %>
+          <%= f.text_field :transaction_time_picker, { value: Time.current.strftime("%I:%M %p"), class: 'form-control p7_10', placeholder: "Time of transition", readonly: true } %>
+        <% else %>
+          <%= f.text_field :transaction_time_picker, { value: Time.current.strftime("%I:%M %p"), class: 'form-control p7_10 transaction-timepicker', placeholder: "Time of transition" } %>
+        <% end %>
+        <%= f.hidden_field :transaction_time, { value: Time.current } %>
+      </div>
+    </div>
+  </div>
+
+  <div class="row p7_10">
+    <div class="col-md-6 col-lg-3">
+      <div class="col-sm-4"><strong>Vendor GST No:</strong></div>
+      <div class="col-sm-8">
+        <!-- <span class="vendor_gst_number"><%#= @vendor.nil? ? "" : @vendor.gst_number %></span> -->
+        <%= f.text_field :vendor_gst_number, { value: @vendor_location.nil? ? f.object&.vendor_gst_number : @vendor_location.gst_number, class: 'form-control p7_10 vendor_gst_number ', readonly: true } %>
+      </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+      <div class="col-sm-4"><strong>Invoice No:</strong></div>
+      <div class="col-sm-8">
+        <%= f.text_field :invoice_number, { value: f.object&.invoice_number, class: 'form-control p7_10 invoice_number noSpace', onkeypress: "return ((event.charCode > 64 && event.charCode < 91) || (event.charCode > 96 && event.charCode < 123) || event.charCode == 8 || event.charCode == 32 || (event.charCode >= 48 && event.charCode <= 57));" } %>
+      </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+      <div class="col-sm-4"><strong>Invoice Date:</strong></div>
+      <div class="col-sm-8">
+        <%= f.text_field :invoice_date, { value: f.object&.invoice_date&.strftime("%d/%m/%Y"), class: 'form-control p7_10 invoice_date invoice-datepicker', placeholder: "Date of invoice"} %>
+        <%= f.hidden_field :invoice_date_time, { value: Time.current } %>
+        <%= f.hidden_field :invoice_date_timepicker, { value: Time.current.strftime("%I:%M %p") } %>
+      </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+      <div class="col-sm-4"><strong>Note:</strong></div>
+      <div class="col-sm-8">
+        <%= f.text_field :note, { value: "", class: 'form-control p7_10 note ', placeholder: "Transaction Note", } %>
+      </div>
+    </div>
+  </div>
+  <%= f.hidden_field :created_by, { value: current_user.fullname } %>
+  <%= f.hidden_field :created_by_id, { value: current_user.id } %>
+  <%= f.hidden_field :user_id, { value: current_user.id } %>
+  <%= f.hidden_field :store_id, { value: @store_id } %>
+  <%= f.hidden_field :facility_id, { value: current_facility.id } %>
+  <%= f.hidden_field :organisation_id, { value: current_user.organisation_id } %>
+  <%= f.hidden_field :department_id, { value: @inventory_store&.department_id } %>
+  <%= f.hidden_field :department_name, { value: @inventory_store&.department_name } %>
+  <%= f.hidden_field :purchase_transaction_ids,{value: [] ,class: "purchase_transaction_ids"} %>
+  <%= f.hidden_field :gst_type, { value: "", class: "gst_type"} %>
+  <%= f.hidden_field :store_gst_number , value: @inventory_store&.gst %>
+  <%= f.hidden_field :action , value: (params["action"] == 'new') ? 'new' : 'edit' %>
+  <%= f.hidden_field :tax_type , value: @inventory_store.try(:country_id) == 'IN_108' ? 'GST' : 'VAT' %>
+  <%= f.hidden_field :vendor_id, { value: @vendor&.id } %>
+  <%= f.hidden_field :vendor_name, { value: @vendor&.name } %>
+  <% vendor_address = po_vendor_format(@vendor) %>
+  <%= f.hidden_field :vendor_address, { value: vendor_address } %>
+  <%= f.hidden_field :vendor_location_name, { value: @vendor_location&.name } %>
+  <% vendor_location_address = po_vendor_format(@vendor_location) %>
+  <%= f.hidden_field :vendor_location_address, { value: vendor_location_address } %>
+  <%= f.hidden_field :vendor_gst_number, { value: @vendor_location&.gst_number } %>
+  <%= f.hidden_field :vendor_location_email, { value: @vendor_location&.email } %>
+  <%= f.hidden_field :vendor_location_mobile, { value: @vendor_location&.mobile_number } %>
+  <%= f.hidden_field :store_gst_number, { value: @inventory_store&.gst } %>
+</div>
+
+  <div class="row mb5" style="border-bottom:1px solid #eee;border-top:1px solid #eee;">
+    <div class="order-table-body" style="overflow-y: auto; min-height: 400px; font-size: 11px">
+      <div class="order-lots-list" style="margin-top:15px;">
+        <table class="table purchase-bill-table table-striped" id="purchase-bill-table">
+          <thead class="order-table-head">
+            <tr class='thead-fixable'>
+              <td class='thead-fix' style="width: 30px;">#</td>
+              <td class='thead-fix' style="width: 200px;">Description</td>
+              <td class='thead-fix' style="width: 80px;">UOM</td>
+              <td class='thead-fix' style="width: 80px;">Batch No.</td>
+              <td class='thead-fix' style="width: 80px;">Expiry Dt.</td>
+              <td class='thead-fix' style="width: 80px;">Qty.</td>
+              <td class='thead-fix' style="width: 80px;">Free Qty.</td>
+              <td class='thead-fix' style="width: 80px;">Discount</td>
+              <td class='thead-fix' style="width: 80px;">Rate</td>
+              <td class='thead-fix' style="width: 80px;">MRP</td>
+              <td class='thead-fix' style="width: 80px;">Tax %</td>
+              <td class='thead-fix' style="width: 80px;">Net Amount</td>
+              <td class='thead-fix'>Action</td>
+            </tr>
+          </thead>
+          <tbody class="transaction-table-body">
+            <%# unless @purchase_bill.new_record? %>
+              <%#= render partial: 'inventory/transaction/purchase_bills/lots'  %> 
+            <%# end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-12" style="background: white;border-top: 6px solid #e4e7ea;min-height: 65px; padding: 10px;">
+  <%= render partial: 'inventory/transaction/purchase_bills/tax_details.html.erb', locals: { f:f } %>
+</div>
+
+<style>
+  .order-datepicker, .est-delivery-datepicker{
+    cursor: pointer !important;
+  }
+  
+  .est-delivery-datepicker:disabled, .order-datepicker:disabled {
+    cursor: not-allowed !important;
+  }
+  .disabled_row{
+    pointer-events: none;
+  }
+  .purchase-transaction td {
+    background-color: #CEECFF !important;
+}
+</style>

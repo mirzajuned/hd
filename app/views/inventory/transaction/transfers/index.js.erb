@@ -1,0 +1,150 @@
+$('.pharmacy-panel').html('').hide()
+$('.optical-panel').html('').hide()
+$('.ipd-panel').html('').hide()
+$('.store-content-panel').show()
+
+$('.store-content-list').html('<%= escape_javascript(render partial: 'inventory/transaction/transfers/index') %>')
+jQuery(".store-content-details").html("<%= escape_javascript(render partial: 'inventory/transaction/transfers/default_details.html.erb') %>")
+set_index()
+function set_index(){
+  $('.inventory-list-row').each (function(){
+    index = $(this).index() + 1
+    $(this).find('.transfer').addClass('transfer_'+index)
+    $(this).find('.transfer b').text(index)
+    $(this).attr('data','transfer_'+index)
+  })
+}
+function filter_index(query) {
+  if (query.length > 0){
+    $(".inventory_search_panel").find(".fa").show()
+  }
+  else {
+    $(".inventory_search_panel").find(".fa").hide()
+  }
+  $('#show_more_inventory').show();
+  $.ajax({
+    type : 'get',
+    url: '/inventory/transaction/transfers/filter_index',
+    data: {q: query, store_id: "<%=@store_id %>",item_type: "<%=@category %>", start_date: "<%= @start_date%>", end_date: "<%= @end_date%>", remote: "true" },
+  })
+}
+
+$(".inventory_search_panel").find(".fa").on('click',function(){
+  $("#inventory_search").val("")
+  filter_index("")
+})
+
+$("#inventory_search").on("keyup", function () {
+  query = $(this).val()
+  filter_index(query)
+})
+
+$(".btn-inventory-refresh").on("click", function () {
+  query = $("#inventory_search").val()
+  filter_index(query)
+})
+
+adjust_height()
+function adjust_height(){
+  inventoryHeight = $(window).height() - $(".navbar").height() - 3
+  $(".sidebar-main").height(inventoryHeight)
+  $(".store-content").height(inventoryHeight)
+  toolbar2Height = $(".inventory-toolbar2").height()
+  $(".inventory-show-panel").height(inventoryHeight - toolbar2Height)
+  storeListHeight = inventoryHeight - $('.inventory-toolbar').height()
+  storeBodyHeight = storeListHeight - $('.inventory-table-head').height()
+  $('.inventory-table-body').height(storeBodyHeight)
+}
+
+$(window).resize(function() {
+  adjust_height()
+})
+
+$('.inventory-items .inventory-list-row').unbind()
+$('.inventory-items .inventory-list-row').on('click', function(e){
+  e.preventDefault();
+  var _id =  $(this).attr('id');
+  var count = parseInt($("."+$(this).attr("data")).text());
+  $('.inventory-list-row').css('background-color', '')
+  $(this).css('background-color', '#cfe8d2')
+  $.ajax({
+    type: 'GET',
+    data: {
+      remote: true,
+      count: count
+    },
+    url: '/inventory/transaction/transfers/'+_id,
+    success: function(){
+    }
+  })
+})
+
+function isScrolledIntoLastRow(last_row_elem, scrollable_container) {
+  if (last_row_elem.length == 1) {
+    var top_of_element = $(last_row_elem).offset().top - $(scrollable_container).offset().top ;
+    var table_height = $(scrollable_container).innerHeight()
+    return top_of_element <= table_height
+  }
+}
+
+scrollinventory()
+function scrollinventory(){
+  $(".inventory-table-body").scroll(function() {
+
+    last_row_elem = $('.inventory-table-body').find('tr:nth-last-child(1)')
+    scrollable_container = $(".inventory-table-body")
+
+    if (isScrolledIntoLastRow(last_row_elem, scrollable_container)) {
+      $("#show_more_inventory").trigger("click")
+      $(".inventory-table-body").off('scroll');
+      setTimeout(function() {   //calls click event after a certain time
+        scrollinventory()
+      }, 500);
+    }
+  })
+}
+$("#show_more_inventory:visible").on('click', function(e){
+  e.preventDefault();
+  var total_count_row =  $('.inventory-table-body tr').length;
+  $.ajax({
+    type: "GET",
+    dataType: "script",
+    data: {
+      total_count_row: total_count_row,
+      item_type: "<%=  @category %>",
+      store_id: "<%= @store_id %>",
+      start_date: "<%= @start_date %>",
+      end_date: "<%= @end_date %>"
+    },
+    url: "/inventory/transaction/transfers/append_index",
+  })
+})
+
+$(".mis-date-filter-custom").on("click", function(e){
+  e.preventDefault();
+  $("#mis-modal").html("<%= escape_javascript(render partial: 'custom_dates.html.erb') %>")
+})
+
+$(".mis-date-filter").on("click", function(e){
+  e.preventDefault();
+  var start_date = $(this).attr("start-date")
+  var end_date = $(this).attr("end-date")
+  var store_id = '<%= @store_id %>'
+  var time_period = $(this).text()
+
+  $("#mis-modal").modal("hide")
+
+  jQuery.ajax({
+    type: 'get',
+    dataType: 'script',
+    data: {
+      store_id: store_id,
+      start_date: start_date,
+      end_date: end_date,
+      data_from: 'filter',
+      time_period: time_period,
+      remote: true
+    },
+    url: '/inventory/transaction/transfers'
+  });
+})

@@ -1,0 +1,151 @@
+<div class="row order-title">
+  <div class="col-sm-12 text-center" style="border-bottom:1px solid #ccc;border-top:1px solid #ccc;"><strong>Indent For Purchase </strong></div>
+</div>
+<div class="row order-common-fields" style="margin-top:15px; margin-bottom: 10px;">
+  <div class="col-sm-2">
+    <strong>Store</strong><br>
+    <%= select_tag "inventory_order_indent[store_id]", options_for_select(@receive_stores, @selected_store), { name: 'inventory_order_indent[store_id]', include_blank: true, class: 'form-control inventory_order_indent_store', id: 'inventory_order_indent_store_id' } %>
+    <%= f.hidden_field :create_from, value: params[:store_id] %>
+    <%= f.hidden_field :store_name %>
+    <%= f.hidden_field :create_store_name, value: @selected_store[0] %>
+    <input type="hidden" id="old_store_id" name="custId" >
+  </div>
+  <div class="col-sm-3">
+    <strong>Note</strong><br>
+    <%= f.text_field :remarks, { class: 'form-control p7_10 indent-remarks', placeholder: "Remarks" } %>
+  </div>
+
+  <div class="col-sm-2">
+    <strong>Type</strong><br>
+    <%= f.select :indent_type, @indent_types, { include_blank: true }, {class: 'form-control'} %>
+  </div>
+
+  <div class="col-sm-2">
+    <strong>Date</strong><br>
+    <% unless Authorization::PolicyHelper.verification(current_user.id,"HGP-100-115-101") %>
+      <%= f.text_field :indent_date, { value: Date.current.strftime("%d/%m/%Y"), class: 'form-control p7_10 fullname', placeholder: "Date", readonly: 'readonly' } %>
+    <% else %>
+      <%= f.text_field :indent_date, { value: Date.current.strftime("%d/%m/%Y"), class: 'form-control p7_10 fullname indent-datepicker', placeholder: "Date" } %>
+    <% end %>
+  </div>
+
+  <div class="col-sm-2">
+    <strong>Time</strong><br>
+    <% unless Authorization::PolicyHelper.verification(current_user.id,"HGP-100-115-101") %>
+      <%= f.text_field :indent_time_picker, { value: Time.current.strftime("%I:%M %p"), class: 'form-control p7_10', placeholder: "Time", readonly: true } %>
+    <% else %>
+      <%= f.text_field :indent_time_picker, { value: Time.current.strftime("%I:%M %p"), class: 'form-control p7_10 indent-timepicker', placeholder: "Time" } %>
+    <% end %>
+    <%= f.hidden_field :indent_date_time, { value: Time.current } %>
+  </div>
+  <%= f.hidden_field :vendor_name, { value: @vendor&.name } %>
+  <%= f.hidden_field :created_by, { value: current_user.fullname } %>
+  <%= f.hidden_field :created_by_id, { value: current_user.id } %>
+  <%= f.hidden_field :user_id, { value: current_user.id } %>
+  <%#= f.hidden_field :store_id, { value: @store_id } %>
+  <%= f.hidden_field :facility_id, { value: current_facility.id } %>
+  <%= f.hidden_field :organisation_id, { value: current_user.organisation_id } %>
+  <%= f.hidden_field :department_id, { value: @inventory_store.department_id } %>
+  <%= f.hidden_field :department_name, { value: @inventory_store.department_name } %>
+  <%= f.hidden_field :create_store_name, { value: @inventory_store.name } %>
+  <%= f.hidden_field :status, { value: 'Open' } %>
+</div>
+
+<div class="row mb5" style="border-top:1px solid #eee;">
+  <div class="row medication_tab_row">
+    <div class="col-md-12">
+      <table class="table" id="medicationTable">
+        <thead>
+          <tr>
+            <th class="col-md-1" style="text-align:left;">#</th>
+            <th class="col-md-2" style="text-align:left;">Name</th>
+            <th class="col-md-2" style="text-align:left;">Variant Code</th>
+            <th class="col-md-1" style="text-align:left;">Quantity</th>
+             <th class="col-md-2" style="text-align:left;">Pack Size</th>
+             <th class="col-md-2" style="text-align:left;">UOM</th>
+             <th class="col-md-1" style="text-align:left;">Remark</th>
+            <% if @sub_stores.size > 1 %>
+              <th class="col-md-2" style="text-align:left;">Sub-Store</th>
+            <% end %>
+            <th class="col-md-2" style="text-align:left;">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="medication-table-body-added medication_set_body" id="tbody_medication">
+        </tbody>
+      </table>
+      <div class="text-center">
+      <lable class="total_qnt text-center" ></lable>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- <div class="row mb5" style="border-bottom:1px solid #eee;border-top:1px solid #eee;">
+  <div class="order-lots-list" style="margin-top:15px;">
+    <table class="table order-lots-table">
+      <thead class="order-table-head">
+        <tr class='thead-fixable'>
+          <td class="col-md-4">Description</td>
+          <td class="col-md-3">Code</td>
+          <td class="col-md-3">Quantity</td>
+          <td class="col-md-2">Action</td>
+        </tr>
+      </thead>
+    </table>
+  </div>
+  <div class="order-table-body" style="overflow-y: auto; min-height: 100px; font-size: 11px">
+    <%# if (params[:action] == 'edit') && (@indent.items.size > 0) %>
+      <%#= render partial: 'inventory/order/indents/item_list.html.erb', locals: { f:f } %>
+    <%#end %>
+  </div>
+</div> -->
+
+<style>
+  .order-datepicker{
+    cursor: pointer !important;
+  }
+  .indent-datepicker{
+    cursor: pointer !important;
+  }
+  .indent-datepicker:disabled{
+    cursor: not-allowed !important;
+  }
+</style>
+<script type="text/javascript">
+ $('#inventory_order_indent_store_id').select2()
+  $('#inventory_order_indent_store_id').on('change', function() {
+   // fetch_variants()
+    if ($('#tbody_medication tr').length > 0){
+      $('#confirm-filter')
+          .html(confirmationModal('fetch_variants', 'indent'))
+          .modal('show')
+          .css('background-color', 'rgba(0,0,0,0.5)')
+    } else {
+      fetch_variants()
+    }
+  })
+  function fetch_variants() {
+    let store_id = $('#inventory_order_indent_store_id').val()
+    let create_store_id = '<%= @inventory_store.id %>'
+    let store_name = $('#inventory_order_indent_store_id option:selected').text()
+    $('#inventory_order_indent_store_name').val(store_name)
+    $(".store_info").text(" : "+store_name)
+    $("#old_store_id").val(store_id)    
+    $('#inventory_order_indent_create_store_name').val(store_name)
+    $('.treatmentmedications').remove()
+    if (create_store_id != '' && store_id != '') {
+      $.ajax({
+        type: 'GET',
+        data: {
+          create_store_id: create_store_id,
+          store_id: store_id,
+          item_type: 'all_item',
+          remote: true
+        },
+        url: '/inventory/order/indents/append_variants',
+        success: function(){
+        }
+      })
+    }
+  }
+</script>

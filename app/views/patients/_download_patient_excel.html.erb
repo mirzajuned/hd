@@ -1,0 +1,109 @@
+<div class="daily_reports row" style="margin: 20px 14px 30px 15px;background: #fff;box-shadow: 0 0 12px 0;">
+  <% if @appointments.count > 0 %>
+      <div class="col-md-12 view_tabular">
+        <table class="row title table data_table_excel">
+          <thead class="data_thead">
+          <tr>
+            <th>SR No</th>
+            <th>Visit Type</th>
+            <th>Date & Time</th>
+            <th>Name</th>
+            <th>AGE</th>
+            <th>Mobile</th>
+            <th>Email</th>
+            <th>Seen By</th>
+            <th>Referred By</th>
+            <th>Diagnosis</th>
+            <th>Procedure Advised</th>
+            <th>Reason</th>
+
+            <th>F/U Plan</th>
+          </tr>
+          </thead>
+          <tbody class="data_tbody" id="opd_invoices" >
+          <% @appointments.each_with_index do |appointment,i| %>
+              <% facility = Facility.find_by(id: appointment.facility_id)%>
+              <% patient = Patient.find_by(id: appointment.patient_id)%>
+              <% doctor = User.find_by(id: appointment.consultant_id) %>
+              <% last_opdrecord = OpdRecord.find_by(appointmentid: appointment.id.to_s)%>
+              <% appointment_type = AppointmentType.find_by(id: appointment.appointment_type_id) %>
+              <tr>
+                <!--index-->
+                <td><%= i+1%></td>
+                <!--Appointment Type-->
+                <td><%= appointment_type.label %></td>
+                <!--Date & TIme-->
+                <td><%= appointment.appointmentdate.strftime("%d/%m/%y")%>,<%= appointment.start_time.strftime("%I:%M%p")%></td>
+                <!--Patient Name-->
+                <td><%= patient.fullname.capitalize%></td>
+                <!--Patient age-->
+
+                <td>
+                  <% if patient.gender.present? %>
+                      <%= patient.gender[0]%>/
+                  <%end%>
+                  <% if patient.age.present? %>
+                      <%= patient.age%>Y
+                  <%end%>
+                </td>
+                <!--Patient Mobilenumber-->
+                <td><%= patient.mobilenumber%></td>
+                <!--Patient Email-->
+                <% if patient.email.present? %>
+                    <td><%= patient.email%></td>
+                <% else %>
+                    <td>-</td>
+                <% end%>
+                <!--Seen by doctor-->
+                <td>Dr <%= doctor.try(:fullname).try(:capitalize)%></td>
+                <!--Referrring Doctor-->
+                <td>
+                  <% referral = appointment.try(:patient_referral_type) %>
+                  <% if referral.present? && !referral.try(:is_deleted) %>
+                    <%= referral.try(:referral_type).try(:name).to_s %> - <%= referral.try(:sub_referral_type).try(:name).to_s %>
+                  <% end %>
+                </td>
+                <% if last_opdrecord%>
+                    <% if last_opdrecord.templatetype == "freeform"%>
+                        <!--Freeform Daignosis-->
+                        <td><%= last_opdrecord.diagnosis%></td>
+                        <!--Freeform Procedures-->
+                        <td><%= last_opdrecord.free_procedure%></td>
+
+                    <%else%>
+                        <td><%#= last_opdrecord.diagnosislist.split(",").join(",")%></td>
+                        <td><%#= last_opdrecord.diagnosislist.split(",").join(",")%></td>
+                    <%end%>
+                    <td><%= last_opdrecord.advicemanagementplan%></td>
+                <%end%>
+                <td>
+                  <% if last_opdrecord%>
+                      <% if  last_opdrecord.advice.read_attribute(:opdfollowupdate).present? %>
+                          Fu on <%= Date.parse(last_opdrecord.advice.read_attribute(:opdfollowupdate).present?).strftime('%d/%m/%y') %> <%= last_opdrecord.advice.read_attribute(:opdfollowuptime).present?  %>
+                      <%end%>
+                  <%end%>
+                </td>
+              </tr>
+          <%end%>
+          </tbody>
+        </table>
+      </div>
+  <% else %>
+      <h4 class="text-center">NOTHING TO SHOW</h4>
+  <% end %>
+</div>
+<style>
+    .view_tabular{
+        font-family: monospace;
+        color: dimgrey;
+        margin-bottom: 10px;
+        margin-top: 10px;
+    }
+    .range{
+        color: darkblue;
+    }
+
+</style>
+<script>
+
+</script>

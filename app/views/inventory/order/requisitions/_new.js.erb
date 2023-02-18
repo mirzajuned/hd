@@ -1,0 +1,236 @@
+var tax_breakup = {}
+$('.items-variants-list .inventory-list-row').unbind()
+$('.items-variants-list .inventory-list-row').on('click', function(e){
+  e.preventDefault();
+  var variant_name =  $(this).find('.description').text();
+  var id =  $(this).attr('id');
+  var store_id = '<%= @inventory_store&.id %>'
+  var requisition_store_id = '<%= @requisition_store&.id %>'
+
+  $.ajax({
+    type: 'GET',
+    data: {
+      variant_name: variant_name,
+      variant_id: id,
+      store_id: store_id,
+      requisition_store_id: requisition_store_id,
+      remote: true
+    },
+    url: '/inventory/order/requisitions/add_lot',
+    success: function(){
+      $('#'+id).css('background-color', '#cfe8d2')
+      $('#'+id).addClass('disabled_row')
+    }
+  })
+})
+
+$('.delete_empty_item').on('click', function(){
+  // if ($('.requisition-order-log-item').length > 0){
+    // var id = $(this).closest('.requisition-order-log-item').find('.item-id').val()
+    // $(this).closest('.requisition-order-log-item').remove()
+    $(this).closest('.treatmentmedications').remove()
+    var id = $(this).val()
+    $('#'+id).css('background-color', '')
+    $('#'+id).removeClass('disabled_row')
+    validate_create_button()
+    updateIndex()
+    requisition_quantity_validation()
+    // delete tax_breakup[id];
+  // }
+  // calTotalPrice()
+})
+
+
+$(window).resize(function() {
+  adjust_height()
+})
+
+adjust_height()
+function adjust_height(){
+  modalContentHeigth = $(window).height() - 130
+  // $(".items-lots").height(modalContentHeigth)
+  itemsVariants = modalContentHeigth - $('.order-header').height()
+  $('.items-variants-body').height(itemsVariants)
+  purchaseInvoiceInfoHeight = $('.purchase-invoice-information').height()
+  orderListHeight = modalContentHeigth - $('.order-title').height() - $('.order-common-fields').height() - purchaseInvoiceInfoHeight - 100
+  $('.medication_tab_row').height(orderListHeight - $('.order-table-head').height())
+}
+
+function filter_variants(query) {
+  if (query.length > 0){
+    $(".items-variants-search").find(".fa").show()
+  }
+  else {
+    $(".items-variants-search").find(".fa").hide()
+  }
+  $('#show_more_variants').show();
+  let store_id = '<%= @inventory_store&.id %>'
+  let requisition_store_id = $('#inventory_order_requisition_receive_store_id').val()
+  $.ajax({
+    type : 'get',
+    url: '/inventory/order/requisitions/filter_variants',
+    data: {q: query, store_id: store_id, requisition_store_id: requisition_store_id, remote: "true" },
+  })
+}
+
+$(".items-variants-search").find(".fa").on('click',function(){
+  $("#variants_search").val("")
+  filter_variants("")
+})
+
+$("#variants_search").on("keyup", function () {
+  query = $(this).val()
+  filter_variants(query)
+})
+
+
+
+function isScrolledIntoLastRow(last_row_elem, scrollable_container) {
+  if (last_row_elem.length == 1) {
+    var top_of_element = $(last_row_elem).offset().top - $(scrollable_container).offset().top ;
+    var table_height = $(scrollable_container).innerHeight()
+    return top_of_element <= table_height
+  }
+}
+
+scrollinventory()
+function scrollinventory(){
+  $(".items-variants-body").scroll(function() {
+    last_row_elem = $('.items-variants-body').find('tr:nth-last-child(1)')
+    scrollable_container = $(".items-variants-body")
+    if (isScrolledIntoLastRow(last_row_elem, scrollable_container)) {
+      $("#show_more_variants").trigger("click")
+      $(".items-variants-body").off('scroll');
+      setTimeout(function() {   //calls click event after a certain time
+        scrollinventory()
+      }, 500);
+    }
+  })
+}
+
+let request_from = $('#inventory_order_requisition_request_from').val()
+if (request_from == 'inventory_order') {
+  $('.delete_empty_item').addClass('disabled')
+}
+
+// $("#show_more_variants:visible").on('click', function(e){
+//   e.preventDefault();
+//   var total_count_row =  $('.items-variants-body tr').length;
+//   var query =  $("#variants_search").val()
+//   $.ajax({
+//     type: "GET",
+//     dataType: "script",
+//     data: {
+//       total_count_row: total_count_row,
+//       store_id: "<%= @store_id %>",
+//       requisition_store_id: '<%= @requisition_store_id %>',
+//       q:query
+//     },
+//     url: "/inventory/order/requisitions/append_variants",
+//   })
+// })
+
+
+$('.order-datepicker').datepicker({
+    dateFormat: "dd/mm/yy",
+    maxDate: -0
+});
+$('.est-delivery-datepicker').datepicker({
+    dateFormat: "dd/mm/yy",
+    minDate: 0
+});
+
+$('#inventory_order_requisition_receive_store_id').select2()
+
+function validate_create_button() {
+  let row_count = $('#tbody_medication tr').length
+  if (row_count > 0) {
+    $('.validate-indent').attr('disabled', false)
+  } else {
+    $('.validate-indent').attr('disabled', true)
+  }
+}
+
+validate_create_button()
+
+function validate_inventory_requisition_orders_form() {
+
+  $("#inventory_requisition_orders_form").validate({
+    rules: {
+      "inventory_order_requisition[receive_store_id]": {
+        required: true,
+      },
+      "inventory_order_requisition[requisition_type]": {
+        required: true,
+      }
+    },
+    messages: {
+      "inventory_order_requisition[receive_store_id]": {
+        required: "Required"
+      },
+      "inventory_order_requisition[requisition_type]": {
+        required: "Required"
+      }
+    },
+    errorPlacement: function (error, element) {
+      var elem = $(element);
+      error.insertAfter(element);
+      if(elem.hasClass("select2-hidden-accessible")) {
+        element = $("#select2-" + elem.attr("id") + "-container").parent();
+        error.insertAfter(element);
+      } else {
+        error.insertAfter(element);
+      }
+    }
+  });
+}
+validate_inventory_requisition_orders_form()
+$.validator.addMethod("checkQuantity", function(value, element, options) {
+
+  var id = $(element).attr("id")
+  var item_quantity = parseFloat($('#'+id).val()) || 0
+  var sub_units = parseFloat($('#'+id).siblings(".item_sub_units").val()) || 0
+  if (item_quantity % sub_units == 0) {
+    return true
+  } else {
+    return false
+  }
+}, function(value, element, options){
+  var id = $(element).attr("id")
+  var sub_units = parseFloat($('#'+id).siblings(".item_sub_units").val()) || 0
+  return "Item can be in multiple of " + sub_units
+});
+
+$.validator.addClassRules("item_description", { required: true });
+$.validator.addClassRules("item_quantity", { required: true, number: true, checkQuantity: true });
+
+updateIndex()
+function updateIndex(){
+  var count = 1
+  $(".treatmentmedications").each(function(){
+    $(this).find(".set_s_no").text(count)
+    count += 1
+  })
+}
+$(".item_quantity").bind("change paste keyup", function(value, element, options) {
+  requisition_quantity_validation()
+});
+requisition_quantity_validation ()
+function requisition_quantity_validation (){
+    var total_quantity = 0
+    $(".item_quantity").each(function(){
+    var current_quantity = parseFloat($(this).val() || 0)
+    total_quantity += current_quantity
+    $(".total_qnt").text(`Total Quantity :${total_quantity}`);
+})
+}
+$(".treatmentmedications").each(function(){
+    var item_max_quantity =  parseFloat($(this).find(".item_max_quantity").val() || 0)
+    var data = $(this).attr("data")
+  if (item_max_quantity > 0){
+   $(".label-info-message-"+data).text(`Already available in stock`);
+  }
+  else {
+    $(".label-info-message-"+data).text(``);
+  }
+})

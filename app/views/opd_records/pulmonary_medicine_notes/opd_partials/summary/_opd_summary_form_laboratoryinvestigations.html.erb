@@ -1,0 +1,134 @@
+<% if opdrecord.has_addedlaboratoryinvestigationlist? || opdrecord.laboratorycomments.present? %>
+
+  <div class="laboratoryinvestigations mb5 <%= 'print_text_font_size' if  @print_setting %>" id="laboratoryinvestigations"  style="<%= text_font_size %>">
+    <% laboratoryinvestigations_counter = opdrecord.addedlaboratoryinvestigationlist.size %>
+    <% advised_counter = 0%>
+    <% performed_counter = 0%>
+    <% advised_total = 0%>
+    <% performed_total = 0%>
+
+    <% opdrecord.addedlaboratoryinvestigationlist.each_with_index do |elem, i| %>
+      <%if elem.investigationstage == "A"%>
+        <% advised_total = advised_total+1 %>
+      <%else%>
+        <% performed_total = performed_total+1 %>
+      <%end%>
+    <%end%>
+
+    <% if laboratoryinvestigations_counter > 0 %>
+      <div class="row">
+        <strong  style="<%= heading_font_size %>">LABORATORY INVESTIGATION :</strong>
+        <div class="summary-line-border"></div>
+      </div>
+
+      <div class="row">
+        <%if advised_total>0%>
+          <div class="col-md-2 col-sm-2">
+            <strong>Advised:</strong>
+          </div>
+        <%end%>
+        <div class="col-md-10 col-sm-10">
+          <% opdrecord.addedlaboratoryinvestigationlist.each_with_index do |elem, i| %>
+            <% advised_counter = advised_counter+1 %>
+            <strong><%= advised_counter%>. </strong><%= elem.investigationname %>
+            <%if advised_counter < advised_total%><%else%><%end%> &nbsp;
+          <%end%>
+        </div>
+      </div>
+
+      <div class="row">
+        <!--  performed_datetime: opdrecord.created_at.to_date.beginning_of_day..opdrecord.created_at.to_date.end_of_day, -->
+        <% performed_laboratory = @case_sheet.laboratory_investigations.where(is_performed: true, record_id: @opdrecord.id.to_s, performed_from: "add_investigation_details") %>
+        <% performed_template_laboratory = opdrecord.addedlaboratoryinvestigationlist.where(investigationstage: 'P')  %>
+        <% if performed_laboratory.count > 0 || performed_template_laboratory.count > 0 %>
+          <div class="col-md-2 col-sm-2">
+            <strong>Performed:</strong>
+          </div>
+          <div class="col-md-10 col-sm-10">
+            <%# if elem.template_created %>
+              <table class="table table-bordered" style="margin:0px;">
+                <thead>
+                  <tr>
+                    <th style="padding:0px;text-align:center;">Investigation</th>
+                    <th style="padding:0px;text-align:center;">Findings</th>
+                    <th style="padding:0px;text-align:center;">Normal Range</th>
+                    <th style="padding:0px;text-align:center;">Remark</th>
+                    <th style="padding:0px;text-align:center;">Doctor's Remark</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% performed_template_laboratory.each_with_index do |elem, i| %>
+                    <tr>
+                      <td style="padding:0px;text-align:center;"><%= elem.investigationname %></td>
+                      <td style="padding:0px;text-align:center;"><%= (elem.investigation_performed if elem.investigation_performed.present?) || "-" %></td>
+                      <td style="padding:0px;text-align:center;">-</td>
+                      <td style="padding:0px;text-align:center;">-</td>
+                      <td style="padding:0px;text-align:center;">-</td>
+                    </tr>
+                  <% end %>
+                  <% performed_laboratory.each_with_index do |elem, i| %>
+                    <tr>
+                      <td style="padding:0px;text-align:center;"><%= elem.investigationname %></td>
+                      <% if elem.laboratory_panel_records.count > 0 %>
+                        <td colspan="2" style="padding:0px;text-align:center;">Panel Below</td>
+                      <% else %>
+                        <td style="padding:0px;text-align:center;"><%= elem.investigation_val || "-" %></td>
+                        <td style="padding:0px;text-align:center;"><%= elem.normal_range || "-" %></td>
+                      <% end %>
+                      <td style="padding:0px;text-align:center;"><%= elem.investigation_comment || "-" %></td>
+                      <td style="padding:0px;text-align:center;"><%= elem.doctors_remark || "-" %></td>
+                    </tr>
+                    <% if elem.laboratory_panel_records.count > 0 %>
+                      <tr style="background-color:#bbb;">
+                        <td colspan="6" style="padding:5px 10px 2px;">
+                          <table class="table" style="margin: 0 0 5px;" >
+                            <thead>
+                              <tr style="font-size:12px;">
+                                <th style="padding:0px;text-align:center;">Name</th>
+                                <th style="padding:0px;text-align:center;">Value</th>
+                                <th style="padding:0px;text-align:center;">N.Range</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <% elem.laboratory_panel_records.each_with_index do |panel_record, j| %>
+                                <tr style="font-size:12px;">
+                                  <td style="padding:0px;text-align:center;"><%= panel_record.investigation_name %> </td>
+                                  <td style="padding:0px;text-align:center;"><%= panel_record.investigation_val %></td>
+                                  <td style="padding:0px;text-align:center;"><%= panel_record.normal_range %></td>
+                                </tr>
+                              <% end %>
+                            </tbody>
+                          </table>
+                        </td>
+                      </tr>
+                    <% end %>
+                  <% end %>
+                </tbody>
+              </table>
+            <%# end %>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+
+    <% if laboratoryinvestigations_counter == 0 %>
+      <div class="row">
+        <strong style="<%= heading_font_size %>">LABORATORY INVESTIGATION</strong>
+        <div class="summary-line-border"></div>
+      </div>
+    <% end %>
+
+    <div>
+      <% if opdrecord.laboratorycomments.present? %>
+        <span style="white-space: pre-line"> <%= opdrecord.laboratorycomments %> </span>
+      <% end %>
+    </div>
+  </div>
+
+<% end %>
+
+<style media="screen">
+  .<%= 'print_text_font_size' if  @print_setting %> *{
+    font-size: inherit!important
+  }
+</style>

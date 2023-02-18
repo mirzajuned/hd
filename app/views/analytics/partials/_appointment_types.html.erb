@@ -1,0 +1,120 @@
+<% partial_name = @partial_name.present? %>
+<% data = {
+  service_name: "OutpatientData",
+  action_name: "get_appointment_types_data",
+  partial_name: "appointment_types"
+}%>
+<div class="row">
+  <div class="<%= partial_name ? 'col-md-6': 'col-md-12' %>">
+    <div class="panel panel-default panel_b borderd_panel">
+      <div class="panel-heading to_add_expand_button">
+        <h5 class="subtitle mb5 title_in_caps"><i class="fa fa-bar-chart" aria-hidden="true"></i><strong>  Appointment Types</strong></h5>
+        <%=render partial: "/analytics/shared/expand_button", locals:{partial_name: partial_name, data: data }%>
+      </div>
+      <div class="panel-body reduced_padding">
+        <canvas id="appointment-types-chart_<%= partial_name %>" width="800" height="400"></canvas>
+      </div>
+    </div>
+  </div>
+  <% if partial_name %>
+    <div class="col-md-6">
+      <div class="table_wrapper">
+      <table class="table table_data table-bordered table-hover">
+        <thead>
+          <tr>
+            <th>Appointmet Type</th>
+            <th>Patient Count</th>
+          </tr>
+        </thead>
+        <tbody>
+
+          <% @appointment_type_labels.each_with_index do |f_name, indx|%>
+            <tr>
+              <td><%= f_name.titleize %></td>
+              <td><%= @appointment_type_data[indx].round(2).to_i %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+
+
+<script type="text/javascript">
+  $(document).ready(function(){
+
+    var horizontalBarChartData = {
+      labels: <%= raw @appointment_type_labels %>,
+      datasets: [
+        {
+          data: <%= raw @appointment_type_data %>,
+          backgroundColor:<%= raw get_chart_dataset_color %>
+        }
+      ]
+    };
+
+    var ctx = document.getElementById("appointment-types-chart_<%= partial_name %>").getContext("2d");
+    var myHorizontalBar = new Chart(ctx, {
+        type: 'horizontalBar',
+        data: horizontalBarChartData,
+        options: {
+            tooltips: {
+              callbacks: {
+                label: function(tooltipItem) {
+                    return "Appointment type:  " + tooltipItem.yLabel;
+                }
+              }
+            },
+            scales: {
+              yAxes:[{
+                maxBarThickness: 15,
+                  // barThickness: 15,
+                  ticks: {
+                    beginAtZero:true,
+                    mirror: true,
+                    stepSize: 1,
+                  }
+              }],
+              xAxes:[{
+                maxBarThickness: 15,
+                  ticks: {
+                      beginAtZero: true,
+                  }
+              }]
+            },
+            responsive: true,
+            legend: {
+                display: false,
+            },
+            title: {
+                display: false,
+                // text: 'Horizontal Bar Chart'
+            },
+            animation: {
+              duration: 500,
+              onComplete () {
+                const chartInstance = this.chart;
+                const ctx = chartInstance.ctx;
+                const dataset = this.data.datasets[0];
+                const meta = chartInstance.controller.getDatasetMeta(0);
+
+                Chart.helpers.each(meta.data.forEach((bar, index) => {
+                  const label = this.data.labels[index];
+                  const labelPositionX = 10;
+                  const labelWidth = ctx.measureText(label).width + labelPositionX;
+
+                  ctx.textBaseline = 'middle';
+                  ctx.textAlign = 'left';
+                  ctx.fillStyle = '#333';
+                  ctx.fillText(label, labelPositionX, bar._model.y);
+                }));
+              }
+          }
+        }
+    });
+  });
+
+</script>

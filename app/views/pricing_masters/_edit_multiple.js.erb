@@ -1,0 +1,90 @@
+// Select Contact Group
+$("#contact_group").select2();
+
+$("#contact_group").on('change', function(){
+  let contact_group_id = $(this).val()
+  let facility_id = "<%= params[:facility_id] %>"
+  let department_id = "<%= params[:department_id] %>"
+  let department_name = "<%= params[:department_name] %>"
+  let service_master_id = "<%= params[:service_master_id] %>"
+  $.ajax({
+    url: '/pricing_masters/edit_multiple',
+    type: "GET",
+    data: {
+      department_id: department_id,
+      department_name: department_name,
+      contact_group_id: contact_group_id,
+      facility_id: facility_id,
+      service_master_id: service_master_id
+    },
+    success: function(){
+    }
+  });
+});
+
+// Validation
+function pricing_master_form(){
+  $("#edit-pricing_master-form").validate({
+    ignore: [],
+    rules: {
+      "service_masters_list": {
+        required: true,
+      }
+    },
+    messages: {
+      "service_masters_list": {
+        required: "Select Service"
+      }
+    },
+    errorPlacement: function (error, element) {
+      var elem = $(element);
+      if(elem.hasClass("select2-hidden-accessible")) {
+        element = $("#select2-" + elem.attr("id") + "-container").parent();
+        error.insertAfter(element);
+      } else {
+        error.insertAfter(element);
+      }
+    }
+  });
+}
+pricing_master_form()
+
+$.validator.addMethod("NotEqualPayee", function(value, element) {
+  var $element = $(element);
+  var $payers = $('.pricing_master_payer_master_id:visible').not($element);
+  var payersArray = $.map($payers, function(payer) {
+      return $(payer).val();
+  });
+  if ($.inArray($element.val(), payersArray) >= 0) {
+      return false;
+  } else {
+      return true;
+  }
+}, "Please select Unique Payee");
+
+$.validator.addMethod("NotEqualSubException", function(value, element) {
+  var $element = $(element);
+  var validateClass = $(element).attr('validate_class')
+  var $exceptions = $(`.${validateClass}`).not($element);
+  var exceptionsArray = $.map($exceptions, function(exception) {
+      return $(exception).val();
+  });
+  if ($.inArray($element.val(), exceptionsArray) >= 0) {
+      return false;
+  } else {
+      return true;
+  }
+}, "Please select Unique Exception");
+
+for (var i = $(".validation-block").length - 1; i >= 0; i--) {
+  let pricingException = $($(".validation-block")[i]).find('.pricing-exception')
+  for (var j = pricingException.length - 1; j >= 0; j--) {
+    $.validator.addClassRules(`pricing_master_exception_type_${i}_${j}`, { required: true, NotEqualSubException: true });
+  }
+}
+
+$.validator.addClassRules("pricing_master_exception_id", { required: true });
+$.validator.addClassRules("pricing_master_payer_master_id", { required: true, NotEqualPayee: true });
+$.validator.addClassRules("pricing_master_amount", { required: true, number: true });
+$.validator.addClassRules("service_master_service_name", { required: true });
+$.validator.addClassRules("service_master_amount", { required: true });

@@ -1,0 +1,680 @@
+<% @current_facility = current_facility %>
+<style>
+  .pcs-header-content {
+      font-size: 9pt;
+      color: #333333;
+      background-color: #ffffff;
+  }
+  .pcs-template-body {
+      padding: 0 0.400000in 0 0.550000in;
+  }
+  .pcs-template-footer {
+      height: 0.700000in;
+      font-size: 6pt;
+      color: #aaaaaa;
+      padding: 0 0.400000in 0 0.550000in;
+      background-color: #ffffff;
+  }
+  .pcs-footer-content {
+      word-wrap: break-word;
+      color: #aaaaaa;
+      border-top: 1px solid #eeeeee;
+  }
+  .pcs-label {
+      color: #000000;
+  }
+  .pcs-entity-title {
+      font-size: 13pt;
+      color: #333333;
+  }
+  .pcs-entity-title {
+      text-align: center;
+      position: relative;
+      text-transform: uppercase;
+  }
+  .pcs-entity-title:before {
+      content: "";
+      display: block;
+      border-top: 1px solid #eeeeee;
+      width: 100%;
+      height: 1pt;
+      position: absolute;
+      top: 50%;
+      font-size: 1pt;
+  }
+  .pcs-entity-title span {
+      background: #ffffff;
+      padding: 0 20px;
+      position: relative;
+  }
+  .pcs-table, .pcs-table th, .pcs-table td {
+      border: 1px solid #eeeeee;
+  }
+  .pcs-orgname {
+      font-size: 9pt;
+      color: #333333;
+  }
+  .pcs-customer-name {
+      font-size: 9pt;
+      color: #333333;
+  }
+  .pcs-itemtable-header {
+      font-size: 9pt;
+      color: #333333;
+      background-color: #eff0f1;
+  }
+  .pcs-taxtable-header {
+      font-size: 9pt;
+      color: #000;
+      background-color: #f5f4f3;
+  }
+  .pcs-item-row {
+      font-size: 9pt;
+      border-bottom: 1px solid #eeeeee;
+      background-color: #ffffff;
+      color: #333333;
+  }
+  .pcs-item-desc {
+      color: #8e8e8e;
+      font-size: 9pt;
+  }
+  .pcs-balance {
+      background-color: #ffffff;
+      font-size: 9pt;
+      color: #333333;
+  }
+  .pcs-totals {
+      font-size: 9pt;
+      color: #333333;
+      background-color: #ffffff;
+  }
+  .pcs-notes {
+      font-size: 9pt;
+  }
+  .pcs-terms {
+      font-size: 9pt;
+  }
+  .pcs-header-first {
+      background-color: #ffffff;
+      font-size: 9pt;
+      color: #333333;
+      height: auto;
+  }
+  .pcs-status {
+
+      font-size: 15pt;
+      border: 3px solid ;
+      padding: 3px 8px;
+  }
+  .pcs-template-header {
+      padding: 0 0.400000in 0 0.550000in;
+      height: 0.700000in;
+  }
+  .pcs-itemtable {
+      border: 1px solid #eeeeee;
+  }
+  .pcs-itemtable-header {
+      border-right: 1px solid #eeeeee;
+      border-bottom: 1px solid #eeeeee;
+  }
+  .pcs-item-row {
+      border-right: 1px solid #eeeeee;
+      border-bottom: none;
+  }
+  .pcs-bdr-top {
+      border-top: 1px solid #eeeeee;
+  }
+  .pcs-bdr-bottom {
+      border-bottom: 1px solid #eeeeee;
+  }
+  .pcs-table, .pcs-table th, .pcs-table td {
+      border: 1px solid #eeeeee;
+  }
+  .medication_title{
+    font-size: 15px !important;
+  }
+</style>
+
+<% if params[:showclone] == "true" %>
+  <%= render "opd_records/#{@speciality_folder_name}_notes/opd_partials/clone_selective_opd_summary" %>
+<% else %>
+  <%= render partial: "opd_records/#{@speciality_folder_name}_notes/opd_partials/opd_summary_form_actions", locals: { patient: @patient, appointment: @appointment, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+<% end %>
+
+<% rules_file ||= nil %>
+<% if rules_file.present? %>
+  <%= render partial: "templates/common/validation_status_summary", locals: { opdrecord: @opdrecord, templatetype: @templatetype, rules_file: rules_file, mail_job: false } %>
+<% end %>
+
+<div class="summary-template" style="box-shadow: 0 0 6px #ccc;max-width: 110%;padding: 0 0.400000in 0 0.550000in;padding-top: 0px;padding-right: 0.4in;padding-bottom: 0px;padding-left: 0.55in;font-family: '<%= UsersSetting.find_by(user_id: current_user.id).font_style %>';">
+  <div class="row">
+    <div class="col-md-12 col-sm-12">
+      <div class="opdsummary">
+        <%= render partial: "opd_records/#{@speciality_folder_name}_notes/opd_partials/opd_summary_form_patientinfo", locals: { patient: @patient, appointment: @appointment, opdrecord: @opdrecord, mail_job: false } %>
+        <div class="pcs-entity-title"><span>Opd Summary</span></div>
+        <% nursing_template = OpdRecord.find_by(appointmentid: @appointment.id.to_s, templatetype: 'nursing') %>
+        <% refraction_template = OpdRecord.find_by(appointmentid: @appointment.id.to_s, templatetype: 'refraction') %>
+        <% if @templatetype == "express" %>
+          <%= render partial: "opd_records/#{@speciality_folder_name}_notes/opd_partials/summary/opd_summary_form_expresshistory", locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <%= render partial: "opd_records/#{@speciality_folder_name}_notes/opd_partials/summary/opd_summary_form_assessment", locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <%= render partial: "opd_records/#{@speciality_folder_name}_notes/opd_partials/summary/opd_summary_form_plan", locals: { patient: @patient, appointment: @appointment, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <%= render partial: "opd_records/#{@speciality_folder_name}_notes/opd_partials/summary/opd_summary_form_advice", locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, advice: @opdrecord.advice, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+        <% elsif @templatetype == "freeform" %>
+          <%= render partial: "opd_records/#{@speciality_folder_name}_notes/opd_partials/summary/opd_summary_form_freeform", locals: { patient: @patient, appointment: @appointment, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <div class="mb5">
+            <% if @opdrecord.treatmentmedication.length > 0 || @opdrecord.medicationcomments.length > 0 %>
+              <%= render partial: "opd_records/#{@speciality_folder_name}_notes/opd_partials/summary/opd_summary_form_medication.html.erb", locals: { patient: @patient, appointment: @appointment, specalityfoldername: @speciality_folder_name, opdrecord: @opdrecord, templatetype: @templatetype, opdspeciality: @opdspeciality, mail_job: false, medication_groups: @medication_groups, translated_language: @translated_language, advice_language: @advice_language } %>
+            <% end %>
+          </div>
+          <%= render partial: "opd_records/#{@speciality_folder_name}_notes/opd_partials/summary/opd_summary_form_advice", locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, advice: @opdrecord.advice, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+        <% elsif @templatetype == "vision" %>
+          <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_glassesprescriptions.html', locals: { patient: @patient, appointment: @appointment, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_glasses_intermediate_prescriptions.html', locals: { patient: @patient, appointment: @appointment, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_plan', locals: { patient: @patient, appointment: @appointment, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_advice', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, advice: @opdrecord.advice, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+        <% elsif @templatetype == "eye" || @templatetype == "paediatrics"  %>
+          <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_history', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <%= render partial: "/opd_records/#{@speciality_folder_name}_notes/opd_partials/summary/opd_summary_vital_signs", locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, advice: @opdrecord.advice, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <% if nursing_template.present? %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_syringing', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: nursing_template, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_rbs', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: nursing_template, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <% end %>
+          <% if @current_facility.country_id != "VN_254" %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_contactlensprescriptions.html', locals: { patient: @patient, appointment: @appointment, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_glassesprescriptions.html', locals: { patient: @patient, appointment: @appointment, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_glasses_intermediate_prescriptions.html', locals: { patient: @patient, appointment: @appointment, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <%= render partial: "opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_examination_refraction", locals: {patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false} %>
+            <%= render partial: "opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_squint_examination", locals: {patient: @patient, appointment: @appointment, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false} %>
+            <%= render partial: "opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_examination", locals: {patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false} %>
+          <% else %>
+            <%= render partial: "opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_refraction", locals: {patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <% if @opdrecord.dilate_patient %>
+              <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_dilated_refraction.html.erb', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <% end %>
+            <% if @opdrecord.perform_pmt %>
+              <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_pmt_refraction.html.erb', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <% end %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_glassesprescriptions.html', locals: { patient: @patient, appointment: @appointment, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <%= render partial: "opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_squint_examination", locals: {patient: @patient, appointment: @appointment, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false} %>
+            <%= render partial: "opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_examination", locals: {patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false} %>
+          <% end %>
+          <%= render partial: "opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_assessment", locals: {patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false} %>
+          <%= render partial: "opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_plan", locals: {patient: @patient, appointment: @appointment, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false, medication_groups: @medication_groups} %>
+          <%= render partial: "opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_advice", locals: {patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, advice: @opdrecord.advice, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, advice_language: @advice_language, mail_job: false} %>
+          <%= render partial: "opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_drawings", locals: {patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, advice: @opdrecord.advice, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false} %>
+        <% elsif @templatetype == "ar_nct" %>
+          <% if @current_facility.country_id != "VN_254" %>
+            <%= render partial: "opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_examination_refraction", locals: { specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <% else %>
+            <%= render partial: "opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_refraction", locals: {patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <% end %>
+          <%= render partial: "opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_examination.html.erb", locals: {patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+        <% elsif @templatetype == "refraction" %>
+          <%= render partial: "opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_examination_refraction", locals: { specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_refraction.html.erb', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <% if @opdrecord.dilate_patient %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_dilated_refraction.html.erb', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <% end %>
+          <% if @opdrecord.perform_pmt %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_pmt_refraction.html.erb', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <% end %>
+          <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_glassesprescriptions.html', locals: { patient: @patient, appointment: @appointment, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+        <% elsif @templatetype == "trauma" %>
+          <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_history', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <%= render partial: "/opd_records/#{@speciality_folder_name}_notes/opd_partials/summary/opd_summary_vital_signs", locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, advice: @opdrecord.advice, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <% if nursing_template.present? %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_syringing', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: nursing_template, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_rbs', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: nursing_template, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <% end %>
+          <% if @current_facility.country_id != "VN_254" %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_contactlensprescriptions.html', locals: { patient: @patient, appointment: @appointment, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_glassesprescriptions.html', locals: { patient: @patient, appointment: @appointment, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_glasses_intermediate_prescriptions.html', locals: { patient: @patient, appointment: @appointment, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_examination_refraction_trauma', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_examination_trauma', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <% else %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_refraction.html.erb', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <% if @opdrecord.dilate_patient %>
+              <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_dilated_refraction.html.erb', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <% end %>
+            <% if @opdrecord.perform_pmt %>
+              <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_pmt_refraction.html.erb', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <% end %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_glassesprescriptions.html', locals: { patient: @patient, appointment: @appointment, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_examination_trauma', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <% end %>
+          <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_assessment', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_plan', locals: { patient: @patient, appointment: @appointment, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_advice', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, advice: @opdrecord.advice, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_drawings', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, advice: @opdrecord.advice, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+        <% elsif @templatetype == "quickeye" %>
+          <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_history', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <%= render partial: "/opd_records/#{@speciality_folder_name}_notes/opd_partials/summary/opd_summary_vital_signs", locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, advice: @opdrecord.advice, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <% if nursing_template.present? %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_syringing', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: nursing_template, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_rbs', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: nursing_template, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <% end %>
+          <% if @current_facility.country_id != "VN_254" %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_contactlensprescriptions.html', locals: { patient: @patient, appointment: @appointment, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_glassesprescriptions.html', locals: { patient: @patient, appointment: @appointment, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_glasses_intermediate_prescriptions.html', locals: { patient: @patient, appointment: @appointment, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_quickexamination_refraction', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_quickexamination', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <% else %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_refraction.html.erb', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <% if @opdrecord.dilate_patient %>
+              <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_dilated_refraction.html.erb', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <% end %>
+            <% if @opdrecord.perform_pmt %>
+              <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_pmt_refraction.html.erb', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <% end %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_glassesprescriptions.html', locals: { patient: @patient, appointment: @appointment, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_quickexamination', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <% end %>
+          <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_assessment', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_plan', locals: { patient: @patient, appointment: @appointment, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_advice', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, advice: @opdrecord.advice, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_drawings', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, advice: @opdrecord.advice, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+        <% elsif @templatetype == "lens" %>
+          <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_history', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <%= render partial: "/opd_records/#{@speciality_folder_name}_notes/opd_partials/summary/opd_summary_vital_signs", locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, advice: @opdrecord.advice, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <% if nursing_template.present? %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_syringing', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: nursing_template, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_rbs', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: nursing_template, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <% end %>
+          <% if @current_facility.country_id != "VN_254" %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_lens_form_contactlensprescriptions.html', locals: { patient: @patient, appointment: @appointment, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_glassesprescriptions.html', locals: { patient: @patient, appointment: @appointment, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_glasses_intermediate_prescriptions.html', locals: { patient: @patient, appointment: @appointment, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_lens_examination_refraction', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_lens_examination', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <% else %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_refraction.html.erb', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <% if @opdrecord.dilate_patient %>
+              <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_dilated_refraction.html.erb', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <% end %>
+            <% if @opdrecord.perform_pmt %>
+              <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_pmt_refraction.html.erb', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <% end %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_glassesprescriptions.html', locals: { patient: @patient, appointment: @appointment, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_lens_examination', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <% end %>
+          <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_assessment', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_plan', locals: { patient: @patient, appointment: @appointment, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_advice', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, advice: @opdrecord.advice, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_drawings', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, advice: @opdrecord.advice, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+
+        <% elsif @templatetype == "optometrist" %>
+          <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_history', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <%= render partial: "/opd_records/#{@speciality_folder_name}_notes/opd_partials/summary/opd_summary_vital_signs", locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, advice: @opdrecord.advice, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <% if nursing_template.present? %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_syringing', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: nursing_template, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_rbs', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: nursing_template, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <% end %>
+          <% if @current_facility.country_id != "VN_254" %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_contactlensprescriptions.html', locals: { patient: @patient, appointment: @appointment, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_glassesprescriptions.html', locals: { patient: @patient, appointment: @appointment, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_glasses_intermediate_prescriptions.html', locals: { patient: @patient, appointment: @appointment, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <%= render partial: "opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_examination_refraction", locals: {patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false} %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_examination.html', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <% else %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_refraction.html.erb', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <% if @opdrecord.dilate_patient %>
+              <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_dilated_refraction.html.erb', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <% end %>
+            <% if @opdrecord.perform_pmt %>
+              <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_pmt_refraction.html.erb', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <% end %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_glassesprescriptions.html', locals: { patient: @patient, appointment: @appointment, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_examination.html', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <% end %>
+        <% elsif @templatetype == "pmt" %>
+          <% if @current_facility.country_id != "VN_254" %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_contactlensprescriptions.html', locals: { patient: @patient, appointment: @appointment, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_glassesprescriptions.html', locals: { patient: @patient, appointment: @appointment, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_glasses_intermediate_prescriptions.html', locals: { patient: @patient, appointment: @appointment, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <%= render partial: "opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_examination_refraction", locals: { specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_examination', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <% else %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_refraction.html.erb', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <% if @opdrecord.dilate_patient %>
+              <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_dilated_refraction.html.erb', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <% end %>
+            <% if @opdrecord.perform_pmt %>
+              <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_pmt_refraction.html.erb', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <% end %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_glassesprescriptions.html', locals: { patient: @patient, appointment: @appointment, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_examination', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <% end %>
+          <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_diagnosis.html', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false, translated_language: @translated_language } %>
+          <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_plan', locals: { patient: @patient, appointment: @appointment, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_advice', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, advice: @opdrecord.advice, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_drawings', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, advice: @opdrecord.advice, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+
+        <% elsif @templatetype == "postop" %>
+          <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_postopinfo.html', locals: { patient: @patient, appointment: @appointment, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <% if @current_facility.country_id != "VN_254" %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_contactlensprescriptions.html', locals: { patient: @patient, appointment: @appointment, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_glassesprescriptions.html', locals: { patient: @patient, appointment: @appointment, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_glasses_intermediate_prescriptions.html', locals: { patient: @patient, appointment: @appointment, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <%= render partial: "opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_examination_refraction", locals: { specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_examination', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <% else %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_refraction.html.erb', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <% if @opdrecord.dilate_patient %>
+              <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_dilated_refraction.html.erb', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <% end %>
+            <% if @opdrecord.perform_pmt %>
+              <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_pmt_refraction.html.erb', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <% end %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_glassesprescriptions.html', locals: { patient: @patient, appointment: @appointment, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_examination', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <% end %>
+          <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_assessment', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_plan', locals: { patient: @patient, appointment: @appointment, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_advice', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, advice: @opdrecord.advice, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_drawings', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, advice: @opdrecord.advice, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+
+        <% elsif @templatetype == "orthoptics" %>
+          <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_history', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <%= render partial: "/opd_records/#{@speciality_folder_name}_notes/opd_partials/summary/opd_summary_vital_signs", locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, advice: @opdrecord.advice, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <% if nursing_template.present? %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_syringing', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: nursing_template, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_rbs', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: nursing_template, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <% end %>
+          <% if @current_facility.country_id != "VN_254" %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_contactlensprescriptions.html', locals: { patient: @patient, appointment: @appointment, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_glassesprescriptions.html', locals: { patient: @patient, appointment: @appointment, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_glasses_intermediate_prescriptions.html', locals: { patient: @patient, appointment: @appointment, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <%= render partial: "opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_examination_refraction", locals: { specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_examination', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <% else %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_refraction.html.erb', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <% if @opdrecord.dilate_patient %>
+              <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_dilated_refraction.html.erb', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <% end %>
+            <% if @opdrecord.perform_pmt %>
+              <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_pmt_refraction.html.erb', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <% end %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_glassesprescriptions.html', locals: { patient: @patient, appointment: @appointment, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+            <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_examination', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <% end %>
+          <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_assessment', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_plan', locals: { patient: @patient, appointment: @appointment, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_advice', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, advice: @opdrecord.advice, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_drawings', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, advice: @opdrecord.advice, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+
+        <% elsif @templatetype == "nursing" %>
+          <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_form_history', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <%= render partial: "/opd_records/#{@speciality_folder_name}_notes/opd_partials/summary/opd_summary_vital_signs", locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, advice: @opdrecord.advice, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <%= render partial: "/opd_records/#{@speciality_folder_name}_notes/opd_partials/summary/opd_summary_iop.html.erb", locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, advice: @opdrecord.advice, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_syringing', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, advice: @opdrecord.advice, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+          <%= render partial: 'opd_records/ophthalmology_notes/opd_partials/summary/opd_summary_rbs', locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, advice: @opdrecord.advice, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+
+        <% elsif @templatetype == "vitalsign" %>
+          <%= render partial: "/opd_records/#{@speciality_folder_name}_notes/opd_partials/summary/opd_summary_vital_signs", locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, advice: @opdrecord.advice, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality, mail_job: false } %>
+
+
+        <% elsif @templatetype == "biometry" %>
+          <%= render partial: "/opd_records/#{@speciality_folder_name}_notes/opd_partials/summary/opd_summary_biometry.html.erb", locals: { patient: @patient, specalityfoldername: @speciality_folder_name, specalityid: @specalityid, opdrecord: @opdrecord, advice: @opdrecord.advice, templatetype: @templatetype, templateid: @templateid, opdspeciality: @opdspeciality , mail_job: false } %>
+
+        <% end %>
+
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<script>
+  jQuery(document).ready(function() {
+
+    jQuery('.templates_review_opd_record').on("click", function() {
+      var params = {opd_record_author_user: jQuery('.templates_review_opd_record').attr("data-opd-record-author-user"), opd_record_reviewer_user: jQuery("#opdrecord_select_reviewer_user option:selected").val(), opdrecordid: jQuery('.templates_review_opd_record').attr("data-opdrecordid"), patientid: jQuery('.templates_review_opd_record').attr("data-patientid"), templatetype: jQuery('.templates_review_opd_record').attr("data-templatetype") };
+      jQuery.ajax({
+        type: "GET",
+        dataType: "script",
+        url: "/opd_records/review_opd_record",
+        data: {review_opd_record: params, remote: "true" }
+      });
+    });
+
+    jQuery('.print_diagnosis_flag').on("click", function() {
+      var flagvalue = "0";
+      if (jQuery('.print_diagnosis_flag').attr("value") == "1") {
+        flagvalue = "0";
+        jQuery('.print_diagnosis_flag').attr("value", flagvalue);
+      } else if (jQuery('.print_diagnosis_flag').attr("value") == "0") {
+        flagvalue = "1";
+        jQuery('.print_diagnosis_flag').attr("value", flagvalue);
+      }
+      var params = { flag_name: "print_diagnosis_flag", opd_record_id: "<%= @opdrecord.id %>", flag_value: flagvalue };
+      jQuery.ajax({
+        type: "GET",
+        dataType: "script",
+        url: "/opd_records/print_flag",
+        data: {ajax: params, remote: "true" }
+      });
+    });
+
+    jQuery('.print_advice_flag').on("click", function() {
+      var flagvalue = "0";
+      if (jQuery('.print_advice_flag').attr("value") == "1") {
+        flagvalue = "0";
+        jQuery('.print_advice_flag').attr("value", flagvalue);
+      } else if (jQuery('.print_advice_flag').attr("value") == "0") {
+        flagvalue = "1";
+        jQuery('.print_advice_flag').attr("value", flagvalue);
+      }
+      var params = { flag_name: "print_advice_flag", opd_record_id: "<%= @opdrecord.id %>", flag_value: flagvalue };
+      jQuery.ajax({
+        type: "GET",
+        dataType: "script",
+        url: "/opd_records/print_flag",
+        data: {ajax: params, remote: "true" }
+      });
+    });
+
+    jQuery('.print_examination_flag').on("click", function() {
+      var flagvalue = "0";
+      if (jQuery('.print_examination_flag').attr("value") == "1") {
+        flagvalue = "0";
+        jQuery('.print_examination_flag').attr("value", flagvalue);
+      } else if (jQuery('.print_examination_flag').attr("value") == "0") {
+        flagvalue = "1";
+        jQuery('.print_examination_flag').attr("value", flagvalue);
+      }
+      var params = { flag_name: "print_examination_flag", opd_record_id: "<%= @opdrecord.id %>", flag_value: flagvalue };
+      jQuery.ajax({
+        type: "GET",
+        dataType: "script",
+        url: "/opd_records/print_flag",
+        data: {ajax: params, remote: "true" }
+      });
+    });
+
+    jQuery('.print_refraction_flag').on("click", function() {
+      var flagvalue = "0";
+      if (jQuery('.print_refraction_flag').attr("value") == "1") {
+        flagvalue = "0";
+        jQuery('.print_refraction_flag').attr("value", flagvalue);
+      } else if (jQuery('.print_refraction_flag').attr("value") == "0") {
+        flagvalue = "1";
+        jQuery('.print_refraction_flag').attr("value", flagvalue);
+      }
+      var params = { flag_name: "print_refraction_flag", opd_record_id: "<%= @opdrecord.id %>", flag_value: flagvalue };
+      jQuery.ajax({
+        type: "GET",
+        dataType: "script",
+        url: "/opd_records/print_flag",
+        data: {ajax: params, remote: "true" }
+      });
+    });
+
+    jQuery('.print_contactlens_flag').on("click", function() {
+        var flagvalue = "0";
+        if (jQuery('.print_contactlens_flag').attr("value") == "1") {
+            flagvalue = "0";
+            jQuery('.print_contactlens_flag').attr("value", flagvalue);
+        } else if (jQuery('.print_contactlens_flag').attr("value") == "0") {
+            flagvalue = "1";
+            jQuery('.print_contactlens_flag').attr("value", flagvalue);
+        }
+        var params = { flag_name: "print_contactlens_flag", opd_record_id: "<%= @opdrecord.id %>", flag_value: flagvalue };
+        jQuery.ajax({
+            type: "GET",
+            dataType: "script",
+            url: "/opd_records/print_flag",
+            data: {ajax: params, remote: "true" }
+        });
+    });
+
+    jQuery('.print_glassesprescriptions_flag').on("click", function() {
+        var flagvalue = "0";
+        if (jQuery('.print_glassesprescriptions_flag').attr("value") == "1") {
+            flagvalue = "0";
+            jQuery('.print_glassesprescriptions_flag').attr("value", flagvalue);
+        } else if (jQuery('.print_glassesprescriptions_flag').attr("value") == "0") {
+            flagvalue = "1";
+            jQuery('.print_glassesprescriptions_flag').attr("value", flagvalue);
+        }
+        var params = { flag_name: "print_glassesprescriptions_flag", opd_record_id: "<%= @opdrecord.id %>", flag_value: flagvalue };
+        jQuery.ajax({
+            type: "GET",
+            dataType: "script",
+            url: "/opd_records/print_flag",
+            data: {ajax: params, remote: "true" }
+        });
+    });
+
+    jQuery('.print_intermediate_glasses_prescriptions_flag').on("click", function() {
+      var flagvalue = "0";
+      if (jQuery('.print_intermediate_glasses_prescriptions_flag').attr("value") == "1") {
+        flagvalue = "0";
+        jQuery('.print_intermediate_glasses_prescriptions_flag').attr("value", flagvalue);
+      } else if (jQuery('.print_intermediate_glasses_prescriptions_flag').attr("value") == "0") {
+        flagvalue = "1";
+        jQuery('.print_intermediate_glasses_prescriptions_flag').attr("value", flagvalue);
+      }
+
+      var params = { flag_name: "print_intermediate_glasses_prescriptions_flag", opd_record_id: "<%= @opdrecord.id %>", flag_value: flagvalue };
+      jQuery.ajax({
+        type: "GET",
+        dataType: "script",
+        url: "/opd_records/print_flag",
+        data: {ajax: params, remote: "true" }
+      });
+    });
+
+    jQuery('.print_diagram_flag').on("click", function() {
+      var flagvalue = "0";
+      if (jQuery('.print_diagram_flag').attr("value") == "1") {
+        flagvalue = "0";
+        jQuery('.print_diagram_flag').attr("value", flagvalue);
+      } else if (jQuery('.print_diagram_flag').attr("value") == "0") {
+        flagvalue = "1";
+        jQuery('.print_diagram_flag').attr("value", flagvalue);
+      }
+      var params = { flag_name: "print_diagram_flag", opd_record_id: "<%= @opdrecord.id %>", flag_value: flagvalue };
+      jQuery.ajax({
+        type: "GET",
+        dataType: "script",
+        url: "/opd_records/print_flag",
+        data: {ajax: params, remote: "true"}
+      });
+    });
+
+    jQuery('.print_investigations_flag').on("click", function() {
+        var flagvalue = "0";
+        if (jQuery('.print_investigations_flag').attr("value") == "1") {
+            flagvalue = "0";
+            jQuery('.print_investigations_flag').attr("value", flagvalue);
+        } else if (jQuery('.print_investigations_flag').attr("value") == "0") {
+            flagvalue = "1";
+            jQuery('.print_investigations_flag').attr("value", flagvalue);
+        }
+        var params = { flag_name: "print_investigations_flag", opd_record_id: "<%= @opdrecord.id %>", flag_value: flagvalue };
+        jQuery.ajax({
+            type: "GET",
+            dataType: "script",
+            url: "/opd_records/print_flag",
+            data: {ajax: params, remote: "true" }
+        });
+    });
+
+    $('.print_procedures_flag').on("click", function() {
+        var flagvalue = "0";
+        if (jQuery('.print_procedures_flag').attr("value") == "1") {
+            flagvalue = "0";
+            jQuery('.print_procedures_flag').attr("value", flagvalue);
+        } else if (jQuery('.print_procedures_flag').attr("value") == "0") {
+            flagvalue = "1";
+            jQuery('.print_procedures_flag').attr("value", flagvalue);
+        }
+        var params = { flag_name: "print_procedures_flag", opd_record_id: "<%= @opdrecord.id %>", flag_value: flagvalue };
+        jQuery.ajax({
+            type: "GET",
+            dataType: "script",
+            url: "/opd_records/print_flag",
+            data: {ajax: params, remote: "true" }
+        });
+    });
+
+    jQuery('.print_history_flag').on("click", function() {
+      var flagvalue = "0";
+      if (jQuery('.print_history_flag').attr("value") == "1") {
+        flagvalue = "0";
+        jQuery('.print_history_flag').attr("value", flagvalue);
+      } else if (jQuery('.print_history_flag').attr("value") == "0") {
+        flagvalue = "1";
+        jQuery('.print_history_flag').attr("value", flagvalue);
+      }
+      var params = { flag_name: "print_history_flag", opd_record_id: "<%= @opdrecord.id %>", flag_value: flagvalue };
+      jQuery.ajax({
+        type: "GET",
+        dataType: "script",
+        url: "/opd_records/print_flag",
+        data: {ajax: params, remote: "true" }
+      });
+    });
+
+    jQuery('.print_squint_flag').on("click", function() {
+      var flagvalue = "0";
+      if (jQuery('.print_squint_flag').attr("value") == "1") {
+          flagvalue = "0";
+          jQuery('.print_squint_flag').attr("value", flagvalue);
+      } else if (jQuery('.print_squint_flag').attr("value") == "0") {
+          flagvalue = "1";
+          jQuery('.print_squint_flag').attr("value", flagvalue);
+      }
+      var params = { flag_name: "print_squint_flag", opd_record_id: "<%= @opdrecord.id %>", flag_value: flagvalue };
+      jQuery.ajax({
+          type: "GET",
+          dataType: "script",
+          url: "/opd_records/print_flag",
+          data: {ajax: params, remote: "true" }
+      });
+    });
+
+    $('.hide-show-edit-btn').on('click',function(){
+      if ($(this).hasClass('revert-sign-off-btn')){
+        $('.edit-record').removeClass('disabled')
+        $('.record-signed-off-title').hide()
+        var status = false
+      }
+      else{
+        $('.edit-record').addClass('disabled')
+        $('.record-signed-off-title').show()
+        var status = true
+      }
+      $.ajax({
+        type: "GET",
+        dataType: "script",
+        url: "/opd_records/sign_off",
+        data: {status: status,opd_record_id: "<%= @opdrecord.id %>", remote: "true" }
+      })
+    })
+
+   });
+</script>

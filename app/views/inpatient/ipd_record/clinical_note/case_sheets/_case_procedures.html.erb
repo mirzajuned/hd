@@ -1,0 +1,404 @@
+<% @procedures = @case_sheet.procedures.or({ ipd_record_id: nil }, { ipd_record_id: @ipdrecord.try(:id).to_s }) %>
+<% @free_form_procedures = @case_sheet.free_form_procedures %>
+<% if @procedures.count > 0 || @specialty_id == "309988001" %>
+  <div class="row mb5">
+    <div class="col-md-4" style="text-decoration: underline;"><b>PROCEDURES</b></div>
+    <div class="col-md-8">
+      <input type="text" name="procedure-search" class="form-control p3_10" id="search_procedure_keyword" placeholder="Search Procedures" />
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-md-12">
+      <div class="row">
+        <div class="col-md-12">
+          <table class="table" style="font-size:12px; table-layout: fixed;">
+            <thead>
+              <tr style="font-size:12px;">
+                <th class="col-md-1 thead-fix"></th>
+                <th class="col-md-3 thead-fix">Name</th>
+                <th class="col-md-2 thead-fix">Advised by</th>
+                <th class="col-md-2 thead-fix">Advised at</th>
+                <th class="col-md-2 thead-fix">Current State</th>
+                <th class="col-md-2 thead-fix">Order Display ID</th>
+              </tr>
+            </thead>
+            <tbody class="procedure-added">
+              <%order_procedures = Order::Advised.where(case_sheet_id: @case_sheet.id.to_s, type: 'procedures', active: true)%>
+              <% cs_procedures = @procedures.where(order_advised_id: {:$in => order_procedures.pluck(:id)}, is_performed: false, is_removed: false, has_declined: false, performed_inline: false) %>
+              <% if cs_procedures.count > 0 %>
+                <% counter = 0 %>
+                <% cs_procedures.where(order_advised_id: {:$in => order_procedures.pluck(:id)}, advised_from: "opd_record").order(advised_datetime: :asc).group_by{ |p| [p.procedurefullcode, p.procedureside] }.each do |procedure_args, procedures| %>
+                  <% order_procedure = order_procedures.find{|op| op.id.to_s == procedures[0].order_advised_id.to_s} %>
+                  <tr class="table-row-procedure" style="font-size:12px;">
+                    <%= hidden_field_tag "case_sheet[procedures][#{counter}][id]", procedures[0].id %>
+                    <%= hidden_field_tag "case_sheet[procedures][#{counter}][procedurestage]", procedures[0].procedurestage %>
+                    <%= hidden_field_tag "case_sheet[procedures][#{counter}][procedurename]", procedures[0].procedurename %>
+                    <%= hidden_field_tag "case_sheet[procedures][#{counter}][procedure_id]", procedures[0].procedure_id %>
+                    <%= hidden_field_tag "case_sheet[procedures][#{counter}][procedureoriginalside]", procedures[0].procedureoriginalside %>
+                    <%= hidden_field_tag "case_sheet[procedures][#{counter}][procedureside]", procedures[0].procedureside %>
+                    <%= hidden_field_tag "case_sheet[procedures][#{counter}][procedurefullcode]", procedures[0].procedurefullcode %>
+                    <%= hidden_field_tag "case_sheet[procedures][#{counter}][procedure_type]", procedures[0].procedure_type %>
+                    <!-- Entered Details -->
+                    <%= hidden_field_tag "case_sheet[procedures][#{counter}][entered_by]", procedures[0].entered_by %>
+                    <%= hidden_field_tag "case_sheet[procedures][#{counter}][entered_by_id]", procedures[0].entered_by_id %>
+                    <%= hidden_field_tag "case_sheet[procedures][#{counter}][entered_datetime]", procedures[0].entered_datetime %>
+                    <%= hidden_field_tag "case_sheet[procedures][#{counter}][entered_from]", procedures[0].entered_from %>
+                    <%= hidden_field_tag "case_sheet[procedures][#{counter}][entered_at_facility]", procedures[0].entered_at_facility %>
+                    <%= hidden_field_tag "case_sheet[procedures][#{counter}][entered_at_facility_id]", procedures[0].entered_at_facility_id %>
+                    <!-- Comments -->
+                    <%= hidden_field_tag "case_sheet[procedures][#{counter}][procedure_comment]", procedures[0].procedure_comment %>
+                    <%= hidden_field_tag "case_sheet[procedures][#{counter}][users_comment]", procedures[0].users_comment %>
+                    <!-- Advised Details -->
+                    <%= hidden_field_tag "case_sheet[procedures][#{counter}][advised_by]", procedures[0].advised_by %>
+                    <%= hidden_field_tag "case_sheet[procedures][#{counter}][advised_by_id]", procedures[0].advised_by_id %>
+                    <%= hidden_field_tag "case_sheet[procedures][#{counter}][advised_datetime]", procedures[0].advised_datetime %>
+                    <%= hidden_field_tag "case_sheet[procedures][#{counter}][advised_from]", procedures[0].advised_from %>
+                    <%= hidden_field_tag "case_sheet[procedures][#{counter}][advised_at_facility]", procedures[0].advised_at_facility %>
+                    <%= hidden_field_tag "case_sheet[procedures][#{counter}][advised_at_facility_id]", procedures[0].advised_at_facility_id %>
+                    <td style="width:5%;">
+                      <div class="ckbox ckbox-primary mb5">
+                        <input type="hidden" name="case_sheet[procedures][<%=counter%>][flow_in_ipd]" value='false'>
+                        <%= check_box_tag "case_sheet[procedures][#{counter}][flow_in_ipd]", true, procedures[0].flow_in_ipd, {id: "flow_in_ipd_#{counter}", class: 'flow_in_ipd'} %>
+                        <label for="flow_in_ipd_<%=counter%>"></label>
+                      </div>
+                    </td>
+                    <td>
+                      <span><%= procedures[0][:procedurename].to_s + ', ' + procedures[0].get_label_for_procedure_side(procedures[0][:procedureside]) %></span>
+                    </td>
+                    <td>
+                      <span><%= procedures[0][:advised_by] %></span>
+                    </td>
+                    <td>
+                      <span><%= procedures[0][:advised_datetime].try(:strftime, "%d/%m/%Y") %></span>
+                    </td>
+                    <td>
+                      <span><%= procedures[0][:procedurestage] %></span>
+                    </td>
+                    <td>
+                      <span><%= order_procedure&.display_id %></span>
+                    </td>
+                  </tr>
+                  <% if @case_sheet.specialty_id == '309988001' %>
+                    <tr class="table-row-procedure-iol thead-fixable" style="display: none">
+                      <td class="col-md-1 thead-fix">
+                        <span></span>
+                      </td>
+                      <td class="col-md-3 thead-fix">
+                        <span>IOL Present</span>
+                      </td>
+                      <td class="col-md-2 thead-fix">
+                        <div class="ckbox ckbox-primary mb5">
+                          <input type="hidden" name="case_sheet[procedures][<%= counter %>][iol_present]" value='false'>
+                          <%= check_box_tag "case_sheet[procedures][#{counter}][iol_present]", true, procedures[0].iol_present, {id: "iol_present_#{counter}", class: 'iol_present'} %>
+                          <label for="iol_present_<%=counter%>"></label>
+                        </div>
+                      </td>
+
+                      <% iol_item_category_ids = Inventory::Category.where(type: 4, organisation_id: current_user.organisation_id).pluck(:id) %>
+                      <% iol_items = Inventory::Item.where(:category_id.in => iol_item_category_ids, level: 'organisation').pluck(:description, :id) %>
+                      <% if procedures[0].iol_present %>
+                        <% display_iol = "block" %>
+                      <% else %>
+                        <% display_iol = "none" %>
+                      <% end %>
+                      <td class="col-md-2 thead-fix">
+                            <span style="display: <%= display_iol %>" class="iol_inventory_item_span">
+                              <%= select_tag "case_sheet[procedures][#{counter}][iol1_inventory_item_id]", options_for_select(iol_items, procedures[0].iol1_inventory_item_id), { include_blank: 'Select IOL', :class=> "iol1_inventory_item iol_inventory_item", style: "width: 20%!important" } %>
+                            </span>
+                      </td>
+                      <td class="col-md-2 thead-fix">
+                            <span style="display: <%= display_iol %>" class="iol_inventory_item_span">
+                              <%= select_tag "case_sheet[procedures][#{counter}][iol2_inventory_item_id]", options_for_select(iol_items, procedures[0].iol2_inventory_item_id), { include_blank: 'Select IOL', :class=> "iol2_inventory_item iol_inventory_item" } %>
+                            </span>
+                      </td>
+                      <td class="col-md-2 thead-fix">
+                            <span style="display: <%= display_iol %>" class="iol_inventory_item_span">
+                              <%= select_tag "case_sheet[procedures][#{counter}][iol3_inventory_item_id]", options_for_select(iol_items, procedures[0].iol3_inventory_item_id), { include_blank: 'Select IOL', :class=> "iol3_inventory_item iol_inventory_item" } %>
+                            </span>
+                      </td>
+
+                    </tr>
+                  <% end %>
+                  <% counter += 1 %>
+                <% end %>
+
+                <% cs_procedures.where(order_advised_id: {:$in => order_procedures.pluck(:id)}).each_with_index do |procedure, i| %>
+                  <% if params[:controller].include?("clinical_note") && procedure.entered_from != "opd_record" && !procedure.is_performed %>
+                    <% order_procedure = order_procedures.find{|op| op.id.to_s == procedure.order_advised_id.to_s} %>
+                    <tr class="table-row-procedure" style="font-size:12px;">
+                      <%= hidden_field_tag "case_sheet[procedures][#{counter}][id]", procedure.id %>
+                      <%= hidden_field_tag "case_sheet[procedures][#{counter}][procedurestage]", procedure.procedurestage %>
+                      <%= hidden_field_tag "case_sheet[procedures][#{counter}][procedurename]", procedure.procedurename %>
+                      <%= hidden_field_tag "case_sheet[procedures][#{counter}][procedure_id]", procedure.procedure_id %>
+                      <%= hidden_field_tag "case_sheet[procedures][#{counter}][procedureoriginalside]", procedure.procedureoriginalside %>
+                      <%= hidden_field_tag "case_sheet[procedures][#{counter}][procedureside]", procedure.procedureside %>
+                      <%= hidden_field_tag "case_sheet[procedures][#{counter}][procedurefullcode]", procedure.procedurefullcode %>
+                      <%= hidden_field_tag "case_sheet[procedures][#{counter}][procedure_type]", procedure.procedure_type %>
+                      <!-- Entered Details -->
+                      <%= hidden_field_tag "case_sheet[procedures][#{counter}][entered_by]", procedure.entered_by %>
+                      <%= hidden_field_tag "case_sheet[procedures][#{counter}][entered_by_id]", procedure.entered_by_id %>
+                      <%= hidden_field_tag "case_sheet[procedures][#{counter}][entered_datetime]", procedure.entered_datetime %>
+                      <%= hidden_field_tag "case_sheet[procedures][#{counter}][entered_from]", procedure.entered_from %>
+                      <%= hidden_field_tag "case_sheet[procedures][#{counter}][entered_at_facility]", procedure.entered_at_facility %>
+                      <%= hidden_field_tag "case_sheet[procedures][#{counter}][entered_at_facility_id]", procedure.entered_at_facility_id %>
+                      <!-- Comments -->
+                      <%= hidden_field_tag "case_sheet[procedures][#{counter}][procedure_comment]", procedure.procedure_comment %>
+                      <%= hidden_field_tag "case_sheet[procedures][#{counter}][users_comment]", procedure.users_comment %>
+                      <!-- Advised Details -->
+                      <%= hidden_field_tag "case_sheet[procedures][#{counter}][advised_by]", procedure.advised_by %>
+                      <%= hidden_field_tag "case_sheet[procedures][#{counter}][advised_by_id]", procedure.advised_by_id %>
+                      <%= hidden_field_tag "case_sheet[procedures][#{counter}][advised_datetime]", procedure.advised_datetime %>
+                      <%= hidden_field_tag "case_sheet[procedures][#{counter}][advised_from]", procedure.advised_from %>
+                      <%= hidden_field_tag "case_sheet[procedures][#{counter}][advised_at_facility]", procedure.advised_at_facility %>
+                      <%= hidden_field_tag "case_sheet[procedures][#{counter}][advised_at_facility_id]", procedure.advised_at_facility_id %>
+                      <td style="width:5%;">
+                        <div class="ckbox ckbox-primary mb5">
+                          <input type="hidden" name="case_sheet[procedures][<%=counter%>][flow_in_ipd]" value='true'>
+                          <button class="btn btn-primary btn-xs btn-remove-procedure" style="padding: 0px 4px;">&times;</button>
+                        </div>
+                      </td>
+                      <td style="padding-left:15px;">
+                        <span><%= procedure.procedurename.to_s + ', ' + procedure.get_label_for_procedure_side(procedure.procedureside) %></span>
+                      </td>
+                      <td>
+                        <span><%= procedure.advised_by %></span>
+                      </td>
+                      <td>
+                        <span><%= procedure.try(:advised_datetime).try(:strftime, "%d/%m/%Y") %></span>
+                      </td>
+                      <td>
+                        <span><%= procedure.procedurestage %></span>
+                      </td>
+                      <td>
+                        <span><%= order_procedure&.display_id %></span>
+                      </td>
+                    </tr>
+
+                    <% if @case_sheet.specialty_id == '309988001' %>
+                      <tr class="table-row-procedure-iol thead-fixable" style="">
+                        <td class="col-md-1 thead-fix">
+                          <span></span>
+                        </td>
+                        <td class="col-md-3 thead-fix">
+                          <span>IOL Present</span>
+                        </td>
+                        <td class="col-md-2 thead-fix">
+                          <div class="ckbox ckbox-primary mb5">
+                            <input type="hidden" name="case_sheet[procedures][<%= counter %>][iol_present]" value='false'>
+                            <%= check_box_tag "case_sheet[procedures][#{counter}][iol_present]", true, procedure.iol_present, {id: "iol_present_#{counter}", class: 'iol_present'} %>
+                            <label for="iol_present_<%= counter %>"></label>
+                          </div>
+                        </td>
+
+                        <% iol_item_category_ids = Inventory::Category.where(type: 4, organisation_id: current_user.organisation_id).pluck(:id) %>
+                        <% iol_items = Inventory::Item.where(:category_id.in => iol_item_category_ids, level: 'organisation').pluck(:description, :id) %>
+                        <% if procedure.iol_present %>
+                          <% display_iol = "block" %>
+                        <% else %>
+                          <% display_iol = "none" %>
+                        <% end %>
+                        <td class="col-md-2 thead-fix">
+                          <span style="display: <%= display_iol %>" class="iol_inventory_item_span">
+                            <%= select_tag "case_sheet[procedures][#{counter}][iol1_inventory_item_id]", options_for_select(iol_items, procedure.try(:iol1_inventory_item_id)), { include_blank: 'Select IOL', :class=> "iol1_inventory_item iol_inventory_item", style: "width: 20%!important" } %>
+                          </span>
+                        </td>
+                        <td class="col-md-2 thead-fix">
+                          <span style="display: <%= display_iol %>" class="iol_inventory_item_span">
+                            <%= select_tag "case_sheet[procedures][#{counter}][iol2_inventory_item_id]", options_for_select(iol_items, procedure.try(:iol2_inventory_item_id)), { include_blank: 'Select IOL', :class=> "iol2_inventory_item iol_inventory_item" } %>
+                          </span>
+                        </td>
+                        <td class="col-md-2 thead-fix">
+                          <span style="display: <%= display_iol %>" class="iol_inventory_item_span">
+                            <%= select_tag "case_sheet[procedures][#{counter}][iol3_inventory_item_id]", options_for_select(iol_items, procedure.try(:iol3_inventory_item_id)), { include_blank: 'Select IOL', :class=> "iol3_inventory_item iol_inventory_item" } %>
+                          </span>
+                        </td>
+
+                      </tr>
+                    <% end %>
+                    <% counter += 1 %>
+                  <% end %>
+                <% end %>
+              <% else %>
+                <tr class="text-center no-procedure">
+                  <td colspan="4">No Procedures</td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <% if @procedures.where(is_performed: true).count > 0 %>
+        <div class="row">
+          <div class="col-md-12"><b>Performed Procedures</b></div>
+          <div class="col-md-12">
+            <% performed_procedures = [] %>
+            <% @procedures.where(is_performed: true).each do |procedure| %>
+              <% performed_procedures << (procedure.procedurename.to_s + ', ' + procedure.get_label_for_procedure_side(procedure.procedureside)) %>
+            <% end %>
+            <%= performed_procedures.join(" | ") %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+<% end %>
+<% free_procedure_text_ipdrecord = @case_sheet.free_form_procedures["#{@ipdrecord.try(:id).to_s}"] %>
+<% if @case_sheet.free_form_procedures.count > 0 %>
+  <div class="row view_procedure_text" <%= "style=display:none;" if free_procedure_text_ipdrecord.present? %>>
+    <div class="col-md-12" style="text-decoration: underline;">
+      <b>PROCEDURE</b>
+      <button class="btn btn-link btn-xs toggle_procedure_text"><i class="fa fa-edit"></i></button>
+    </div>
+    <% uniq_array = [] %>
+    <% procedure_free_text = "" %>
+    <% procedure_counter = 0 %>
+    <% @case_sheet.free_form_procedures.each do |key, procedure| %>
+      <% unless uniq_array.include?(procedure[:content].to_s.html_safe()) %>
+        <div class="col-md-12">
+          <span><b style="color: #333;"><%= procedure[:content].to_s.html_safe() %></b></span>
+        </div>
+        <% if procedure_counter == 0 %>
+          <% procedure_free_text = procedure_free_text.to_s + procedure[:content].to_s %>
+        <% else %>
+          <% procedure_free_text = procedure_free_text.to_s + "<br>" + procedure[:content].to_s %>
+        <% end %>
+        <% uniq_array << procedure[:content].to_s.html_safe() %>
+        <% procedure_counter += 1 %>
+      <% end %>
+    <% end %>
+  </div>
+<% end %>
+
+<% if @procedures.count == 0 && @free_form_procedures.count == 0 && @specialty_id != "309988001" %>
+  <div class="row">
+    <!-- <div class="col-md-12" style="text-decoration: underline;"><b>PROCEDURES</b></div> -->
+    <!-- Uncomment when Procedure added in Ortho -->
+    <!-- <div class="col-md-12"><span>No Procedures</span></div> -->
+  </div>
+<% end %>
+
+<div class="row edit_procedure_text" <%= "style=display:none;" if @case_sheet.free_form_procedures.count > 0 && !free_procedure_text_ipdrecord.present? %>>
+  <div class="col-md-12" style="text-decoration: underline;">
+    <b>PROCEDURE TEXTBOX</b>
+    <!-- <button class="btn btn-link btn-xs reset_procedure_value">Reset</button> -->
+  </div>
+  <div class="col-md-12">
+    <% free_procedure_text_content = (free_procedure_text_ipdrecord[:content].to_s.html_safe() if params[:controller].include?("clinical_note") && free_procedure_text_ipdrecord.present?) || procedure_free_text.to_s.html_safe %>
+    <%= text_area_tag "case_sheet[free_procedure_text]", free_procedure_text_content, class: "form-control p7_10", id: "case_sheet_free_procedure_text", placeholder: "Diagnosis Notes" %>
+  </div>
+</div>
+
+
+
+<script type="text/javascript">
+
+  $(".flow_in_ipd").on("click change", function () {
+    if ($(this).is(':checked')){
+      // $(".table-row-procedure-iol").show()
+      $(this).parents('tr.table-row-procedure').next('.table-row-procedure-iol').show()
+    } else {
+      $(this).parents('tr.table-row-procedure').next('.table-row-procedure-iol').hide()
+      $(this).parents('tr.table-row-procedure').next('.table-row-procedure-iol').find('.iol_present').prop("checked", false).trigger('change')
+    }
+  }).trigger("change")
+
+  $('.iol_present').on("click change", function () {
+    if ($(this).is(':checked')){
+      // $(this).parents('.table-row-procedure-iol').find('.iol_inventory_item').show()
+      $(this).parents("tr.table-row-procedure-iol").find('.iol_inventory_item_span').show()
+    } else {
+      $(this).parents("tr.table-row-procedure-iol").find('.iol_inventory_item_span').hide()
+
+
+
+      $(this).parents("tr.table-row-procedure-iol").find('.iol_inventory_item').each(function( index ) {
+        deselected_select2tag($( this ).attr("name"), $( this ).attr("id"), "Select IOL");
+      })
+    }
+  }).trigger("change")
+
+  function deselected_select2tag(fieldname, input_fieldname,input_text){
+    jQuery("#" + input_fieldname).val("");
+    jQuery("#select2-" + input_fieldname + "-container").html(input_text);
+  }
+
+  $('.iol_inventory_item').select2()
+
+  $(".procedure-added").on('click', ".btn-remove-procedure", function(e){
+    e.preventDefault();
+    $(this).closest(".table-row-procedure").next(".table-row-procedure-iol").remove();
+    $(this).closest(".table-row-procedure").remove();
+    if($(".table-row-procedure").length == 0){
+      $(".no-procedure").show();
+    }
+  })
+
+  $('#search_procedure_keyword').autocomplete({
+    minLength: 2,
+    source: function(request, response) {
+      $.ajax({
+        dataType: "json",
+        type: 'get',
+        url: '/common_procedures/search',
+        data: {
+          search: request.term,
+          speciality_id: "<%= @specialty_id %>",
+          remote: "true" },
+        success: function(data) {
+          response(data);
+        },
+        error: function(data) {
+        }
+      });
+    },
+    select: function( event, ui ) {
+      var counter = $(".table-row-procedure").length
+      var data = {counter: counter, code: ui.item['code'], procedure_code: ui.item['code'], flag: "new", procedure_type: ui.item['procedure_type'], source: "ipd_record", remote: "true"}
+      get_procedure_details(data)
+      setTimeout(function() {
+        $("#search_procedure_keyword").val("")
+      }, 50);
+    },
+    create: function () {
+      $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+        return $('<li>')
+            .append('<a>' + item.label  + '&nbsp; &nbsp; &nbsp;' + "<span class=\"badge pull-right\">" + item.procedure_type_label + "</span>" + '</a>')
+            .appendTo(ul);
+      };
+   },
+  });
+
+  function get_procedure_details(data){
+    $.ajax({
+        dataType: "script",
+        type: 'get',
+        url: '/common_procedures/get_procedure_details',
+        data: data,
+        success: function(response){}
+    });
+  }
+
+  var summernote_options = {
+    toolbar: [],
+    height: 100
+  };
+
+  $('#case_sheet_free_procedure_text').summernote(summernote_options);
+
+  $(".toggle_procedure_text").on('click', function(e){
+    e.preventDefault();
+    $(".view_procedure_text").hide()
+    $(".edit_procedure_text").show()
+  })
+
+  // $(".reset_procedure_value").on('click', function(e){
+  //   e.preventDefault();
+  //   $('#case_sheet_free_procedure_text').code("<%#= procedure_free_text.to_s %>")
+  // })
+</script>
+
+<style type="text/css">
+  .note-editable {
+    overflow-y: scroll !important;
+  }
+</style>

@@ -1,0 +1,55 @@
+<% if @organisation.workflow_waiting_disable && Authorization::PolicyHelper.verification(current_user.id, "HGP-102-105-101") %>
+  <% if @clinical_workflow_timeline_count > 0 && @clinical_workflow.try(:user_id) == @current_user.id.to_s && @current_date == Date.current %>
+    <div class="row no_margin no_padding" style="padding: 5px;">
+      <div class="row no_margin no_padding" style="padding: 0 15px;margin-top: 3px;">
+        <div class="col-xs-2 no_padding"><span>Send To :</span></div>
+        <div class="col-xs-10 no_padding">
+          <% if (current_facility.show_finances && current_facility.invoice_compulsory && @invoices.size == 0) || ((@organisations_setting.try(:mandatory_invoice) && !@appointment.try(:opd_consultation_taken))) %>
+            <i>Create Invoice to proceed further.</i>
+          <% else %>
+            <%= render partial: '/outpatients/appointment/appointment_details/opd_dropdowns/user_dropdown_waiting_disabled.html.erb' %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+<% else %>
+  <% if @clinical_workflow.is_qm_enabled == @queue_management_present && Authorization::PolicyHelper.verification(current_user.id, "HGP-102-105-101") %>
+    <% if @clinical_workflow_timeline_count > 0 && @clinical_workflow.try(:user_id) == @current_user.id.to_s && @current_date == Date.current && @clinical_workflow.state != 'check_out' %>
+      <div class="row no_margin no_padding" style="padding: 5px;">
+        <div class="row no_margin no_padding" style="padding: 0 15px;margin-top: 3px;">
+          <div class="col-xs-2 no_padding"><span>Send To :</span></div>
+          <div class="col-xs-10 no_padding">
+            <% if (current_facility.show_finances && current_facility.invoice_compulsory && @invoices.size == 0) || ((@organisations_setting.try(:mandatory_invoice) && !@appointment.try(:opd_consultation_taken))) %>
+              <i>Create Invoice to proceed further.</i>
+            <% else %>
+              <% no_dropdowns = true %>
+              <% if @queue_management_present && @stations_array.count > 0 && @clinical_workflow.state == @current_user&.primary_role %>
+                <% no_dropdowns = false %>
+                <%= render partial: '/outpatients/appointment/appointment_details/opd_dropdowns/station_dropdown.html.erb' %>
+              <% end %>
+              <% if @dropdown_users.count > 0 || @departments_array.count > 0 %>
+                <% no_dropdowns = false %>
+                <% if @organisation.workflow_waiting_disable %>
+                  <!-- This file can be removed in future. Thats why I am creating a new file rather than making any changes in existing file. -->
+                  <%= render partial: '/outpatients/appointment/appointment_details/opd_dropdowns/user_dropdown_waiting_disabled.html.erb' %>
+                <% else %>
+                  <%= render partial: '/outpatients/appointment/appointment_details/opd_dropdowns/user_dropdown.html.erb' %>
+                  <%#= render partial: '/outpatients/appointment/appointment_details/opd_dropdowns/department_dropdown.html.erb' %>
+                <% end %>
+              <% end %>
+              <% if no_dropdowns %>
+                <b style="color: #f00;"><i>No Dropdowns Found.</i></b>
+              <% end %>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  <% end %>
+<% end %>
+
+
+<div id="dialog-confirm-create-referral-<%= @clinical_workflow.id %>" title="You are sending this Patient to another Doctor" class="hidden">
+  <p><span class="ui-icon ui-icon-alert" style="float:left; margin:12px 12px 20px 0;"></span>Is this a Referral ? </p>
+</div>

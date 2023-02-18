@@ -1,0 +1,348 @@
+<% if current_facility.show_finances? %>
+    <hr style="margin: 10px;"/>
+    <div class="row no_margin" style="padding: 0 5px;">
+      <div class="col-sm-6">
+        <div style="display: inline;">
+          <% if false %>
+            <span>Consulting Fee : <label class="label label-success">&#8377; <span id="labelInvoiceAmount">
+            <%= @appointment.respond_to?(:patients_appointment_fees) ? @appointment.patients_appointment_fees : 0 %></span></label><i id="btnGetInvoiceAmount" class="fa fa-refresh" style="margin-left: 10px; cursor:pointer;"> Refresh</i></span><br>
+          <% end %>
+          <% @invoices = Invoice::Opd.where(appointment_id: @appointment.id) %>
+          <% if @invoices.count < 1 %>
+              <span>Receipt Amount : <label class="label label-success"> No Receipt Found </label></span>
+          <% else %>
+              <% maintotalinvoice =  @invoices.pluck(:net_amount) %>
+              <span>Receipt Amount : <label class="label label-success"><i class="fa fa-rupee"></i> <%= (maintotalinvoice.inject(0){|sum,x| sum + x }).to_i %> </label></span>
+          <% end %>
+        </div>
+      </div>
+      <div class="col-sm-6">
+        <div class="btn-group pull-right" style="margin-bottom: 0; margin-left: 10px;">
+          <div class="btn-group">
+            <button type="button" class="btn btn-xs btn-success dropdown-toggle" data-toggle="dropdown">
+              <i class="fa fa-rupee"></i> Receipt
+            </button>
+            <ul class="dropdown-menu dropdown-menu-right" role="menu" aria-labelledby="invoice-print-dropdown">
+              <!-- Stored Receipts -->
+              <% @invoice_templates.each do |invoice_template| %>
+                  <li style="text-align:center;">
+                    <%= link_to new_invoice_opd_path(:appointmentid => @appointment.id, :typeid => Global.ehrcommon.opd.id, :type => Global.ehrcommon.opd.abbr,:invoice_template => invoice_template[:template_details]), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#invoice-modal'} do %><%= invoice_template[:name]%><% end %>
+                  </li>
+              <% end %>
+              <!-- Free Receipt -->
+              <li style="text-align:center;">
+                <a href="#" class="appointment-action" data-path="/invoice/opd/new" data-typeid="<%= Global.ehrcommon.opd.id %>" data-type="<%= Global.ehrcommon.opd.abbr %>" data-toggle="modal" data-target="#invoice-modal">Free Receipt</a>
+              </li>
+              <!-- Advance Receipt -->
+              <li style="text-align:center;">
+                <%= link_to new_invoice_advance_payment_path(:appointment_id => @appointment.id, :type => Global.ehrcommon.opd.abbr, patient_id: @appointment.patient_id), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#invoice-modal'} do %> Advance Receipt<% end %>
+              </li>
+              <!-- Refund Receipt -->
+<!--              <li style="text-align:center;">-->
+<!--                <%#= link_to new_invoice_refund_payment_path(:appointment_id => @appointment.id, :type => Global.ehrcommon.opd.abbr, patient_id: @appointment.patient_id), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#invoice-modal'} do %> Refund Receipt<%# end %>-->
+<!--              </li>-->
+              <!-- Old Receipts -->
+              <% patient_pastinvoices = Invoice::Opd.where(:patient_id => @appointment.patient_id) %>
+              <% if patient_pastinvoices.size > 0 %>
+                  <li class="old_invoice_ss"><span>Previous Receipts</span></li>
+                  <% patient_pastinvoices.newest_invoice_first.each do |patient_pastinvoice| %>
+                      <li style="text-align:center;">
+                        <%= link_to invoice_opd_path(:id => patient_pastinvoice.id), :data => {:remote => true} do %><%= patient_pastinvoice.created_at.strftime("%d %b'%y at %I:%M %p") %><% end %>
+                      </li>
+                  <% end %>
+              <% end %>
+              <!-- All Invoices End -->
+            </ul>
+          </div>
+
+          <!-- <div class="btn-group"> -->
+            <!-- removed_cash_register_from_here -->
+          <!-- </div> -->
+        </div><!-- btn-group -->
+      </div>
+    </div>
+<% end %>
+<div class="row no_margin" style="padding: 0 5px;">
+  <div class="col-sm-12">
+    <%if Appointment.where(patient_id: @appointment.patient.id , :appointmentdate.lt => Date.current).order('appointmentdate desc')[0].present? && Appointment.where(patient_id: @appointment.patient.id, :appointmentdate.lt => Date.current).order('appointmentdate desc')[0].appointmentdate %>
+        <div>
+          <span>Last visit:</span><strong>
+          <% appointment_date = Appointment.where(patient_id: @appointment.patient.id, :appointmentdate.lt => Date.current).order('appointmentdate desc')[0].appointmentdate %>
+          <% @lastvisitappointment = Appointment.where(patient_id: @appointment.patient.id, :appointmentdate.lt => Date.current).order('appointmentdate desc')[0] %>
+
+          <%day =  Time.current.day - appointment_date.day%>
+          <%month =  Time.current.month - appointment_date.month%>
+          <%year =  Time.current.year - appointment_date.year%>
+          <% if day < 0 %>
+              <%day = appointment_date.end_of_month.day + day %>
+              <%month = month - 1%>
+          <%end%>
+
+          <% if month < 0 %>
+              <%month = 12 + month %>
+              <%year = year - 1%>
+          <%end%>
+
+          <% if year < 1 %>
+              <%if month < 1%>
+                  <%= day %> <%if day > 1%>days<%else%>day<%end%> ago (<%= appointment_date.strftime("%b %d") %>)
+              <%else%>
+                  <%= month %> <%= "month".pluralize(month)%> and <%= day %> <%= "day".pluralize(day)%> ago (<%= appointment_date.strftime("%b %d") %>)
+              <%end%>
+          <%else%>
+              <%= year %> <%= "year".pluralize(year)%> and <%= month %> <%= "month".pluralize(month)%> ago (<%= appointment_date.strftime("%b %d") %>)
+          <%end%></strong>
+
+          <strong>
+            <% if current_facility.clinical_workflow%>
+
+                <%doctor_id = OpdClinicalWorkflow.find_by(appointment_id: @lastvisitappointment.id.to_s).try(:consultant_ids).try(:last)%>
+                <% if doctor_id %>
+                    <span>seen by Dr. <%=User.find_by(:id=> doctor_id).fullname%></span>
+                <% else %>
+                    <span>seen by Dr. <%=User.find_by(:id=> @lastvisitappointment.consultant_id).fullname%></span>
+                <% end %>
+
+            <% else %>
+                <span>seen by Dr. <%=User.find_by(:id=> @lastvisitappointment.consultant_id).fullname%></span>
+            <% end %>
+          </strong>
+        </div>
+    <%end%>
+  </div>
+
+  <% if @advance_payments.count > 0 %>
+    <div class="row no_margin">
+      <div class="col-sm-12 mb10">
+        <% advance_payment_total = @advance_payments.group_by(&:currency_symbol) %>
+        <span>Advance Payment (Remaining Adv. Amt.):
+          <label class="label label-warning">
+            <% counter = 0 %>
+            <% advance_payment_total.each do |currency_symbol, advance_payments| %>
+              <% if counter > 0 %>&nbsp;|&nbsp;<% end %> <%= currency_symbol %><%= (advance_payments.map { |va| va[:amount].to_f.try(:round, 3) }.sum).try(:round, 3) %> (<%= (advance_payments.map { |va| va[:amount_remaining].to_f }.sum).to_f.try(:round, 3) - (advance_payments.map { |va| va[:refund_amount].to_f }.sum).to_f.try(:round, 3) %> )
+              <% counter += 1 %>
+            <% end %>
+          </label>
+        </span>
+      </div>
+      <!-- <div class="col-sm-8 col-md-offset-4 text-right">
+        <p style="font-size:10px;"><b style="font-size:14px;">Note:</b> This is Amount Which Is Not Yet Been Adjusted Or Refunded</p>
+      </div> -->
+      <% @advance_payments.each do |advance_payment| %>
+        <div class="col-sm-4 mb3">
+          <% if advance_payment.is_refunded %>
+            <%= link_to invoice_advance_payment_path(id: advance_payment.id), class: 'btn btn-xs btn-default', data: { :remote => true, 'toggle' => 'modal', 'target' => '#invoice-modal' } do %><%= advance_payment.currency_symbol %><%= advance_payment.amount.try(:round, 3) %>(<strike> <%= advance_payment.currency_symbol %><%= advance_payment.amount_remaining.try(:round, 3) %> </strike>) on <%= advance_payment.created_at.strftime("%d %b'%y") %><% end %>
+          <% else %>
+            <%= link_to invoice_advance_payment_path(id: advance_payment.id), class: 'btn btn-xs btn-default', data: { :remote => true, 'toggle' => 'modal', 'target' => '#invoice-modal' } do %><%= advance_payment.currency_symbol %><%= advance_payment.amount.try(:round, 3) %> (<%= advance_payment.currency_symbol %><%= advance_payment.amount_remaining.try(:round, 3) %>) on <%= advance_payment.created_at.strftime("%d %b'%y") %><% end %>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+  <hr>
+  <% if @refund_payments.count > 0 %>
+    <div class="row no_margin">
+      <div class="col-sm-12 mb10">
+        <% refund_payment_total = @refund_payments.group_by(&:currency_symbol) %>
+        <span>Refund Payment :
+          <label class="label label-warning">
+            <% counter = 0 %>
+            <% refund_payment_total.each do |currency_symbol, refund_payments| %>
+              <% if counter > 0 %>&nbsp;|&nbsp;<% end %> <%= currency_symbol %><%= (refund_payments.map { |va| va[:amount].to_f }.sum).try(:round, 3) %>
+              <% counter += 1 %>
+            <% end %>
+          </label>
+        </span>
+      </div>
+      <!-- <div class="col-sm-8 col-md-offset-4 text-right">
+        <p style="font-size:10px;"><b style="font-size:14px;">Note:</b> This is Amount Which Is Not Yet Been Adjusted Or Refunded</p>
+      </div> -->
+      <% @refund_payments.each do |refund_payment| %>
+        <div class="col-sm-4 mb3">
+          <%= link_to invoice_refund_payment_path(id: refund_payment.id), class: 'btn btn-xs btn-default', data: { :remote => true, 'toggle' => 'modal', 'target' => '#invoice-modal' } do %><%= refund_payment.currency_symbol %><%= refund_payment.amount.try(:round, 3) %> on <%= refund_payment.created_at.strftime("%d %b'%y") %><% end %>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+  <hr>
+</div>
+<hr style="margin: 10px;"/>
+
+
+<div class="row no_margin no_padding" style="padding: 5px;">
+  <div class="col-sm-7">
+    <div class="row no_margin">
+      <h4 class="" style="display: inline" id="modalCalendarAppointmentDetailsId" data-appointment-id="<%= @appointment.id.to_s%>">Visit Details</h4>&nbsp; (<%= @appointment.display_id %>)
+        <%= link_to edit_appointment_path(:id => @appointment.id, current_date: @current_date), :class => "navnew-btn-pri btn-xs", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#appointment-modal'} do %><i class="fa fa-edit "></i><% end %>
+      <!-- Comments by doc and nurse -->
+    </div>
+    <div class="row no_margin yes_padding">
+      <div class="col-sm-5 no_padding text-left">Doctor</div>
+      <div class="col-sm-1 no_padding text-left">:</div>
+      <div class="col-sm-6 no_padding"><%= User.find(pat_workflow.doctor_ids.last).fullname %></div>
+    </div>
+    <% unless @appointment.ref_doc_name.blank? %>
+        <div class="row no_margin yes_padding">
+          <div class="col-sm-5 no_padding text-left">Referred By</div>
+          <div class="col-sm-1 no_padding text-left">:</div>
+          <div class="col-sm-6 no_padding">Dr. <%= @appointment.ref_doc_name %></div>
+        </div>
+    <% end %>
+    <div class="row no_margin yes_padding">
+      <div class="col-sm-5 no_padding text-left">Scheduled By</div>
+      <div class="col-sm-1 no_padding text-left">:</div>
+      <div class="col-sm-6 no_padding"><%= @appointment.user.fullname %></div>
+    </div>
+    <div class="row no_margin yes_padding">
+      <div class="col-sm-5 no_padding text-left">Appointment Type<i ></i></div>
+      <div class="col-sm-1 no_padding text-left">:</div>
+      <div class="col-sm-6 no_padding">
+        <%if @appointment.appointment_type.present?%>
+          <span class="label label-default" style="background: <%= @appointment.appointment_type.background%>;margin-left: 0"><%= @appointment.appointment_type.label %></span>
+        <%else%>
+          Please Update Appointment Type
+        <%end%>
+      </div>
+    </div>
+    <% if @appointment.specialty_id == "309988001" %>
+        <div class="row no_margin yes_padding">
+          <div class="col-sm-5 no_padding text-left">Dilatation</div>
+          <div class="col-sm-1 no_padding text-left">:</div>
+          <div class="col-sm-6 no_padding">
+            <% if @appointment.dilation_start_time != nil && @appointment.dilation_end_time == nil%>
+                <button type="button" class="btn btn-xs btn-danger btn-dilate" style="cursor: pointer;margin-top: -10px;" data-dilation-path="/opd_appointments/stop_dilation?appointment_id=<%= @appointment.id %>"><i class="fa fa-ban"></i>  Stop Dilatation</button>
+            <% elsif @appointment.dilation_end_time != nil %>
+                <button type="button" class="btn btn-xs btn-success" style="cursor: pointer;margin-top: -10px;"><i class="fa fa-check-circle"></i>  Dilated</button>
+            <% else %>
+                <button type="button" class="btn btn-xs btn-warning btn-dilate" style="cursor: pointer;margin-top: -10px;" data-dilation-path="/opd_appointments/dilate_patient?appointment_id=<%= @appointment.id %>"><i class="fa fa-clock-o"></i>  Dilate</button>
+            <% end %>&nbsp;&nbsp;&nbsp;
+            <% if @appointment.dilation_start_time != nil && @appointment.dilation_end_time == nil %>
+                <% difference =  TimeDifference.between(@appointment.dilation_start_time, Time.current).in_seconds %>
+                <span id="dilation-timer" data-dilation-status="dilating" data-dilation-headstart="<%= difference.to_i %>"></span>
+            <% elsif @appointment.dilation_end_time != nil %>
+                <% difference =  TimeDifference.between(@appointment.dilation_start_time, @appointment.dilation_end_time).in_seconds %>
+                <span id="dilation-timer" data-dilation-headstart="<%= difference.to_i %>" data-dilation-status="dilated"><%= Time.at(difference.to_i).utc.strftime("%H:%M:%S") %></span>
+            <% else %>
+                <span id="dilation-timer" data-dilation-status="dilate">00:00:00</span>
+            <% end %>&nbsp;
+          </div>
+        </div>
+    <% end %>
+    <div class="row no_margin yes_padding" style="margin-top:5px;">
+      <div class="col-sm-8 no_padding">
+        <%= link_to opd_appointments_rescheduleappointment_path(:appointment_id => @appointment.id), :class => "btn btn-primary btn-xs navnew-btn-pri", :id => "reschedule_"+@appointment.id.to_s , :title => "Reschedule Appointment", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#appointment-modal'} do %> <i class="fa fa-edit"></i> Reschedule<% end %>&nbsp;
+        &nbsp;
+        <%= link_to opd_appointments_cancelappointmentform_path(:appointment_id => @appointment.id), :class => "btn btn-danger btn-xs navnew-btn-dan", :id => "cancel_appointment"+@appointment.id.to_s , :title => "Cancel Appointment", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#appointment-modal'} do %> <i class="fa fa-trash-alt"></i> Cancel<% end %>
+      </div>
+      <div class="col-md-4 text-right">
+        <%= link_to paperrecords_upload_patient_asset_path(:patientid => @appointment.patient.id),:target => '_blank',:class=>"btn btn-info btn-xs navnew-btn-info" do %> <i class="glyphicon glyphicon-cloud-upload"></i>Upload papers<% end %>
+      </div>
+      <div class="col-md-9 no_padding" style="margin-top: 5px;">
+        <%= link_to ipd_patients_scheduleot_path(appointment_id: @appointment.id, :patient_id => @appointment.patient.id, ottime: "current_time"), class: "btn btn-info btn-xs navnew-btn-info", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#templates-modal'} do %> Schedule OT<% end %>
+        <% @adms = Admission.find_by(patient_id: @appointment.patient.id, is_deleted: false, isdischarged: false) %>
+        <% if @adms.nil? %>
+          <%= link_to new_admission_path(patient_id: @appointment.patient.id, date: Date.current, time: Time.current, direct: true), class: "btn btn-primary btn-primary-transparent btn-xs", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#admission-modal'} do %> Add Admission<% end %>
+        <% else %>
+            <%= link_to edit_admission_path(:id => @adms.id), :class => "btn btn-info btn-xs navnew-btn-info", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#admission-modal'} do %>Edit Admission<% end %>
+        <% end %>
+      </div>
+      <% @pat_timeline = PatientTimeline.where(patient_id: @appointment.patient.id.to_s,encountertype: "OPD").order(encounterdate: :desc)%>
+      <%# @opdrecord = OpdRecord.where(patientid: @appointment.patient.id.to_s).order(created_at: :desc) %>
+      <% if @pat_timeline.count > 0 %>
+        <div class="col-md-3 no_padding text-right" style="margin-top: 5px;padding-left: 4%;">
+          <%= link_to opd_records_view_opd_summary_path(opdrecordid: @pat_timeline[0].record_id.to_s, patientid: @appointment.patient_id, appointmentid: @appointment.id, :specality => @pat_timeline[0].specalityid, :templatetype => @pat_timeline[0].templatetype), :class => "btn btn-primary btn-xs navnew-btn-pri hg-tooltip", :id => "latest-viewsummary-html", :title => "View Latest Template", :data => {:remote => true, 'toggle' =>  "tooltip", 'target' =>'#templates-modal'} do %><i class="fa fa-file-alt"></i> Template<% end %>
+        </div>
+      <% end %>
+    </div>
+    <!--<div class="row no_margin yes_padding">-->
+    <!--<div class="col-sm-5 no_padding text-left">Track Patient</div>-->
+    <!--<div class="col-sm-1 no_padding text-left">:</div>-->
+    <!--<div class="col-md-6 no_padding">-->
+    <!--<% if @patient_tracker.nil? %>-->
+        <!--<%= link_to new_patient_tracker_path(patient_id: @appointment.patient_id), class: 'btn btn-darkblue btn-xs', :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#appointment-modal'} do %>Add Tracker <% end %>-->
+        <!--<% else %>-->
+        <!--<%= link_to edit_patient_tracker_path(id: @patient_tracker.id.to_s, patient_id: @appointment.patient_id), class: 'btn btn-darkblue btn-xs', :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#appointment-modal'} do %>Edit Tracker <% end %>-->
+        <!--<%= link_to patient_tracker_path(id: @patient_tracker.id.to_s, patient_id: @appointment.patient_id), method: :delete, data: {confirm: "Remove Tracker", :remote => true}, :class => 'btn btn-danger btn-xs' do %>Remove<% end %>-->
+        <!--<% end %>-->
+    <!--</div>-->
+    <!--<% unless @patient_tracker.nil? %>-->
+        <!--<div class="col-md-12 no_padding mt10">-->
+        <!--<% if @patient_tracker.tracker_type == "Date" %>-->
+            <!--<table class="table">-->
+            <!--<thead>-->
+            <!--<tr>-->
+            <!--<th style="padding:0px;">Description</th>-->
+            <!--<th style="padding:0px;">Time Period</th>-->
+            <!--<th style="padding:0px;">End Date</th>-->
+            <!--</tr>-->
+            <!--</thead>-->
+            <!--<tbody>-->
+            <!--<tr class="tracker-card">-->
+            <!--<td style="padding:0px;"><%= @patient_tracker.description %></td>-->
+            <!--<td style="padding:0px;"><%= @patient_tracker.count %> <%= @patient_tracker.unit %>s</td>-->
+            <!--<td style="padding:0px;"><%= @patient_tracker.end_date.strftime("%d %b'%y") %></td>-->
+            <!--</tr>-->
+            <!--<% if @patient_tracker && @patient_tracker.end_date %>-->
+                <!--<% if @patient_tracker.end_date <= Date.current %>-->
+                    <!--<tr class="tracker-card">-->
+                    <!--<td colspan="3" style="padding:0px;text-align:center;">Tracking Ended</td>-->
+                    <!--</tr>-->
+                    <!--<% end %>-->
+                <!--<% end %>-->
+            <!--</tbody>-->
+            <!--</table>-->
+            <!--<% else %>-->
+            <!--<table class="table">-->
+            <!--<thead>-->
+            <!--<tr>-->
+            <!--<th style="padding:0px;">Description</th>-->
+            <!--<th style="padding:0px;text-align:right;">Total Session</th>-->
+            <!--<th style="padding:0px;text-align:right;">Current Session</th>-->
+            <!--</tr>-->
+            <!--</thead>-->
+            <!--<tbody>-->
+            <!--<tr class="tracker-card">-->
+            <!--<td style="padding:0px;"><%= @patient_tracker.description %></td>-->
+            <!--<td style="padding:0px;text-align:right;"><%= @patient_tracker.count %></td>-->
+            <!--<td style="padding:0px;text-align:right;"><%= @patient_tracker.current_session %></td>-->
+            <!--</tr>-->
+            <!--</tbody>-->
+            <!--<thead>-->
+            <!--<tr>-->
+            <!--<th colspan="3" style="padding:0px;text-align:center;">Previous Session</th>-->
+            <!--</tr>-->
+            <!--<tr>-->
+            <!--<th style="padding:0px;" colspan='2'>Session Date</th>-->
+            <!--<th style="padding:0px;text-align:right;">Session No.</th>-->
+            <!--</tr>-->
+            <!--<% @count = @patient_tracker.current_session %>-->
+            <!--<% @patient_tracker.session_dates.each do |date| %>-->
+                <!--<tr>-->
+                <!--<td style="padding:0px;" colspan='2'><%= date.strftime("%d %b'%y") %></td>-->
+                <!--<td style="padding:0px;text-align:right;"><%= @count = @count - 1 %></td>-->
+                <!--</tr>-->
+                <!--<% end %>-->
+            <!--</thead>-->
+            <!--</table>-->
+            <!--<% end %>-->
+        <!--</div>-->
+        <!--<% end %>-->
+    <!--</div>-->
+  </div>
+  <div class="col-md-5">
+    <div class="row text-right mb10">
+      <% if @appointment.surgery_advised? %>
+          <button class="btn btn-danger btn-surgery_advised btn-xs pull-right" data-state="false">Cancel Surgery Advised</button>
+      <% else %>
+          <button class="btn btn-primary btn-surgery_advised btn-xs pull-right" data-state="true">Surgery Advised</button>
+      <% end %>
+    </div>
+    <div class="row patient_note_appointment">
+      <%= render partial: "outpatients/appointment/appointment_details/patient_notes_details.html.erb", locals: {:@patientid => @appointment.patient.id} %>
+    </div>
+  </div>
+</div>
+
+<script type="text/javascript">
+  $(".hg-tooltip").tipsy()
+</script>

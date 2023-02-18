@@ -1,0 +1,514 @@
+<!-- This Form Is Currently Used By Investigation Module Only -->
+<%= simple_form_for :patient_summary_asset_upload, url: eval(@path), :remote => true, :multipart => true, :html => {:id => "upload-paper-records-form", :class => "upload-paper-records-form dropzone"} do |f| %>
+  <%= hidden_field_tag 'patient_summary_asset_upload[patient_id]', @patient.id %>
+  <%= hidden_field_tag 'patient_summary_asset_upload[investigation_detail_id]', @investigation_detail.try(:id) %>
+  <%= hidden_field_tag 'patient_summary_asset_upload[investigation_id]', @investigation_detail.try(:investigation_id) %>
+  <%= hidden_field_tag 'patient_summary_asset_upload[type]', @type %>
+  <%= hidden_field_tag 'patient_summary_asset_upload[loinc_code]', @investigation_detail.try(:loinc_code) %>
+
+  <div class="pull-center" style="margin-left: 35%;">
+    <h4><mark>Only .jpeg, .png, .gif, .mp4, .doc, .pdf, .xls, .csv are supported</mark></h4>
+  </div>
+  <div class="row mb5 text-center">
+    <div class="col-md-12 mb5" style="border:1px solid #999;border-left:none;border-right:none;">
+      <b style="color:#000;">Patient & Investigation Details</b>
+    </div>
+  </div>
+  <div class="row mb5">
+    <div class="col-md-3">
+      <b style="color:#000;">Name:</b> <%= @patient.fullname %>
+    </div>
+    <div class="col-md-3">
+      <b style="color:#000;">Age/Sex:</b> <%if @patient.calculate_age.present? || @patient.gender.present?%><%= @patient.calculate_age %>/<%= @patient.gender %><% else %> Unavailable<% end %>
+    </div>
+    <div class="col-md-6">
+      <b style="color:#000;">Patient ID <% if @patient.patient_mrn.to_s != "" %>/ MR No. <% end %> :</b> <%= @patient.patient_identifier_id %><% if @patient.patient_mrn.to_s != "" %> / <%= @patient.patient_mrn %><% end %>
+    </div>
+    <div class="col-md-3">
+      <b style="color:#000;">Name:</b>
+      <%= @investigation_detail.name %>
+      <% if @investigation_detail.try(:investigation_side).present? %>
+        <% if @investigation_detail.try(:investigation_side) == '40638003' %>
+          (B/E)
+        <% elsif @investigation_detail.try(:investigation_side) == '18944008' %>
+          (R)
+        <% elsif @investigation_detail.try(:investigation_side) == '8966001' %>
+          (L)
+        <% end %>
+      <% end %>
+      <% if @investigation_detail.try(:radiology_options).present? %>
+        <% if @investigation_detail.try(:radiology_options) == '90084008' %>
+          w/o contrast
+        <% elsif @investigation_detail.try(:radiology_options) == '51619007' %>
+          with contrast
+        <% elsif @investigation_detail.try(:radiology_options) == '429859008' %>
+          with complete screening
+        <% elsif @investigation_detail.try(:radiology_options) == '431985004' %>
+          screening of other region
+        <% elsif @investigation_detail.try(:radiology_options) == '22400007' %>
+          3D-reconstruction
+        <% end %>
+      <% end %>
+      (<%= @type.capitalize %>)
+    </div>
+    <div class="col-md-4 col-md-9-shared">
+      <b style="color:#000;">Advised By:</b> <%= @investigation_detail.try(:advised_by_username) %> (<%= @investigation_detail.try(:advised_at).try(:strftime, '%I:%M %p - %d %b').to_s.upcase %>)
+    </div>
+    <div class="col-md-4 col-md-9-shared">
+      <b style="color:#000;">Performed By:</b> <%= @investigation_detail.try(:performed_by_username) %> (<%= @investigation_detail.try(:performed_at).try(:strftime, '%I:%M %p - %d %b').to_s.upcase %>)
+    </div>
+  </div>
+  <hr style="margin:10px;">
+  <div id="actions" class="row">
+    <div class="col-md-6 mb10">
+      <!-- The fileinput-button span is used to style the file input field as button -->
+      <span class="btn btn-success fileinput-button dz-clickable">
+      <i class="glyphicon glyphicon-plus"></i>
+      <span>Add files</span>
+      <% if @record_id %>
+        <span class="record_id" style="display: none"><%= @record_id %></span>
+      <% end %>
+      </span>
+    </div>
+    <div class="col-md-6 text-right upload-files">
+      <%= submit_tag "Upload Files", class: "btn btn-success start" %>
+      <button aria-hidden="true" class="btn btn-info" onclick="window.close();">Close</button>
+    </div>
+    <div class="col-md-12">
+      <!-- The global file processing state -->
+      <span class="fileupload-process">
+        <div id="total-progress" class="progress progress-striped active" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" style="opacity: 0;">
+          <div class="progress-bar progress-bar-success" style="width: 100%;" data-dz-uploadprogress=""></div>
+        </div>
+      </span>
+    </div>
+  </div>
+  <div class="row drophere-row text-center fileinput-button dz-clickable">
+    <div class="dropbox-box" style="width:75%;height: 100%;margin:0 auto;border-radius:25px;">
+      <h1><span class=""><i class="fa fa-upload"></i> Drag & Drop Files Here</span></h1>
+    </div>
+  </div>
+  <div class="row">
+    <div class="table table-striped" class="files" id="previews">
+      <div id="template" class="file-row row">
+        <!-- This is used as the file preview template -->
+        <div class="col-md-1 thumbnail-col">
+          <span class="preview"><img data-dz-thumbnail/></span>
+          <p class="name" data-dz-name></p>
+          <strong class="error text-danger" data-dz-errormessage></strong>
+        </div>
+        <div class="col-md-2 uploadfolder-col post-response" style="display: none;" data-dz-foldername>
+          <select label="false" class="form-control mb15 uploadfolder" name="uploadfolder" id="upload_folder" onmousedown="this.value='';" onchange="jsFunction(this.value);" <%= 'disabled' if ['ophthal','radiology','laboratory'].include?@type %>>
+            <option value="">All</option>
+            <option value="560cc6f72b2e26135d000005">OPD Reports</option>
+            <option value="560cc6f72b2e26135d000006">IPD Reports</option>
+            <option value="560cc6f72b2e26135d000000">Prescriptions</option>
+            <option value="560cc6f72b2e26135d000008" <%= 'selected' if @type == 'ophthal'%>>Ophthal</option>
+            <option value="560cc6f72b2e26135d000001" <%= 'selected' if @type == 'radiology'%>>Radiology</option>
+            <option value="560cc6f72b2e26135d000002" <%= 'selected' if @type == 'laboratory'%>>Laboratory</option>
+            <option value="560cc6f72b2e26135d000003">Other Reports</option>
+            <option value="560cc6f72b2e26135d000004">Insurance</option>
+          </select>
+        </div>
+        <div class="col-md-3 filename-col post-response">
+          <b>Image Name</b>
+          <input class="form-control filename" type="text" name="patient_summary_asset_upload[name]" placeholder="File/Test Name" value="<%= @investigation_detail.try(:name) if @investigation_detail %>"> </input>
+          <input class="form-control record_id" type="hidden" name="patient_summary_asset_upload[opdrecord_id]"> </input>
+        </div>
+        <div class="col-xs-2 reporteddate-col post-response" style="display: none;" data-dz-reporteddate>
+          <input label="false" class="string optional form-control reporteddate" id="reported_date" placeholder="dd/mm/yyyy" type="text" name="reporteddate" value="<%= Date.current.strftime("%d/%m/%Y") %>">
+        </div>
+        <div class="col-md-1 reportedtime-col bootstrap-timepicker timepicker post-response" style="display: none;" data-dz-reportedtime>
+          <input label="false" class="string optional form-control reportedtime" id="reported_time" type="text" name="reportedtime">
+        </div>
+        <div class="col-md-3 filetag-col post-response" data-dz-filetags>
+          <b>Image Tags</b>
+          <input type="hidden" name="filehiddentagids" id="filehiddentagids" value="" class="form-control">
+          <input type="hidden" name="filehiddentagnames" id="filehiddentagnames" value="" class="form-control">
+          <select class="form-control filetags-select select2_selectedtags" name="filetags" multiple="" tabindex="-1" aria-hidden="true" style="width: 100%;" target-tags="filehiddentagids" target-tagnames="filehiddentagnames">
+          </select>
+        </div>
+        <div class="col-md-3 filetag-col post-response" data-dz-comment>
+          <b>Comments</b>
+          <textarea name="patient_summary_asset_upload[comment]" class="form-control comment" id='comment'></textarea>
+        </div>
+        <div class="col-md-9 text-center response-message" style="padding-top:50px;display: none;">
+        </div>
+        <div class="col-md-1 size-col">
+          <b>Image Size</b>
+          <p class="size" data-dz-size></p>
+          <div class="progress progress-striped active" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <div class="progress-bar progress-bar-success" style="width:0%;" data-dz-uploadprogress></div>
+          </div>
+        </div>
+        <div class="col-md-1 removebutton-col">
+          <button data-dz-remove class="btn btn-danger reset-drag cancel">
+          <i class="glyphicon glyphicon-remove"></i>
+          <span>Remove</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+<% end %>
+
+<style>
+
+  /* Mimic table appearance */
+  div.table {
+    display: table;
+  }
+
+  div.table .file-row {
+    display: table-row;
+  }
+
+  div.table .file-row > div {
+    display: table-cell;
+    vertical-align: top;
+    border-top: 1px solid #ddd;
+    padding: 8px;
+  }
+
+  div.table .file-row:nth-child(odd) {
+    background: #f9f9f9;
+  }
+
+  /* The total progress gets shown by event listeners */
+  #total-progress {
+    opacity: 0;
+    transition: opacity 0.3s linear;
+  }
+
+  /* Hide the progress bar when finished */
+  #previews .file-row.dz-success .progress {
+    opacity: 0;
+    transition: opacity 0.3s linear;
+  }
+  .bootstrap-timepicker-widget table td input {
+    width: 50px;
+  }
+  /* Hide the start and cancel buttons and show the delete button */
+
+  #previews .file-row.dz-success .start,
+  #previews .file-row.dz-success .cancel {
+    display: none;
+  }
+</style>
+
+<%= javascript_include_tag "bootstrap-timepicker.min", "data-turbolinks-track" => true %>
+<%= javascript_include_tag "bootstrap-fileupload.min", "data-turbolinks-track" => true %>
+<script>
+  function new_tags_unique_id() {
+    var uniqueid = Math.floor(Math.random() * 26) + Date.now();
+    return uniqueid;
+  }
+
+  function jsFunction(value) {
+    $('.filename').on('focus', function(e) {
+      parent_folder_id = $(this).parent().siblings().children('.uploadfolder').val();
+      patient_id = $('#patient_summary_asset_upload_patient_id').val();
+      current_target = e.currentTarget
+      current_target_class = $(this).attr('class')
+      record_id = $('.record_id').text()
+      if (parent_folder_id == '560cc6f72b2e26135d000008' || '560cc6f72b2e26135d000001') {
+        if (parent_folder_id == '560cc6f72b2e26135d000008') {
+          url = '/patient_investigations/patient_tests' + '?patient_id=' + patient_id + '&record_id=' + record_id
+        } else if (parent_folder_id == '560cc6f72b2e26135d000001') {
+          url = '/radiology_investigation/patient_tests' + '?patient_id=' + patient_id + '&record_id=' + record_id
+        }
+        $.ajax({
+          url: url,
+          dataType: 'json',
+          method: 'get',
+          success: function(res) {
+            // console.log('dfd', res)
+            test_array = []
+            for (i = 0; i < res.length; i++) {
+              test = res[i];
+              test_array.push(test.investigationname);
+            }
+            // console.log(test_array)
+            // console.log(current_target)
+            $(current_target).autocomplete({
+              source: test_array,
+              minLength: 0,
+              select: function(event, ui) {
+                value = ui.item.value;
+                item = res[test_array.indexOf(value)];
+                // console.log(item.record_id)
+                // console.log('7676767676767676', item._id, $(current_target).attr('class'))
+                $(current_target).siblings('.record_id').val(item.record_id)
+                // console.log($(current_target).attr('id'))
+                // current_target_id = $(current_target).attr('id')
+                // $('#'+current_target_id).parent().parent().parent().children().children().children('.inventory_stock').text(item.stock)
+                // $(current_target).siblings('.inventory_category').val(item._id)
+              }
+            })
+          },
+          error: function(err) {
+            return console.log(err);
+          }
+        });
+      }
+    });
+  }
+
+  $(document).ready(function() {
+
+    var select2_x_option = {
+      tags: true,
+      tokenSeparators: [',', ';'],
+      createTag: function(tag) {
+        return {
+          //id: new_tags_mongo_id(),
+          id: "#!##" + new_tags_unique_id(),
+          text: tag.term
+        };
+      },
+      theme: "bootstrap",
+      minimumInputLength: 1,
+      multiple: true,
+      ajax: {
+        type: "GET",
+        url: '/paperrecords/search_upload_tags',
+        dataType: 'json',
+        delay: 250,
+        data: function(params) {
+          return {
+            q: params.term, // search term
+            page: params.page
+          };
+        },
+        processResults: function(data, page) {
+          return {
+            results: $.map(data, function(item) {
+              return {
+                text: item.text,
+                //name: item.name,
+                id: item.id
+              }
+            })
+          };
+        },
+        cache: true
+      }
+      //,
+      //escapeMarkup: function (markup) { return markup; },
+      //templateResult: formatRepo,
+      //templateSelection: hgtemplateSelection
+    };
+
+    var datepicker_opt = {
+      dateFormat: "dd/mm/yy"
+    };
+    var timepicker_opt = {
+      defaultTIme: false,
+      minuteStep: 5
+    };
+
+    function select2_x_option_autocomplete() {
+      $(".filetags-select").select2(select2_x_option);
+      $('.reporteddate').datepicker(datepicker_opt);
+      $('.reportedtime').timepicker(timepicker_opt);
+      //$('.upload-paper-records-form').on('focus', ".reportedtime", function() { });
+    }
+
+    $('.upload-paper-records-form').on('select2:select', '.select2_selectedtags', function(e) {
+      var current_class = $(this).attr("class");
+      var target_tags_id = $(this).attr("target-tags");
+      var target_tagnames_id = $(this).attr("target-tagnames");
+      var target_tags_value = "";
+      var target_tagnames_value = "";
+      var target_tags_prev_value = $("input[name='" + target_tags_id + "']").val();
+      var target_tagnames_prev_value = $("input[name='" + target_tagnames_id + "']").val();
+
+      if (target_tags_prev_value.length > 0) {
+        var id_values_array = target_tags_prev_value.split(",");
+        var names_values_array = target_tagnames_prev_value.split(",");
+        id_values_array.push(e.params['data'].id);
+        names_values_array.push(e.params['data'].text);
+      } else {
+        var id_values_array = [];
+        var names_values_array = [];
+        id_values_array.push(e.params['data'].id);
+        names_values_array.push(e.params['data'].text);
+      }
+      $("input[name='" + target_tags_id + "']").val(id_values_array.toString());
+      $("input[name='" + target_tagnames_id + "']").val(names_values_array.toString());
+    });
+
+    //$('.q_reported_time').timepicker(timepicker_opt);
+
+    var previewNode = document.querySelector("#template");
+    previewNode.id = "";
+    var previewTemplate = previewNode.parentNode.innerHTML;
+    previewNode.parentNode.removeChild(previewNode);
+
+    Dropzone.options.uploadPaperRecordsForm = { // The camelized version of the ID of the form element
+
+      // The configuration we've talked about above
+      thumbnailWidth: 80,
+      thumbnailHeight: 80,
+      parallelUploads: 20,
+      previewTemplate: previewTemplate,
+      paramName: "patient_summary_asset_upload[asset_path]",
+      autoQueue: false, // Make sure the files aren't queued until manually added
+      previewsContainer: "#previews", // Define the container to display the previews
+      clickable: ".fileinput-button",
+      dictDefaultMessage: "",
+      // The setting up of the dropzone
+      init: function() {
+        var myDropzone = this;
+        $(this).removeClass("dropzone");
+
+        // First change the button to actually tell Dropzone to process the queue.
+        this.element.querySelector("input[type=submit]").addEventListener("click", function(e) {
+          // Make sure that the form isn't actually being sent.
+          e.preventDefault();
+          e.stopPropagation();
+          myDropzone.processQueue();
+        });
+
+        myDropzone.on("addedfile", function(file) {
+          $(".drophere-row").hide()
+          $.each($(".uploadfolder"), function(index, folderfield) {
+            $(folderfield).attr("name", "uploadfolder[" + index + "]");
+          });
+          $.each($(".reporteddate"), function(index, datefield) {
+            $(datefield).attr("name", "reporteddate[" + index + "]");
+          });
+          $.each($(".reportedtime"), function(index, timefield) {
+            $(timefield).attr("name", "reportedtime[" + index + "]");
+          });
+          $.each($(".filename"), function(index, namefield) {
+            $(namefield).attr("name", "name[" + index + "]");
+          });
+          $.each($(".comment"), function(index, commentfield) {
+            $(commentfield).attr("name", "comment[" + index + "]");
+          });
+          $.each($(".filetags-select"), function(index, tagsfield) {
+            $(tagsfield).attr("name", "filetags[" + index + "]");
+            $.each($(tagsfield).prevAll(), function(preindex, prevfield) {
+              var prevfieldid = $(prevfield).attr("id");
+              if (prevfieldid == "filehiddentagnames") {
+                $(tagsfield).attr("target-tagnames", "filehiddentagnames[" + index + "]");
+                $(prevfield).attr("name", "filehiddentagnames[" + index + "]");
+              } else if (prevfieldid == "filehiddentagids") {
+                $(tagsfield).attr("target-tags", "filehiddentagids[" + index + "]");
+                $(prevfield).attr("name", "filehiddentagids[" + index + "]");
+              }
+            });
+          });
+          $(".reset-drag").on('click', function(){
+            if($(".reset-drag").length < 1){
+              $(".drophere-row").show()
+            }
+          })
+          select2_x_option_autocomplete();
+        });
+
+        // Update the total progress bar
+        myDropzone.on("totaluploadprogress", function(progress) {
+          document.querySelector("#total-progress .progress-bar").style.width = progress + "%";
+        });
+
+        //myDropzone.on("sending", function(file) {
+        //    Show the total progress bar when upload starts
+        //    document.querySelector("#total-progress").style.opacity = "1";
+        //    And disable the start button
+        //});
+
+        myDropzone.on("sending", function(file, xhr, formData) {
+          // Show the total progress bar when upload starts
+          document.querySelector("#total-progress").style.opacity = "1";
+          // And disable the start button
+          //var tag= file.previewTemplate.querySelector('select[name="tags"]').value;
+          //formData.append("tags", tag);
+          var uploadfolder_input_name = file.previewTemplate.querySelector('.uploadfolder').name;
+          var reporteddate_input_name = file.previewTemplate.querySelector('.reporteddate').name;
+          var reportedtime_input_name = file.previewTemplate.querySelector('.reportedtime').name;
+          var filename_input_name = file.previewTemplate.querySelector('.filename').name;
+          var comment_input_name = file.previewTemplate.querySelector('.comment').name;
+          var uploadfolder_data = $("select[name='" + uploadfolder_input_name + "'] option:selected").val();
+          var reporteddate_data = $("input[name='" + reporteddate_input_name + "']").val();
+          var reportedtime_data = $("input[name='" + reportedtime_input_name + "']").val();
+          var filename_data = $("input[name='" + filename_input_name + "']").val();
+          var comment_data = $("textarea[name='" + comment_input_name + "']").val();
+          var filetags_select_name = file.previewTemplate.querySelector('.filetags-select').name;
+          var filehiddentagnames_field = $("select[name='" + filetags_select_name + "']").attr("target-tagnames");
+          var filehiddentagids_field = $("select[name='" + filetags_select_name + "']").attr("target-tags");
+          var filehiddentagnames_data = $("input[name='" + filehiddentagnames_field + "']").val();
+          var filehiddentagids_data = $("input[name='" + filehiddentagids_field + "']").val();
+
+          formData.append("patient_summary_asset_upload[folder]", uploadfolder_data);
+          formData.append("patient_summary_asset_upload[name]", filename_data);
+          formData.append("patient_summary_asset_upload[comment]", comment_data);
+          formData.append("patient_summary_asset_upload[reported_date]", reporteddate_data);
+          formData.append("patient_summary_asset_upload[reported_time]", reportedtime_data);
+          formData.append("patient_summary_asset_upload[tagids]", filehiddentagids_data);
+          formData.append("patient_summary_asset_upload[tagnames]", filehiddentagnames_data);
+        });
+
+        // Hide the total progress bar when nothing's uploading anymore
+        myDropzone.on("queuecomplete", function(progress) {
+          document.querySelector("#total-progress").style.opacity = "0";
+          var response_message = $(".response-message")
+          for (var i = response_message.length - 1; i >= 0; i--) {
+            if($(response_message[i]).find('.label').hasClass('label-success')){
+              var confirm_exit = true
+            } else {
+              var confirm_exit = false
+              break;
+            }
+          }
+          //    alert("All Uploads successful")
+          if(confirm_exit == true){
+            if (confirm("All Uploads successful")) {
+              close();
+            }
+          } else {
+            $(".response-message").find('.label-success').closest('.dz-image-preview').remove()
+            alert("Upload(s) Have Failed.Please Retry.")
+          }
+        });
+        document.querySelector("input[type=submit].start").onclick = function() {
+          $(".response-message").find('.label-danger').closest('.dz-image-preview').remove()
+          myDropzone.enqueueFiles(myDropzone.getFilesWithStatus(Dropzone.ADDED));
+        };
+      },
+      success: function(file, response) {
+        if(response.success == true){
+          $(file.previewElement).find('.post-response').remove()
+          $(file.previewElement).find('.response-message').css('display','block').append('<label class="label label-success" style="font-size:20px;"><i class="fa fa-check"></i> File Uploaded Successfully.</label>')
+        } else {
+          $(file.previewElement).find('.post-response').remove()
+          $(file.previewElement).find('.response-message').css('display','block').append('<label class="label label-danger" style="font-size:20px;"><i class="fa fa-times"></i> File Uploading Failed.</label>')
+        }
+      }
+    }
+
+
+  });
+  $('#upload-paper-records-form').on('success', function() {
+    var args = Array.prototype.slice.call(arguments);
+
+    // Look at the output in you browser console, if there is something interesting
+    console.log(args);
+  });
+
+  function close_window() {
+
+  }
+
+  var window_height = $(window).height()
+
+  $("#upload-paper-records-form").css('height', window_height-20)
+  $(".dropbox-box").css('padding',(window_height/6 + 25) + 'px')
+
+  $(window).resize(function() {
+    var window_height = $(window).height()
+    $("#upload-paper-records-form").css('height', window_height-20)
+    $(".dropbox-box").css('padding',(window_height/6 + 25) + 'px')
+  })
+</script>

@@ -1,0 +1,158 @@
+<div class="tab-pane" id="procedure">
+  <% if @organisations_setting.mandatory_opd_templates == true && params[:templatetype] != "postop" %>
+    <div class="row mb5" id="div_procedure_advised">
+      <div class="col-md-12 col-sm-12 col-xs-12">
+        <div class="col-md-6 col-sm-offset-5">
+          <div class="ckbox ckbox-success">
+            <%= f.check_box :no_procedure_advised, {class: "procedure_advised", :value => opdrecord.read_attribute(:no_procedure_advised)}, "true", "false" %>
+            <label for="opdrecord_no_procedure_advised">No Procedure Advised</label>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+  <div class="row procedure_tab_row">
+    <div class="col-md-2 col-sm-1"></div>
+    <% unless @disable_default_procedure %>
+      <div class="rdio rdio-primary col-md-4 col-sm-5 col-xs-6">
+        <%= radio_button_tag "custom_procedure_type", "commonly_used", true, { class: 'custom_procedure_type', id: "ProcedureRadio1" } %>
+        <label for="ProcedureRadio1">Commonly used Procedures</label>
+      </div>
+      <div class="rdio rdio-primary col-md-3 col-sm-5 col-xs-6">
+        <%= radio_button_tag "custom_procedure_type", "custom_made", false, { class: 'custom_procedure_type', id: "ProcedureRadio2" } %>
+        <label for="ProcedureRadio2">Custom made Procedures</label>
+      </div>
+      <div class="rdio rdio-primary col-md-3 col-sm-5 col-xs-6">
+        <%= radio_button_tag "custom_procedure_type", "translated_made", false, { class: 'custom_procedure_type', id: "ProcedureRadio3" } %>
+        <label for="ProcedureRadio3">Translated made Procedures</label>
+      </div>
+    <% end %>
+  </div>
+  <div class="row procedure_tab_row">
+    <div class="col-md-6 col-sm-4 col-xs-12">
+      <div  class="commonly_used" id="commonly_used">
+        <div class="row">
+          <div class="col-md-4 col-sm-4 col-xs-4">
+            <b>Eye Region</b>
+            <select id="eye_region_tab" class="tabview tab_select_tag" style="display:none;height: 30px;">
+              <option>Please select</option>
+              <% @data =  @procedures.pluck(:region).flatten.uniq %>
+              <% @data.each do |d| %>
+                <option value="<%= d %>"><%= d.capitalize %></option>
+              <% end %>
+            </select>
+            <%= select_tag  "eye_region", options_for_select(@procedures.pluck(:region).flatten.uniq.map { |n| [n.capitalize, n] }) ,{ multiple: true, style: 'height: 250px; width:80%', class: 'form-control webview' } %>
+          </div>
+          <div class="col-md-8 col-sm-8 col-xs-8">
+            <b>Procedure</b>
+            <select class='form-control eyeregion-options webview' multiple='true' style='height:250px;min-width:80%;'></select>
+            <select class='form-control eyeregion-options_tab tabview tab_select_tag' style="display:none;width:80%;height: 30px;" >
+              <option value>Please select</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="custom_made" id="custom_made">
+        <% if CustomCommonProcedure.where(:organisation_id => current_user.organisation_id, '$or' => [{ level: 'organisation' }, { facility_id: current_facility.id, level: 'facility' }]).count > 0 || SynonymCommonProcedure.where(:organisation_id => current_user.organisation_id ).count > 0 %>
+
+          <% @total_custom_procedures =  (CustomCommonProcedure.where(:organisation_id => current_user.organisation_id, '$or' => [{ level: 'organisation' }, { facility_id: current_facility.id, level: 'facility' }], is_deleted: false).pluck(:region)) + (SynonymCommonProcedure.where(:organisation_id => current_user.organisation_id, is_deleted: false).pluck(:region)) %>
+
+          <% @total_custom_procedures = @total_custom_procedures.flatten.map { |procedure| procedure.downcase }.uniq  %>
+          <div class="col-md-4 col-sm-4 col-xs-4">
+            <b>Eye Region</b>
+            <select id="custom_eye_region_tab" class="tabview tab_select_tag" style="display:none">
+              <option>Please select</option>
+                <% @total_custom_procedures.each do |d| %>
+                  <option value="<%= d %>"><%= d.capitalize %></option>
+                <% end %>
+            </select>
+            <%= select_tag "custom_eye_region", options_for_select( @total_custom_procedures.map { |procedure| [procedure.capitalize, procedure] } ) , { class: 'form-control diagnosis_name webview', multiple: true, style: "min-height: 250px; width: 88%" } %>
+          </div>
+          <div class="col-md-8">
+            <span class="col-sm-12"><b>Procedure</b></span>
+            <select class='form-control eyeregion-options webview' multiple='true' style="height:250px;min-width:80%;"></select>
+            <select class='form-control custom_eyeregion-options_tab tabview tab_select_tag' style="display:none;width:80%;height: 30px;" >
+              <option value>Please select</option>
+            </select>
+          </div>
+        <% else %>
+          <h3> You don't have any Custom created Procedures.  </h3>
+        <% end %>
+      </div>
+      <div class="translated_made" id="translated_made">
+        <% if CustomCommonProcedure.where(organisation_id: current_user.organisation_id, '$or' => [{ level: 'organisation' }, { facility_id: current_facility.id, level: 'facility' }]).count > 0 || TranslatedCommonProcedure.where(organisation_id: current_user.organisation_id).count > 0 %>
+          <% @total_translated_procedures = (CustomCommonProcedure.where(organisation_id: current_user.organisation_id.to_s, '$or' => [{ level: 'organisation' }, { facility_id: current_facility.id, level: 'facility' }], is_deleted: false).pluck(:region)) + (TranslatedCommonProcedure.where(organisation_id: current_user.organisation_id, is_deleted: false).pluck(:region)) %>
+          <% @total_translated_procedures = @total_translated_procedures.flatten.map { |procedure| procedure.downcase }.uniq %>
+          <div class="col-md-4 col-sm-4 col-xs-4">
+            <b>Eye Region</b>
+            <%= select_tag "translated_eye_region", options_for_select(@total_translated_procedures.map { |procedure| [procedure.capitalize, procedure] }), { class: 'form-control diagnosis_name webview', multiple: true, style: "min-height: 250px; width: 88%" } %>
+          </div>
+          <div class="col-md-8">
+            <b>Procedure</b>
+            <select class='form-control eyeregion-options webview' multiple='true' style="height:250px;min-width:80%;"></select>
+            <select class='form-control translated_eyeregion-options_tab tabview tab_select_tag' style="display:none;width:80%;height: 30px;" >
+              <option value>Please select</option>
+            </select>
+          </div>
+        <% else %>
+          <h3>You don't have any Translated created Procedures.</h3>
+        <% end %>
+      </div>
+    </div>
+    <div class="col-md-6 col-sm-8 col-xs-12">
+      <div class="row">
+        <div class="col-md-6 col-sm-6 col-xs-6" style="padding-top: 12px;" id="procedure-legends">
+          <% if @opdrecord.procedure.try(:count).to_i > 0 %>
+            <b style="color:#c9302c">A</b> - Advised&emsp; | &emsp;<b style="color:#1caf9a">P</b> - Performed
+          <% end %>
+        </div>
+        <div class="col-md-6 col-sm-6 col-xs-6 mb10  mt10">
+          <input type="text" name="search_procedure" class="form-control" id='search-procedure' placeholder="Search Procedure" style="width:100%;" />
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-12">
+          <table class="table table-bordered">
+            <tbody id='procedure-added' class='procedure-added'>
+              <!-- Procedure List -->
+              <%= render partial: "opd_records/ophthalmology_notes/opd_partials/soap_assessment_tab_procedures.html.erb", locals: { procedures: @opdrecord.procedure, source: "opdrecord" } %>
+            </tbody>
+          </table>
+          <div class="procedure-removed" style="display:none;">
+          </div>
+        </div>
+      </div>
+      <% if @case_sheet.procedures.where(:record_id.nin => [@opdrecord.id]).count > 0 %>
+        <div class="row">
+          <%= render partial: "opd_records/ophthalmology_notes/opd_partials/case_sheet_procedures.html.erb" %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+  <div class="row mt10">
+    <div class="col-md-1 col-sm-2 col-xs-4 procedure_comment_row">Comments:</div>
+    <div class="col-md-6 col-sm-6 col-xs-8 procedure_comment_row">
+      <%= f.input :procedurecomments, as: :text,  :label => false, :required => false, :input_html => {:class => 'form-control', :rows => 2, :cols => 70, :style => 'width:100%', :required => false, :name => "opdrecord[procedurecomments]", :value => opdrecord.read_attribute(:procedurecomments) } %>
+    </div>
+    <div class="col-md-4 col-sm-4 col-xs-12 pull-left procedure_tab_row" style=" display: inline-block;
+    vertical-align: left; float: none;text-align: left;">
+      <span class="badge col-md-2 col-sm-3">C</span><b style="cursor:default;color:#5bc0de;">&nbsp;Standard Procedures </b><br>
+      <span class="badge col-md-2 col-sm-3">CC</span><b style="cursor:default;color:#5bc0de;"> &nbsp;Custom Procedures</b><br>
+      <span class="badge col-md-2 col-sm-3">T</span><b style="cursor:default;color:#5bc0de;"> &nbsp;Translated Procedures</b><br>
+    </div>
+    <div class="col-md-6 col-sm-6 col-xs-12"></div>
+  </div>
+</div>
+
+<!-- Old Code -->
+
+<script type="text/javascript">
+
+</script>
+
+<style type="text/css">
+  .eyeregion-options {
+    overflow-x: auto !important;
+    width: -webkit-fill-available !important;
+  }
+</style>

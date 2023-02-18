@@ -1,0 +1,80 @@
+<% counter = 1 %>
+<!-- <table class="table table-bordered offer-manager-table dataTable text-center" id="<%#=tabname%>-offers" style="table-layout: fixed;"> -->
+<div class="page">
+  <div class="page-content container-fluid">
+    <div class="panel">
+      <div class="panel-body">
+        <div class="example-wrap m-sm-0">
+          <div class="example">
+            <div class="bootstrap-table">
+              <div class="fixed-table-container no-border">
+                <div class="fixed-table-body no-border">
+                  <table class="table mis-dataTable dataTable nowrap text-center table-bordered" style="width:100%;" id="<%=tabname%>-offers">
+                    <thead>
+                      <tr>
+                        <th class="text-center report-table-header">&nbsp;#&nbsp;</th>
+                        <th class="text-center report-table-header">&nbsp;Department&nbsp;Name&nbsp;</th>
+                        <th class="text-center report-table-header">&nbsp;Store&nbsp;Name&nbsp;</th>
+                        <th class="text-center report-table-header">&nbsp;Offer&nbsp;Type&nbsp;</th>
+                        <th class="text-center report-table-header">&nbsp;Offer&nbsp;Code/Title&nbsp;</th>
+                        <th class="text-center report-table-header">&nbsp;Applicable&nbsp;On&nbsp;</th>
+                        <th class="text-center report-table-header">&nbsp;Offer&nbsp;Discount(%)&nbsp;</th>
+                        <th class="text-center report-table-header">&nbsp;#&nbsp;Redeemed&nbsp;</th>
+                        <th class="text-center report-table-header">&nbsp;Start&nbsp;Date&nbsp;-&nbsp;Time&nbsp;</th>
+                        <th class="text-center report-table-header">&nbsp;End&nbsp;Date&nbsp;-&nbsp;Time&nbsp;</th>
+                        <%unless tabname=='expired'%><th style="text-align:center" width="8%">&nbsp;Actions&nbsp;</th><%end%>
+                      </tr>
+                    </thead>
+                    <tbody style="text-align:center">
+                      <%store_offer_managers = offer_managers.group_by(&:store_id)%>
+                      <% store_offer_managers.each do |store_id, store_offer_manager| %>
+                        <% store_name = if store_id.present?
+                                          Inventory::Store.find_by(id: store_id).try(:name)
+                                        else 
+                                          'NA'
+                                        end %>
+                        <% store_offer_manager.each do |offer_manager| %>
+                          <tr>
+                            <td width="5%"><%= counter %></td>
+                            <td width="10%"><%= offer_manager.try(:department_display_name) %></td>
+                            <td width="10%"><%= store_name %></td>
+                            <td width="10%"><%= "On #{offer_manager.try(:offer_type).try(:titleize)}" %></td>
+                            <td width="10%"><%= "#{offer_manager.offer_code} / #{offer_manager.name}" %></td>
+                            <td width="10%"><%= offer_manager.applicable_on %></td>
+                            <td width="10%"><%= offer_manager.discount %></td>
+                            <td width="7%"><%= offer_manager.redeemed_count %></td>
+                            <td width="10%"><%= offer_manager.start_datetime.strftime('%d/%m/%Y') %><br><%= offer_manager.start_datetime.strftime('%I:%M %p') %></td>
+                            <td width="10%"><%= offer_manager.end_datetime.strftime('%d/%m/%Y') %><br><%= offer_manager.end_datetime.strftime('%I:%M %p') %></td>
+                            <%unless tabname=='expired'%>
+                            <td width="8%">
+                              <% if offer_manager.redeemed_count < 1 %>
+                                <%= link_to edit_offer_manager_path(id: offer_manager.id, data_tab: tabname), data: { remote: true, toggle: "modal", target: "#offer-manager-modal" }, class: "btn btn-primary btn-xs edit-offer-manager", title: 'Edit Offer' do %><i class="fa fa-edit"></i><% end %>
+                              <% end %>
+                              <% if offer_manager.is_active %>
+                                <%= link_to offer_manager_path(id: offer_manager.id, data_tab: tabname), data: { remote: true, confirm: 'Are you Sure?' }, method: :delete, class: 'btn btn-danger btn-xs del-offer-manager', title: 'Disable Offer' do %><i class="fa fa-trash-alt"></i><% end %>
+                                <!-- <%#= link_to edit_offer_manager_path(id: offer_manager.id), data: { remote: true, toggle: "modal", target: "#offer-manager-modal" }, method: :get, class: 'btn btn-info btn-xs', disabled: true, title: 'Clone Offer' do %><i class="fa fa-clone"></i><%# end %> -->
+                              <% else %>
+                                <%= link_to activate_offer_managers_path(id: offer_manager.id, data_tab: tabname), data: { remote: true, confirm: 'Are you Sure?' }, method: :get, class: 'btn btn-info btn-xs', title: 'Activate Offer' do %><i class="fa fa-eye"></i><% end %>
+                              <% end %>
+                            </td>
+                            <% end %>
+                          </tr>
+                          <% counter += 1 %>
+                        <% end %>
+                      <% end %>
+                      <% if offer_managers.count == 0 %>
+                        <tr>
+                          <td colspan="10">No <%= tabname.try(:titleize) %> Offers Found</td>
+                        </tr>
+                      <% end %>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

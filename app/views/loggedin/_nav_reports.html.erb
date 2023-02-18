@@ -1,0 +1,293 @@
+<%= javascript_tag do %>
+  $(document).ready(function(){
+    $(".navbar-main").find("li").on('click', function(){
+      $(".navbar-main").find("li").removeClass("activate");
+      $(this).addClass("activate");
+    });
+    $(".logo").on('click', function(){
+      $(".navbar-main").find("li").removeClass("activate");
+    });
+  });
+<% end %>
+
+<!-- NEW NAVBAR GOES FROM HERE -->
+<nav class="navbar navbar-default navbar-fixed-top" style="background-color:#fff; height:40px;">
+  <div class="container-fluid">
+
+    <!-- Brand and toggle get grouped for better mobile display -->
+    <div class="navbar-header" style="margin-top:16px;">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1" aria-expanded="false">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <%= link_to "/dashboard", :class => "ps main-logo", :id => "main-logo" do %><%= image_tag "foss_navbar.png", :class => "logo", style: 'width: 25px;' %>
+      <% end %>
+    </div>
+    <!-- Brand and toggle get grouped for better mobile display end -->
+
+    <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+      <!-- Clickables & Navbar Left  -->
+      <% if current_user.has_role?(:doctor) || current_user.has_role?(:nurse) || current_user.has_role?(:receptionist) || current_user.has_role?(:resident) || current_user.has_role?(:optometrist)%>
+        <ul class="nav navbar-nav navbar-main" style="margin-top: -3px; margin-left: 12px; border-left: 1px solid #ccc;">
+        <li class="common-li-class <%= "activate" if params[:controller] == "opd_appointments"&&params[:action] == "showday" %>">
+          <% unless current_user.user_selected_url == "/opd_appointments/showcalendar" %>
+            <%= link_to "/outpatients/appointment_management", :class => "ps hover-effect", :id => "ps", method: :get do %>
+              <span class="fa-color leftnav-main-title"> <i class="fa fa-stethoscope"></i> OPD</span>
+            <% end %>
+          <% else %>
+            <%= link_to "/opd_appointments/showcalendar", :data => {:remote => true}, :class => "ps hover-effect", :id => "opd_navigation" do %><span class="fa-color leftnav-main-title"> <i class="fa fa-stethoscope"></i> OPD</span><% end %>
+          <% end %>
+        </li>
+        <li class="common-li-class <%= "activate" if params[:controller] == "ipd_patients"&&params[:action] == "home" %>" id="menu_ipd_home">
+          <%= link_to '/inpatients/admission_management', :class => "ps hover-effect", :id => "ps", method: :get do %>
+              <span class="leftnav-main-title fa-color"><i class="fa fa-ambulance"></i> IPD</span>
+          <% end %>
+        </li>
+        <% if (current_user.organisation.type == 'hospital') %>
+          <li class="common-li-class <%= "activate" if params[:controller] == "patient_management"&&params[:action] == "home" %>">
+          <button type="button" class="btn btn-default dropdown-toggle focus-set" data-toggle="dropdown" style="padding:15px 18px 14px; background-color:#fff; border:none;">
+            <span class="fa-color"><i class="fa fa-shopping-cart fa-lg" style="font-size:15px;"></i> INVENTORIES</span>
+            <span class="caret fa-color"></span>
+          </button>
+
+          <% @all_inventory_department = Inventory::Department.where(facility_id: current_facility.id) %>
+          <% if @all_inventory_department.count > 0 %>
+            <ul class="dropdown-menu children">
+              <!-- <li>
+                <%= link_to inventory_path do %><span><i class="fa fa-shopping-cart"></i> Inventory</span><% end %>
+              </li> -->
+                <% @all_inventory_department.each do |inventory| %>
+                  <% if inventory.department_id == "central" %>
+                    <li>
+                    <%= link_to "/inventory" , :target => "_blank" do %>
+                        <span><%= inventory.name %> Store</span>
+                      <% end %>
+                    </li>
+                  <% else %>
+                    <li>
+                    <%= link_to "/inventory/department/#{inventory.department_id}" , :target => "_blank" do %>
+                        <span><%= inventory.name %></span>
+                      <% end %>
+                    </li>
+                  <% end %>
+                <% end %>
+              </ul>
+            <% end %>
+          </li>
+        <% end %>
+        <!--<li class="common-li-class <%= "activate" if params[:controller] == "patient_management"&&params[:action] == "home" %>">-->
+          <!--<button type="button" class="btn btn-default dropdown-toggle focus-set" data-toggle="dropdown" style="padding:15px 18px 14px; background-color:#fff; border:none;">-->
+            <!--<span class="fa-color"><i class="fa fa-medkit fa-lg" style="font-size:15px;"></i> MORE</span>-->
+            <!--<span class="caret fa-color"></span>-->
+          <!--</button>-->
+          <!--<ul class="dropdown-menu children">-->
+            <!-- <li>
+              <%= link_to inventory_path do %><span><i class="fa fa-shopping-cart"></i> Inventory</span><% end %>
+            </li> -->
+            <!--<li>-->
+              <!--<%#= link_to patient_management_home_path, :data => {:remote => true, :toggle => "dropdown"}, :class => "ps", :id => "ps" do %>-->
+                  <!--<i class="fa fa-male" style="margin-right:5px;"></i> <span>Patient Management</span>-->
+              <!--<%# end %>-->
+            <!--</li>-->
+            <!--<li>-->
+
+            <!--</li>-->
+          <!--</ul>-->
+        <!--</li>-->
+          <% unless current_user.organisation.account_expiry_date == nil || current_user.organisation.account_expiry_date == "" %>
+            <% if current_user.roles[0].try(:name) == "owner" || current_user.roles[1].try(:name) == "owner" || current_user.roles[0].try(:name) == "admin" || current_user.roles[1].try(:name) == "admin" %>
+                <%if current_user.organisation.try(:account_expiry_date) <= Date.current + 15%>
+              <span style="color: orangered;position: absolute;top: 5px;left: 840px;width: 156px;"> Your Account will expire on <%=current_user.organisation.account_expiry_date.strftime("%d-%m-%Y") %> </span>
+                <%end%>
+            <%end%>
+          <%end%>
+        </ul>
+      <% end %>
+      <!-- Clickables & Navbar Left End -->
+      <!-- Navbar Right -->
+      <ul class="nav navbar-nav navbar-right navbar-main" style="margin-top: -3px; margin-left: 12px; border-left: 1px solid #ccc;">
+        <%#= image_tag('fac_arrow.gif', id: 'fac_arrow') %> 
+        <% @all_facility = current_user.facilities.all %>
+        <% if @all_facility.count > 1 %>
+          <li class="common-li-class">
+            <button type="button" class="btn btn-default dropdown-toggle focus-set" data-toggle="dropdown" style="padding:13px; background-color:#fff; border:none;">
+                  <span class="fa-color">
+                    <i class="fa fa-home" style="font-size: 20px;opacity: 1;"></i>
+                    <%= current_facility.name %>
+                  </span>
+              <span class="caret fa-color"></span>
+            </button>
+
+            <% if @all_facility.count > 15 %>
+            <ul class="dropdown-menu children" style="background-color:#1d2939;overflow-y: scroll;height: 600px">
+            <% else %>
+              <ul class="dropdown-menu children" style="background-color:#1d2939;">
+            <% end %>
+              <% @all_facility.order(name: :asc).each do |facility| %>
+                <li>
+                  <% if  facility.id == current_facility.id %>
+                      <%= link_to "#", style: "pointer-events: none;" do %>
+                      <i class="fa fa-hospital-o"></i>
+                      <span id="facility_name"> <%= facility.name %> </span>
+                      <%end%>
+                  <% else %>
+
+                    <%= link_to "/set_facility/#{facility.id}", class: "facility_select rightnav-link", value: facility.id, style:'color: #ccc', method: :post do %>
+                      <i class="fa fa-hospital-o"></i>
+                      <span id="facility_name"> <%= facility.name %> </span>
+                    <% end %>
+                  <% end %>
+
+                <li>
+              <% end %>
+            </ul>
+          </li>
+        <% end %>
+        <li class="common-li-class <%= "activate" if params[:controller] == "users"&&params[:action] == "account_settings" %>">
+          <button type="button" class="btn btn-default dropdown-toggle focus-set" data-toggle="dropdown" style="padding:13px; background-color:#fff; border:none;" id="setting_n_logout">
+                <span class="fa-color">
+                  <i class="fa fa-user-md" style="font-size: 20px;opacity: 1;"></i>
+                  <%= current_user.fullname %>
+                </span>
+            <span class="caret fa-color"></span>
+          </button>
+          <ul class="dropdown-menu children" style="background-color:#1d2939;">
+
+            <% if current_user.has_role?(:doctor) && (current_user.has_role?(:admin) || current_user.has_role?(:owner))%>
+              <li><a href="/admindoctors/account_settings" data-method="get" data-toggle="dropdown" class="dropdown-toggle ps rightnav-link"><i class="glyphicon glyphicon-cog manage_account_settings"></i> Account Settings</a></li>
+            <% elsif current_user.has_role?(:admin) || current_user.has_role?(:owner)%>
+              <li><a href="/admins/account_settings" data-method="get" data-toggle="dropdown" class="dropdown-toggle ps rightnav-link"><i class="glyphicon glyphicon-cog manage_account_settings"></i> Account Settings</a></li>
+            <% elsif current_user.has_role?(:doctor)%>
+              <li><a href="/doctors/account_settings" data-method="get" data-toggle="dropdown" class="dropdown-toggle ps rightnav-link"><i class="glyphicon glyphicon-cog manage_account_settings"></i> Account Settings</a></li>
+            <% end %>
+
+            <% if current_user.has_role?(:nurse) || current_user.has_role?(:receptionist) || current_user.has_role?(:optometrist) %>
+              <li><a href="/staffs/account_settings" data-method="get" data-toggle="dropdown" class="dropdown-toggle ps rightnav-link"><i class="glyphicon glyphicon-cog manage_account_settings"></i> Account Settings</a></li>
+            <% end %>
+
+            <% if current_user.has_role?(:optician) %>
+              <li><a href="/opticians/account_settings" data-method="get" data-toggle="dropdown" class="dropdown-toggle ps rightnav-link"><i class="glyphicon glyphicon-cog manage_account_settings"></i> Account Settings</a></li>
+            <% end %>
+
+            <% if current_user.has_role?(:pharmacist) %>
+              <li><a href="/pharmacists/account_settings" data-method="get" data-toggle="dropdown" class="dropdown-toggle ps rightnav-link"><i class="glyphicon glyphicon-cog manage_account_settings"></i> Account Settings</a></li>
+            <% end %>
+
+            <li><%= link_to users_logout_path, :class => "rightnav-link" do %><i class="glyphicon glyphicon-log-out"></i> Log Out<% end %></li>
+          </ul>
+        </li>
+      </ul>
+      <!-- Navbar Right End -->
+    </div>
+  </div>
+</nav>
+<!-- NEW NAVBAR ENDS HERE -->
+
+
+<style type="text/css">
+
+  #fac_arrow{
+    z-index: 10000;
+    position: absolute;
+    top: 31px;
+    right: 308px;
+    height: 50px;
+  }
+  .rightnav-link {
+    color: #aaa !important;
+  }
+
+  .rightnav-link:hover {
+    color: #fff !important;
+    background-color: #1CAF9A !important;
+  }
+
+  .activate {
+    border-bottom: 3px solid #1CAF9A;
+  }
+
+  .activate .fa-color {
+    color: #1CAF9A;
+  }
+
+  .activate a .fa-color {
+    color: #1CAF9A;
+  }
+
+  .common-li-class:hover {
+    border-bottom: 3px solid #1CAF9A;
+  }
+
+  .common-li-class .hover-effect:hover {
+    background-color: #fff;
+  }
+
+  .common-li-class .hover-effect {
+    color: #666;
+    font-weight: bold;
+  }
+
+  .focus-set:focus {
+    outline: none !important;
+  }
+</style>
+<script>
+    // jQuery("#searchpatientkeyword1").autocomplete({
+    //     minLength: 2,
+    //     source: function(request, response) {
+    //         jQuery.ajax({
+    //             dataType: "json",
+    //             type : 'get',
+    //             url: '/opd_appointments/searchpatient',
+    //             //data: {searchpatient: params, remote: "true" },
+    //             data: {q: request.term, remote: "true" },
+    //             success: function(data) {
+    //                 //jQuery('#searchpatientkeyword').removeClass('ui-autocomplete-loading')
+    //                 response( data);
+    //             },
+    //             error: function(data) {
+    //                 //jQuery('#searchpatientkeyword').removeClass('ui-autocomplete-loading');
+    //             }
+    //         });
+    //     },
+    //     select: function( event, ui ) {
+    //         jQuery.ajax({
+    //             type: "GET",
+    //             dataType: "json",
+    //             url: "/patients/searchsetupforsummary?patient_id="+ ui.item["id"],
+    //         }).done(function(data){
+    //         var appointment_id = data[0]
+    //         var admission_id = data[1]
+    //             if (appointment_id != "null") {
+    //                 pushPageState({x: "1"}, "", "/patients/summary" + "?appointment_id="+appointment_id+"&patientid=" + ui.item["id"]+"&opd=440655000")
+    //                 jQuery.ajax({
+    //                     type: "GET",
+    //                     dataType: "script",
+    //                     url: "/patients/summary" + "?appointment_id="+appointment_id+"&patientid=" + ui.item["id"]+"&opd=440655000",
+    //                 });
+    //             }
+    //             else if (admission_id != "null"){
+    //                 pushPageState({x: "1"}, "","/patients/summary" + "?admission_id="+admission_id+"&patientid=" + ui.item["id"]+"&opd=440654001")
+    //                 jQuery.ajax({
+    //                     type: "GET",
+    //                     dataType: "script",
+    //                     url: "/patients/summary" + "?admission_id="+admission_id+"&patientid=" + ui.item["id"]+"&opd=440654001",
+    //                 });
+    //             }
+    //             else{
+    //                 pushPageState({x: "1"}, "", "/patients/patientsearchresult"+"?patient_id="+ui.item["id"])
+    //                 jQuery.ajax({
+    //                     type: "GET",
+    //                     dataType: "script",
+    //                     url: "/patients/patientsearchresult"+"?patient_id="+ui.item["id"],
+    //                 });
+    //             }
+    //         })
+    //     },
+    //     close: function() {
+
+    //     }
+    // });
+</script>

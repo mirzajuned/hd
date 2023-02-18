@@ -1,0 +1,130 @@
+<%= javascript_include_tag "application-loggedin", "data-turbolinks-track" => true %>
+<div class="modal-dialog">
+  <div class="modal-content">
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal">&times;</button>
+      <h4 class="modal-title">Create Tracker</h4>
+    </div>
+    <%= form_for @patient_tracker, remote: true, html: {id: 'patient-tracker-form'} do |f| %>
+      <%= f.hidden_field :patient_id, value: @patient.id.to_s %>
+      <%= f.hidden_field :user_id, value: current_user.id.to_s %>
+      <%= f.hidden_field :facility_id, value: current_facility.id.to_s %>
+      <%= f.hidden_field :organisation_id, value: current_facility.organisation_id.to_s %>
+      <%= f.hidden_field :tracker_type, value: "Date" %>
+      <div class="modal-body">
+        <div class="row">
+          <div class="col-md-3">
+            <b>Tracker Unit :</b>
+          </div>
+          <div class="col-md-9">
+            <div class="row">
+              <div class="rdio rdio-primary col-md-3">
+                <%= f.radio_button :unit, "Day", {:class => 'unit-field', :id => "track-unit-day", checked: "checked"} %>
+                <label for="track-unit-day">Day</label>
+              </div>
+              <div class="rdio rdio-primary col-md-3">
+                <%= f.radio_button :unit, "Week", {:class => 'unit-field', :id => "track-unit-week"} %>
+                <label for="track-unit-week">Week</label>
+              </div>
+              <div class="rdio rdio-primary col-md-3">
+                <%= f.radio_button :unit, "Month", {:class => 'unit-field', :id => "track-unit-month"} %>
+                <label for="track-unit-month">Month</label>
+              </div>
+              <% if false %>
+                <div class="rdio rdio-primary col-md-3">
+                  <%= f.radio_button :unit, "Session", {:class => 'unit-field', :id => "track-unit-session"} %>
+                  <label for="track-unit-session">Session</label>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        </div>
+        <div class="row mt10">
+          <div class="col-md-3">
+            <b>No. of &nbsp;<span class="unit-text-view"></span> :</b>
+          </div>
+          <div class="col-md-2">
+            <%= f.number_field :count, class: "current-session", placeholder: "No." %>
+          </div>
+          <div class="col-md-5 session-count-row">
+            <b>Count This Appointment as Session :</b>
+          </div>
+          <div class="col-md-2 session-count-row">
+            <%= f.number_field :current_session, class: "current-session", placeholder: "No.", value: @patient_tracker.current_session || 1 %>
+          </div>
+          <div class="col-md-2 col-md-offset-2 date-count-row">
+            <b>Start Date :</b>
+          </div>
+          <div class="col-md-3 date-count-row">
+            <% if @patient_tracker.start_date %><% @start_date = @patient_tracker.start_date.strftime("%d/%m/%Y") %><% else %><% @start_date = Date.current.strftime("%d/%m/%Y") %><% end %>
+            <%= f.text_field :start_date, class: "start-date datepicker-date", placeholder: "Date", readonly: "readonly", value: @start_date %>
+          </div>
+        </div>
+        <div class="row mt10">
+          <div class="col-md-3">
+            <b>Description: </b>
+          </div>
+          <div class="col-md-6">
+            <%= f.text_field :description, class: "current-session", placeholder: "Description" %>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <%= f.submit "Track", class: 'btn btn-success btn-xs', remote: true, onclick: "validate_patient_tracker()" %>
+        <button type="button" class="btn btn-default btn-xs" data-dismiss="modal">Close</button>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<style type="text/css">
+  .datepicker-date {
+    background: #fff !important;
+    cursor: pointer !important;
+  }
+
+  .current-session, .start-date {
+    width:75%;
+    padding:0px 5px;
+    border:none;
+    border-bottom:1px solid #000;
+  }
+  .current-session:focus, .start-date:focus {
+    outline: none;
+  }
+</style>
+
+<script type="text/javascript">
+datepicker_options = {
+  dateFormat: "dd/mm/yy",
+  minDate: -0
+}
+$(".datepicker-date").datepicker(datepicker_options)
+
+  $(".unit-field").on('click',function(){
+    var unit = $(this).val()
+    $(".unit-text-view").html(unit)
+    if(unit == "Session"){
+      $(".session-count-row").show()
+      $(".date-count-row").hide()
+      $("#patient_tracker_tracker_type").val(unit)
+    } else {
+      $(".session-count-row").hide()
+      $(".date-count-row").show()
+      $("#patient_tracker_tracker_type").val("Date")
+    }
+  })
+  if("<%= @patient_tracker.unit %>" == ""){
+    $('.unit-field :input[value="Day"]').attr('checked','checked') 
+  } else {
+    $('.unit-field :input[value="<%= @patient_tracker.unit %>"]').attr('checked','checked') 
+  }
+  
+
+  var unit_field = $(".unit-field")
+  for (var i = unit_field.length - 1; i >= 0; i--) {
+    if($(unit_field[i]).attr('checked')){
+      $(unit_field[i]).trigger('click')
+    }
+  }
+</script>

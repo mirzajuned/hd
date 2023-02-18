@@ -1,0 +1,186 @@
+<div class="row order-title">
+  <div class="col-sm-12 text-center" style="border-bottom:1px solid #ccc;border-top:1px solid #ccc;"><strong>Requisition Order</strong></div>
+</div>
+<div class="row order-common-fields" style="margin-top:15px;">
+  <div class="col-sm-4">
+    <strong>Note</strong><br>
+    <%= f.text_field :remarks, { class: 'form-control p7_10 fullname', placeholder: "Remarks" } %>
+  </div>
+  <div class="col-sm-2">
+    <strong>Receiving Store</strong><br>
+    <%= select_tag "", options_for_select(@receive_stores, @selected_store), { name: 'inventory_order_requisition[receive_store_id]', include_blank: true, class: 'form-control', id: 'inventory_order_requisition_receive_store_id' } %>
+    <%= f.hidden_field :receive_store_name %>
+  </div>
+
+  <div class="col-sm-2">
+    <strong>Type</strong><br>
+    <% selected_type = params[:from] == 'inventory_order' ? 'Urgent' : @requisition.requisition_type %>
+    <%= f.select :requisition_type, options_for_select(@requisition_types, selected_type), { include_blank: true }, {class: 'form-control'} %>
+  </div>
+
+  <div class="col-md-2">
+    <% if @requisition.requisition_date.present? %>
+      <% requisition_date = @requisition&.requisition_date&.strftime("%d/%m/%Y") %>
+      <% requisition_date_time = @requisition&.requisition_date_time %>
+      <% requisition_time = @requisition&.requisition_date_time&.strftime("%I:%M %p") %>
+    <% else %>
+      <% requisition_date = Date.current.strftime("%d/%m/%Y") %>
+      <% requisition_date_time = Time.current %>
+      <% requisition_time = Time.current.strftime("%I:%M %p") %>
+    <% end %>
+    Order Date:
+    <% unless Authorization::PolicyHelper.verification(current_user.id,"HGP-100-113-105") %>
+      <%= f.text_field :requisition_date, { value: Date.current.strftime("%d/%m/%Y"), class: 'form-control p7_10 fullname', placeholder: 'Date of transition', readonly: 'readonly' } %>
+    <% else %>
+      <%= f.text_field :requisition_date, { value: requisition_date, class: 'form-control p7_10 fullname requisition-order-datepicker', placeholder: 'Date of transition' } %>
+    <% end %>
+    <%= f.hidden_field :requisition_date_time, { value: requisition_date_time, class: 'form-control p7_10 fullname requisition-order-date-time-picker' } %>
+  </div>
+  <div class="col-sm-2">
+    <strong>Order Time</strong><br>
+    <% unless Authorization::PolicyHelper.verification(current_user.id,"HGP-100-113-105") %>
+      <%= f.text_field :requisition_time, { value: Time.current.strftime("%I:%M %p"), class: 'form-control p7_10', placeholder: "Time of Order", readonly: 'readonly' } %>
+    <% else %>
+      <%= f.text_field :requisition_time, { value: requisition_time, class: 'form-control p7_10 order-timepicker', placeholder: "Time of Order" } %>
+    <% end %>
+  </div>
+  <%= f.hidden_field :entered_by_id, { value: @requisition.entered_by_id || current_user.id } %>
+  <%= f.hidden_field :entered_by, { value: @requisition.entered_by || current_user.fullname } %>
+  <%= f.hidden_field :user_id, { value: current_user.id } %>
+  <%= f.hidden_field :store_id, { value: @store_id } %>
+  <%= f.hidden_field :store_name, { value: @inventory_store.name } %>
+  <%= f.hidden_field :facility_id, { value: current_facility.id } %>
+  <%= f.hidden_field :organisation_id, { value: current_user.organisation_id } %>
+  <% if params[:action] == 'new' %>
+    <%= f.hidden_field :requisition_creation_time, { value: Time.current } %>
+  <% end %>
+  <%= f.hidden_field :department_name, { value: @inventory_store.department_name } %>
+  <%= f.hidden_field :department_id, { value: @inventory_store.department_id } %>
+  <%= f.hidden_field :is_disabled, { value: false } %>
+  <%= f.hidden_field :is_active, { value: true } %>
+  <%= f.hidden_field :status, { value: 'open' } %>
+  <%= f.hidden_field :receive_status, { value: 'Pending' } %>
+  <%= f.hidden_field :created_from, { value: 'Manual' } %>
+  <% from = params[:from].present? ? params[:from] : 'Normal' %>
+  <%= f.hidden_field :request_from, { value: from } %>
+  <%= f.hidden_field :optical_order_id, { value: @order_id } %>
+  <%= f.hidden_field :vendor_id, { value: @inventory_order&.vendor_id } %>
+  <%= f.hidden_field :fulfilment_status, { value: 'None' } %>
+</div>
+
+<div class="row mb5" style="border-top:1px solid #eee;">
+  <div class="row order-lots-list medication_tab_row">
+    <div class="col-md-12">
+      <table class="table order-lots-table" id="medicationTable">
+        <thead>
+          <tr>
+            <td class="col-md-2">Description</td>
+            <td class="col-md-2">Category</td>
+            <td class="col-md-2">Sub-Category</td>
+            <td class="col-md-2">Code</td>
+            <td class="col-md-1">Quantity</td>
+            <td class="col-md-2">Remark</td>
+            <td class="col-md-1">Action</td>
+          </tr>
+        </thead>
+        <tbody class="medication-table-body-added medication_set_body" id="tbody_medication">
+          <%# if (params[:action] == 'edit') && (@requisition.items.size > 0) %>
+            <%#= render partial: 'inventory/order/requisitions/item_list.html.erb', locals: { f:f } %>
+          <%# end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script type="text/javascript">
+
+  $('#inventory_order_requisition_requisition_date').on('change', function() {
+    setOrderDateTime()
+  })
+
+  $('.requisition-order-datepicker').datepicker({
+    dateFormat: "dd/mm/yy",
+    maxDate: -0
+  }).on('change', function(e) {
+    validateMaxTime()
+  });
+
+  function validateMaxTime()
+  {
+    var picker_time = moment($('.order-timepicker').val(), 'HH:mm a')
+    if ( ($('.requisition-order-datepicker').val() == "<%= Date.current.strftime("%d/%m/%Y") %>") && (moment().isBefore(picker_time)) )
+    {
+      $('.order-timepicker').timepicker('setTime', moment().format('HH:mm a'))
+    }
+  }
+
+  function setOrderDateTime()
+  {
+    var date = $('#inventory_order_requisition_requisition_date').val()
+    var time = $('#inventory_order_requisition_requisition_time').val()
+    //var date_time = moment(date+" "+time).format('YYYY-DD-MM HH:mm:ss')
+    $('#inventory_order_requisition_requisition_date_time').val(date.concat(" ",time))
+  }
+  setOrderDateTime()
+
+  $('.order-timepicker').timepicker({
+  defaultTime: 'current',
+    minuteStep: 1
+  }).on('changeTime.timepicker', function(e) {  
+    validateMaxTime()
+    setOrderDateTime()
+  });
+
+  $('#inventory_order_requisition_requisition_type').select2()
+
+  $('#inventory_order_requisition_receive_store_id').on('change', function() {
+    fetch_variants()
+  })
+
+  function fetch_variants() {
+    let store_id = '<%= @inventory_store.id %>'
+    let requisition_store_id = $('#inventory_order_requisition_receive_store_id').val()
+    let store_name = $('#inventory_order_requisition_receive_store_id option:selected').text()
+    $('#inventory_order_requisition_receive_store_name').val(store_name)
+    $('.treatmentmedications').remove()
+    let request_from = '<%= @from %>'
+    let order_id = '<%= @order_id %>'
+    if (requisition_store_id != '' && store_id != '') {
+      $.ajax({
+        type: 'GET',
+        data: {
+          requisition_store_id: requisition_store_id,
+          store_id: store_id,
+          request_from: request_from,
+          order_id: order_id,
+          item_type: 'all_item',
+          remote: true
+        },
+        url: '/inventory/order/requisitions/fetch_variants',
+        success: function(){
+        }
+      })
+    }
+  }
+
+  function check_action() {
+    let size = parseInt('<%= @receive_stores.size %>')
+    if ('<%= params[:action] %>' != "edit" && size == 1) {
+      fetch_variants()
+    }
+  }
+  check_action()
+</script>
+
+<style>
+  .requisition-order-datepicker, .order-timepicker{
+    cursor: pointer !important;
+  }
+  .disabled_row{
+    pointer-events: none;
+  }
+  .requisition-order-datepicker:disabled, .order-timepicker:disabled{
+    cursor: not-allowed !important;
+  }
+</style>

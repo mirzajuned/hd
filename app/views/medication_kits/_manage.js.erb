@@ -1,0 +1,251 @@
+$(document).ready(function(){
+
+  function button_disable_enable() {
+    if($('.medication_set_body tr').length == 1){
+      $('.removemedicationbutton').attr("disabled", true)
+    } else{
+      $('.removemedicationbutton').attr("disabled", false)
+    }
+  }
+  button_disable_enable()
+
+  $('[data-toggle="tooltip"]').tooltip();
+
+  function _add_button_at_last() {
+    $('.medication_set_body').find('.add-new-btn').addClass("hidden")
+    $('.medication_set_body').find('.add-new-btn').last().removeClass("hidden")
+  }
+  _add_button_at_last()
+
+  $('.removemedicationbutton').on('click', function(e) {
+    e.preventDefault();
+    if($('.medication_set_body tr').length == 1){
+      $('.removemedicationbutton').attr("disabled", true)
+    } else{
+      $('.removemedicationbutton').attr("disabled", false)
+    }
+  });
+
+  function taper_form(){
+    $(".tapering_btn").on('click', function(e){
+      _this = this
+      var med_id = $(this).closest(".link_medication").find(".tapering_id").attr("id")
+      var medicinename = $(this).closest(".treatmentmedications").find(".medicinename").val()
+      var medicinefrequency = $(this).closest(".treatmentmedications").find(".medicinefrequency").val()
+      var medicineduration = $(this).closest(".treatmentmedications").find(".medicineduration").val()
+      var medicinedurationoption = $(this).closest(".treatmentmedications").find(".medicinedurationoption").val()
+      if(medicinename != "" && medicineduration != "" && medicinedurationoption != "" && medicinedurationoption != "F"){
+        e.preventDefault();
+        if($(this).closest(".link_medication").find(".tapering_id").val() == 0){
+          $.ajax({
+            type: "GET",
+            url: "/tapering_kits/new",
+            data: {
+              remote: "true",
+              med_id: med_id,
+              medicinename: medicinename,
+              medicineduration: medicineduration,
+              medicinedurationoption: medicinedurationoption,
+              medicinefrequency: medicinefrequency,
+              source: "Templates"
+            },
+            success: function(){
+              $(_this).closest(".treatmentmedications").find(".medicinename").closest(".input-group").find(".fill_detail").remove()
+              $(_this).closest(".treatmentmedications").find(".medicineduration").closest(".input-group").find(".fill_detail").remove()
+            }
+          })
+        } else {
+          $.ajax({
+            type: "GET",
+            url: "/tapering_kits/" + $(this).closest(".link_medication").find(".tapering_id").val() + "/edit",
+            data: {
+              remote: "true",
+              med_id: med_id,
+              medicinename: medicinename,
+              medicineduration: medicineduration,
+              medicinedurationoption: medicinedurationoption,
+              medicinefrequency: medicinefrequency,
+              source: "Templates"
+            },
+            success: function(){
+              $(_this).closest(".treatmentmedications").find(".medicinename").closest(".input-group").find(".fill_detail").remove()
+              $(_this).closest(".treatmentmedications").find(".medicineduration").closest(".input-group").find(".fill_detail").remove()
+            }
+          })
+        }
+      } else {
+        if(medicinename == ""){
+          $(this).closest(".treatmentmedications").find(".medicinename").closest(".input-group").find(".fill_detail").remove()
+          $(this).closest(".treatmentmedications").find(".medicinename").closest(".input-group").append("<span class='label label-danger fill_detail'>Fill Medicine</span>")
+        } else {
+          $(this).closest(".treatmentmedications").find(".medicinename").closest(".input-group").find(".fill_detail").remove()
+        }
+        if(medicineduration == ""|| medicinedurationoption == ""){
+          $(this).closest(".treatmentmedications").find(".medicineduration").closest(".input-group").find(".fill_detail").remove()
+          $(this).closest(".treatmentmedications").find(".medicineduration").closest(".input-group").append("<span class='label label-danger fill_detail'>Fill Duration</span>")
+        } else if(medicinedurationoption == "F"){
+          $(this).closest(".treatmentmedications").find(".medicineduration").closest(".input-group").find(".fill_detail").remove()
+          $(this).closest(".treatmentmedications").find(".medicineduration").closest(".input-group").append("<span class='label label-danger fill_detail'>Select Month, Week or Day</span>")
+        } else {
+          $(this).closest(".treatmentmedications").find(".medicineduration").closest(".input-group").find(".fill_detail").remove()
+        }
+      }
+    })
+  }
+  taper_form();
+
+  jQuery('.add-new-btn').on('click', function() {
+    event.preventDefault();
+    if ($('.specialty_dropdown').val() == "") {
+      flag = false
+      alert('Select Specialty First')
+    }else{
+      flag = true
+    }
+    if (flag) {
+      var fieldcounter;
+      if (jQuery('.medication_set_body tr').length == 0){
+        fieldcounter = 0;
+      } else {
+        fieldcounter = jQuery('.medication_set_body tr').length;
+      }
+      var params = { counter: fieldcounter};
+      jQuery.ajax({
+        type: "GET",
+        dataType: "script",
+        url: "/opd_records/add_medication",
+        data: {ajax: params, remote: "true" },
+        async: false,
+        success: function(){
+          _add_button_at_last()
+        }
+      });
+      _renumber_id_after_remove("tbody.medication_set_body", "div.medication-table-body-removed");
+    }
+  })
+
+  jQuery('.medication_set_body').on('click', "a[name*='removemedicationbutton']", function() {
+    event.preventDefault();
+    var medications_removed_tr_html;
+    var fieldcounter;
+    fieldcounter = jQuery(this).attr('id').slice(-1);
+    var medications_tr_array = jQuery(this).parents('.treatmentmedications').find(".id");
+    if (medications_tr_array.length > 0) {
+      jQuery(this).parents('.treatmentmedications').find("input[name*='_destroy']").val("1");
+      medications_removed_tr_html = jQuery(this).parents('.treatmentmedications').wrap('<p/>').parent().html();
+      jQuery(this).parents('.treatmentmedications').unwrap();
+      jQuery('.medication-table-body-removed').append(medications_removed_tr_html);
+      jQuery(this).parents('.treatmentmedications').remove();
+      _add_button_at_last()
+      _renumber_id_after_remove("tbody.medication_set_body", "div.medication-table-body-removed");
+    } else {
+      jQuery(this).parents('.treatmentmedications').remove();
+      _add_button_at_last()
+      _renumber_id_after_remove("tbody.medication_set_body", "div.medication-table-body-removed");
+    }
+  });
+
+  function _renumber_id_after_remove(added, removed) {
+    var counter = 0;
+    jQuery(added).find("tr").each(function() {
+      jQuery(this).find("input").each(function(index, element) {
+        var nameattr, idattr;
+        nameattr = element.name.replace(/\[[0-9]+\]/g, '['+counter+']');
+        idattr = element.id.replace(/\_[0-9]+\_/g, '_'+counter+'_');
+        jQuery(this).attr('name', nameattr);
+        jQuery(this).attr('id', idattr);
+      });
+      jQuery(this).find("select").each(function(index, element) {
+        var nameattr, idattr;
+        nameattr = element.name.replace(/\[[0-9]+\]/g, '['+counter+']');
+        idattr = element.id.replace(/\_[0-9]+\_/g, '_'+counter+'_');
+        jQuery(this).attr('name', nameattr);
+        jQuery(this).attr('id', idattr);
+      });
+      jQuery(this).find("a").each(function(index, element) {
+        var idattr;
+        idattr = element.id.replace(/[0-9]/g, counter);
+        jQuery(this).attr('id', idattr);
+      });
+      counter++;
+    });
+    jQuery(removed).find("tr").each(function() {
+      jQuery(this).find("input").each(function(index, element) {
+        var nameattr, idattr;
+        nameattr = element.name.replace(/\[[0-9]+\]/g, '['+counter+']');
+        idattr = element.id.replace(/\_[0-9]+\_/g, '_'+counter+'_');
+        jQuery(this).attr('name', nameattr);
+        jQuery(this).attr('id', idattr);
+      });
+      jQuery(this).find("select").each(function(index, element) {
+        var nameattr, idattr;
+        nameattr = element.name.replace(/\[[0-9]+\]/g, '['+counter+']');
+        idattr = element.id.replace(/\_[0-9]+\_/g, '_'+counter+'_');
+        jQuery(this).attr('name', nameattr);
+        jQuery(this).attr('id', idattr);
+      });
+      jQuery(this).find("a").each(function(index, element) {
+        var idattr;
+        idattr = element.id.replace(/[0-9]/g, counter);
+        jQuery(this).attr('id', idattr);
+      });
+      counter++;
+    });
+  }
+
+  jQuery(".medication_group").on('click',"#add_medication_item",function(e){
+    var total_rows = jQuery("#medi_row_count").val()
+    var department = jQuery("#medication_kit_department").val()
+    if (department == "309988001") {
+      var single_row_html = '<div class="row form-group"><div class="col-sm-3"><span role="status" aria-live="polite" class="ui-helper-hidden-accessible"></span><input type="text" name="opdrecord[treatmentmedication_attributes][row_count][medicinename]" id="opdrecord_treatmentmedication_attributes_row_count_medicinename" maxlength="300" size="40" class="form-control medicinename ui-autocomplete-input" autocomplete="off"></div><div class="col-sm-1"><input type="text" name="opdrecord[treatmentmedication_attributes][row_count][medicinetype]" id="opdrecord_treatmentmedication_attributes_row_count_medicinetype" class="form-control medicinetype"></div><div class="col-sm-1"><select name="opdrecord[treatmentmedication_attributes][row_count][medicinefrequency]" id="opdrecord_treatmentmedication_attributes_row_count_medicinefrequency" class="form-control medicinefrequency"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="8">8</option><option value="10">10</option><option value="12">12</option><option value="14">14</option><option value="18">18</option><option value="24">24</option></select></div><div class="col-sm-3"><div class="row"><div class="col-md-4"><select name="opdrecord[treatmentmedication_attributes][row_count][medicineduration]" id="opdrecord_treatmentmedication_attributes_row_count_medicineduration" class="form-control medicineduration"><option value="">Sel</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="SOS">SOS</option></select></div><div class="col-md-8"><select name="opdrecord[treatmentmedication_attributes][row_count][medicinedurationoption]" id="opdrecord_treatmentmedication_attributes_row_count_medicinedurationoption" class="form-control medicinedurationoption"><option value="">Sel</option><option value="D">Days</option><option value="W">Weeks</option><option value="M">Months</option><option value="F">Next followup</option></select></div></div></div><div class="col-sm-2"><input type="text" name="opdrecord[treatmentmedication_attributes][row_count][medicineinstructions]" id="opdrecord_treatmentmedication_attributes_row_count_medicineinstructions" maxlength="40" size="40" class="form-control ui-autocomplete-input" autocomplete="off"></div><div class="col-sm-1"><span id="add_medication_item" class="btn btn-xs btn-primary btn-square glyphicon glyphicon-plus-sign"></span> <span id="remove_medication_item_row_count" class="btn btn-xs btn-primary btn-danger glyphicon glyphicon-remove"></span></div>'
+    }
+    else{
+      var single_row_html = '<div class="row form-group"><div class="col-sm-2"><span role="status" aria-live="polite" class="ui-helper-hidden-accessible"></span><input type="text" name="opdrecord[treatmentmedication_attributes][row_count][medicinename]" id="opdrecord_treatmentmedication_attributes_row_count_medicinename" maxlength="300" size="40" class="form-control medicinename ui-autocomplete-input" autocomplete="off"></div><div class="col-sm-1"><input type="text" name="opdrecord[treatmentmedication_attributes][row_count][medicinetype]" id="opdrecord_treatmentmedication_attributes_row_count_medicinetype" class="form-control medicinetype"></div><div class="col-sm-1"><select name="opdrecord[treatmentmedication_attributes][row_count][medicinequantity]" id="opdrecord_treatmentmedication_attributes_row_count_medicinequantity" class="form-control medicinequantity"><option value="1/4">1/4</option><option value="1/2">1/2</option><option selected="selected" value="1">1</option><option value="2">2</option><option value="3">3</option></select></div><div class="col-sm-2"><select name="opdrecord[treatmentmedication_attributes][row_count][medicinefrequency]" id="opdrecord_treatmentmedication_attributes_row_count_medicinefrequency" class="form-control medicinefrequency"><option value=""></option><option value="1-1-1">1-1-1</option><option value="1-1-0">1-1-0</option><option value="1-0-1">1-0-1</option><option value="0-1-1">0-1-1</option><option value="1-0-0">1-0-0</option><option value="0-1-0">0-1-0</option><option value="0-0-1">0-0-1</option><option value="1-1-1-1">1-1-1-1</option><option value="1-1-1-1-1">1-1-1-1-1</option><option value="1-1-1-1-1-1">1-1-1-1-1-1</option></select></div><div class="col-sm-2"><div class="row"><div class="col-md-4"><input type="text" name="opdrecord[treatmentmedication_attributes][row_count][medicineduration]" id="opdrecord_treatmentmedication_attributes_row_count_medicineduration" maxlength="2" size="2" class="form-control medicineduration" placeholder="10"></div><div class="col-md-8"><div class="col-md-4"><input type="radio" name="opdrecord[treatmentmedication_attributes][row_count][medicinedurationoption]" id="opdrecord_treatmentmedication_attributes_row_count_medicinedurationoption_D" value="D" class="form-control" include_blank="true" checked="checked"> <label for="D">D</label></div><div class="col-md-4"><input type="radio" name="opdrecord[treatmentmedication_attributes][row_count][medicinedurationoption]" id="opdrecord_treatmentmedication_attributes_row_count_medicinedurationoption_W" value="W" class="form-control" include_blank="true"> <label for="W">W</label></div><div class="col-md-4"><input type="radio" name="opdrecord[treatmentmedication_attributes][row_count][medicinedurationoption]" id="opdrecord_treatmentmedication_attributes_row_count_medicinedurationoption_M" value="M" class="form-control" include_blank="true"> <label for="M">M</label></div></div></div></div><div class="col-sm-2"><input type="text" name="opdrecord[treatmentmedication_attributes][row_count][medicineinstructions]" id="opdrecord_treatmentmedication_attributes_row_count_medicineinstructions" maxlength="300" size="40" class="form-control ui-autocomplete-input" autocomplete="off"></div><div class="col-sm-2"><span id="add_medication_item" class="btn btn-xs btn-primary btn-square glyphicon glyphicon-plus-sign"></span> <span id="remove_medication_item_row_count" class="btn btn-xs btn-primary btn-danger glyphicon glyphicon-remove"></span></div></div>'
+    }
+    single_row_html = single_row_html.replace(/row_count/g,total_rows)
+    jQuery("#medi_row_count").val(+total_rows+1)
+
+    jQuery(single_row_html).appendTo(".medication_group")
+  })
+
+});
+
+function medication_page() {
+  $("#new_medication_kit").validate({
+  });
+
+  $("#edit_medication_kit").validate({
+  });
+
+  $.validator.addMethod("fieldRequired", $.validator.methods.required, "Please enter set name.");
+  $.validator.addClassRules("set-name", { fieldRequired: true});
+
+  $.validator.addMethod("SpecialtyRequired", $.validator.methods.required, "Please select any specialty");
+  $.validator.addClassRules("specialty_dropdown", { SpecialtyRequired: true});
+}
+medication_page()
+
+$.validator.addMethod("UnitRequired", $.validator.methods.required,
+   "Unit price cannot be blank");
+
+$.validator.addMethod("QuantityRequired", $.validator.methods.required,
+   "Quantity cannot be blank");
+
+$.validator.addMethod("INumber", $.validator.methods.number,
+   "Please enter a number");
+
+
+$.validator.addMethod("discount", function(value, element) {
+ return this.optional(element) || $("#invoice_total").val() >= 0;
+}, "Discount must be less than total amount.");
+
+$.validator.addMethod("cashandcardTotal", function(value, element) {
+ return this.optional(element) || parseFloat($(".invoice_total").val()) == parseFloat($(".paid_via_both_cash").val()) + parseFloat($(".paid_via_both_card").val());
+}, "Sum of cash & card must be equal to total amount.");
+
+$.validator.addClassRules("paid_via_both_card", { cashandcardTotal: true, required: true, INumber:true});
+$.validator.addClassRules("paid_via_both_cash", { required: true, INumber:true});
+$.validator.addClassRules("invoice_discount", { discount: true});
+
+$.validator.addClassRules("services-unit-price-validation", { UnitRequired: true, INumber: true });
+$.validator.addClassRules("services-total-units-validation", { QuantityRequired: true, INumber: true });

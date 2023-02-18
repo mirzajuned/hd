@@ -1,0 +1,278 @@
+<!-- Surgeon -->
+<% surgeon_present_counter = 0 %>
+<% surgeon1 = (@operative_note.surgeon1 if (@operative_note.surgeon1.present?)) || ("--") %>
+<% surgeon2 = (@operative_note.surgeon2 if (@operative_note.surgeon2.present?)) || ("--") %>
+<% surgeon3 = (@operative_note.surgeon3 if (@operative_note.surgeon3.present?)) || ("--") %>
+
+<% if @operative_note.surgeon.to_i == 1 %>
+  <% surgeon = surgeon1 %>
+  <% surgeon_present_counter += 1 %>
+<% elsif @operative_note.surgeon.to_i == 2 %>
+  <% if @operative_note.surgeon1.blank? && @operative_note.surgeon2.blank? %>
+    <% surgeon = '--' %>
+  <% else %>
+    <% surgeon = surgeon1 + ',  ' + surgeon2 %>
+  <% end %>
+  <% surgeon_present_counter += 1 %>
+<% elsif @operative_note.surgeon.to_i == 3 %>
+  <% if @operative_note.surgeon1.blank? && @operative_note.surgeon2.blank? && @operative_note.surgeon3.blank? %>
+    <% surgeon = '--' %>
+  <% else %>
+    <% surgeon = surgeon1 + ',  ' + surgeon2 + ',  ' + surgeon3  %>
+  <% end %>
+  <% surgeon_present_counter += 1 %>
+<% end %>
+
+<!-- Surgeon Assistant -->
+<% surgeon_assistant_counter = 0 %>
+<% surgeon_assistant1 = (@operative_note.surgeon_assistant1 if (@operative_note.surgeon_assistant1.present?)) || ("--") %>
+<% surgeon_assistant2 = (@operative_note.surgeon_assistant2 if (@operative_note.surgeon_assistant2.present?)) || ("--") %>
+<% surgeon_assistant3 = (@operative_note.surgeon_assistant3 if (@operative_note.surgeon_assistant3.present?)) || ("--") %>
+
+<% if @operative_note.surgeon_assistant.to_i == 1 %>
+  <% surgeon_assistant = surgeon_assistant1 %>
+  <% surgeon_assistant_counter += 1 %>
+<% elsif @operative_note.surgeon_assistant.to_i == 2 %>
+  <% if @operative_note.surgeon_assistant1.blank? && @operative_note.surgeon_assistant2.blank? %>
+    <% surgeon_assistant = '--' %>
+  <% else %>
+    <% surgeon_assistant = surgeon_assistant1 + ',  ' + surgeon_assistant2 %>
+  <% end %>
+  <% surgeon_assistant_counter += 1 %>
+<% elsif @operative_note.surgeon_assistant.to_i == 3 %>
+  <% if @operative_note.surgeon_assistant1.blank? && @operative_note.surgeon_assistant2.blank? && @operative_note.surgeon_assistant3.blank? %>
+    <% surgeon_assistant = '--' %>
+  <% else %>
+    <% surgeon_assistant = surgeon_assistant1 + ',  ' + surgeon_assistant2 + ',  ' + surgeon_assistant3  %>
+  <% end %>
+  <% surgeon_assistant_counter += 1 %>
+<% end %>
+
+
+<% anesthesia = ["GA","EA","SA","LA","Sedation","Topical"] %>
+<% eye = ["Left", "Right", "BE"] %>
+
+<div class="row operative-summary">
+  <% @ipd_record_procedure_performed = @ipdrecord.procedure.where(is_performed: true, performed_note_id: @operative_note.id.to_s) %>
+  <% if @ipd_record_procedure_performed.count > 0 || @case_sheet.free_form_procedures.try(:count) > 0 %>
+    <div class="row mb30">
+      <div class="col-md-4">
+        <b class="title-summary-detail">Surgery Details:</b>
+      </div>
+      <% if @ipd_record_procedure_performed.count > 0 %>
+        <div class="col-md-8">
+          <table class="table table-bordered">
+            <tr>
+              <th>Name Of Surgery</th>
+              <th>Eye Operated</th>
+              <th>Date of Surgery</th>
+            </tr>
+            <% @ipd_record_procedure_performed.each_with_index do |procedure| %>
+              <tr>
+                <% procedurecode = procedure.try(:procedurefullcode) %>
+                <% display_name = CustomCommonProcedure.find_by(code: procedurecode, organisation_id: @ipdrecord.try(:organisation_id)).try(:display_name) %>
+                <% if display_name.present? %>
+                  <td><%= display_name %></td>
+                <% else %>
+                  <td><%= procedure.procedurename %></td>
+                <% end %>
+                <td>
+                  <% if procedure.procedureside == "8966001" %>
+                    Left Eye
+                  <% elsif procedure.procedureside == "18944008" %>
+                    Right Eye
+                  <% elsif procedure.procedureside == "40638003" %>
+                    Both Eyes
+                  <% end %>
+                </td>
+                <td><%= procedure.try(:performed_datetime).try(:strftime, '%d/%m/%Y') %></td>
+              </tr>
+            <% end %>
+          </table>
+        </div>
+      <% end %>
+      <% if @case_sheet.free_form_procedures.try(:count) > 0 %>
+        <div class="col-md-8">
+          <% if @case_sheet.free_form_procedures[@ipdrecord.id.to_s].present? %>
+            <% if @case_sheet.free_form_procedures[@ipdrecord.id.to_s][:content].present? && @case_sheet.free_form_procedures[@ipdrecord.id.to_s][:content] != "<br>" %>
+              <div class="row mb20">
+                <div class="col-md-12">
+                  <b>Procedure <% if @case_sheet.free_form_procedures.try(:count) > 0 %>Text<% end %>:</b>
+                  <li style="margin-left: 10px"><%= @case_sheet.free_form_procedures[@ipdrecord.id.to_s][:content].to_s.html_safe() %></li>
+                </div>
+              </div>
+            <% end %>
+          <% else %>
+            <% uniq_array = [] %>
+            <div class="row mb20">
+              <div class="col-md-12">
+                <b>Procedure <% if @case_sheet.free_form_procedures.try(:count) > 0 %>Text<% end %>:</b>
+                <% @case_sheet.free_form_procedures.each do |key, procedure| %>
+                  <% if procedure[:content].present? && procedure[:content] != "<br>" %>
+                    <% unless uniq_array.include?(procedure[:content].to_s.html_safe()) %>
+                      <li style="margin-left: 10px"><%= procedure[:content].to_s.html_safe() %></li>
+                      <% uniq_array << procedure[:content].to_s.html_safe() %>
+                    <% end %>
+                  <% end %>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+
+  <% if @operative_note.anesthesia.present? %>
+    <div class="row mb30">
+      <div class="col-md-4">
+        <b class="title-summary-detail">Type of Anaesthesia : </b>
+      </div>
+      <div class="col-md-8">
+        <b><%= @operative_note.anesthesia.upcase %></b>
+      </div>
+    </div>
+  <% end %>
+
+  <% if @diagnosislist.where(is_disabled: false).try(:length) > 0 %>
+    <div class="row mb30">
+      <div class="col-md-4">
+        <b class="title-summary-detail">Diagnosis : </b>
+      </div>
+      <div class="col-md-8">
+        <% @diagnosislist.where(is_disabled: false).group_by(&:icddiagnosiscode).each do |icddiagnosiscode, diagnoses| %>
+          <% if diagnoses[0][:created_from] == "migration" %>
+            <li style="margin-left: 10px"> <%= diagnoses[0][:diagnosisname].capitalize %></li>
+          <% else %>
+            <% icd_type = diagnoses[0][:icd_type] %>
+            <% icd_code = diagnoses[0][:icddiagnosiscode] %>
+            <% if icd_type == 'IcdDiagnosis' || icd_type == 'TranslatedIcdDiagnosis' %>
+              <% diagnosiscode = '- ' +  icd_code.upcase.insert(3, '.') %>
+            <% else %>
+              <% diagnosiscode = '' %>
+            <% end %>
+            <% if icd_type == 'TranslatedIcdDiagnosis' %>
+              <li style="margin-left: 10px"> <%= diagnoses[0][:diagnosisname].capitalize %><strong>  <%= diagnosiscode %></strong></li>
+            <% else %>
+              <li style="margin-left: 10px"> <%= diagnoses[0][:diagnosisoriginalname].capitalize %><strong>  <%= diagnosiscode %></strong></li>
+            <% end %>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+  <% if @case_sheet.free_form_diagnoses.try(:count) > 0 %>
+    <div class="row mb20">
+      <% if @case_sheet.free_form_diagnoses[@ipdrecord.id.to_s].present? %>
+        <% if @case_sheet.free_form_diagnoses[@ipdrecord.id.to_s][:content].present? && @case_sheet.free_form_diagnoses[@ipdrecord.id.to_s][:content] != "<br>" %>
+          <div class="col-md-12">
+            <b>Diagnosis <% if @diagnosislist.where(is_disabled: false).try(:length) > 0 %>Text<% end %>:</b>
+            <li style="margin-left: 10px"><%= @case_sheet.free_form_diagnoses[@ipdrecord.id.to_s][:content].to_s.html_safe() %></li>
+          </div>
+        <% end %>
+      <% else %>
+        <% uniq_array = [] %>
+        <div class="col-md-12">
+          <b>Diagnosis <% if @diagnosislist.where(is_disabled: false).try(:length) > 0 %>Text<% end %>:</b>
+          <% @case_sheet.free_form_diagnoses.each do |key, diagnosis| %>
+            <% if diagnosis[:content].present? && diagnosis[:content] != "<br>" %>
+              <% unless uniq_array.include?(diagnosis[:content].to_s.html_safe()) %>
+                <li style="margin-left: 10px"><%= diagnosis[:content].to_s.html_safe() %></li>
+                <% uniq_array << diagnosis[:content].to_s.html_safe() %>
+              <% end %>
+            <% end %>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+
+  <% if surgeon_present_counter > 0 %>
+    <div class="row mb30">
+      <div class="col-md-4">
+        <b class="title-summary-detail">Surgeon Name : </b>
+      </div>
+      <div class="col-md-8">
+        <b><%= surgeon %></b>
+      </div>
+    </div>
+  <% end %>
+
+  <% if surgeon_assistant_counter > 0 %>
+    <div class="row mb30">
+      <div class="col-md-4">
+        <b class="title-summary-detail">Assisted By : </b>
+      </div>
+      <div class="col-md-8">
+        <b><%= surgeon_assistant %></b>
+      </div>
+    </div>
+  <% end %>
+
+  <% unless @operative_note.bill_of_material_id.present? %>
+    <% if @operative_note&.power_inventory.present? %>
+      <div class="row mb30">
+        <div class="col-md-6">
+          <div class="row mb10">
+            <div class="col-md-8">
+              <b class="title-summary-detail">IOL Power : </b>
+            </div>
+            <div class="col-md-4">
+              <b><%= @operative_note.power_inventory %></b>
+            </div>
+          </div>
+          <% if @operative_note.try(:implants).present? %>
+            <div class="row mb10">
+              <div class="col-md-8">
+                <b class="title-summary-detail">Implant : </b>
+              </div>
+              <div class="col-md-4">
+                <b><%= @operative_note.try(:implants) %></b>
+              </div>
+            </div>
+          <% end %>
+        </div>
+        <div class="col-md-6">
+          <div class="iol-sticker-box">IOL Sticker Here</div>
+        </div>
+      </div>
+    <% end %>
+  <% end %>
+</div>
+
+<!--Signature-->
+    <%= render partial: 'common/user_signature.html.erb',locals: {user_id: @admission.doctor} %>
+<!--Signature Ends-->
+
+<style type="text/css">
+  .iol-sticker-box {
+    width: 100%;
+    height: 75px;
+    border: 3px solid #888;
+    text-align: center;
+    font-size: 21px;
+    padding-top: 25px;
+    margin: -10px 0 15px;
+  }
+
+
+  <% if params[:action] == "print" || params[:action] == "print_all_notes" %>
+    .operative-summary * {
+      color: #333;
+      font-size: 12px;
+    }
+
+    .title-summary-detail {
+       font-size: 10px !important;
+    }
+  <% else %>
+    .operative-summary * {
+      color: #333;
+      font-size: 14px;
+    }
+
+    .title-summary-detail {
+       font-size: 15px !important;
+    }
+  <% end %>
+</style>

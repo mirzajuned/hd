@@ -1,0 +1,128 @@
+<%= javascript_include_tag "application-loggedin", "data-turbolinks-track" => true %>
+<%= form_for(@holiday_plan, remote: true, html: {id: "#{@holiday_plan.id.to_s}_holiday-plan-form"}) do |f| %>
+  <%= f.hidden_field :facility_id, value: current_facility.id.to_s %>
+  <%= f.hidden_field :organisation_id, value: current_facility.organisation_id.to_s %>
+  <%= f.hidden_field :user_id, value: current_user.id.to_s %>
+
+  <div class="row mb5">
+    <div class='col-sm-2'><b>Plan Type</b></div>
+    <div class='col-sm-2'><b>Start Date</b></div>
+    <div class='col-sm-1'><b>Start Time</b></div>
+    <div class='col-sm-2'><b>End Date</b></div>
+    <div class='col-sm-1'><b>End Time</b></div>
+    <div class='col-sm-3'><b>Reason</b></div>
+    <div class='col-sm-1'><b>Actions</b></div>
+  </div>
+  <div class="row mb5">
+    <div class="col-sm-2">
+      <%= f.select :plan, options_for_select(['Planned Leave', 'Meeting', 'Sick Leave', 'Emergency Leave', 'Personal Leave', 'Break'],@holiday_plan.try(:plan)),{include_blank: 'Select'},{:class => 'form-control select2-selection select2-selection--single', :id => "#{@holiday_plan.id.to_s + '_plan'}", :required => true} %>
+    </div>
+    <div class="col-sm-2">
+      <% if @holiday_plan.start_date %>
+        <% @start_date = @holiday_plan.start_date.strftime('%d/%m/%Y') %>
+      <% else %>
+        <% @start_date = Time.current.strftime("%d/%m/%Y") %>
+      <% end %>
+      <%= f.text_field :start_date, id: "#{@holiday_plan.id.to_s + '_start_date'}", class: "form-control datepicker-date start_date", placeholder: 'Start Date', readonly: 'readonly', required: true, value: @start_date %>
+    </div>
+    <div class="col-sm-1 bootstrap-timepicker timepicker">
+      <% if @holiday_plan.start_time %>
+        <% @start_time = @holiday_plan.start_time.try(:strftime, '%I:%M %p') %>
+      <% end %>
+      <%= f.text_field :start_time, id: "#{@holiday_plan.id.to_s + '_start_time'}", class: "form-control timepicker-time start_time ", placeholder: 'Start Time',required: true, value: @start_time.present? ? @start_time : '12:00 AM' %>
+    </div>
+    <div class="col-sm-2">
+      <% if @holiday_plan.end_date %>
+        <% @end_date = @holiday_plan.end_date.strftime('%d/%m/%Y') %>
+      <% else %>
+        <% @end_date = "" %>
+      <% end %>
+      <%= f.text_field :end_date, id: "#{@holiday_plan.id.to_s + '_end_date'}", class: "form-control  datepicker-date end_date", placeholder: 'End Date', readonly: 'readonly',required: true, value: @end_date %>
+    </div>
+    <div class="col-sm-1 bootstrap-timepicker timepicker">
+      <% if @holiday_plan.end_time %>
+        <% @end_time = @holiday_plan.end_time.try(:strftime, '%I:%M %p') %>
+      <% end %>
+      <%= f.text_field :end_time, id: "#{@holiday_plan.id.to_s + '_end_time'}",class: "form-control timepicker-time end_time", placeholder: 'End Time',required: true, value: @end_time.present? ? @end_time: '12:00 AM' %>
+    </div>
+    <div class="col-sm-3">
+      <%= f.text_field :reason, id: "#{@holiday_plan.id.to_s + '_reason'}", :class => "form-control",  :maxlength => 50 %>
+    </div>
+    <div class='col-sm-1'>
+      <%= f.submit @button_name, class: "btn btn-primary btn-xs", onclick: 'holiday_plan_validation()' %>
+      <button class="btn btn-link btn-xs clear_form_data_<%= @holiday_plan.id.to_s %>">Clear</button>
+    </div>
+  </div>
+<% end %>
+
+<style type="text/css">
+  .datepicker-date, .timepicker-time {
+    background-color: #fff !important;
+    cursor: pointer !important;
+  }
+</style>
+<script type="text/javascript">
+  datepicker_options = {
+    dateFormat: 'dd/mm/yy',
+    minDate: -0
+  }
+  $(".datepicker-date").datepicker(datepicker_options);
+  // $("#holiday_plan_start_time").timepicker({defaultTime: false, minuteStep: 5})
+  // $("#holiday_plan_end_time").timepicker({defaultTime: false, minuteStep: 5})
+  $(".start_time").timepicker({defaultTime: false, minuteStep: 5})
+  $(".end_time").timepicker({defaultTime: false, minuteStep: 5})
+
+
+  $(".clear_form_data_<%= @holiday_plan.id.to_s %>").on('click', function(e){
+    e.preventDefault();
+    $("#<%= @holiday_plan.id.to_s %>_plan").val("")
+    $("#<%= @holiday_plan.id.to_s %>_start_date").val("")
+    $("#<%= @holiday_plan.id.to_s %>_start_time").val("")
+    $("#<%= @holiday_plan.id.to_s %>_end_date").val("")
+    $("#<%= @holiday_plan.id.to_s %>_end_time").val("")
+    $("#<%= @holiday_plan.id.to_s %>_reason").val("")
+  })
+
+  function holiday_plan_validation(){
+  $('#<%= @holiday_plan.id.to_s %>_holiday-plan-form').validate({
+    rules: {
+      "holiday_plan[start_date]": {
+        required: true
+      },
+      "holiday_plan[start_time]": {
+        required: true
+      },
+      "holiday_plan[plan]": {
+        required: true
+      },
+      "holiday_plan[end_date]": {
+        required: true
+      },
+      "holiday_plan[end_time]": {
+        required: true
+      },
+    },
+    messages: {
+      "holiday_plan[start_date]": {
+        required: "Start Date cannot be Blank"
+      },
+      "holiday_plan[start_time]": {
+        required: "Start Time cannot be Blank",
+      },
+      "holiday_plan[plan]": {
+        required: "Plan cannot be Blank"
+      },
+      "holiday_plan[end_date]": {
+        required: "End Date cannot be Blank"
+      },
+      "holiday_plan[end_time]": {
+        required: "End Time cannot be Blank"
+      }
+    },
+    errorPlacement: function (error, element) {
+      error.insertAfter(element);
+    }
+  });
+}
+holiday_plan_validation();
+</script>

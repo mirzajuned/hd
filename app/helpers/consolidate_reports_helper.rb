@@ -1,0 +1,2 @@
+module ConsolidateReportsHelper
+end

@@ -1,0 +1,39 @@
+<% if @existing_appointment.nil? %>
+  // New Form
+  $("#appointment-modal").html("<%= escape_javascript(render 'new.html.erb') %>")
+<% else %>
+  // Alerts About Apppointment Existance
+  refresh_appointment_management('<%= current_user.id.to_s %>', "<%= ('not_arrived' if current_facility.clinical_workflow) || 'all' %>", "<%= @existing_appointment.appointment_id %>", "<%= Date.current.strftime('%d/%m/%Y') %>")
+  $('#appointment-modal').modal('hide')
+  notice = new PNotify({
+    title: 'Update',
+    text: 'Appointment Already Exists.Appointment Selected',
+    type: 'error'
+  })
+  notice.get().click(function(){ notice.remove() });
+<% end %>
+
+function refresh_appointment_management(doctor_id, active_tab, appointment_id, current_date="<%= @current_date %>", specialty_id){
+  $.ajax({
+    type: "GET",
+    dataType: "script",
+    data: {
+      current_date: current_date,
+      active_user: doctor_id,
+      active_tab: active_tab,
+      appointment_id: appointment_id,
+      specialty_id: specialty_id,
+      doctors_list: $(".toggle-sidebar-doctors").attr('data-toggle-position')
+    },
+    url: "/outpatients/appointment_management",
+    success: function(){
+      if($('.departments_button').length > 0){
+        $('.departments_button').html("<span class='fa-color departments_span'><i class='fa fa-ambulance' style='font-size:15px;'><strong> OPD </strong><span class='caret fa-color'></span></span>")
+      }else{
+        $("#patient-management").removeClass("activate")
+        $("#appointment-management").addClass("activate")
+      }
+    }
+  })
+  history.pushState('', '', '/outpatients/appointment_management'); // history.pushState([data], [title], [url]);
+}

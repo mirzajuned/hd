@@ -1,0 +1,818 @@
+<style>
+  .ui-autocomplete {
+    max-height: 150px;
+    overflow-y: auto;
+    /* prevent horizontal scrollbar */
+    overflow-x: hidden;
+    /* add padding to account for vertical scrollbar */
+    background-color: #d9edf7;
+  }
+</style>
+<% if @current_facility.show_language_support %>
+  <div class="tab-pane active" id="medication">
+    <% if @organisations_setting.mandatory_opd_templates == true && params[:templatetype] != "postop" %>
+      <div class="row mb5" id="div_medication_advised">
+        <div class="col-md-12 col-sm-12 col-xs-12">
+          <div class="col-md-6 col-sm-offset-5">
+            <div class="ckbox ckbox-success">
+              <%= f.check_box :no_medications_advised, {class: "medication_advised", :value => opdrecord.read_attribute(:no_medications_advised)}, "true", "false" %>
+              <label for="opdrecord_no_medications_advised">No Medication Advised</label>
+            </div>
+          </div>
+        </div>
+      </div>
+    <% end %>
+    <% if @pharmacy_stores_array.length > 1 %>
+      <div class="row medication_tab_row" >
+        <div class="col-md-6 col-sm-6 col-xs-6 multiple-pharmacies" style="<%= 'display: none;' if @no_pharmacy_store == true %>">
+          <div class="row">
+            <div class="col-md-4 col-sm-4 col-xs-4"><strong>Store:</strong></div>
+            <div class="col-md-8 col-sm-8 col-xs-8">
+              <%= select_tag("opdrecord[view_pharmacy_store_id]", options_for_select(@pharmacy_stores_array, @opdrecord.pharmacy_store_id ? @opdrecord.pharmacy_store_id.to_s : @pharmacy_stores_array[0][1].to_s), { :class => 'form-control', style: "width: 100%;padding: 8px 0px;", disabled: @no_pharmacy_store || false}) %>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6 col-sm-6 col-xs-6"></div>
+      </div>
+      <br>
+    <% elsif @pharmacy_stores_array.length == 1 %>
+      <div class="row medication_tab_row" >
+        <div class="col-md-6 col-sm-6 col-xs-6 single-pharmacy-name" style="<%= 'display: none;' if @no_pharmacy_store == true %>">
+          <div class="row">
+            <div class="col-sm-4"><strong>Store:</strong></div>
+            <div class="col-sm-6">
+              <% pharmacy_store = if @opdrecord.pharmacy_store_id.present?
+                   [@opdrecord.pharmacy_store_name, @opdrecord.pharmacy_store_id]
+                 else
+                   @pharmacy_stores_array[0]
+                 end %>
+              <span><%= pharmacy_store[0] %></span>
+              <input type="hidden" name="opdrecord[view_pharmacy_store_id]" id='opdrecord_view_pharmacy_store_id' value="<%= pharmacy_store[1]%>",
+              disabled='<%= @no_pharmacy_store || false %>' >
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6 col-sm-6 col-xs-6"></div>
+      </div>
+      <br>
+    <% end %>
+    <div class="row medication_tab_row">
+      <div class="col-md-10 col-sm-10 col-xs-12">
+        <table class="table table-striped table-bordered" id="medicationTable">
+          <thead>
+            <tr>
+              <th class="col-md-2" style="text-align:center;">Name</th>
+              <th class="col-md-1" style="text-align:center;">Type</th>
+              <th class="col-md-1" style="text-align:center;">Quantity</th>
+              <th class="col-md-1" style="text-align:center;">Frequency&nbsp;
+                <a data-toggle="tooltip" data-placement="bottom" title="Number of times in a day"><i class="fa fa-info-circle" aria-hidden="true"></i></a>
+              </th>
+              <th class="col-md-2" style="text-align:center;">Duration
+                &nbsp;<a data-toggle="tooltip" data-placement="bottom" title="How long patient need to take this"><i class="fa fa-info-circle" aria-hidden="true"></i></a>
+              </th>
+              <th class="col-md-1" style="text-align:center;">Taper</th>
+              <th class="col-md-1" style="text-align:center;">Eye</th>
+              <th class="col-md-2" style="text-align:center;">Instruction</th>
+              <th class="col-md-1" style="text-align:center;">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="medication-table-body-added medication_set_body" id="tbody_medication">
+            <% @medication_instruction_set << 'Add a text Box' %>
+            <% if @opdrecord.has_treatmentmedication? %>
+              <% @opdrecord.treatmentmedication.each_with_index do |elem, i| %>
+                <tr class="treatmentmedications">
+                  <td style="text-align:center;" class="col-md-2">
+                    <div class="form-group">
+                      <div class="input-group mb15">
+                        <div class="ui-widget">
+                          <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{i}][lot_id]", '', class: 'form-control id' %>
+                          <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{i}][id]", elem.id, class: 'form-control id' %>
+                          <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{i}][pharmacy_item_id]", elem.pharmacy_item_id, class: 'form-control pharmacy_item_id' %>
+                          <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{i}][generic_display_name]", elem.generic_display_name, class: 'form-control generic_display_name' %>
+                          <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{i}][generic_display_ids]", elem.generic_display_ids, class: 'form-control generic_display_ids' %>
+                          <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{i}][medicine_from]", elem.medicine_from, class: 'form-control medicine_from' %>
+                          <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{i}][_destroy]", '0', class: 'form-control' %>
+                          <%= text_field_tag "opdrecord[treatmentmedication_attributes][#{i}][medicinename]", elem.medicinename, maxlength: 300, size: 40, class: 'form-control medicinename', style: 'width:100%;' %>
+                        </div>
+                        <span id="medicinename-contents-<%= i.to_s %>" class="btn btn-xs btn-success btn-square medicinename-contents hidden" data-medicinecontents=""><i class="fa fa-question-circle"></i></span>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="text-align:center;" class="col-md-1">
+                    <div class="form-group">
+                      <div class="input-group mb15">
+                        <%= text_field_tag "opdrecord[treatmentmedication_attributes][#{i}][medicinetype]", elem.medicinetype, class: 'form-control medicinetype' %>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="text-align:center;" class="col-md-1">
+                    <div class="form-group">
+                      <div class="input-group mb15">
+                        <%= select_tag "opdrecord[treatmentmedication_attributes][#{i}][medicinequantity]", options_for_select(['1/4', '1/2', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '20', '25', '30', '35', '40', '45', '50'], elem.medicinequantity), class: 'form-control medicinequantity' %>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="text-align:center;" class="col-md-1">
+                    <div class="form-group">
+                      <div class="input-group mb15">
+                        <%= select_tag "opdrecord[treatmentmedication_attributes][#{i}][medicinefrequency]", options_for_select([['Sel', ''], ['1', '1'], ['2', '2'], ['3', '3'], ['4', '4'], ['5', '5'], ['6', '6'], ['8', '8'], ['10', '10'], ['12', '12'], ['18', '18'], ['24', '24'], ['SOS', 'SOS']], elem.medicinefrequency), class: 'form-control medicinefrequency' %>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="text-align:center;" class="col-md-2">
+                    <div class="form-group">
+                      <div class="input-group mb15">
+                        <div class="row">
+                          <div class="col-md-6 col-sm-6 col-xs-6">
+                            <%= select_tag "opdrecord[treatmentmedication_attributes][#{i}][medicineduration]", options_for_select([['Sel', ''], ['1', '1'], ['2', '2'], ['3', '3'], ['4', '4'], ['5', '5'], ['6', '6'], ['7', '7'], ['8', '8'], ['9', '9'], ['10', '10'], ['11', '11'], ['12', '12'], ['15', '15'], ['20', '20'], ['25', '25'], ['30', '30'], ['40', '40'], ['50', '50']], elem.medicineduration), class: 'form-control medicineduration', style: 'width:100%;padding-left:0px;padding-right:0px;' %>
+                          </div>
+                          <div class="col-md-6 col-sm-6 col-xs-6">
+                            <%= select_tag "opdrecord[treatmentmedication_attributes][#{i}][medicinedurationoption]", options_for_select([['Sel', ''], ['Days', 'D'], ['Weeks', 'W'], ['Months', 'M'], ['Next followup', 'F']], elem.medicinedurationoption), class: 'form-control medicinedurationoption', style: 'width:100%;padding-left:0px;padding-right:0px;' %>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="text-align:center;" class="col-md-1">
+                    <div class="form-group" style="margin-right:0px;">
+                      <div class="input-group mb15 link_medication">
+                        <span class="btn btn-link btn-xs tapering_btn" style="display:inline;"><i class="fa fa-plus"></i> Add</span>
+                        <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{i}][taper_id]", elem.taper_id, class: 'form-control tapering_id' %>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="text-align:center;" class="col-md-1">
+                    <div class="form-group" style="width: 100%;">
+                      <div class="input-group mb15">
+                        <%= select_tag "opdrecord[treatmentmedication_attributes][#{i}][eyeside]", options_for_select(['L', 'R', 'BE'], elem.eyeside), prompt: 'Select', class: 'form-control eyeside', style: 'padding: 10px 0px' %>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="medication_instruction_box" style="text-align:center;" class="col-md-2">
+                    <% if elem.medicineinstructions.present? %>
+                      <div class="form-group edit_instruction_box">
+                        <div class="input-group mb15">
+                          <%= text_field_tag "opdrecord[treatmentmedication_attributes][#{i}][medicineinstructions]", elem.medicineinstructions, maxlength: 300, size: 40, class: 'form-control text_box_val magic', style: 'width: 86%' %>
+                          <button type="button" class="btn btn-link undo_button_edit fa fa-undo" style="width: 0%; margin-left: -11%;"></button>
+                        </div>
+                      </div>
+                      <div class="form-group hide edit_instruction">
+                        <div class="input-group mb15">
+                          <%= select_tag "opdrecord[treatmentmedication_attributes][#{i}][instruction]", options_for_select(@medication_instruction_set, ''), prompt: 'Please Select', class: 'form-control instruction_dropdown_edit', style: 'padding: 10px 0px' %>
+                        </div>
+                      </div>
+                    <% elsif elem.instruction.present? %>
+                      <div class="form-group edit-instruction">
+                        <div class="input-group mb15">
+                          <%= select_tag "opdrecord[treatmentmedication_attributes][#{i}][instruction]", options_for_select(@medication_instruction_set, elem.instruction), prompt: 'Please Select', class: 'form-control instruction_dropdown_magic', style: 'padding: 10px 0px' %>
+                        </div>
+                      </div>
+                      <div class="form-group hide instruction_box">
+                        <div class="input-group mb15">
+                          <%= text_field_tag "opdrecord[treatmentmedication_attributes][#{i}][medicineinstructions]", nil, maxlength: 300, size: 40, class: 'form-control text_box_val', style: 'width: 86%' %>
+                          <button type="button" class="btn btn-link undo_button_magic fa fa-undo" style="width: 0%; margin-left: -11%;"></button>
+                        </div>
+                      </div>
+                    <% else %>
+                      <div class="form-group instruction">
+                        <div class="input-group mb15">
+                          <%= select_tag "opdrecord[treatmentmedication_attributes][#{i}][instruction]", options_for_select(@medication_instruction_set, ''), prompt: 'Please Select', class: 'form-control instruction_dropdown', style: 'padding: 10px 0px' %>
+                        </div>
+                      </div>
+                      <div class="form-group instruction_box hide">
+                        <div class="input-group mb15">
+                          <%= text_field_tag "opdrecord[treatmentmedication_attributes][#{i}][medicineinstructions]", nil, maxlength: 300, size: 40, class: 'form-control text_box_val', style: 'width: 86%' %>
+                          <button type="button" class="btn btn-link undo_button fa fa-undo" style="width: 0%; margin-left: -11%;"></button>
+                        </div>
+                      </div>
+                    <% end %>
+                  </td>
+                  <td style="text-align:center;" class="col-md-1">
+                    <div class="form-group">
+                      <a id="addnewmedicationbutton1" class="btn btn-xs btn-primary btn-square add-new-btn" href="javascript:;" name="addnewmedicationbutton"><span class="glyphicon glyphicon-plus-sign"></span></a>
+                      <a id="removemedicationbutton1" class="btn btn-xs btn-primary btn-danger removemedicationbutton" name="removemedicationbutton"><span class="glyphicon glyphicon-remove"></span></a>
+                      <% if elem['status'].present? %>
+                        <% btn_cls = if elem['status'] == 'C'
+                                        'btn-info'
+                                      elsif elem['status'] == 'D'
+                                        'btn-warning'
+                                      else
+                                        ''
+                                      end %>
+                        <a class="btn btn-xs btn-info <%= btn_cls %>" href="javascript:;" name="statusbutton"><%= elem['status'] %></a>
+                      <% end %>
+                    </div>
+                  </td>
+                </tr>
+              <% end %>
+              <% counter = @opdrecord.treatmentmedication.size %>
+              <% ((counter + 1)..5).each_with_index do |elem, i| %>
+                <tr class="treatmentmedications">
+                  <td style="text-align:center;" class="col-md-2">
+                    <div class="form-group">
+                      <div class="input-group mb15">
+                        <div class="ui-widget">
+                          <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{i}][lot_id]", '', class: 'form-control id' %>
+                          <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{counter}][_destroy]", '0', class: 'form-control' %>
+                          <%= text_field_tag "opdrecord[treatmentmedication_attributes][#{counter}][medicinename]", nil, maxlength: 300, size: 40, class: 'form-control medicinename', style: 'width:100%;' %>
+                          <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{counter}][pharmacy_item_id]", nil, class: 'form-control pharmacy_item_id' %>
+                          <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{counter}][generic_display_name]", nil, class: 'form-control generic_display_name' %>
+                          <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{counter}][generic_display_ids]", nil, class: 'form-control generic_display_ids' %>
+                          <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{counter}][medicine_from]", nil, class: 'form-control medicine_from' %>
+                        </div>
+                        <span id="medicinename-contents-<%= counter.to_s %>" class="btn btn-xs btn-success btn-square medicinename-contents hidden" data-medicinecontents=""><i class="fa fa-question-circle"></i></span>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="text-align:center;" class="col-md-1">
+                    <div class="form-group">
+                      <div class="input-group mb15">
+                        <%= text_field_tag "opdrecord[treatmentmedication_attributes][#{counter}][medicinetype]", nil, class: 'form-control medicinetype' %>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="text-align:center;" class="col-md-1">
+                    <div class="form-group">
+                      <div class="input-group mb15">
+                        <%= select_tag "opdrecord[treatmentmedication_attributes][#{counter}][medicinequantity]", options_for_select(['1/4', '1/2', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '20', '25', '30', '35', '40', '45', '50'], '1'), class: 'form-control medicinequantity' %>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="text-align:center;" class="col-md-1">
+                    <div class="form-group">
+                      <div class="input-group mb15">
+                        <%= select_tag "opdrecord[treatmentmedication_attributes][#{counter}][medicinefrequency]", options_for_select([['Sel', ''], ['1', '1'], ['2', '2'], ['3', '3'], ['4', '4'], ['5', '5'], ['6', '6'], ['8', '8'], ['10', '10'], ['12', '12'], ['18', '18'], ['24', '24'], ['SOS', 'SOS']], ''), class: 'form-control medicinefrequency' %>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="text-align:center;" class="col-md-2">
+                    <div class="form-group">
+                      <div class="input-group mb15">
+                        <div class="row">
+                          <div class="col-md-6 col-sm-6">
+                            <%= select_tag "opdrecord[treatmentmedication_attributes][#{counter}][medicineduration]", options_for_select([['Sel', ''], ['1', '1'], ['2', '2'], ['3', '3'], ['4', '4'], ['5', '5'], ['6', '6'], ['7', '7'], ['8', '8'], ['9', '9'], ['10', '10'], ['11', '11'], ['12', '12'], ['15', '15'], ['20', '20'], ['25', '25'], ['30', '30'], ['40', '40'], ['50', '50']], ''), class: 'form-control medicineduration', style: 'width:100%;padding-left:0px;padding-right:0px;' %>
+                          </div>
+                          <div class="col-md-6 col-sm-6">
+                            <%= select_tag "opdrecord[treatmentmedication_attributes][#{counter}][medicinedurationoption]", options_for_select([['Sel', ''], ['Days', 'D'], ['Weeks', 'W'], ['Months', 'M'], ['Next followup', 'F']], ''), class: 'form-control medicinedurationoption', style: 'width:100%;padding-left:0px;padding-right:0px;' %>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="text-align:center;" class="col-md-1">
+                    <div class="form-group" style="margin-right:0px;">
+                      <div class="input-group mb15 link_medication">
+                        <span class="btn btn-link btn-xs tapering_btn" style="display:inline;"><i class="fa fa-plus"></i> Add</span>
+                        <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{counter}][taper_id]", 0, class: 'form-control tapering_id' %>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="text-align:center;" class="col-md-1">
+                    <div class="form-group" style="width: 100%;">
+                      <div class="input-group mb15">
+                        <%= select_tag "opdrecord[treatmentmedication_attributes][#{counter}][eyeside]", options_for_select(['L', 'R', 'BE'], ''), prompt: 'Select', class: 'form-control eyeside', style: 'padding: 10px 0px' %>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="medication_instruction_box" style="text-align:center;" class="col-md-2">
+                    <div class="form-group instruction">
+                      <div class="input-group mb15">
+                        <%= select_tag "opdrecord[treatmentmedication_attributes][#{counter}][instruction]", options_for_select(@medication_instruction_set), prompt: 'Please Select', class: 'form-control instruction_dropdown', style: 'padding: 10px 0px' %>
+                      </div>
+                    </div>
+                    <div class="form-group instruction_box hide">
+                      <div class="input-group mb15">
+                        <%= text_field_tag "opdrecord[treatmentmedication_attributes][#{counter}][medicineinstructions]", nil, maxlength: 300, size: 40, class: 'form-control text_box_val', style: 'width: 86%' %>
+                        <button type="button" class="btn btn-link undo_button fa fa-undo" style="width: 0%; margin-left: -11%;"></button>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="text-align:center;" class="col-md-1">
+                    <div class="form-group">
+                      <a id="addnewmedicationbutton1" class="btn btn-xs btn-primary btn-square add-new-btn" href="javascript:;" name="addnewmedicationbutton"><span class="glyphicon glyphicon-plus-sign"></span></a>
+                      <a id="removemedicationbutton1" class="btn btn-xs btn-primary btn-danger removemedicationbutton"  name="removemedicationbutton"><span class="glyphicon glyphicon-remove"></span></a>
+                    </div>
+                  </td>
+                </tr>
+                <% counter += 1 %>
+              <% end %>
+            <% else %>
+              <% (1..5).each_with_index do |elem, i| %>
+                <tr class="treatmentmedications">
+                  <td style="text-align:center;" class="col-md-2">
+                    <div class="form-group">
+                      <div class="input-group mb15">
+                        <div class="ui-widget">
+                          <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{i}][lot_id]", '', class: 'form-control lot_id' %>
+                          <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{i}][_destroy]", '0', class: 'form-control' %>
+                          <%= text_field_tag "opdrecord[treatmentmedication_attributes][#{i}][medicinename]", nil, class: 'form-control medicinename', size: 40, maxlength: 300, style: 'width:100%' %>
+                          <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{i}][pharmacy_item_id]", nil, class: 'form-control pharmacy_item_id' %>
+                          <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{i}][generic_display_name]", nil, class: 'form-control generic_display_name' %>
+                          <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{i}][generic_display_ids]", nil, class: 'form-control generic_display_ids' %>
+                          <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{i}][medicine_from]", nil, class: 'form-control medicine_from' %>
+                        </div>
+                        <span id="medicinename-contents-<%= i.to_s %>" class="btn btn-xs btn-success btn-square medicinename-contents hidden" data-medicinecontents=""><i class="fa fa-question-circle"></i></span>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="text-align:center;" class="col-md-1">
+                    <div class="form-group">
+                      <div class="input-group mb15">
+                        <%= text_field_tag "opdrecord[treatmentmedication_attributes][#{i}][medicinetype]", nil, class: 'form-control medicinetype' %>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="text-align:center;" class="col-md-1">
+                    <div class="form-group">
+                      <div class="input-group mb15">
+                        <%= select_tag "opdrecord[treatmentmedication_attributes][#{i}][medicinequantity]", options_for_select(['1/4', '1/2', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '20', '25', '30', '35', '40', '45', '50'], '1'), class: 'form-control medicinequantity' %>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="text-align:center;" class="col-md-1">
+                    <div class="form-group" style="margin-right: 0px;">
+                      <div class="input-group mb15">
+                        <%= select_tag "opdrecord[treatmentmedication_attributes][#{i}][medicinefrequency]", options_for_select([['Sel', ''], ['1', '1'], ['2', '2'], ['3', '3'], ['4', '4'], ['5', '5'], ['6', '6'], ['8', '8'], ['10', '10'], ['12', '12'], ['18', '18'], ['24', '24'], ['SOS', 'SOS']], ''), class: 'form-control medicinefrequency' %>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="text-align:center;" class="col-md-2">
+                    <div class="form-group">
+                      <div class="input-group mb15">
+                        <div class="row">
+                          <div class="col-md-6 col-sm-6">
+                            <%= select_tag "opdrecord[treatmentmedication_attributes][#{i}][medicineduration]", options_for_select([['Sel', ''], ['1', '1'], ['2', '2'], ['3', '3'], ['4', '4'], ['5', '5'], ['6', '6'], ['7', '7'], ['8', '8'], ['9', '9'], ['10', '10'], ['11', '11'], ['12', '12'], ['15', '15'], ['20', '20'], ['25', '25'], ['30', '30'], ['40', '40'], ['50', '50']], ''), class: 'form-control medicineduration', style: 'width:100%;padding-left:0px;padding-right:0px;' %>
+                          </div>
+                          <div class="col-md-6 col-sm-6">
+                            <%= select_tag "opdrecord[treatmentmedication_attributes][#{i}][medicinedurationoption]", options_for_select([['Sel', ''], ['Days', 'D'], ['Weeks', 'W'], ['Months', 'M'], ['Next followup', 'F']], ''), class: 'form-control medicinedurationoption', style: 'width:100%;padding-left:0px;padding-right:0px;' %>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="text-align:center" class="col-md-1">
+                    <div class="form-group" style="margin-right:0px;">
+                      <div class="input-group mb15 link_medication">
+                        <span class="btn btn-link btn-xs tapering_btn" style="display:inline;"><i class="fa fa-plus"></i> Add</span>
+                        <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{i}][taper_id]", 0, class: 'form-control tapering_id' %>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="text-align:center;" class="col-md-1">
+                    <div class="form-group" style="width: 100%;">
+                      <div class="input-group mb15">
+                        <%= select_tag "opdrecord[treatmentmedication_attributes][#{i}][eyeside]", options_for_select(['L', 'R', 'BE'], ''), prompt: 'Select', class: 'form-control eyeside', style: 'padding: 10px 0px' %>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="medication_instruction_box" style="text-align:center;" class="col-md-2">
+                    <div class="form-group instruction">
+                      <div class="input-group mb15">
+                        <%= select_tag "opdrecord[treatmentmedication_attributes][#{i}][instruction]", options_for_select(@medication_instruction_set), prompt: 'Please Select', class: 'form-control instruction_dropdown', style: 'padding: 10px 0px' %>
+                      </div>
+                    </div>
+                    <div class="form-group hide instruction_box">
+                      <div class="input-group mb15">
+                        <%= text_field_tag "opdrecord[treatmentmedication_attributes][#{i}][medicineinstructions]", nil, maxlength: 300, size: 40, class: 'form-control text_box_val', style: 'width: 86%' %>
+                        <button type="button" class="btn btn-link undo_button fa fa-undo" style="width: 0%; margin-left: -11%;"></button>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="text-align:center;" class="col-md-1">
+                    <div class="form-group">
+                      <a id="addnewmedicationbutton1" class="btn btn-xs btn-primary btn-square add-new-btn" href="javascript:;" name="addnewmedicationbutton"><span class="glyphicon glyphicon-plus-sign"></span></a>
+                      <a id="removemedicationbutton1" class="btn btn-xs btn-primary btn-danger removemedicationbutton" name="removemedicationbutton"><span class="glyphicon glyphicon-remove"></span></a>
+                    </div>
+                  </td>
+                </tr>
+              <% end %>
+          <% end %>
+          </tbody>
+        </table>
+        <div class="medication-table-body-removed" style="display:none;"></div>
+      </div>
+      <div class="col-md-2 col-sm-2 col-xs-12">
+        <% if @has_patient_prescription_history %>
+          <div class="btn btn-success mb10" id="div_med_history"><i class="fa fa-history"></i> Continue Same Treatment</div>
+        <% end %>
+        <div class="btn btn-success save-medication-kit-btn mb10"><i class="fa fa-hand-o-left"></i> Save Medication Set</div>
+        <!-- medication set dropdown -->
+        <div class="medication_set_dropdown_wrapper">
+          <input type="hidden" name="opd_ipd" value="[440655000,0]" id="find_in_set_type" class="find_in_set_type">
+          <input type="hidden" class="selected_specialty" value="<%= @specalityid %>">
+          <%= render partial: 'templates/shared/medication_set_dropdown' %>
+        </div>
+        <div class="mb5" style="border-bottom: solid"></div>
+        <div style="padding:6px;">
+          <label for="medicationsets-label">Medication Sets</label>
+          <input type="text" placeholder="Search" id="search_medication_set">
+        </div>
+        <div class="medication_kit_refresh">
+          <% medical_set = MedicationKit.where(:set_type.in => [440655000, 0], :user_id => @current_user.id, :organisation_id => @current_user.organisation.id, specialty_id: @appointment.specialty_id.to_i, level: 'user').sort_by{|med_kit| med_kit.name.downcase} %>
+          <select id="opdrecord_medicationsets_tab" class="tabview tab_select_tag option_remover" style="display:none;">
+            <option>Please Select</option>
+            <% medical_set.each do |medic| %>
+              <option value="<%= medic.id %>"><%= medic.name %></option>
+            <% end %>
+          </select>
+          <%= f.input :medicationsets, collection: medical_set, input_html: { multiple: true, size: '13', style: 'height: 100%; width:100%', class: 'form-control webview option_remover' }, as: :select, label: false, item_wrapper_class: 'form-control option_remover', required: false %>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-md-1 col-sm-2 col-xs-4 medication_comment_row">
+        <label for="comments-textarealabel">Comments :</label>
+      </div>
+      <div class="col-md-6 col-sm-6 col-xs-8 medication_comment_row">
+        <%= f.input :medicationcomments, as: :text, label: false, required: false, input_html: { class: 'form-control', rows: 2, cols: 50, style: 'width:100%;', required: false, name: 'opdrecord[medicationcomments]', value: opdrecord.read_attribute(:medicationcomments) } %>
+      </div>
+      <div class="col-md-4 col-sm-4 col-xs-12 pull-left medication_tab_row" style=" display: inline-block;vertical-align: left;float: none;text-align: left;">
+        <span class="badge col-md-2 col-sm-2 col-xs-2">P</span><b style="cursor:default;color:#5bc0de;">&nbsp;Pharmacy</b><br>
+        <span class="badge col-md-2 col-sm-2 col-xs-2">D</span><b style="cursor:default;color:#5bc0de;"> &nbsp;CIMS Drug Index</b><br>
+        <span class="badge col-md-2 col-sm-2 col-xs-2">M</span><b style="cursor:default;color:#5bc0de;">&nbsp;My Medication List</b>
+      </div>
+    </div>
+  </div>
+<% else %>
+  <div class="tab-pane active" id="medication">
+    <% if @organisations_setting.mandatory_opd_templates == true && params[:templatetype] != "postop" %>
+      <div class="row mb5" id="div_medication_advised">
+        <div class="col-md-12 col-sm-12 col-xs-12">
+          <div class="col-md-6">
+            <div class="ckbox ckbox-primary" style="float: right;">
+              <%= check_box_tag 'opdrecord[no_medications_advised]', false, opdrecord.read_attribute(:no_medications_advised), { class: "medication_advised"} %>
+              <label for="opdrecord_no_medications_advised">No Medication Advised</label>
+            </div>
+          </div>
+        </div>
+      </div>
+    <% end %>
+    <div class="row medication_tab_row">
+      <div class="col-md-10 col-sm-10 col-xs-12">
+        <table class="table table-striped table-bordered" id="medicationTable">
+          <thead>
+            <tr>
+              <th class="col-md-2" style="text-align:center">Name</th>
+              <th class="col-md-1" style="text-align:center">Type</th>
+              <th class="col-md-1" style="text-align:center">Quantity</th>
+              <th class="col-md-1" style="text-align:center">Frequency&nbsp;<a data-toggle="tooltip" data-placement="bottom" title="Number of times in a day"><i class="fa fa-info-circle" aria-hidden="true"></i></a></th>
+              <th class="col-md-2" style="text-align:center">Duration
+              &nbsp;<a data-toggle="tooltip" data-placement="bottom" title="How long you need to take this"><i class="fa fa-info-circle" aria-hidden="true"></i></a></th>
+              <th class="col-md-1" style="text-align:center">Taper</th>
+              <th class="col-md-1" style="text-align:center">Eye</th>
+              <th class="col-md-2" style="text-align:center">Instruction</th>
+              <th class="col-md-1" style="text-align:center">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="medication-table-body-added medication_set_body" id="tbody_medication">
+            <% if @opdrecord.has_treatmentmedication? %>
+              <% @opdrecord.treatmentmedication.each_with_index do |elem, i| %>
+                <tr class="treatmentmedications">
+                  <td style="text-align:center" class="col-md-2">
+                    <div class="form-group">
+                      <div class="input-group mb15">
+                        <div class="ui-widget">
+                          <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{i}][lot_id]", '', class: 'form-control id' %>
+                          <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{i}][id]", elem.id, class: 'form-control id' %>
+                          <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{i}][pharmacy_item_id]", elem.pharmacy_item_id, class: 'form-control pharmacy_item_id' %>
+                          <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{i}][generic_display_name]", elem.generic_display_name, class: 'form-control generic_display_name' %>
+                          <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{i}][generic_display_ids]", elem.generic_display_ids, class: 'form-control generic_display_ids' %>
+                          <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{i}][medicine_from]", elem.medicine_from, class: 'form-control medicine_from' %>
+                          <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{i}][_destroy]", '0', class: 'form-control' %>
+                          <%= text_field_tag "opdrecord[treatmentmedication_attributes][#{i}][medicinename]", elem.medicinename, maxlength: 300, size: 40, class: 'form-control medicinename', style: 'width:100%;' %>
+                        </div>
+                        <span id="medicinename-contents-<%= i.to_s %>" class="btn btn-xs btn-success btn-square medicinename-contents hidden" data-medicinecontents=""><i class="fa fa-question-circle"></i></span>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="text-align:center" class="col-md-1">
+                    <div class="form-group">
+                      <div class="input-group mb15">
+                        <%= text_field_tag "opdrecord[treatmentmedication_attributes][#{i}][medicinetype]", elem.medicinetype, class: 'form-control medicinetype' %>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="text-align:center" class="col-md-1">
+                    <div class="form-group">
+                      <div class="input-group mb15">
+                        <%= select_tag "opdrecord[treatmentmedication_attributes][#{i}][medicinequantity]", options_for_select(['1/4', '1/2', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '20', '25', '30', '35', '40', '45', '50'], elem.medicinequantity), class: 'form-control medicinequantity' %>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="text-align:center" class="col-md-1">
+                    <div class="form-group">
+                      <div class="input-group mb15">
+                        <%= select_tag "opdrecord[treatmentmedication_attributes][#{i}][medicinefrequency]", options_for_select([['Sel', ''], ['1', '1'], ['2', '2'], ['3', '3'], ['4', '4'], ['5', '5'], ['6', '6'], ['8', '8'], ['10', '10'], ['12', '12'], ['18', '18'], ['24', '24'], ['SOS', 'SOS']], elem.medicinefrequency), class: 'form-control medicinefrequency' %>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="text-align:center" class="col-md-2">
+                    <div class="form-group">
+                      <div class="input-group mb15">
+                        <div class="row">
+                          <div class="col-md-4 col-sm-4">
+                            <%= select_tag "opdrecord[treatmentmedication_attributes][#{i}][medicineduration]", options_for_select([['Sel', ''], ['1', '1'], ['2', '2'], ['3', '3'], ['4', '4'], ['5', '5'], ['6', '6'], ['7', '7'], ['8', '8'], ['9', '9'], ['10', '10'], ['11', '11'], ['12', '12'], ['15', '15'], ['20', '20'], ['25', '25'], ['30', '30'], ['40', '40'], ['50', '50']], elem.medicineduration), class: 'form-control medicineduration' %>
+                          </div>
+                          <div class="col-md-8 col-sm-8">
+                            <div class="col-md-12 col-sm-12">
+                              <%= select_tag "opdrecord[treatmentmedication_attributes][#{i}][medicinedurationoption]", options_for_select([['Sel', ''], ['Days', 'D'], ['Weeks', 'W'], ['Months', 'M'], ['Next followup', 'F']], elem.medicinedurationoption), class: 'form-control medicinedurationoption', style: 'width:150%;' %>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="text-align:center" class="col-md-1">
+                    <div class="form-group" style="margin-right:0px;">
+                      <div class="input-group mb15 link_medication">
+                      <span class="btn btn-link btn-xs tapering_btn" style="display:inline;"><i class="fa fa-plus"></i> Add</span>
+                        <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{i}][taper_id]", elem.taper_id, class: 'form-control tapering_id' %>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="text-align:center" class="col-md-1">
+                    <div class="form-group" style="width: 100%;">
+                      <div class="input-group mb15">
+                        <%= select_tag "opdrecord[treatmentmedication_attributes][#{i}][eyeside]", options_for_select(['L', 'R', 'BE'], elem.eyeside), prompt: 'Select', class: 'form-control eyeside', style: 'padding: 10px 0px' %>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="text-align:center" class="col-md-2">
+                    <div class="form-group">
+                      <div class="input-group mb15">
+                        <%= text_field_tag "opdrecord[treatmentmedication_attributes][#{i}][medicineinstructions]", elem.medicineinstructions, maxlength: 80, size: 40, class: 'form-control' %>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="text-align:center" class="col-md-1">
+                    <div class="form-group">
+                      <a id="addnewmedicationbutton1" class="btn btn-xs btn-primary btn-square add-new-btn" href="javascript:;" name="addnewmedicationbutton"><span class="glyphicon glyphicon-plus-sign"></span></a>
+                      <a id="removemedicationbutton1" class="btn btn-xs btn-primary btn-danger removemedicationbutton" name="removemedicationbutton"><span class="glyphicon glyphicon-remove"></span></a>
+                    </div>
+                  </td>
+                </tr>
+              <% end %>
+              <% counter = @opdrecord.treatmentmedication.size %>
+              <% ((counter + 1)..5).each_with_index do |elem, i| %>
+                <tr class="treatmentmedications">
+                  <td style="text-align:center" class="col-md-2">
+                    <div class="form-group">
+                      <div class="input-group mb15">
+                        <div class="ui-widget">
+                          <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{i}][lot_id]", '', class: 'form-control id' %>
+                          <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{counter}][_destroy]", '0', class: 'form-control' %>
+                          <%= text_field_tag "opdrecord[treatmentmedication_attributes][#{counter}][medicinename]", nil, maxlength: 300, size: 40, class: 'form-control medicinename' %>
+                          <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{counter}][pharmacy_item_id]", nil, class: 'form-control pharmacy_item_id' %>
+                          <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{counter}][generic_display_name]", nil, class: 'form-control generic_display_name' %>
+                          <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{counter}][generic_display_ids]", nil, class: 'form-control generic_display_ids' %>
+                          <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{counter}][medicine_from]", nil, class: 'form-control medicine_from' %>
+                        </div>
+                        <span id="medicinename-contents-<%= counter.to_s %>" class="btn btn-xs btn-success btn-square medicinename-contents hidden" data-medicinecontents=""><i class="fa fa-question-circle"></i></span>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="text-align:center" class="col-md-1">
+                    <div class="form-group">
+                      <div class="input-group mb15">
+                        <%= text_field_tag "opdrecord[treatmentmedication_attributes][#{counter}][medicinetype]", nil, class: 'form-control medicinetype' %>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="text-align:center" class="col-md-1">
+                    <div class="form-group">
+                      <div class="input-group mb15">
+                      <%= select_tag "opdrecord[treatmentmedication_attributes][#{counter}][medicinequantity]", options_for_select(['1/4', '1/2', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '20', '25', '30', '35', '40', '45', '50'], '1'), class: 'form-control medicinequantity' %>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="text-align:center" class="col-md-1">
+                    <div class="form-group">
+                      <div class="input-group mb15">
+                        <%= select_tag "opdrecord[treatmentmedication_attributes][#{counter}][medicinefrequency]", options_for_select([['Sel', ''], ['1', '1'], ['2', '2'], ['3', '3'], ['4', '4'], ['5', '5'], ['6', '6'], ['8', '8'], ['10', '10'], ['12', '12'], ['18', '18'], ['24', '24'], ['SOS', 'SOS']], ''), class: 'form-control medicinefrequency' %>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="text-align:center" class="col-md-2">
+                    <div class="form-group">
+                      <div class="input-group mb15">
+                        <div class="row">
+                          <div class="col-md-4 col-sm-4">
+                            <%= select_tag "opdrecord[treatmentmedication_attributes][#{counter}][medicineduration]", options_for_select([['Sel', ''], ['1', '1'], ['2', '2'], ['3', '3'], ['4', '4'], ['5', '5'], ['6', '6'], ['7', '7'], ['8', '8'], ['9', '9'], ['10', '10'], ['11', '11'], ['12', '12'], ['15', '15'], ['20', '20'], ['25', '25'], ['30', '30'], ['40', '40'], ['50', '50']], ''), class: 'form-control medicineduration' %>
+                          </div>
+                          <div class="col-md-8 col-sm-8">
+                            <div class="col-md-12 col-sm-12">
+                              <%= select_tag "opdrecord[treatmentmedication_attributes][#{counter}][medicinedurationoption]", options_for_select([['Sel', ''], ['Days', 'D'], ['Weeks', 'W'], ['Months', 'M'], ['Next followup', 'F']], ''), class: 'form-control medicinedurationoption', style: 'width:150%;' %>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="text-align:center" class="col-md-1">
+                    <div class="form-group" style="margin-right:0px;">
+                      <div class="input-group mb15 link_medication">
+                        <span class="btn btn-link btn-xs tapering_btn" style="display:inline;"><i class="fa fa-plus"></i> Add</span>
+                        <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{counter}][taper_id]", 0, class: 'form-control tapering_id' %>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="text-align:center" class="col-md-1">
+                    <div class="form-group" style="width: 100%;">
+                      <div class="input-group mb15">
+                        <%= select_tag "opdrecord[treatmentmedication_attributes][#{counter}][eyeside]", options_for_select(['L', 'R', 'BE'], ''), prompt: 'Select', class: 'form-control eyeside', style: 'padding: 10px 0px' %>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="text-align:center" class="col-md-2">
+                    <div class="form-group">
+                      <div class="input-group mb15">
+                        <%= text_field_tag "opdrecord[treatmentmedication_attributes][#{counter}][medicineinstructions]", nil, maxlength: 80, size: 40, class: 'form-control' %>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="text-align:center" class="col-md-1">
+                    <div class="form-group">
+                      <a id="addnewmedicationbutton1" class="btn btn-xs btn-primary btn-square add-new-btn" href="javascript:;" name="addnewmedicationbutton"><span class="glyphicon glyphicon-plus-sign"></span></a>
+                      <a id="removemedicationbutton1" class="btn btn-xs btn-primary btn-danger removemedicationbutton" name="removemedicationbutton"><span class="glyphicon glyphicon-remove"></span></a>
+                    </div>
+                  </td>
+                </tr>
+                <% counter += 1 %>
+              <% end %>
+            <% else %>
+              <% (1..5).each_with_index do |elem, i| %>
+              <tr class="treatmentmedications">
+                <td style="text-align:center" class="col-md-2">
+                  <div class="form-group">
+                    <div class="input-group mb15">
+                      <div class="ui-widget">
+                        <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{i}][lot_id]", '', class: 'form-control id' %>
+                        <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{i}][_destroy]", '0', class: 'form-control' %>
+                        <%= text_field_tag "opdrecord[treatmentmedication_attributes][#{i}][medicinename]", nil, maxlength: 300, size: 40, class: 'form-control medicinename', style: 'width:100%;' %>
+                        <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{i}][pharmacy_item_id]", nil, class: 'form-control pharmacy_item_id' %>
+                        <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{i}][generic_display_name]", nil, class: 'form-control generic_display_name' %>
+                        <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{i}][generic_display_ids]", nil, class: 'form-control generic_display_ids' %>
+                        <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{i}][medicine_from]", nil, class: 'form-control medicine_from' %>
+                      </div>
+                      <span id="medicinename-contents-<%= i.to_s %>" class="btn btn-xs btn-success btn-square medicinename-contents hidden" data-medicinecontents=""><i class="fa fa-question-circle"></i></span>
+                    </div>
+                  </div>
+                </td>
+                <td style="text-align:center" class="col-md-1">
+                  <div class="form-group">
+                    <div class="input-group mb15">
+                      <%= text_field_tag "opdrecord[treatmentmedication_attributes][#{i}][medicinetype]", nil, class: 'form-control medicinetype' %>
+                    </div>
+                  </div>
+                </td>
+                <td style="text-align:center" class="col-md-1">
+                  <div class="form-group">
+                    <div class="input-group mb15">
+                      <%= select_tag "opdrecord[treatmentmedication_attributes][#{i}][medicinequantity]", options_for_select(['1/4', '1/2', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '20', '25', '30', '35', '40', '45', '50'], '1'), class: 'form-control medicinequantity' %>
+                    </div>
+                  </div>
+                </td>
+                <td style="text-align:center" class="col-md-1">
+                  <div class="form-group">
+                    <div class="input-group mb15">
+                      <%= select_tag "opdrecord[treatmentmedication_attributes][#{i}][medicinefrequency]", options_for_select([['Sel', ''], ['1', '1'], ['2', '2'], ['3', '3'], ['4', '4'], ['5', '5'], ['6', '6'], ['8', '8'], ['10', '10'], ['12', '12'], ['18', '18'], ['24', '24'], ['SOS', 'SOS']], ''), class: 'form-control medicinefrequency' %>
+                    </div>
+                  </div>
+                </td>
+                <td style="text-align:center" class="col-md-2">
+                  <div class="form-group">
+                    <div class="input-group mb15">
+                      <div class="row">
+                        <div class="col-md-6">
+                          <%= select_tag "opdrecord[treatmentmedication_attributes][#{i}][medicineduration]", options_for_select([['Sel', ''], ['1', '1'], ['2', '2'], ['3', '3'], ['4', '4'], ['5', '5'], ['6', '6'], ['7', '7'], ['8', '8'], ['9', '9'], ['10', '10'], ['11', '11'], ['12', '12'], ['15', '15'], ['20', '20'], ['25', '25'], ['30', '30'], ['40', '40'], ['50', '50']], ''), class: 'form-control medicineduration' %>
+                        </div>
+                        <div class="col-md-6">
+                          <%= select_tag "opdrecord[treatmentmedication_attributes][#{i}][medicinedurationoption]", options_for_select([['Sel', ''], ['Days', 'D'], ['Weeks', 'W'], ['Months', 'M'], ['Next followup', 'F']], ''), class: 'form-control medicinedurationoption', style: 'width:150%;' %>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td style="text-align:center" class="col-md-1">
+                  <div class="form-group" style="margin-right:0px;">
+                    <div class="input-group mb15 link_medication">
+                      <span class="btn btn-link btn-xs tapering_btn" style="display:inline;"><i class="fa fa-plus"></i> Add</span>
+                    <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{i}][taper_id]", 0, class: 'form-control tapering_id' %>
+                    </div>
+                  </div>
+                </td>
+                <td style="text-align:center" class="col-md-1">
+                  <div class="form-group" style="width: 100%;">
+                    <div class="input-group mb15">
+                    <%= select_tag "opdrecord[treatmentmedication_attributes][#{i}][eyeside]", options_for_select(['L', 'R', 'BE'], ''), prompt: 'Select', class: 'form-control eyeside', style: 'padding: 10px 0px' %>
+                    </div>
+                  </div>
+                </td>
+                <td style="text-align:center" class="col-md-2">
+                  <div class="form-group">
+                    <div class="input-group mb15">
+                      <%= text_field_tag "opdrecord[treatmentmedication_attributes][#{i}][medicineinstructions]", nil, maxlength: 80, size: 40, class: 'form-control' %>
+                    </div>
+                  </div>
+                </td>
+                <td style="text-align:center" class="col-md-1">
+                  <div class="form-group">
+                    <a id="addnewmedicationbutton1" class="btn btn-xs btn-primary btn-square add-new-btn" href="javascript:;" name="addnewmedicationbutton"><span class="glyphicon glyphicon-plus-sign"></span></a>
+                    <a id="removemedicationbutton1" class="btn btn-xs btn-primary btn-danger removemedicationbutton" name="removemedicationbutton"><span class="glyphicon glyphicon-remove"></span></a>
+                  </div>
+                </td>
+              </tr>
+              <% end %>
+            <% end %>
+          </tbody>
+        </table>
+        <div class="medication-table-body-removed" style="display:none;"></div>
+      </div>
+      <div class="col-md-2 col-sm-2 col-xs-12">
+        <% if @has_patient_prescription_history %>
+          <div class="btn btn-success mb10" id="div_med_history"><i class="fa fa-history"></i> Continue Same Treatment</div>
+        <% end %>
+        <div class="btn btn-success save-medication-kit-btn mb10"><i class="fa fa-hand-o-left"></i> Save Medication Set</div>
+        <!-- medication set dropdown -->
+        <div class="medication_set_dropdown_wrapper">
+          <input type="hidden" name="opd_ipd" value="[440655000,0]" id="find_in_set_type" class="find_in_set_type">
+          <input type="hidden" class="selected_specialty" value="<%= @specalityid %>">
+          <%= render partial: 'templates/shared/medication_set_dropdown' %>
+        </div>
+        <div class="mb5" style="border-bottom: solid"></div>
+        <div style="padding:6px;">
+          <label for="medicationsets-label">Medication Sets</label>
+          <input type="text" placeholder="Search" id="search_medication_set">
+        </div>      
+        <div class="medication_kit_refresh">
+          <% medical_set = MedicationKit.where(:set_type.in => [440655000, 0], user_id: @current_user.id, :organisation_id => @current_user.organisation.id, specialty_id: @appointment.specialty_id.to_i, level: 'user').sort_by{|med_kit| med_kit.name.downcase} %>
+          <select id="opdrecord_medicationsets_tab" class="tabview tab_select_tag option_remover" style="display:none;">
+          <option value="">Please Select</option>
+            <% medical_set.each do |medic| %>
+              <option value="<%= medic.id %>"><%= medic.name %></option>
+            <% end %>
+          </select>
+          <%= f.input :medicationsets, collection: medical_set, input_html: { multiple: true, size: '13', style: 'height: 100%; width:100%', class: 'form-control webview option_remover' }, as: :select, label: false, item_wrapper_class: 'form-control option_remover', required: false %>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-md-1 col-sm-2 col-xs-4 medication_comment_row">
+        <label for="comments-textarealabel">Comments :</label>
+      </div>
+      <div class="col-md-6 col-sm-6 col-xs-8 medication_comment_row">
+        <%= f.input :medicationcomments, as: :text, label: false, required: false, input_html: { class: 'form-control', style: 'width:100%;', rows: 2, cols: 30, required: false, name: 'opdrecord[medicationcomments]', value: opdrecord.read_attribute(:medicationcomments) } %>
+      </div>
+      <div class="col-md-4 col-sm-4 col-xs-12 pull-left medication_tab_row" style=" display: inline-block; vertical-align: left; float: none;text-align: left;">
+          <span class="badge col-md-2 col-sm-2 col-xs-2">P</span><b style="cursor:default;color:#5bc0de;">&nbsp;Pharmacy</b><br>
+          <span class="badge col-md-2 col-sm-2 col-xs-2">D</span><b style="cursor:default;color:#5bc0de;"> &nbsp;CIMS Drug Index</b><br>
+          <span class="badge col-md-2 col-sm-2 col-xs-2">M</span><b style="cursor:default;color:#5bc0de;">&nbsp;My Medication List</b>
+      </div>
+    </div>
+  </div>
+<% end %>
+<%= javascript_include_tag 'autocomplete/medicine' %>
+<script>
+  <% if @disabled_pharmacy.present? %>
+    $('.medication-table-body-added .add-new-btn').addClass('disabled')
+    $('#div_med_history').addClass('disabled')
+    $('.save-medication-kit-btn').addClass('disabled')
+    $('.medication_sets_dropdown').prop('disabled', true)
+    $('#opdrecord_medicationsets').prop('disabled', true)
+    $('.medication-table-body-added input').prop('readonly', true)
+    $('.medication-table-body-added select').prop('disabled', true)
+    $('.medication-table-body-added .link_medication span').addClass('disabled')
+  <% end %>
+  
+  $("#search_medication_set").keyup(function(){
+    let search_medication_set = $(this).val().trim().toLowerCase();    
+    let medication_sets = $("#opdrecord_medicationsets option")
+    if(search_medication_set == ""){
+      $("#opdrecord_medicationsets option").show()
+    }else{
+      $("#opdrecord_medicationsets option").hide()
+    }
+
+    $("#opdrecord_medicationsets option").each(function(){
+      let medication_set = $(this).text().toLowerCase();
+      if(medication_set.indexOf(search_medication_set) > -1) {
+        $(this).show()
+      } else {
+        $(this).hide();
+      }
+    })
+  })
+</script>
+<style type="text/css">
+  .hide{
+    display: none;
+  }
+  .form-inline .form-group {
+    margin-right: 0px;
+    margin-left: 0px;
+  }
+
+  .linethrough {
+    opacity: 0.5;
+  }
+</style>

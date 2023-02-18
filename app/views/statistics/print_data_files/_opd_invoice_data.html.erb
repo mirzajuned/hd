@@ -1,0 +1,62 @@
+<% colspan = 2 # As SNo. and Date has no checks %>
+
+<div class="row">
+  <div class="col-md-12 text-center">
+    <h3 style="color:#000;">OPD INVOICES <small>(<%= Date.parse(@start_date).strftime('%d/%m/%Y') %> - <%= Date.parse(@end_date).strftime('%d/%m/%Y') %>)</small></h3>
+  </div>
+</div>
+
+<table class="table table_for_printing">
+  <thead style="border-top:1px solid #000;border-bottom:1px solid #000;">
+    <tr>
+      <th><b>S No.</b></th>
+      <th><b>Date</b><span style="font-size:8px;">&nbsp;(Click For Details)</span></th>
+      <% if @cash_register %><th class="text-right"><b>Cash Register</b></th><% end %>
+      <% if @invoice %><th class="text-right"><b>Receipt</b></th><% end %>
+      <% if @tax %><th class="text-right"><b>Tax</b></th><% end %>
+      <% if @received %><th class="text-right"><b>Received</b></th><% end %>
+      <% if @pending %><th class="text-right"><b>Pending</b></th><% end %>
+      <% if @total %><th class="text-right"><b>Total</b></th><% end %>
+    </tr>
+  </thead>
+  <tbody style="border-top:1px solid #000;border-bottom:1px solid #000;">
+    <% if @daily_reports.count > 0 && (@daily_reports.pluck(:opd_cash_reg_transaction).map(&:to_f).sum + @daily_reports.pluck(:opd_invoice_transaction).map(&:to_f).sum) > 0 %>
+      <tr>
+        <td class="main-display-row" colspan="2">Total :</td>
+        <% if @cash_register %><td class="text-right main-display-row">&#8377;<%= (@daily_reports.pluck(:opd_cash_reg_transaction).map(&:to_f).sum).round(2) %></td><% end %>
+        <% if @invoice %><td class="text-right main-display-row">&#8377;<%= (@daily_reports.pluck(:opd_invoice_transaction).map(&:to_f).sum - @daily_reports.pluck(:non_taxable_amount).map(&:to_f).sum).round(2) %></td><% end %>
+        <% if @tax %><td class="text-right main-display-row">&#8377;<%= @daily_reports.pluck(:opd_tax_collected).map(&:to_f).sum %></td><% end %>
+        <% if @received %><td class="text-right main-display-row">&#8377;<%= @daily_reports.pluck(:opd_cr_payment_received).map(&:to_f).sum + @daily_reports.pluck(:opd_invoice_payment_received).map(&:to_f).sum %></td><% end %>
+        <% if @pending %><td class="text-right main-display-row">&#8377;<%= @daily_reports.pluck(:opd_invoice_payment_pending).map(&:to_f).sum %></td><% end %>
+        <% if @total %><td class="text-right main-display-row">&#8377;<%= @daily_reports.pluck(:opd_cash_reg_transaction).map(&:to_f).sum + @daily_reports.pluck(:opd_invoice_transaction).map(&:to_f).sum %></td><% end %>
+      </tr>
+      <% counter = 1 %>
+      <% @daily_reports.order(date: :desc).each do |daily_reports| %>
+        <% if daily_reports.opd_cash_reg_transaction + daily_reports.opd_invoice_transaction != 0.0 %>
+          <tr>
+            <td><%= counter %></td>
+            <td><%= daily_reports.date.strftime("%d/%m/%Y") %></td>
+            <% if @cash_register %><td class="text-right">&#8377; <%= daily_reports.opd_cash_reg_transaction %></td><% end %>
+            <% if @invoice %><td class="text-right">&#8377; <%= daily_reports.opd_invoice_transaction %></td><% end %>
+            <% if @tax %><td class="text-right">&#8377; <%= daily_reports.opd_tax_collected %></td><% end %>
+            <% if @received %><td class="text-right">&#8377; <%= daily_reports.opd_cr_payment_received + daily_reports.opd_invoice_payment_received %></td><% end %>
+            <% if @pending %><td class="text-right">&#8377; <%= daily_reports.opd_invoice_payment_pending %></td><% end %>
+            <% if @total %><td class="text-right">&#8377; <%= daily_reports.opd_cash_reg_transaction + daily_reports.opd_invoice_transaction %></td><% end %>
+          </tr>
+          <% counter += 1 %>
+        <% end %>
+      <% end %>
+    <% else %>
+      <tr>
+        <td colspan="11" class="text-center">No Data to Display</td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<style type="text/css">
+  .main-display-row {
+    color:#000;
+    font-size: 16px; 
+  }
+</style>

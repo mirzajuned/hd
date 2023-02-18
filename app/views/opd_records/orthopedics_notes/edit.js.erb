@@ -1,0 +1,57 @@
+jQuery("#templates-modal").html('<%= escape_javascript(render "opd_records/#{@speciality_folder_name}_notes/opd_template") %>').modal("show")
+<% Global.opd.soap_opd_record_common_js.each do |opd_record_common_js| %>
+<%= render partial: "#{opd_record_common_js}" %>
+<% end %>
+<% Global.send("#{@speciality_folder_name}").send("#{@templatetype}template").js.each do |opd_record_specality_template_js| %>
+<%= render partial: "#{opd_record_specality_template_js}" %>
+<% end %>
+
+//saving doctor_id in the opd record
+$("#opdrecord_view_owner_id").on("change",function(){
+  $(".opdrecord_owner_id").val($(this).val())
+  $(".opdrecord_owner_name").val($("#opdrecord_view_owner_id option:selected").text())
+
+  //HUZIOUT
+  $(".advised_by_id").val($(this).val())
+  $(".advised_by").val($("#opdrecord_view_owner_id option:selected").text())
+
+  is_performed = $(".is_performed")
+  for (var i = is_performed.length - 1; i >= 0; i--) {
+    if($(is_performed[i]).val() == "true"){
+      $(is_performed[i]).siblings('.performed_by_id').val($(this).val())
+      $(is_performed[i]).siblings('.performed_by').val($("#opdrecord_view_owner_id option:selected").text())
+    }
+  }
+}).trigger("change");
+
+function get_medications_history(e){
+  e.preventDefault();
+  $.ajax({
+    type: "GET",
+    url: "/opd_records/ortho_user_medication_history",
+    data: {
+      remote: "true",
+      patientid: $("#opdrecord_patientid").val()
+    },
+    success: function(res){
+    }
+  })
+}
+
+$("#div_med_history").on('click', function(e){
+  get_medications_history(e);
+});
+
+
+var medicine = []
+var inputs = $(".medicinename")
+var rowCount = $('.medication_set_body tr').length
+for(var i = 0; i < rowCount - 1; i++) {
+  medicine.push($(inputs[i]).val());
+}
+if (medicine.filter(Boolean).length > 0) {  
+  $('#opdrecord_view_pharmacy_store_id').prop('disabled', true)
+} else {
+  $('#opdrecord_view_pharmacy_store_id').prop('disabled', false)
+}
+$('#opdrecord_view_pharmacy_store_id').trigger('change')

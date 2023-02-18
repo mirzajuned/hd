@@ -1,0 +1,88 @@
+<div class="admission-list-print row">
+  <div class="col-md-3">
+    <span style="font-size:12px;">Date: <b style="font-size:12px;"><%= Date.current.strftime("%b %d, %Y") %></b></span>
+  </div>
+  <div class="col-md-6 text-center">
+    <span style="font-weight:bold;font-size:16px;margin:0px;">Admitted Patient List(All)</span>
+  </div>
+  <div class="col-md-3 text-right">
+    <span style="font-size:12px;">Location: <b style="font-size:12px;"><%= current_facility.name %></b></span>
+  </div>
+  <div class="col-md-12">
+    <table class="table table-bordered">
+      <thead>
+        <tr class="table-header-row">
+          <th>S.No</th>
+          <th>Patient</th>
+          <th>Patient/Admission ID</th>
+          <th>Adm Date/Time</th>
+          <% if current_facility.specialty_ids.count > 1 %>
+            <th>Specialty</th>
+          <% end %>
+          <% unless current_user.has_role?(:doctor) %>
+            <th>Doctor</th>
+          <% end %>
+          <% if @ward.count > 0 %>
+            <th>Room | Bed</th>
+          <% end %>
+          <th>Ins. Status</th>
+          <th>Procedure</th>
+          <th>Reason</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @admission_list.try(:each_with_index) do |list,i| %>
+          <tr>
+            <td><%= i + 1 %></td>
+            <td>
+              <b><%= list.patient_name %></b><br>
+              <%= list.patient_age.to_s.split("-")[0] %>
+              <% if list.patient_age && list.patient_gender %>/<% end %>
+              <%= list.patient_gender %>
+            </td>
+            <td>
+              P: <% if list.patient_mr_no.present? %><%= list.patient_mr_no %><% else %><%= list.patient_display_id %><% end %><br>
+              A: <%= list.admission_display_id %>
+            </td>
+            <td><%= list.admission_time.strftime('%b %d, %Y - %I:%M %p') %></td>
+            <% if current_facility.specialty_ids.count > 1 %>
+              <td><%= list.specialty_name %></td>
+            <% end %>
+            <% unless current_user.has_role?(:doctor) %>
+              <td><%= list.admitting_doctor %></td>
+            <% end %>
+            <% if @ward.count > 0 %>
+              <% unless list.daycare %>
+                <td><%= list.room_code %> | <%= list.bed_code %></td>
+              <% else %>
+                <td>Daycare</td>
+              <% end %>
+            <% end %>
+            <td><%= list.insurance_state %></td>
+            <td>
+              <% case_sheet =  CaseSheet.find_by(patient_id: list.patient_id.to_s) %>
+              <% procedures = case_sheet&.procedures&.where(flow_in_ipd: true)&.order("created_at DESC") %>
+              <% if procedures.present? %>
+                <% procedures.each do |procedure| %>
+                  <li><b><%= procedure.procedurename.split("/").join(" /") %>,<%= procedure.get_label_for_procedure_side(procedure.procedureside) %></b>
+                  </li>
+                <% end %>
+              <% end %>
+            </td>
+            <td><%= list.reason_for_admission %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>
+<style type="text/css">
+  .admission-list-print * {
+    font-size: 7px;
+  }
+  .table-header-row th {
+    font-weight: bold;
+  }
+  thead { display: table-header-group }
+  tr { page-break-inside: avoid }
+</style>

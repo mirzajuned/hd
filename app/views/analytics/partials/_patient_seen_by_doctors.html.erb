@@ -1,0 +1,111 @@
+<% partial_name = @partial_name.present? %>
+<% data = {
+  service_name: "DoctorOperationalData",
+  action_name:  "patient_seen_by_doctors",
+  partial_name: "patient_seen_by_doctors"
+}%>
+<div class="row">
+  <div class="<%= partial_name ? 'col-md-6': 'col-md-12' %>">
+    <div class="panel panel-default panel_b borderd_panel">
+      <div class="panel-heading to_add_expand_button">
+        <h5 class="subtitle mb5 title_in_caps"><i class="fa fa-bar-chart" aria-hidden="true"></i><strong>APPOINTMENT SEEN BY DOCTORS (TOP 5)</strong></h5>
+        <%=render partial: "/analytics/shared/expand_button", locals:{partial_name: partial_name, data: data }%>
+      </div>
+
+      <div class="panel-body reduced_padding">
+        <canvas id="patient_seen_by_doctors_<%= partial_name %>" width="800" height="400"></canvas>
+      </div>
+    </div>
+  </div>
+  <% if partial_name %>
+    <div class="col-md-6">
+      <div class="table_wrapper">
+      <table class="table table_data table-bordered table-hover">
+        <thead>
+          <tr>
+            <th>Doctor Name</th>
+            <th>Patient Seen Count</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @all_doctors_name_label.each_with_index do |f_name, indx|%>
+            <tr>
+              <td><%= f_name %></td>
+              <td><%= @all_doctors_patient_seen[indx].to_s %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+      </div>
+    </div>
+  <% end %>
+
+</div>
+<script>
+  
+  var ctx = document.getElementById('patient_seen_by_doctors_<%= partial_name %>');
+  var myChart = new Chart(ctx, {
+    type: 'horizontalBar',
+    data: {
+      labels: <%= raw @best_5_doctors_label %>,
+      datasets: [
+        {
+          label: 'Patients Seen',
+          data: <%= raw @best_5_doctors_patient_seen %>,
+          backgroundColor: '#54a0ff',
+        }
+      ]
+    },
+    options: {
+      legend: { display: false },
+      responsive: true,
+      title: {
+        display: false,
+        text: ""
+      },
+      scales: {
+        yAxes: [{
+          stacked: false,
+          barPercentage: 0.4,
+          gridLines:{
+            display : false
+          },
+          ticks: {
+            beginAtZero: true,
+            mirror: true,
+            display: false
+          }
+        }],
+        xAxes: [{
+          stacked: false,
+          barPercentage: 0.4,
+          categoryPercentage: 0.4,
+          gridLines:{
+            display : false
+          }
+        }]
+      },
+      animation: {
+        duration: 500,
+        onComplete () {
+          const chartInstance = this.chart;
+          const ctx = chartInstance.ctx;
+          const dataset = this.data.datasets[0];
+          const meta = chartInstance.controller.getDatasetMeta(0);
+
+          Chart.helpers.each(meta.data.forEach((bar, index) => {
+            const label = this.data.labels[index];
+            const labelPositionX = 15;
+            const labelWidth = ctx.measureText(label).width + labelPositionX;
+
+            ctx.textBaseline = 'middle';
+            ctx.textAlign = 'left';
+            ctx.fillStyle = '#333';
+
+            ctx.fillText(label, labelPositionX, bar._model.y);
+          }));
+        }
+      }
+    }
+  });
+</script>

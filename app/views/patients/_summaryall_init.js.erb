@@ -1,0 +1,138 @@
+<% if @section == "440655000" %>
+    <% if Date.current.eql?(Date.strptime("#{@appointment.appointmentdate}", "%Y-%m-%d")) %>
+    jQuery(".patient-summary-controls").html("<%= escape_javascript(render 'patients/patientsummaryopdcontrols') %>")
+    jQuery('.opd-patientseen').on("click", function() {
+        var params = {patientid: jQuery(this).data("patientid"), appointmentid: jQuery(this).data("appointmentid") }
+        pushPageState({x: "1"}, "", jQuery(this).data("urlcallback"))
+        jQuery.ajax({
+            type: "GET",
+            dataType: "script",
+            url: jQuery(this).data("urlcallback"),
+            data: {appointment: params}
+        })
+    })
+    <% else %>
+    jQuery(".patient-summary-controls").html("<%= escape_javascript(render 'patients/patientsummaryallcontrols') %>")
+    jQuery('.patient-summary-all').on("click", function() {
+        pushPageState({x: "1"}, "", jQuery(this).data("urlcallback"))
+        jQuery.ajax({
+            type: "GET",
+            dataType: "script",
+            url: jQuery(this).data("urlcallback")
+        })
+    })
+    <% end %>
+    jQuery('.patient-summary-controls').on("click", ".patient-signin-button", function() {
+        jQuery(".patient-sign-sigout-button").html("<%= escape_javascript(render partial: 'patients/partials/patientsignoutbutton', locals: { patient: @patient, appointment: @appointment } ) %>")
+        jQuery(".enable-patient-summary-template-buttons").removeClass("disabled")
+        var params = {appointment_id: jQuery(this).data("appointmentid") }
+        jQuery.ajax({
+            type: "GET",
+            dataType: "script",
+            url: "/opd_appointments/has_engaged",
+            data: {appointment: params},
+            success: function(response){
+              jQuery(".opd_templates_links").addClass("open")
+            }
+        })
+    })
+    jQuery('.patient-summary-controls').on("click", ".patient-signout-button", function() {
+        var params = {patient_id: jQuery(this).attr("data-patient-id"), appointment_id: jQuery(this).attr("data-appointment-id"), current_date: $(this).attr('data-appointment-date') }
+        pushPageState({x: "1"}, "", jQuery(this).data("urlcallback"))
+        jQuery.ajax({
+            type: "GET",
+            dataType: "script",
+            url: jQuery(this).data("urlcallback"),
+            data: params
+        })
+    })
+<% elsif @section == "440654001" %>
+    <% if Date.current.eql?(Date.strptime("#{@admission.admissiondate}", "%Y-%m-%d")) %>
+    jQuery(".patient-summary-controls").html("<%= escape_javascript(render 'patients/patientsummaryipdcontrols') %>")
+    jQuery('.opd-patientseen').on("click", function() {
+        //var params = {patientid: jQuery(this).data("patientid"), appointmentid: jQuery(this).data("appointmentid") }
+        pushPageState({x: "1"}, "", jQuery(this).data("urlcallback"))
+        jQuery.ajax({
+            type: "GET",
+            dataType: "script",
+            url: jQuery(this).data("urlcallback")
+            //url: jQuery(this).data("urlcallback"),
+            //data: {appointment: params}
+        })
+    })
+    <% else %>
+    jQuery(".patient-summary-controls").html("<%= escape_javascript(render 'patients/patientsummaryallipdcontrols') %>")
+    jQuery('.patient-summary-all').on("click", function() {
+        pushPageState({x: "1"}, "", jQuery(this).data("urlcallback"))
+        jQuery.ajax({
+            type: "GET",
+            dataType: "script",
+            url: jQuery(this).data("urlcallback")
+        })
+    })
+    <% end %>
+    jQuery('.patient-summary-controls').on("click", ".patient-signin-button", function() {
+        jQuery(".patient-sign-sigout-button").html("<%= escape_javascript(render partial: 'patients/partials/patientsignoutipdbutton', locals: { patient: @patient, admission: @admission } ) %>")
+        jQuery(".enable-patient-summary-template-buttons").removeClass("disabled")
+        setTimeout(function(){
+          jQuery(".ipd_templates_links").addClass("open")
+        }, 100);
+        /*var params = {appointment_id: jQuery(this).data("appointmentid") }
+        jQuery.ajax({
+            type: "GET",
+            dataType: "script",
+            url: "/opd_appointments/has_engaged",
+            data: {appointment: params}
+        })*/
+    })
+    jQuery('.patient-summary-controls').on("click", ".patient-signout-button", function() {
+        //var params = {patientid: jQuery(this).data("patientid"), appointmentid: jQuery(this).data("appointmentid") }
+        pushPageState({x: "1"}, "", jQuery(this).data("urlcallback"))
+        jQuery.ajax({
+            type: "GET",
+            dataType: "script",
+            url: jQuery(this).data("urlcallback")
+
+            //url: jQuery(this).data("urlcallback"),
+            //data: {appointment: params}
+        })
+    })
+<% end %>
+<% if @appointment%>
+
+
+
+      function startTimer(seconds,minutes,display) {
+          setInterval(function () {
+            seconds = parseInt(seconds % 60) + 1 ;
+            minutes = parseInt(minutes)
+            if (seconds % 60 == 0)
+            {
+              minutes = (minutes % 60) + 1 ;
+            }
+              display.text((minutes).toLocaleString('en-US', {minimumIntegerDigits: 2, useGrouping:false}) + ":" + (seconds).toLocaleString('en-US', {minimumIntegerDigits: 2, useGrouping:false}));
+          }, 1000);
+      }
+      <% if @appointment.dilation_start_time %>
+      jQuery(function ($) {
+          display = $("#dilation_time_<%= @appointment.id.to_s%>");
+          var time =  parseInt('<%= Time.current - @appointment.dilation_start_time %>')
+          var seconds = time % 60
+          var minutes = time / 60
+          startTimer(seconds,minutes,display);
+      });
+      <% end %>
+<% end %>
+
+$("#send_patient_fees").on("click", function(){
+  var pat_fee = $("#patient-fees").val()
+  var appointment_id = "<%= @appointment.try(:id) %>"
+//  var params = {patientid: jQuery(this).data("patientid"), appointmentid: jQuery(this).data("appointmentid") }
+//  pushPageState({x: "1"}, "", jQuery(this).data("urlcallback"))
+  jQuery.ajax({
+    type: "GET",
+    dataType: "script",
+    url: '/opd_appointments/save_patients_appointment_fees',
+    data: {appointment_id: appointment_id, pat_fee: pat_fee, remote: "true"}
+  })
+})

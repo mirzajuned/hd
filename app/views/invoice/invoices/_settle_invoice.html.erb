@@ -1,0 +1,217 @@
+<%= javascript_include_tag 'application-loggedin', 'data-turbolinks-track' => true %>
+<div class="modal-dialog" style="width:50%;">
+  <div class="modal-content">
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal">&times;</button>
+      <h4 class="modal-title">Settle Payment</h4>
+    </div>
+    <%= form_tag '/invoice/invoices/save_settled_invoice_details', method: 'patch', class: 'settle-invoice-form', remote: true do %>
+      <input type="hidden" name="id" value="<%= @invoice.id.to_s %>">
+      <input type="hidden" name="revert_path" value="<%= params[:revert_path] %>">
+      <input type="hidden" name="store_id" value="<%= params[:store_id] %>">
+      <div class="modal-body">
+        <div class="row payment-received-details">
+          <div class="col-md-12">
+            <div id="payment_received_details">
+              <% if @invoice.payment_pending_breakups.count > 0 %>
+                <% @invoice.payment_pending_breakups.each_with_index do |payment_pending_breakup, i| %>
+                  <div class="row payment_received_row mb10">
+                    <input type="hidden" name="settle_invoice[payment_received_breakups][<%= i %>][payment_pending_id]" class="form-control payment_received_breakups_id p3_10" value="<%= payment_pending_breakup.id.to_s %>">
+                    <input type="hidden" name="settle_invoice[payment_received_breakups][<%= i %>][received_by]" class="form-control payment_received_breakups_received_by p3_10" value="<%= current_user.id.to_s %>">
+                    <input type="hidden" name="settle_invoice[payment_received_breakups][<%= i %>][is_settled]" class="form-control payment_received_breakups_is_settled p3_10" value="1">
+                    <input type="hidden" name="settle_invoice[payment_received_breakups][<%= i %>][date]" id="settle_invoice_payment_received_breakups_<%= i %>_date" class="form-control p3_10" value=''>
+                    <input type="hidden" name="settle_invoice[payment_received_breakups][<%= i %>][time]" id="settle_invoice_payment_received_breakups_<%= i %>_time" class="form-control p3_10" value=''>
+                    <div class="row mb5">
+                      <div class="col-md-6">
+                        <div class="col-md-6">
+                          <b>Payer: </b>
+                        </div>
+                        <div class="col-md-6">
+                          <select class="form-control payment_received_breakups_received_from" name="settle_invoice[payment_received_breakups][<%= i %>][received_from]" style="height: 25px;padding:3px;">
+                            <% if @invoice.payer_master_id.present? %>
+                              <% payer_master = @payer_masters.to_a.find { |c| c[:id].to_s == @invoice.payer_master_id.to_s } %>
+                              <% if payer_master.present? %>
+                                <% if payer_master[:id].to_s == payment_pending_breakup.received_from.to_s %>
+                                  <option value="<%= payer_master[:id].to_s %>" selected="selected"><%= payer_master[:display_name] %></option>
+                                  <% patient_selected = false %>
+                                <% else %>
+                                  <option value="<%= payer_master[:id].to_s %>"><%= payer_master[:display_name] %></option>
+                                  <% patient_selected = true %>
+                                <% end %>
+                              <% end %>
+                            <% end %>
+                            <option value="<%= @invoice.patient_id.to_s %>" <%= "selected='selected'" if patient_selected %>><%= @invoice.patient.fullname %></option>
+                          </select>
+                        </div>
+                      </div>
+                      <div class="col-md-6">
+                        <div class="col-md-6">
+                          <b>Pending Payment: </b>
+                        </div>
+                        <div class="col-md-6">
+                          <input type="number" name="settle_invoice[payment_received_breakups][<%= i %>][amount]" class="form-control payment_received_breakups_amount p3_10" value="<%= payment_pending_breakup.amount %>" min="0" readonly='readonly'>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="row mb5">
+                      <div class="col-md-6">
+                        <div class="col-md-6">
+                          <b>Payment Date: </b>
+                        </div>
+                        <div class="col-md-6">
+                          <input type="text" name="dummy_payment_received_breakups_<%= i %>_date" id="dummy_payment_received_breakups_<%= i %>_date" class="form-control payment_received_breakups_date p3_10" value="<%= Date.current.strftime('%d/%m/%Y') %>" readonly="readonly">
+                        </div>
+                      </div>
+                      <div class="col-md-6">
+                        <div class="col-md-6">
+                          <b>Payment Time: </b>
+                        </div>
+                        <div class="col-md-6 bootstrap-timepicker timepicker">
+                          <input type="text" name="dummy_payment_received_breakups_<%= i %>_time" id="dummy_payment_received_breakups_<%= i %>_time" class="form-control payment_received_breakups_time p3_10" value="<%= Time.current.strftime("%I:%M %p") %>" readonly="readonly">
+                        </div>
+                      </div>
+                    </div>
+                    <div class="row mb5">
+                      <div class="col-md-6">
+                        <div class="col-md-6">
+                          <b>Mode of Payment: </b>
+                        </div>
+                        <div class="col-md-6">
+                          <% @mop_list = Invoice::InvoicesHelper.mop_list(current_facility.country_id) %>
+                          <select class="form-control payment_received_breakups_mode_of_payment" name="settle_invoice[payment_received_breakups][<%= i %>][mode_of_payment]" style="height: 25px;padding:3px;" data-index="0">
+                            <option value=""> </option>
+                            <% @mop_list.each do |mop| %>
+                              <option value="<%= mop %>"><%= mop %></option>
+                            <% end %>
+                          </select>
+                        </div>
+                      </div>
+                      <div class="col-md-6">
+                        <div class="col-md-6">
+                          <b>Amount Received: </b>
+                        </div>
+                        <div class="col-md-6"> <!--  col-md-3-shared -->
+                          <input type="number" name="settle_invoice[payment_received_breakups][<%= i %>][amount_received]" class="form-control amount_received payment_received_breakups_settle_amount p3_10" min="0" value="0">
+                        </div>
+                      </div>
+                      <% if false %>
+                        <div class="col-md-1">
+                          <div class="ckbox ckbox-primary mb5" style="font-size:13px;">
+                            <input type="hidden" name='settle_invoice[payment_received_breakups][<%= i %>][payment_taken]' value='false'>
+                            <%= check_box_tag "settle_invoice[payment_received_breakups][#{i}][payment_taken]", true, false, id: 'payment_taken_' + i.to_s, class: 'payment_taken_checkbox' %>
+                            <label for="payment_taken_<%= i %>"></label>
+                          </div>
+                        </div>
+                      <% end %>
+                      <div class="col-md-12">
+                        <div class="col-md-6">
+                          <div class="col-md-12 mop_details" style="display:none;border: 1px solid #ccc;padding: 5px;">
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="row mb5">
+                      <div class="col-md-6">
+                        <div class="col-md-12 div_internal_comment hidden">
+                          <textarea name="settle_invoice[payment_received_breakups][<%=i%>][internal_comment]" class="form-control internal_comment p3_10" placeholder='Internal Comment' rows="3"></textarea>
+                        </div>
+                      </div>
+                      <div class="col-md-6">
+                        <div class="col-md-12 padding-0">
+                          <div class="col-md-6">
+                            <div class="ckbox ckbox-primary">
+                              <input type="hidden" name="settle_invoice[payment_received_breakups][<%= i %>][has_tax_deducted]" value='false'>
+                              <%= check_box_tag "settle_invoice[payment_received_breakups][#{i}][has_tax_deducted]", true, false, id: "chk_tax_deducted_#{i}", class: 'chk_tax_deducted has_extra_vals' %>
+                              <label for="chk_tax_deducted_<%=i%>">Tax Deducted</label>
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <input type="hidden" name="settle_invoice[payment_received_breakups][<%=i%>][tax_deducted]" class="form-control tax_deducted p3_10 payment_received_breakups_settle_amount hdn_tax_deducted_<%=i%>" value="0">
+                            <input type="number" name="dummy_tax_deducted_<%=i%>" class="form-control payer_difference p3_10 extra_payments txt_tax_deducted_<%=i%> hidden" min="0" value="0">
+                          </div>
+                        </div>
+                        <div class="col-md-12 padding-0">
+                          <div class="col-md-6">
+                            <div class="ckbox ckbox-primary">
+                              <input type="hidden" name="settle_invoice[payment_received_breakups][<%= i %>][has_payer_difference]" value='false'>
+                              <%= check_box_tag "settle_invoice[payment_received_breakups][#{i}][has_payer_difference]", true, false, id: "chk_payer_difference_#{i}", class: 'chk_payer_difference has_extra_vals' %>
+                              <label for="chk_payer_difference_<%=i%>">Payer&nbsp;Difference</label>
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <input type="hidden" name="settle_invoice[payment_received_breakups][<%=i%>][payer_difference]" class="form-control payer_difference p3_10 payment_received_breakups_settle_amount hdn_payer_difference_<%=i%>" value="0">
+                            <input type="number" name="dummy_payer_difference_<%=i%>" class="form-control payer_difference p3_10 extra_payments txt_payer_difference_<%=i%> hidden" min="0" value="0">
+                          </div>
+                        </div>
+                        <div class="col-md-12 padding-0">
+                          <div class="col-md-6">
+                            <div class="ckbox ckbox-primary">
+                              <input type="hidden" name="settle_invoice[payment_received_breakups][<%= i %>][has_other_revenue_spilage]" value='false'>
+                              <%= check_box_tag "settle_invoice[payment_received_breakups][#{i}][has_other_revenue_spilage]", true, false, id: "chk_other_revenue_spilage_#{i}", class: 'chk_other_revenue_spilage has_extra_vals' %>
+                              <label for="chk_other_revenue_spilage_<%=i%>">Revenue&nbsp;Spillage</label>
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <input type="hidden" name="settle_invoice[payment_received_breakups][<%=i%>][other_revenue_spilage]" class="form-control other_revenue_spilage p3_10 payment_received_breakups_settle_amount hdn_other_revenue_spilage_<%=i%>" value="0">
+                            <input type="number" name="dummy_other_revenue_spilage_<%=i%>" class="form-control payer_difference p3_10 extra_payments other_revenue_spilage txt_other_revenue_spilage_<%=i%> hidden" min="0" value="0">
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <hr>
+                <% end %>
+              <% end %>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-md-12">
+            <div class="row mb5">
+              <div class="col-md-6">
+                <div class="col-md-6">
+                  <b>Total Pending Payment</b>
+                </div>
+                <div class="col-md-6">
+                  <input type="text" name="settle_invoice[payment_pending]" class="form-control invoice_payment_received p3_10" id="invoice_payment_pending_total" value="<%= @invoice.payment_pending %>" readonly="readonly">
+                </div>
+              </div>
+              <div class="col-md-6"></div>
+              <div class="col-md-6">
+                <div class="col-md-6">
+                  <b>Amount Settled: </b>
+                </div>
+                <div class="col-md-6"> <!--  col-md-3-shared -->
+                  <input type="text" name="settle_invoice[payment_received]" class="form-control invoice_payment_received p3_10" id="invoice_payment_received_total" value="0" readonly="readonly">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <%= submit_tag 'Save', class: 'btn btn-success btn-settle-invoice', data: { 'disable-with': 'Please Wait...' } %>
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<style type="text/css">
+  .payment_received_breakups_date, .payment_received_breakups_time, .payment_received_breakups_cheque_date, .payment_received_breakups_transfer_date {
+    background: #fff !important;
+    cursor: pointer !important;
+  }
+  input.error, select.error {
+    border-color: #b94a48;
+    background-image: none;
+  }
+  input.valid, select.valid {
+    border-color: #468847;
+    background-image: none;
+  }
+</style>
+
+<script type="text/javascript">
+  <%= render partial: 'settle_invoice.js.erb' %>
+</script>

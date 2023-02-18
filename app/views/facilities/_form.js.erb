@@ -1,0 +1,586 @@
+$("#facility_country_id").select2();
+$('#facility_time_zone').select2();
+$("#facility_currency_id").select2();
+$("#facility_currency_ids").select2();
+$("#facility_region_master_id").select2();
+
+$('.save-form-btn').on('click', function(e) {
+  $('#facility_details').trigger('click')
+})
+
+var country = $('#facility_country_id').val()
+if (country == 'VN_254') {
+  $('.vietnam_facility').show();
+  $('.other_facility').hide();
+  $('.cambodia_facility').hide();
+} else if(country == 'KH_039') {
+  $('.cambodia_facility').show();
+  $('.vietnam_facility').hide();
+  $('.other_facility').hide();
+} else {
+  $('.vietnam_facility').hide();
+  $('.cambodia_facility').hide();
+  $('.other_facility').show();
+}
+$(document).ready(function() {
+  var country_id = $("#facility_country_id").val();
+  setTimeout(select_country_timezone(country_id), 5000);
+})
+
+
+function select_country_timezone(country_id){
+  $.ajax({
+    type: 'GET',
+    dataType: 'json',
+    data: { country_id: country_id },
+    url: '/countries/populate_country_timezones',
+    success: function(response){
+      var currency_id = response.currency._id
+      var currency_symbol = response.currency.symbol
+      var currency_name = response.currency.name + "-" + response.currency.code
+      
+      $('#facility_currency_id').html($("<option></option>").attr("value", currency_id).attr("data-symbol", currency_symbol).text(currency_name));
+      $("#facility_currency_id").trigger('change')
+
+      var facility_currency_ids = $("#facility_currency_ids").val() || []
+      if(!facility_currency_ids.includes(currency_id)){
+        $("#facility_currency_ids").val([currency_id]).trigger('change')
+      }
+
+      $('#facility_time_zone').children().remove();
+      $.each(response.zone_array, function(key, value) {
+        $('#facility_time_zone').append($("<option></option>").attr("value",value[1]).text(value[0]));
+        $('#facility_time_zone').attr('value', '<%= @facility.time_zone%>')
+      });
+      if (response.zone_array.length > 0) {
+        $('#facility_time_zone').select2();
+      }
+      // region_master dropdown
+      $('#facility_region_master_id').children().remove();
+      $('#facility_region_master_id').select2('val', '');
+      if (response.regions !== undefined) {
+        $.each(response.regions, function(key, value) {
+          $('#facility_region_master_id').append($("<option></option>").attr("value",value[1]).text(value[0]));
+        });
+        if(response.regions.length > 0){
+          $('#facility_region_master_id').select2();
+        }
+      }
+    }
+  })
+  if (country_id == 'VN_254') {
+    $('.vietnam_facility').show();
+    $('.other_facility').hide();
+    $('.cambodia_facility').hide();
+  } else if(country_id == 'KH_039') {
+    $('.cambodia_facility').show();
+    $('.vietnam_facility').hide();
+    $('.other_facility').hide();
+  } else {
+    $('.vietnam_facility').hide();
+    $('.cambodia_facility').hide();
+    $('.other_facility').show();
+  }
+
+}
+// Get Timezone on Country Change
+$("#facility_country_id").on('change', function() {
+  var country_id = $('option:selected', this).attr('value');
+  autocomplete_check(country_id)
+  select_country_timezone(country_id)
+  $('.state').val('');
+  $('.pincode').val('');
+  $('.district').val('');
+  $('.commune').val('');
+  $('#facility_address').val('');
+  $('.facility-city').val('');
+})
+
+$("#facility_currency_id").on('change', function(){
+  var symbol = $(this).find('option:selected').attr("data-symbol")
+  $("#facility_currency_symbol").val(symbol)
+})
+
+$(".telephone").on("keyup", function(){
+  $(".sms_contact_number").val($(this).val());
+})
+
+
+$(".is_hospital").on('click', function(){
+  hospital_department = ['485396012', '486546481', '225728007', '225738002', '116154003']
+
+  if($(this).val() == 'true'){
+    $(".specialities_selection_tab").show()
+    $(".facility_settings_tab").show()
+    $.each(hospital_department, function(key, value) { $("#"+value).parent(".ckbox-primary").show() })
+
+  } else {
+    $(".specialities_selection_tab").hide()
+    $(".facility_settings_tab").hide()
+    $.each(hospital_department, function(key, value) { $("#"+value).parent(".ckbox-primary").hide() })
+  }
+})
+
+$(".token_enabled").on('click', function(){
+  if($(this).val() == 'true'){
+    $(".show_on_token_enabled").show()
+  } else {
+    $(".show_on_token_enabled").hide()
+  }
+})
+
+$(".queue_management").on('click', function(){
+  if($(this).val() == 'true'){
+    $(".show_on_qm_enabled").show();
+  } else {
+    $(".show_on_qm_enabled").hide();
+    $("#user_set_station_false").click();
+  }
+})
+
+//Search For India and others starts//
+$('#search_state_other').autocomplete({
+  minLength: 3,
+  source: function(request, response) {
+    var country_id = $("#facility_country_id").val()
+    $.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/locations/search_state',
+      data: {q: request.term, country_id: country_id, remote: "true" },
+      success: function(data) {
+        response(data);
+      },
+      error: function(data) {
+      }
+    });
+  },
+  select: function( event, ui ) {
+    state = ui.item["state"]
+    setTimeout(function() {
+      $(".state").val(state)
+      $('.state').blur()
+    }, 20);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+      return $('<li>')
+        .append('<a style=\"color:#000;text-shadow: 2px\">' + item.state  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+        .appendTo(ul);
+    };
+  }
+});
+
+$('#search_city_other').autocomplete({
+  minLength: 3,
+  source: function(request,response){
+    var country_id = $("#facility_country_id").val()
+    var state = $('#search_state_other').val();
+    $.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/locations/search_city',
+      data: {q: request.term, country_id: country_id, state: state, remote: "true"},
+      success: function(data){
+        response(data);
+      },
+      error: function(data){
+      }
+    });
+  },
+  select: function( event, ui ) {
+    city  = ui.item["city"]
+    state = ui.item["state"]
+    setTimeout(function() {
+      $(".facility-city").val(city)
+      $(".state").val(state)
+      $('.facility-city').blur()
+    }, 20);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+      return $('<li>')
+        .append('<a style=\"color:#000;text-shadow: 2px\">' + item.city  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+        .appendTo(ul);
+    };
+  }
+});
+
+$('#search_pincode_other').autocomplete({
+  minLength: 3,
+  source: function(request,response){
+    var country_id = $("#facility_country_id").val()
+    var state = $('#search_state_other').val();
+    var city = $('#search_city_other').val();
+    $.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/locations/search_pincode',
+      data: {q: request.term, country_id: country_id, state: state, city: city, remote: "true"},
+      success: function(data){
+        response(data);
+      },
+      error: function(data){
+      }
+    });
+  },
+  select: function( event, ui ) {
+    pincode = ui.item["pincode"]
+    city  = ui.item["city"]
+    state = ui.item["state"]
+    setTimeout(function() {
+      $(".pincode").prop('readonly',true).val(pincode)
+      $(".state").prop('readonly', true).val(state)
+      $(".facility-city").prop('readonly', true).val(city)
+      $(".clear-pincode").show()
+      $('.pincode').blur()
+    }, 20);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+    return $('<li>')
+      .append('<a style=\"color:#000;text-shadow: 2px; text-align: center;\">' + item.pincode  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+      .appendTo(ul);
+    };
+  }
+});
+//Search For India and others ends//
+
+//Search For Vietnam starts//
+$('#search_district_vietnam').autocomplete({
+  minLength: 2,
+  source: function(request,response) {
+    var country_id = jQuery('#facility_country_id').val()
+    var city = jQuery('#search_city_vietnam').val();
+    jQuery.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/locations/search_district',
+      data: {q: request.term, city: city, country_id: country_id, remote: "true"},
+      success: function(data){
+        response(data);
+      },
+      error: function(data){
+      }
+    });
+  },
+  select: function( event, ui ) {
+    district = ui.item["district"]
+    city  = ui.item["city"]
+    setTimeout(function() {
+      jQuery(".district").val(district)
+      jQuery(".facility-city").val(city)
+      jQuery('.district').blur()
+    }, 20);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+      return $('<li>')
+        .append('<a style=\"color:#000;text-shadow: 2px\">' + item.district  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+        .appendTo(ul);
+    };
+  }
+});
+
+$('#search_city_vietnam').autocomplete({
+  minLength: 3,
+  source: function(request,response){
+    var country_id = $("#facility_country_id").val()
+    $.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/locations/search_city',
+      data: {q: request.term, country_id: country_id, remote: "true"},
+      success: function(data){
+        response(data);
+      },
+      error: function(data){
+      }
+    });
+  },
+  select: function( event, ui ) {
+    city  = ui.item["city"]
+    setTimeout(function() {
+      $(".facility-city").val(city)
+      $('.facility-city').blur()
+    }, 20);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+      return $('<li>')
+        .append('<a style=\"color:#000;text-shadow: 2px\">' + item.city  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+        .appendTo(ul);
+    };
+  }
+});
+
+$('#search_commune_vietnam').autocomplete({
+  minLength: 2,
+  source: function(request,response) {
+    var country_id = jQuery('#facility_country_id').val()
+    var city = jQuery('#search_city_vietnam').val();
+    var district = jQuery('#search_district_vietnam').val();
+    jQuery.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/locations/search_commune',
+      data: {q: request.term, city: city, district: district, country_id: country_id, remote: "true"},
+      success: function(data){
+        response(data);
+      },
+      error: function(data){
+
+      }
+    });
+  },
+  select: function( event, ui ) {
+    commune = ui.item["commune"]
+    district  = ui.item["district"]
+    city = ui.item["city"]
+    setTimeout(function() {
+      jQuery(".commune").prop('readonly',true).val(commune)
+      jQuery(".facility-city").prop('readonly', true).val(city)
+      jQuery(".district").prop('readonly', true).val(district)
+      jQuery(".clear-commune").show()
+      jQuery('.commune').blur()
+    }, 20);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+      return $('<li>')
+        .append('<a style=\"color:#000;text-shadow: 2px; text-align: center;\">' + item.commune + ' (' + item.district + ')' + '&nbsp; &nbsp; &nbsp;' + '</a>')
+        .appendTo(ul);
+    };
+  }
+});
+//Search For Vietnam ends//
+
+//Search For Cambodia starts//
+$('#search_pincode_cambodia').autocomplete({
+  minLength: 3,
+  source: function(request,response){
+    var country_id = $("#facility_country_id").val()
+    var state = $('#search_state_cambodia').val();
+    var district = $('#search_district_cambodia').val();
+    var commune = $('#search_commune_cambodia').val();
+    $.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/locations/search_pincode',
+      data: {q: request.term, country_id: country_id, state: state, district: district, commune: commune, remote: "true"},
+      success: function(data){
+        response(data);
+      },
+      error: function(data){
+      }
+    });
+  },
+  select: function( event, ui ) {
+    pincode = ui.item["pincode"]
+    state = ui.item["state"]
+    district = ui.item["district"]
+    commune = ui.item["commune"]
+    setTimeout(function() {
+      $(".pincode").prop('readonly',true).val(pincode)
+      $(".state").prop('readonly', true).val(state)
+      $(".district").prop('readonly', true).val(district)
+      $(".commune").prop('readonly', true).val(commune)
+      $(".clear-pincode").show()
+      $('.pincode').blur()
+    }, 20);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+    return $('<li>')
+      .append('<a style=\"color:#000;text-shadow: 2px; text-align: center;\">' + item.pincode  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+      .appendTo(ul);
+    };
+  }
+});
+
+$('#search_state_cambodia').autocomplete({
+  minLength: 3,
+  source: function(request, response) {
+    var country_id = $("#facility_country_id").val()
+    $.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/locations/search_state',
+      data: {q: request.term, country_id: country_id, remote: "true" },
+      success: function(data) {
+        response(data);
+      },
+      error: function(data) {
+      }
+    });
+  },
+  select: function( event, ui ) {
+    state = ui.item["state"]
+    setTimeout(function() {
+      $(".state").val(state)
+      $('.state').blur()
+    }, 20);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+      return $('<li>')
+        .append('<a style=\"color:#000;text-shadow: 2px\">' + item.state  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+        .appendTo(ul);
+    };
+  }
+});
+
+$('#search_district_cambodia').autocomplete({
+  minLength: 2,
+  source: function(request,response) {
+    var country_id = jQuery('#facility_country_id').val()
+    var state = jQuery('#search_state_cambodia').val();
+    jQuery.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/locations/search_district',
+      data: {q: request.term, state: state, country_id: country_id, remote: "true"},
+      success: function(data){
+        response(data);
+      },
+      error: function(data){
+      }
+    });
+  },
+  select: function( event, ui ) {
+    district = ui.item["district"]
+    state  = ui.item["state"]
+    setTimeout(function() {
+      jQuery(".district").val(district)
+      jQuery(".state").val(state)
+      jQuery('.district').blur()
+    }, 20);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+      return $('<li>')
+        .append('<a style=\"color:#000;text-shadow: 2px\">' + item.district  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+        .appendTo(ul);
+    };
+  }
+});
+
+$('#search_commune_cambodia').autocomplete({
+  minLength: 2,
+  source: function(request,response) {
+    var country_id = jQuery('#facility_country_id').val()
+    var state = jQuery('#search_state_cambodia').val();
+    var district = jQuery('#search_district_cambodia').val();
+    jQuery.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/locations/search_commune',
+      data: {q: request.term, state: state, district: district, country_id: country_id, remote: "true"},
+      success: function(data){
+        response(data);
+      },
+      error: function(data){
+
+      }
+    });
+  },
+  select: function( event, ui ) {
+    commune = ui.item["commune"]
+    district  = ui.item["district"]
+    state = ui.item["state"]
+    setTimeout(function() {
+      jQuery(".commune").prop('readonly',true).val(commune)
+      jQuery(".state").prop('readonly', true).val(state)
+      jQuery(".district").prop('readonly', true).val(district)
+      jQuery(".clear-commune").show()
+      jQuery('.commune').blur()
+    }, 20);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+      return $('<li>')
+        .append('<a style=\"color:#000;text-shadow: 2px; text-align: center;\">' + item.commune + ' (' + item.district + ')' + '&nbsp; &nbsp; &nbsp;' + '</a>')
+        .appendTo(ul);
+    };
+  }
+});
+//Search For Cambodia ends//
+
+// Clear pincode
+$(".clear-pincode").on('click', function(e){
+  e.preventDefault()
+  $(".pincode").prop('readonly',false).val("")
+  $(".state").prop('readonly', false).val("")
+  $(".facility-city").prop('readonly', false).val("")
+  $(".district").prop('readonly',false).val("")
+  $(".commune").prop('readonly', false).val("")
+  $(".clear-pincode").hide()
+});
+
+// Clear pincode
+$(".clear-commune").on('click', function(e){
+  e.preventDefault()
+  $(".commune").prop('readonly',false).val("")
+  $(".district").prop('readonly', false).val("")
+  $(".facility-city").prop('readonly', false).val("")
+  $(".state").prop('readonly', false).val("")
+  $(".pincode").prop('readonly',false).val("")
+  $(".clear-commune").hide()
+});
+
+var country_id = $('#facility_country_id option:selected').attr('value');
+
+// facility country id check_
+function autocomplete_check(country_id) {
+  if (country_id == 'IN_108') {
+    $('#search_state_other').autocomplete("enable");
+    $('#search_city_other').autocomplete("enable");
+    $('#search_pincode_other').autocomplete("enable");
+  } else if (country_id == 'VN_254') {
+    $('#search_district_vietnam').autocomplete("enable");
+    $('#search_city_vietnam').autocomplete("enable");
+    $('#search_commune_vietnam').autocomplete("enable");
+  } else if (country_id == 'KH_039') {
+    $('#search_pincode_cambodia').autocomplete("enable");
+    $('#search_state_cambodia').autocomplete("enable");
+    $('#search_district_cambodia').autocomplete("enable");
+    $('#search_commune_cambodia').autocomplete("enable");
+  } else {
+    $('#search_state_other').autocomplete("disable");
+    $('#search_city_other').autocomplete("disable");
+    $('#search_pincode_other').autocomplete("disable");
+    $('#search_district_vietnam').autocomplete("disable");
+    $('#search_city_vietnam').autocomplete("disable");
+    $('#search_commune_vietnam').autocomplete("disable");
+    $('#search_pincode_cambodia').autocomplete("disable");
+    $('#search_state_cambodia').autocomplete("disable");
+    $('#search_district_cambodia').autocomplete("disable");
+    $('#search_commune_cambodia').autocomplete("disable");
+  }
+}
+autocomplete_check(country_id)
+
+function load_regions() {
+  var country_id = $('#facility_country_id option:selected').attr('value');
+  $.ajax({
+    type: 'GET',
+    dataType: 'json',
+    data: { country_id: country_id, remote: "true" },
+    url: '/countries/populate_country_timezones',
+    success: function(response){
+      // region_master dropdown
+      $('#facility_region_master_id').children().remove();
+      // $('#facility_region_master_id').select2('val', '');
+      if (response.regions !== undefined) {
+        $.each(response.regions, function(key, value) {
+          $('#facility_region_master_id').append($("<option></option>").attr("value",value[1]).text(value[0]));
+          $('#facility_region_master_id').attr('value', '<%= @facility.region_master_id%>')
+        });
+        if (response.regions.length > 0) {
+          $('#facility_region_master_id').select2();
+        }
+      }
+    }
+  });
+}
+load_regions();

@@ -1,0 +1,167 @@
+<%= javascript_include_tag "application-loggedin", "data-turbolinks-track" => true %>
+<% total_appointment_types_count = 0 %>
+<div class="row" id="appointment-types-alert-messages_facility"></div>
+
+<%= form_tag("/appointment_types/save_facility_appointment_type",method: "post",:remote=>true,:id=>"appointment_types_facility",:class => "form form-bordered") do  %>
+  <div class="row text-center">
+    <div class="col-md-12 alert alert-info" id="appointment-type-alert-messages" style="font-style: italic;padding-top:5px;padding-bottom:5px;padding-left:3px;padding-right:3px;">
+      Please click <strong>"Save List"</strong> button after Adding / Editing.  &nbsp;&nbsp; <span class="glyphicon glyphicon-arrow-right"></span>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- <div class="col-md-2" style="text-align: right;margin-top: 5px;"><b>Select Facility :</b></div> -->
+    <!-- <div class="col-md-3"> -->
+      <%# facilities = Facility.where(organisation_id: current_user.organisation_id) %>
+      <%#= select_tag("facility_id", options_for_select(facilities.pluck(:name, :id), @selected_facility.id), class: "form-control", id:"appointment_type_facility_id") %>
+    <!-- </div> -->
+
+    <!-- <div class="col-md-2" style="text-align: right;margin-top: 5px;"><b>Select Specialty :</b></div> -->
+    <!-- <div class="col-md-3"> -->
+      <!-- <div><%#= select_tag "specialty_id", options_for_select(@available_specialties.pluck(:name, :id), @selected_specialty), { class: "form-control specialty_dropdown" } %></div> -->
+    <!-- </div> -->
+    <div class="col-md-10 text-center" style="font-size: 17px;text-decoration: underline;">
+      <strong><%= @current_facility.name.upcase %>  APPOINTMENT TYPES</strong>
+    </div>
+    <div class="col-md-2">
+      <button type="submit" class="btn btn-success save-appointment-type_facility">Save List</button>
+    </div>
+  </div>
+  <hr>
+  
+  <div id="full-appointment-types_facility">
+    <div class="row form-group append-row-below text-center">
+      <div class="col-md-3"><b>Label</b></div>
+      <div class="col-md-2"><b>Background Color</b></div>
+      <div class="col-md-1"><b>Default</b></div>
+      <div class="col-md-4"><b>Specialties</b></div>
+      <div class="col-md-2"><b>Comment</b></div>
+    </div>
+ 
+    <% if @appointment_types.present?%>
+      <% @appointment_types.each_with_index do |each_appointment_type,index| %>
+        <%= fields_for "appointment_type[#{index}]", each_appointment_type do |app_type| %>
+          <div class="row form-group facility_row_update text-center">
+            <%= app_type.hidden_field :id %>
+            <%= app_type.hidden_field :organisation_id %>
+            <%= app_type.hidden_field :facility_id %>
+            <%= app_type.hidden_field :organisation_appointment_type_id %>
+            <%= app_type.hidden_field :label %>
+            <%= app_type.hidden_field :background, value: each_appointment_type.background,id:"bg_hidden_#{index}" %>
+            <%= app_type.hidden_field :duration %>
+            <%= app_type.hidden_field :is_active %>
+
+            <%= app_type.hidden_field :is_default, value: each_appointment_type.is_default %>
+            <input type="hidden" name="appointment_type[<%= index %>][is_updated]" value="false" class="updated_check_facility">
+            <div class="col-md-3"><%= app_type.text_field :label,{:class=>"form-control appointment-label-validation", disabled: true} %> </div>
+            <div class="col-md-2"><%= app_type.text_field :background,{:class=>"form-control", disabled: true} %></div>
+            <div class="col-md-1">
+              <%= radio_button_tag :default,index,each_appointment_type.is_default,{:class=>"default_radio_btn",disabled: true, data: {confirm: 'Are you sure?', commit: 'Sure!'}} %>
+            </div>
+            <div class="col-md-4">
+              <%= app_type.select :specialty_ids, options_for_select(@available_specialties, each_appointment_type.try(:specialty_ids)), {}, {class: 'form-control specialty_ids_dropdown', multiple: 'multiple', style:'max-height:34px;', disabled: true, title: 'Change Specialty from OPD Appointment types section' } %>
+            </div>
+            <div class="col-md-2"><%= app_type.text_field :comment, {class: "form-control comment_length",maxlength: 15} %></div>
+          </div>
+        <% end %>
+        <% total_appointment_types_count += 1 %>
+      <% end %>
+    <% end %>
+  </div>
+<% end %>
+
+<style type="text/css">
+  input.error, select.error {
+    border-color: #b94a48;
+    background-image: none;
+  }
+  input.valid, select.valid {
+    border-color: #468847;
+    background-image: none;
+  }
+  #select2-appointment_type_facility_id-container{
+    text-align: left;
+  }
+</style>
+
+<script>
+  $('.specialty_ids_dropdown').select2()
+  // function get_facility_specialties(facility_id) {
+  //   $.ajax({
+  //     type: "GET",
+  //     dataType: "json",
+  //     url: "/main/get_facility_specialties",
+  //     data: { facility_id: facility_id },
+
+  //     success: function (response) {
+  //       jQuery('.specialty_dropdown').children().remove();
+      
+  //       jQuery.each(response, function (key, value) {
+  //         jQuery('.specialty_dropdown').append($("<option></option>").attr("value", value["_id"]).text(value["name"])).trigger('change.select2')
+  //       });
+        
+  //       specialty_id = $(".specialty_dropdown").val()
+  //       get_specialty_appointment_types(facility_id, specialty_id)        
+  //     }
+  //   });
+  // }
+
+  // function get_specialty_appointment_types(facility_id, specialty_id) {
+  //   $.ajax({
+  //     type: "GET",
+  //     url: "/appointment_types/facility_appointment_type",
+  //     data: { facility_id: facility_id, specialty_id: specialty_id }
+  //   });
+  // }
+
+  function appointment_type_page() {
+    $("#appointment_types_facility").validate({
+
+      errorElement: 'div',
+      errorPlacement: function (error, element) {
+        error.insertAfter(element);
+      }
+    });
+  }
+  appointment_type_page()
+
+  // alias required to cRequired with new message
+  $.validator.addMethod("LabelRequired", $.validator.methods.required, "Label cannot be blank");
+  $.validator.addMethod("SlotRequired", $.validator.methods.required, "Slot time cannot be blank");
+  $.validator.addMethod("INumber", $.validator.methods.number, "Please enter a number");
+  $.validator.addMethod("SpecialtyRequired", $.validator.methods.required, "Specialty required !!");
+
+  jQuery.validator.addMethod("mintimeslot", function(value, element) {
+    return this.optional(element) || value >= 5;
+  }, jQuery.validator.format("Please enter the Value more than or equal to 5"));
+
+  $.validator.addClassRules("specialty_ids_dropdown", { SpecialtyRequired: true});
+  $.validator.addClassRules("appointment-label-validation", { LabelRequired: true});
+  $.validator.addClassRules("slot-duration-validation", { SlotRequired: true, INumber: true, mintimeslot: true});
+  $.validator.addClassRules("comment_length", {maxlength: 15});
+
+  // $("#appointment_type_facility_id").on('change',function(){
+  //   var facility_id = $(this).val();
+    
+  //   if(typeof facility_id !== 'undefined' && facility_id !== ""){
+  //     get_facility_specialties(facility_id)
+  //   }
+  // })
+
+  // $(".specialty_dropdown").on('change',function(){
+  //   var specialty_id = $(this).val();
+  //   var facility_id =  $("#appointment_type_facility_id").val()
+
+  //   if(typeof specialty_id !== 'undefined' && specialty_id !== ""){
+  //     get_specialty_appointment_types(facility_id, specialty_id)
+  //   }
+  // })
+
+  $(document).on('change', '.facility_row_update *',function(){
+    $(this).parent('.facility_row_update').find('.updated_check_facility').val('true');
+  })
+  // $("#appointment_type_facility_id").select2();
+  // $(".specialty_dropdown").select2();
+
+  <%= render partial: 'settings/admins/color_picker.js.erb'%>
+</script>

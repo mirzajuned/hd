@@ -1,0 +1,172 @@
+<div class="col-sm-3 text-center no_padding">
+  <% if @patient_asset.present? %>
+      <%= image_tag(@patient_asset, class: "patient_profile_pic") %>
+  <% else %>
+      <%= image_tag('placeholder.png', class: "patient_profile_pic") %>
+  <% end %>
+  <% if @patient.one_eyed == "Yes" %>
+    <div style="margin-top:4px;"><b style="background:#FF8735;color:#fff;padding:2px 5px;">One Eyed</b></div>
+  <% end %>
+  <div class="mt5"><% if @patient.rating.present? %> <b style="color: #f5bf18;"><%= @patient.rating.round(2).to_s %> <i class="glyphicon glyphicon-star"></i> </b><% end %></div>
+</div>
+<div class="col-sm-9">
+  <div class="row">
+    <div class="col-sm-7">
+      <h4 class="" style="display: inline">Patient Details </h4>
+    </div>
+    <div class="col-sm-2">
+      <% if @org_specialties.count > 1 %>
+        <button class="btn btn-primary btn-primary-transparent btn-xs" data-toggle="dropdown"> Consolidate Reports &nbsp;&nbsp;<i class="fa fa-caret-down"></i></button>
+        <ul class="dropdown-menu" role="menu" aria-labelledby="consolidate-reports-dropdown">
+          <% @org_specialties.each do |specialty| %>
+            <li><%= link_to consolidate_reports_index_path(patient_id: @patient.id, specialty_id: specialty.id), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#templates-modal'} do %> <i class="fa fa-file-text"></i>&nbsp;&nbsp;<%= specialty.name.capitalize %> <% end %></li>
+          <% end %>
+        </ul>
+      <% else %>
+        <%= link_to consolidate_reports_index_path(patient_id: @patient.id, specialty_id: @org_specialties[0].id),  class: "btn btn-xs btn-primary btn-primary-transparent", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#templates-modal'} do %> <i class="fa fa-file-text"></i>&nbsp;&nbsp;Consolidate Reports <% end %>
+      <% end %>
+    </div>
+  </div>
+  <div class="row no_margin">
+    <div class="col-sm-4 no_padding text-left">Full Name</div>
+    <div class="col-sm-1 no_padding text-left">:</div>
+    <div class="col-sm-7 no_padding">
+      <%= @patient.fullname.split(" ").map(&:capitalize).join(" ") %>
+      <% if @patient.gender? %> <%= "(" + @patient.gender[0] + ")" %><% end %>
+    </div>
+  </div>
+  <div class="row no_margin">
+    <div class="col-sm-4 no_padding text-left">Patient ID</div>
+    <div class="col-sm-1 no_padding text-left">:</div>
+    <div class="col-sm-7 no_padding"><%= @patient_identifier&.patient_org_id %></div>
+  </div>
+  <div class="row no_margin">
+    <div class="col-sm-4 no_padding text-left">Date of Birth <% if @calculate_age %> | Age<% end %></div>
+    <div class="col-sm-1 no_padding text-left">:</div>
+    <div class="col-sm-6 no_padding">
+      <%= @patient.dob ? @patient.dob.strftime("%d-%m-%Y") : "Unavailable" %>
+      <% if @patient.exact_age.present? %> <strong>|</strong>
+        <% age_year, age_month = @patient.calculate_age(true) %>
+        <% age_in_months = (age_year.to_i * 12) + age_month.to_i %>
+        <% if age_year.present? && (49...960).exclude?(age_in_months) %>
+          <b style="background:#FF8735;color:#fff;padding:2px 5px;"><%= @calculate_age %></b>
+        <% else %>
+          <b><%= @calculate_age %></b>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+  <div class="row no_margin">
+    <div class="col-sm-4 no_padding text-left">Primary Contact</div>
+    <div class="col-sm-1 no_padding text-left">:</div>
+    <div class="col-sm-7 no_padding"><%= @patient.mobilenumber || 'Unavailable' %></div>
+  </div>
+  <% if @patient.address_1.present? || @patient.address_2.present? || @patient.city.present? || @patient.state.present? || @patient.pincode.present? || @patient.commune.present? || @patient.district.present? %>
+    <div class="row">
+      <div class="col-sm-4 text-left">Address</div>
+      <div class="col-sm-1 text-left">:</div>
+      <div class="col-sm-7">
+        <%= "#{@patient.try(:address_1)}" %>
+        <% if @patient.try(:address_1).present? %>, <% end %>
+        <%= "#{ @patient.try(:address_2) }" %>
+        <%= " #{ @patient.try(:area_manager_name) } #{ @patient.try(:city) } #{ @patient.try(:state) } #{ @patient.try(:commune) } #{ @patient.try(:district) }" %>
+        <% if @patient.try(:pincode).present? %>
+          <%= "(#{ @patient.try(:pincode) })" %>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+  <% if @patient_other_identifier.try(:mr_no).present? %>
+    <div class="row no_margin">
+      <div class="col-sm-4 no_padding text-left">MR No</div>
+      <div class="col-sm-1 no_padding text-left">:</div>
+      <div class="col-sm-7 no_padding"><%= @patient_other_identifier.try(:mr_no) %></div>
+    </div>
+  <% end %>
+
+  <% if @appointment&.referral_text.present? %>
+      <div class="col-sm-4 no_padding text-left">
+        Patient Referral
+      </div>
+      <div class="col-sm-1 no_padding text-left">:</div>
+      <div class="col-sm-6 no_padding">
+        <%= @appointment.referral_text %>
+      </div>
+  <% else %>
+    <% if @initial_referral_type.present? %>
+      <div class="row no_margin">
+        <div class="col-sm-4 no_padding text-left">Referral</div>
+        <div class="col-sm-1 no_padding text-left">:</div>
+        <div class="col-sm-7 no_padding">
+          <% if @initial_referral_type.referral_type_id != "FS-RT-0010" %>
+            <b><%= @initial_referral_type.referral_type.name.to_s.titleize %> - <%= @initial_referral_type.sub_referral_type.name.to_s.titleize %></b>
+            <% if @initial_referral_type.referral_type_id != "FS-RT-0001" %><button class="btn btn-link btn-xs btn-initial-more-detail" style="padding: 0px 5px;">More</button><% end %>
+            <div id="initial-more-detail" style="display: none;"><%= render partial: 'patient_referral_types/views/sub_referral_view.html.erb', locals: { sub_referral_type: @initial_referral_type.sub_referral_type } %></div>
+          <% else %>
+            <b><%= @initial_referral_type.sub_referral_type.name.to_s %></b>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+    <% if (@initial_referral_type.try(:appointment_id) != @patient_referral_type.try(:appointment_id)) && @initial_referral_type.try(:referral_type_id) != "FS-RT-0010" %>
+      <% if @patient_referral_type.present? %>
+        <div class="row no_margin">
+          <div class="col-sm-4 no_padding text-left">
+            Appt Referral
+          </div>
+          <div class="col-sm-1 no_padding text-left">:</div>
+          <div class="col-sm-7 no_padding">
+            <b><%= @patient_referral_type.referral_type.name.to_s.titleize %> - <%= @patient_referral_type.sub_referral_type.name.to_s.titleize %></b>
+            <% if @patient_referral_type.referral_type_id != "FS-RT-0001" %>
+              <button class="btn btn-link btn-xs btn-patient-referral-more-detail" style="padding: 0px 5px;">More</button>
+            <% end %>
+            <div id="patient-referral-more-detail" style="display: none;">
+              <%= render partial: 'patient_referral_types/views/sub_referral_view.html.erb', locals: { sub_referral_type: @patient_referral_type.sub_referral_type } %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    <% end %>
+  <% end %>
+  <% if @appointment.try(:patient_visit_category).present? %>
+    <div class="row no_margin">
+      <div class="col-sm-4 no_padding text-left">
+        Patient Visit Category
+      </div>
+      <div class="col-sm-1 no_padding text-left">:</div>
+      <div class="col-sm-6 no_padding">
+        <label class="label label-warning">
+          <%= @appointment.try(:patient_visit_category) %>
+        </label>
+      </div>
+    </div>
+  <% end %>
+  <% if @appointment.try(:patient_category).present? %>
+    <div class="row no_margin">
+      <div class="col-sm-4 no_padding text-left">
+        Patient Category
+      </div>
+      <div class="col-sm-1 no_padding text-left">:</div>
+      <div class="col-sm-6 no_padding">
+        <label class="label label-warning">
+          <%= @appointment.try(:patient_category) %>
+        </label>
+      </div>
+    </div>
+  <% end %>
+  <% if current_facility["link_to_external_app"] && @patient.patient_mrn.present? %>
+    <div class="row no_margin">
+      <div class="col-sm-4 no_padding text-left">DMR Images</div>
+      <div class="col-sm-1 no_padding text-left">:</div>
+      <div class="col-sm-7 no_padding">
+        <%= link_to "#{current_facility["url_of_external_app"]}#{CommonHelper.sankara_dmr_integration(@patient.patient_mrn)}", target: :_blank do %>
+            DMR Link
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+</div>
+<div class="row col-md-12" id="patient_history_allergy">
+  <%= render partial: "outpatients/appointment/appointment_details/patient_history_allergy.html.erb" %>
+</div>

@@ -1,0 +1,173 @@
+// datepicker
+datepicker_options = {
+  changeMonth: true,
+  changeYear: true,
+  dateFormat: "dd/mm/yy"
+};
+
+surgery_options = {
+  changeMonth: true,
+  changeYear: true,
+  dateFormat: "dd/mm/yy",
+  minDate: <%= (@admission.admissiondate - Date.current) %>
+};
+
+$('.datepicker').datepicker(datepicker_options);
+<% unless @operative_note.read_attribute(:surgerydate).present? %>
+  // $(".datepicker").datepicker("setDate", new Date());
+<% end %>
+
+$('.surgery-datepicker').datepicker(surgery_options);
+
+$('.surgery_timepicker').timepicker();
+
+<% if @operative_note.read_attribute(:patient_entry_time).nil? %>
+  $(".patient_entry_time").val("")
+<% end %>
+<% if @operative_note.read_attribute(:patient_exit_time).nil? %>
+  $(".patient_exit_time").val("")
+<% end %>
+<% if @operative_note.read_attribute(:anesthesia_start_time).nil? %>
+  $(".anesthesia_start_time").val("")
+<% end %>
+<% if @operative_note.read_attribute(:anesthesia_end_time).nil? %>
+  $(".anesthesia_end_time").val("")
+<% end %>
+<% if @operative_note.read_attribute(:surgery_start_time).nil? %>
+  $(".surgery_start_time").val("")
+<% end %>
+<% if @operative_note.read_attribute(:surgery_end_time).nil? %>
+  $(".surgery_end_time").val("")
+<% end %>
+
+$(".set_time").on('click',function(e){
+  e.preventDefault();
+  _this = this
+  $.ajax({
+    type: "GET",
+    dataType: "json",
+    url: "/inpatient/ipd_records/current_time",
+    success: function(response){
+      $(_this).closest(".timer_field").find('.feed_time').val(response)
+      $(_this).closest(".timer_field").find('.feed_time_view').val(moment.tz('<%= current_facility.time_zone %>').format("hh:mm A"))
+    },
+    error: function(err){
+    }
+  });
+});
+
+$(".feed_time_view").on('change',function(e){
+  var time = $(this).val()
+  // _this = this
+  $(this).closest(".timer_field").find('.feed_time').val(time)
+});
+
+var summernote_options = {
+  toolbar: [
+    ['style', ['bold', 'italic', 'underline', 'clear']],
+    ['fontsize', ['fontsize']],
+    ['height', ['height']],
+    ['fontname', ['fontname']],
+    ['table', ['table']],
+  ],height: 500,
+  insertTableMaxSize: {col: 5,row: 7}
+};
+$('#inpatient_ipd_record_operative_notes_attributes_0_procedure_note').summernote(summernote_options);
+$("#inpatient_ipd_record_operative_notes_attributes_0_procedure_note").on("summernote.change", function (event) {});
+
+if($(".procedurenotetext .note-toolbar div.procedurenote-buttons").length == 0){
+  $(".procedurenotetext .note-toolbar").append("<div class='pull-right procedurenote-buttons'><button class='btn btn-success save-procedurenote-button'>Save note</button> <button class='btn btn-danger clear-procedure-note-button' style='margin:3px;'>Clear note</button></div>");
+}
+
+$("input[name='inpatient_ipd_record_operative_note[admissiondate]']").datepicker({
+  dateFormat: "dd/mm/yy",
+  changeMonth: true,
+  changeYear: true
+});
+
+$(".saved_procedure_notes").on('click', ".saved_procedure_note", function(event) {
+  event.preventDefault();
+  if ($(".saved_procedure_note").hasClass("active")) {
+    $(".saved_procedure_note").removeClass("active");
+  }
+  $(this).addClass("active");
+  var procedure_note_id = $(this).attr("data-procedure_note_id");
+  var params = { procedure_note_id: procedure_note_id };
+  $.ajax({
+    type: "GET",
+    dataType: "script",
+    url: "/opd_records/saved_procedure_note",
+    data: {ajax: params, remote: "true" }
+  });
+});
+
+$(".search_procedure_notes").on('keyup', function(event) {
+  event.preventDefault();
+  if ($(this).val().length >= 3) {
+    var params = { name: $(this).val() };
+    $.ajax({
+      type: "GET",
+      dataType: "script",
+      url: "/ipd_patients/searchprocedurenotes",
+      data: {ajax: params, remote: "true" }
+    });
+  } else if ($(this).val().length <= 2) {
+    $.ajax({
+      type: "GET",
+      dataType: "script",
+      url: "/opd_records/reload_note",
+      data: { remote: "true" }
+    });
+  }
+});
+
+$(".note-toolbar").on('click', ".save-procedurenote-button", function(event) {
+  event.preventDefault();
+  $(".save-procedurenote-button").addClass("disabled");
+  $(".clear-procedure-note-button").addClass("disabled");
+  if ($('.popover-save-procedure-note').length) {
+    $('.popover-save-procedure-note').popover('destroy');
+  }
+  var i = $(this);
+  var params = { proceduretext: $('#inpatient_ipd_record_operative_notes_attributes_0_procedure_note').code() };
+  $(this).popover({
+    placement : 'right',
+    title : 'New Surgical Note',
+    html : true,
+    content : function(){
+      $.ajax({
+        type: "GET",
+        url: "/opd_records/new_note",
+        data: {ajax: params, remote: "true" }
+      }).done(function( data ) {
+        $('.popover.in .popover-content').empty();
+        $(".popover.in .popover-content").html(data);
+        $(".popover.in").css("top","-50px")
+      });
+    },
+    template : '<div class="popover popover-save-procedure-note" role="tooltip" style="width: 700px"><div class="arrow"></div><h3 class="popover-title"></h3><div class="popover-content"></div></div>'
+  }).popover('show');
+});
+
+$(".clear-procedure-note-button").on('click', function(event) {
+  event.preventDefault();
+  $('#inpatient_ipd_record_operative_notes_attributes_0_procedure_note').code(" ");
+});
+// Validation on Surgery Checkbox
+$.validator.addMethod('procedureCheckbox', function(value,element) {
+    return $('.procedure-checkbox:checked').size() > 0;
+}, 'Select at least one Procedure');
+$.validator.addClassRules("procedure-checkbox", { procedureCheckbox: true});
+ipd_ot_validate();
+function ipd_ot_validate(){
+    $("#ipdrecord_form").validate({
+
+        errorPlacement: function (error, element) {
+            if ($("#error_procedure_performed").children().length == 0 ) {
+                error.appendTo($("#error_procedure_performed"));
+            }
+        }
+
+    })
+
+}

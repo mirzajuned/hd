@@ -1,0 +1,130 @@
+$("#fill-self-history-modal").html('<%= escape_javascript(render "patient_self_histories") %>')
+
+$("#fill-self-history-modal").modal("show")
+
+<%= render partial: "templates/common/js/popup_modal_hidden.js" %>
+
+$(".self-history-btn").on('click', function(e){
+  e.preventDefault();
+  jQuery.ajax({
+    type: "GET",
+    dataType: "json",
+    url: "/opd_records/ophthalmology_notes/fill_patient_self_history",
+    data: {patient_id: "<%= @patient.id %>", remote: "true" },
+    async: false,
+    success: function(response){
+      console.log(response)
+      var patient_complaint = (response.patient_self_history.chief_complaints)
+
+      var personal_history = (response.patient_self_history.personal_history_records)
+
+      var speciality_history = (response.patient_self_history.speciality_history_records)
+
+      var patientallergyhistory = (response.patient_self_history.allergies)
+
+      if (patient_complaint) {
+        for (var i = 0; i < patient_complaint.length; i++) {
+          var name_field = patient_complaint[i].name
+          var id = "#"+patient_complaint[i].name
+          $(id).trigger('click')
+
+          var find = "."+patient_complaint[i].name+"_fields"
+          if (patient_complaint[i].side)
+            if (patient_complaint[i].side == "BE")
+              $(find).find('.side').val("B/E")
+            else
+              $(find).find('.side').val(patient_complaint[i].side) 
+          else
+            $(find).find('.side').val()
+          if (patient_complaint[i].duration) 
+            if (patient_complaint[i].duration != 0 )
+              $(find).find('.duration').val(patient_complaint[i].duration)
+            else
+              $(find).find('.duration').val()
+          else
+            $(find).find('.duration').val()
+          if (patient_complaint[i].duration_unit)
+            $(find).find('.duration_unit').val(patient_complaint[i].duration_unit.toLowerCase())
+          else
+            $(find).find('.duration_unit').val()
+          $(find).find('.comment').val(patient_complaint[i].complaint_options+"  "+patient_complaint[i].comment)
+        }
+      }
+      if (personal_history) {
+        for (var i = 0; i < personal_history.length; i++) {
+          var name_field = personal_history[i].name
+          var id = "#"+personal_history[i].name
+          $(id).trigger('click')
+
+          var find = "."+personal_history[i].name+"_fields"
+          if (personal_history[i].duration) 
+            if (personal_history[i].duration != 0) 
+              $(find).find('.duration_field').val(personal_history[i].duration)
+            else
+              $(find).find('.duration_field').val()
+          else
+            $(find).find('.duration').val()
+          if (personal_history[i].duration_unit)
+            $(find).find('.duration_unit').val(personal_history[i].duration_unit.toLowerCase())
+          else
+            $(find).find('.duration_unit').val()
+        }  
+      }
+      if (speciality_history) {
+        for (var i = 0; i < speciality_history.length; i++) {
+          var name_field = speciality_history[i].name
+          var id = "#"+speciality_history[i].name
+          $(id).trigger('click')
+
+          var find = "."+speciality_history[i].name+"_fields"
+          if (speciality_history[i].l_duration) 
+            if (speciality_history[i].l_duration != 0 )
+              $(find).find('.l_duration_field').val(speciality_history[i].l_duration)
+            else
+              $(find).find('.l_duration_field').val()
+          else
+            $(find).find('.l_duration').val()
+          if (speciality_history[i].l_duration_unit)
+            $(find).find('.l_duration_unit').val(speciality_history[i].l_duration_unit.toLowerCase())
+          else
+            $(find).find('.l_duration_unit').val()
+          //right side
+          if (speciality_history[i].r_duration) 
+            if (speciality_history[i].r_duration != 0 )
+              $(find).find('.r_duration_field').val(speciality_history[i].r_duration)
+            else
+              $(find).find('.r_duration_field').val()
+          else
+            $(find).find('.r_duration').val()
+          if (speciality_history[i].r_duration_unit)
+            $(find).find('.r_duration_unit').val(speciality_history[i].r_duration_unit.toLowerCase())
+          else
+            $(find).find('.r_duration_unit').val()
+        }
+      }
+      if (patientallergyhistory) {
+        var patientselfallergyhistory = ""
+        if (patientallergyhistory["contact_allergies_present"] == "YES") {
+          patientselfallergyhistory = "Contact " + patientallergyhistory["contact_comment"]
+        }
+        if (patientallergyhistory["food_allergies_present"] == "YES") {
+          patientselfallergyhistory = patientselfallergyhistory + ", Food " + patientallergyhistory["food_comment"]
+        }
+        if (patientallergyhistory["eyedrop_allergies_present"] == "YES") {
+          patientselfallergyhistory = patientselfallergyhistory + ", Eyedrop " + patientallergyhistory["eyedrop_comment"]
+        }
+        if (patientallergyhistory["drug_allergies_present"] == "YES") {
+          patientselfallergyhistory = patientselfallergyhistory + ", Drug " + patientallergyhistory["drug_comment"]
+        }
+        patientselfallergyhistory = patientselfallergyhistory +" "+ patientallergyhistory["other_allergies"]
+        $('#opdrecord_others_allergies').val(patientselfallergyhistory)
+      }
+      $('#opdrecord_opthal_history_comment').val(response.patient_self_history.opthal_history_comment)
+      $('#opdrecord_history_comment').val(response.patient_self_history.history_comment)      
+      $('#family_history').val(response.patient_self_history.other_history.family_history)
+      $('#medical_history').val(response.patient_self_history.other_history.medical_history)
+    }
+  });
+  $("#fill-self-history-modal").modal("hide")
+  $("#verify-self-history").hide()
+})

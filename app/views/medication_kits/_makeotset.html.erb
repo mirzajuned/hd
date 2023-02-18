@@ -1,0 +1,186 @@
+<%= javascript_include_tag "application-loggedin", "data-turbolinks-track" => true %>
+<div class="modal-body">
+
+  <div class="panel panel-default">
+    <%= simple_form_for(@ot_kit, url: medication_kits_create_ot_set_path,:remote => true) do |f| %>
+        <div class="panel-body ">
+
+          <%= f.text_field :user_id,{:type => "hidden",:value=>@userid} %>
+          <%= f.text_field :doctor,{:type => "hidden",:value=>@userid} %>
+          <%= f.text_field :department,{:type => "hidden",:value=> @department_id, :id=> "opdrecord_specalityid" } %>
+
+          <div class="row form-group">
+
+            <div class="col-md-1"><%= f.label "Set Name :" %></div>
+            <div class="col-md-3 mr10"><%= f.text_field :name,{:class => 'form-control set-name'} %></div>
+
+            
+          <div class="item_group" style="padding-bottom:10px">
+            <table class="table table-striped table-bordered">
+
+              <div class="row form-group">
+                <thead>
+                <tr>
+                  <th class="col-sm-3"> <b>Name</b> </th>
+                  <th class="col-sm-1"> <b>Type</b> </th>
+                  <th class="col-sm-2"> <b>Instruction</b> </th>
+                  <th class="col-sm-2"> </th>
+                </tr>
+                </thead>
+              </div>
+
+              <div class="row form-group">
+                <tbody class="item-table-body-added">
+
+                    <% (1..5).each_with_index do |elem, i| %>
+
+                        <tr class="otitems">
+
+                          <td style="padding-left:1px;padding-top:1px;padding-bottom:1px;padding:0px;">
+                            <div class="form-group">
+                              <div class="input-group mb15">
+                                <div class="ui-widget">
+                   
+                                  <%= hidden_field_tag "opdrecord[ot_kit_attributes][#{i}][_destroy]", "0", {:class => 'form-control' } %>
+                   
+                                  <%= text_field_tag "opdrecord[ot_kit_attributes][#{i}][itemname]", nil, {:maxlength => 80, :size => 80, :class => 'form-control itemname' } %>
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+
+                          <td style="padding-left:1px;padding-top:1px;padding-bottom:1px;padding:0px;">
+                            <div class="form-group">
+                              <div class="input-group mb15">
+                                <%= select_tag "opdrecord[ot_kit_attributes][#{i}][itemtype]", options_for_select(['Medications', 'Consumables', 'Packs', 'Preps', 'Instruments', 'Implant', 'Swabs'], "1"), { :class => 'form-control itemtype' } %>
+                              </div>
+                            </div>
+                          </td>
+
+                          <td style="padding-left:1px;padding-top:1px;padding-bottom:1px;padding:0px;">
+                            <div class="form-group">
+                              <div class="input-group mb15">
+                                <%= text_field_tag "opdrecord[ot_kit_attributes][#{i}][iteminstructions]", nil, {:maxlength => 80, :size => 40, :class => 'form-control' } %>
+                              </div>
+                            </div>
+                          </td>
+
+                          <td style="padding-left:1px;padding-top:1px;padding-bottom:1px;padding:0px;">
+
+                            <div class="form-group">
+                              <a id="addnewitembutton1" class="btn btn-xs btn-primary btn-square" href="javascript:;" name="addnewitembutton" ><span class="glyphicon glyphicon-plus-sign"></span></a>
+                              <a id="removeitembutton1" class="btn btn-xs btn-primary btn-danger" href="javascript:;" name="removeitembutton" ><span class="glyphicon glyphicon-remove"></span></a>
+                            </div>
+
+                          </td>
+
+                        </tr>
+
+                    <%end%>
+
+                </tbody>
+              </div>
+
+            </table>
+          </div>
+          <%= f.submit "Add OT Set",{:class => 'btn btn-success'}%>
+          <button aria-hidden="true" class="btn btn-info medication-kits-cancel" data-dismiss="modal">Cancel</button>
+
+        </div>
+    <% end %>
+    <input id= "medi_row_count" type="hidden" value="1">
+  </div>
+  </div>
+
+  </div>
+  <script>
+    <%= render partial: 'manage.js'  %>
+    jQuery('tbody').on('click', "a[name*='addnewitembutton']", function() {
+      var fieldcounter;
+      if (jQuery(".item-table-body-added > .otitems").length == 0){
+        fieldcounter = 0;
+      } else {
+        fieldcounter = jQuery(".item-table-body-added > .otitems").length;
+      }
+      var params = { counter: fieldcounter };
+      jQuery.ajax({
+        type: "GET",
+        dataType: "script",
+        url: "/opd_records/add_ot_item",
+        data: {ajax: params, remote: "true" },
+        async: false
+      });
+      _renumber_id_after_remove("tbody.item-table-body-added", "div.item-table-body-removed");
+    })
+
+
+    jQuery('.item-table-body-added').on('click', "a[name*='removeitembutton']", function() {
+      event.preventDefault();
+      var medications_removed_tr_html;
+      var fieldcounter;
+      fieldcounter = jQuery(this).attr('id').slice(-1);
+      var medications_tr_array = jQuery(this).parents('.otitems').find(".id");
+      if (medications_tr_array.length > 0) {
+        jQuery(this).parents('.otitems').find("input[name*='_destroy']").val("1");
+        medications_removed_tr_html = jQuery(this).parents('.otitems').wrap('<p/>').parent().html();
+        jQuery(this).parents('.otitems').unwrap();
+        jQuery('.item-table-body-removed').append(medications_removed_tr_html);
+        jQuery(this).parents('.otitems').remove();
+        _renumber_id_after_remove("tbody.item-table-body-added", "div.item-table-body-removed");
+      } else {
+        jQuery(this).parents('.otitems').remove();
+        _renumber_id_after_remove("tbody.item-table-body-added", "div.item-table-body-removed");
+      }
+    });
+
+
+    function _renumber_id_after_remove(added, removed) {
+      var counter = 0;
+      jQuery(added).find("tr").each(function() {
+        jQuery(this).find("input").each(function(index, element) {
+          var nameattr, idattr;
+          nameattr = element.name.replace(/\[[0-9]+\]/g, '['+counter+']');
+          idattr = element.id.replace(/\_[0-9]+\_/g, '_'+counter+'_');
+          jQuery(this).attr('name', nameattr);
+          jQuery(this).attr('id', idattr);
+        });
+        jQuery(this).find("select").each(function(index, element) {
+          var nameattr, idattr;
+          nameattr = element.name.replace(/\[[0-9]+\]/g, '['+counter+']');
+          idattr = element.id.replace(/\_[0-9]+\_/g, '_'+counter+'_');
+          jQuery(this).attr('name', nameattr);
+          jQuery(this).attr('id', idattr);
+        });
+        jQuery(this).find("a").each(function(index, element) {
+          var idattr;
+          idattr = element.id.replace(/[0-9]/g, counter);
+          jQuery(this).attr('id', idattr);
+        });
+        counter++;
+      });
+      jQuery(removed).find("tr").each(function() {
+        jQuery(this).find("input").each(function(index, element) {
+          var nameattr, idattr;
+          nameattr = element.name.replace(/\[[0-9]+\]/g, '['+counter+']');
+          idattr = element.id.replace(/\_[0-9]+\_/g, '_'+counter+'_');
+          jQuery(this).attr('name', nameattr);
+          jQuery(this).attr('id', idattr);
+        });
+        jQuery(this).find("select").each(function(index, element) {
+          var nameattr, idattr;
+          nameattr = element.name.replace(/\[[0-9]+\]/g, '['+counter+']');
+          idattr = element.id.replace(/\_[0-9]+\_/g, '_'+counter+'_');
+          jQuery(this).attr('name', nameattr);
+          jQuery(this).attr('id', idattr);
+        });
+        jQuery(this).find("a").each(function(index, element) {
+          var idattr;
+          idattr = element.id.replace(/[0-9]/g, counter);
+          jQuery(this).attr('id', idattr);
+        });
+        counter++;
+      });
+    }
+  </script>
+
+<%= javascript_include_tag "autocomplete/medicine" %>

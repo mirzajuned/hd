@@ -1,0 +1,65 @@
+<div class="patient-sign-sigout-button mb10" id="patient-sign-sigout-button">
+  <%= render partial: "patients/partials/patientsiginipdbutton", locals: { patient: @patient, admission: @admission } %>
+</div>
+
+<% if @section == "440655000" %>
+    <div class="dropdown mb10 opd_templates_links">
+      <%= render partial: "patients/opd_templates_links"%>
+    </div>
+<% end %>
+<% if @section == "440654001" %>
+    <div class="dropdown mb10 ipd_templates_links">
+      <%= render partial: "patients/ipd_templates_links"%>
+    </div>
+<% end %>
+
+
+<% if current_facility.show_finances? %>
+  <% @tpa = @admission %>
+  <% unless @tpa.is_insured? %>
+  <div class="patient-printinvoice-button mb10" id="patient-printinvoice-button">
+    <%= render partial: "patients/partials/printnewinvoiceipdbutton", locals: { patient: @patient, admission: @admission, invoice_templates: @invoice_templates } %>
+  </div>
+  <div class="patient-printinvoice-button mb10" id="patient-printinvoice-button">
+    <div class="mb10"></div>
+    <% if @patient_pastinvoices.size > 0 %>
+        <div class="dropdown">
+          <button type="button" class="btn btn-primary" title="Print Past Invoice" id="invoice-print-dropdown" data-toggle="dropdown" style="width:160px;">
+            <i class="fa fa-print"></i> Print old Receipts
+          </button>
+          <ul class="dropdown-menu" role="menu" aria-labelledby="invoice-print-dropdown">
+            <% if @patient_pastinvoices.count > 0 %>
+                <% @patient_pastinvoices.newest_invoice_first.each do |patient_pastinvoice| %>
+                    <li style="text-align:center;">
+                      <%= link_to edit_invoice_ipd_path(:id => patient_pastinvoice.id), :data => {:remote => true} do %><%= patient_pastinvoice.bill_number %><% end %>
+                    </li>
+                <% end %>
+            <% else %>
+                <li style="text-align:center;">No Past Receipts</li>
+            <% end %>
+          </ul>
+        </div>
+    <% end %>
+  </div>
+  <% else %>
+  <div class="dropdown">
+  <button type="button" class="btn btn-default" title="Print Receipt" id="invoice-print-dropdown" data-toggle="dropdown" style="width:160px;">
+    <i class="fa fa-print"></i> Print Receipt
+  </button>
+  <ul class="dropdown-menu" role="menu" aria-labelledby="invoice-print-dropdown">
+    <% @inv_ins_id = Invoice::Insurance.find_by(admission_id: @admission.id) %>
+    <% @inv_est_id = Invoice::InsuranceEstimate.find_by(admission_id: @admission.id) %>
+    <% if @inv_est_id.nil? %>
+      <li><%= link_to new_invoice_insurance_estimate_path(:tpa_id => @tpa.id.to_s, :admission_id => @admission.id, :patient_id => @admission.patient_id), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#insurance-modal'} do %> Estimate Receipt <% end %></li>
+    <% else %>
+      <li><%= link_to invoice_insurance_estimate_path(id: @inv_est_id.id), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#insurance-modal'} do %> View Estimate Receipt <% end %></li>
+    <% end %>
+    <% if @inv_ins_id.nil? %>
+      <li><%= link_to new_invoice_insurance_path(:tpa_id => @tpa.id.to_s, :admission_id => @admission.id, :patient_id => @admission.patient_id), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#insurance-modal'} do %> New Insurance Receipt <% end %></li>
+    <% else %>
+      <li><%= link_to invoice_insurance_path(id: @inv_ins_id.id), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#insurance-modal'} do %> View Insurance Receipt <% end %></li>
+    <% end %>
+  </ul>
+  </div>
+  <% end %>
+<% end %>

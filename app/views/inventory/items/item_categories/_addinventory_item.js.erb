@@ -1,0 +1,472 @@
+
+
+
+$("#inventory_item_package_type").on("change", function(){
+  $(".package-type-text").html($(this).val())
+})
+$("#inventory_item_sub_package_type").on("change", function(){
+  $(".sub-package-type-text").html($(this).val())
+})
+
+
+$(".tax_group_id").on('change', function(){
+  var tax_rate = parseFloat($(".tax_group_id").find(":selected").attr('data-tax-rate'))
+  var tax_name = $(".tax_group_id").find(":selected").attr('data-tax-name')
+  $('.inventory_item_tax_rate').val(tax_rate)
+  $('.inventory_item_tax_name').val(tax_name)
+})
+
+$("#inventory_item_fixed_threshold").on("click", function() {
+  check_threshold_value()
+})
+
+function check_threshold_value() {
+  if ($("#inventory_item_fixed_threshold").prop('checked')) {
+    $("#inventory_item_threshold_value").parent().show();
+    $(".threshold-value").hide();
+    $(".set-item-threshold-value").prop("disabled", false)
+    $(".item-threshold-value").prop("disabled", true)
+    $('.min-stock-percentages').hide()
+  } else {
+    $("#inventory_item_threshold_value").parent().hide()
+    $(".threshold-value").show();
+    $(".set-item-threshold-value").prop("disabled", true)
+    $(".item-threshold-value").prop("disabled", false)
+    $('.min-stock-percentages').show()
+  }
+}
+
+check_threshold_value();
+
+
+function addItem_page() {
+  $("#new_inventory_item").validate({
+    rules: {
+      "inventory_item[description]": {
+        required: true,
+        remote: "/inventory/items/check_description?existing_description=<%= @inventory_item.try(:description) %>"
+      },
+      "inventory_item[sub_package_units]": {
+        required: true,
+      },
+      "inventory_item[item_units]": {
+        required: true,
+      },
+      "inventory_item[tax_group_id]": {
+        required: true,
+      },
+//       "inventory_item[barcode]": {
+//          required: true,
+//        },
+      "stock_pack": {
+        required: true,
+        number: true
+      },
+//      "inventory_item[manufacturer]": {
+//        required: true,
+//      },
+      "price_pack": {
+        required: true,
+        number: true
+      },
+      "mrp_pack": {
+        required: true,
+        number: true
+      },
+      "list_price_pack": {
+        required: true,
+        number: true
+      },
+      "expiry": {
+        required: true,
+        dateISO: true
+      },
+
+    },
+    messages: {
+      "inventory_item[description]": {
+        remote: "Already in use."
+      },
+
+    },
+    errorPlacement: function (error, element) {
+      var id = $(element).attr("id");
+      var parent = $("#"+id).parents(".input-group").length
+      if(parent == 0){
+        error.insertAfter(element);
+      } else {
+        error.insertAfter($("#"+id).parents(".input-group"));
+      }
+    }
+  });
+}
+addItem_page()
+
+
+$.validator.addMethod("ServiceName", $.validator.methods.required,
+  "Service Name cannot be blank");
+
+$.validator.addClassRules("item-custom-field-name", { required: true});
+$.validator.addClassRules("item-custom-field-value", { required: true});
+
+
+$.validator.addMethod("genericNameValid", function(value, element) {
+  var state = $(element).attr('readonly')
+  var length = $(element).val().length
+  return ((state == 'readonly') || (length == 0))
+}, "Please search and select item from the list !");
+$.validator.addClassRules("item_name", { genericNameValid: true});
+
+jQuery.extend(jQuery.validator.messages, {
+  required: "Required",
+  remote: "Please fix this field.",
+  email: "Please enter a valid email address.",
+  url: "Please enter a valid URL.",
+  date: "Please enter a valid date.",
+  dateISO: "Invalid date.",
+  number: "Invalid No.",
+  digits: "Please enter only digits.",
+  creditcard: "Please enter a valid credit card number.",
+  equalTo: "Please enter the same value again.",
+  accept: "Please enter a value with a valid extension.",
+  maxlength: jQuery.validator.format("Please enter no more than {0} characters."),
+  minlength: jQuery.validator.format("Please enter at least {0} characters."),
+  rangelength: jQuery.validator.format("Please enter a value between {0} and {1} characters long."),
+  range: jQuery.validator.format("Please enter a value between {0} and {1}."),
+  max: jQuery.validator.format("Please enter a value less than or equal to {0}."),
+  min: jQuery.validator.format("Please enter a value greater than or equal to {0}.")
+});
+
+$(".close-item-modal").on("click",function(){
+  $("#inventory-item-modal").modal("hide")
+  let from = '<%= params[:action_from] %>'
+  if (from == 'sale_order') {
+    $('body').addClass('modal-open');
+  }
+})
+
+$(".save-item").on("click",function(){
+  let from = '<%= params[:action_from] %>'
+  if (from == 'sale_order') {
+    $('body').addClass('modal-open');
+  }
+})
+
+$('.item-custom-field-value').select2({
+  tags: true,
+  tokenSeparators: [','],
+  placeholder: "Enter possible values",
+  val: []
+})
+
+$('.remove-item-custom-field').on('click',function () {
+  $(this).parents('.item-custom-field').remove()
+})
+
+$("#item_category").on("change",function(){
+  jQuery.ajax({
+    type: "GET",
+    dataType: "script",
+    data: {item_category_id: $("#item_category option:selected").val(),
+    store_id: '<%= @inventory_store.try(:id) %>',
+    action_from: '<%= @action_from %>',
+    remote: "true" },
+    url: '/inventory/items/new'
+  });
+})
+
+if ($('.item-custom-field').length == 0 )
+{
+  $('.custom_fields_button a').trigger('click')
+}
+
+
+$('.btn-add-item').on('click', function(e){
+  e.preventDefault();
+  add_generic_composition()
+})
+
+$('.clear-generic-tag').on('click', function(e){
+  $(this).hide()
+  $('.generic-composition-section').html("")
+  add_generic_composition()
+  $('.btn-remove-item').attr('disabled', 'disabled')
+})
+
+function add_generic_composition()
+{
+  let counter = $('.generic-composition-row').length
+  $('.generic-btn-container').remove()
+  $('.generic-composition-section').append(`
+    <div class="generic-composition-row mb10 col-sm-4">
+      <div class="col-md-5">
+        <input type="text" name="inventory_item[generic_names_attributes][${counter}][name]" class='item_name form-control p5_10'>
+        <input type="hidden" name="inventory_item[generic_names_attributes][${counter}][generic_id]" class='generic_id form-control p5_10'>
+      </div>
+      <div class="col-md-5" style="padding: 0">
+        <div class="col-md-5" style="padding: 0;">
+          <input type="number" name="inventory_item[generic_names_attributes][${counter}][quantity]" class='item_quantity form-control p5_2' step='0.00001' min=0.0>
+        </div>
+        <div class="col-md-7" style="padding: 0;">
+          <select name="inventory_item[generic_names_attributes][${counter}][unit]" class='form-control item_unit p6_10'>
+          <option value="">Select</option>
+          <option value="E/O">E/O</option>
+          <option value="mg">mg</option>
+          <option value="ml">ml</option>
+          <option value="%">%</option>
+          <option value="% E/O">% E/O</option>
+          <option value="% w/v">% w/v</option>
+          <option value="mg/ml">mg/ml</option>
+          <option value="w/v">w/v</option>
+          <option value="IU">IU</option>
+        </select>
+        </div>
+      </div>
+      <div class="col-md-2">
+        <button class="btn btn-danger btn-xs btn-remove-item" style="padding: 3px 10px;">&times;</button>
+      </div>
+    </div>
+    <div class='generic-btn-container col-md-1'>
+      <span class="btn btn-primary btn-xs btn-add-item" onclick='add_generic_composition()' disabled='disabled'><i class="fa fa-plus"></i></sapn>
+    </div>
+  `)
+
+
+  if(counter > 0){
+    $('.btn-remove-item').removeAttr('disabled', 'disabled')
+  }
+}
+
+$('.item_type:last').select2();
+
+$('.generic-composition-section').on('click', '.btn-remove-item', function(e){
+  e.preventDefault();
+  name = $(this).closest('.generic-composition-row').find('.item_name').val()
+  qty = $(this).closest('.generic-composition-row').find('.item_quantity').val()
+  unit = $(this).closest('.generic-composition-row').find('.item_unit').val()
+  generic_name = name+' '+qty+' '+unit
+  var a = $('.Additem').text().replace(generic_name, '')
+  $('.Additem').empty()
+  $(".Additem").text(($(".Additem").text() + ', ' + a).replace(/^, /, ''));
+  $(this).closest('.generic-composition-row').remove();
+  $('.generic-btn-container').remove()
+  $(this).closest('.generic-composition-row .error').remove()
+  $('.generic-composition-section').append(`
+    <div class='generic-btn-container col-md-1'>
+      <span class="btn btn-primary btn-xs btn-add-item" onclick='add_generic_composition()' disabled='disabled'><i class="fa fa-plus"></i></sapn>
+    </div>
+  `)
+
+  renumberIndex($('.generic-composition-row'), ['input', 'select'])
+
+  if ($('.generic-composition-row').length < 2)
+  {
+    $('.clear-generic-tag').hide()
+  }
+  if ( ($('.generic-composition-row:last .item_name').val() != '') && ($('.generic-composition-row').length > 0 ) )
+  {
+    $('.clear-generic-tag').show()
+  }
+
+  if ( ($('.generic-composition-row:last .item_name').attr('readonly') == 'readonly') || ($('.generic-composition-row').length < 1 ) )
+  {
+    $('.btn-add-item').removeAttr('disabled', 'disabled')
+  }
+  else
+  {
+    $('.btn-add-item').attr('disabled', 'disabled')
+  }
+  // if(counter == 1){
+  //   $('.btn-remove-item:first').attr('disabled', 'disabled')
+  // }
+})
+
+function composition_unit(composition_unit) {
+  $('#item_generic_unit').val(composition_unit)
+}
+
+$('.generic-composition-section').on('change', '.item_unit', function(e) {
+  e.preventDefault();
+  let generic_composition_row = $(this).closest(".generic-composition-row")
+  $(generic_composition_row).find('.item_unit').val($(this).val())
+  name = $(this).closest('.generic-composition-row').find('.item_name').val()
+  qty = $(this).closest('.generic-composition-row').find('.item_quantity').val()
+  unit = $(this).closest('.generic-composition-row').find('.item_unit').val()
+  generic_name = name+' '+qty+' '+unit
+  $(".Additem").text(($(".Additem").text() + ', ' + generic_name).replace(/^, /, ''));
+})
+
+$('.generic-composition-section').on('keyup', '.item_quantity', function(e) {
+  var name = $('#generic_name').val()
+  var qty = $(this).val()
+  $('.generic-name').text(name + ' ' + qty)
+})  
+
+$('.generic-composition-section').on('keyup', '.item_name', function(e) {
+  if ($(this).val().length >= 2) {
+    $(".item_name").autocomplete({
+      minLength: 2,
+      source: function(request, response) {
+        $.ajax({
+          dataType: "json",
+          type: 'get',
+          url: '/generic_compositions/search',
+          data: {
+            q: request.term,
+            remote: "true"
+          },
+          success: function(data) {
+            response(data);
+          },
+          error: function(data) {}
+        });
+      },
+      focus: function(event, ui) {
+      },
+      select: function(event, ui) {
+        var itemname = ui.item.name;
+        var old_element = $(".generic_id[value="+ui.item.generic_id+"]")
+        if (old_element.length > 0)
+        {
+          old_element.closest('.generic-composition-row').find(".item_name").toggleClass('alert-danger', 1000).toggleClass('alert-danger', 2000);
+        }
+        else
+        {
+          $(this).prop('readonly', true).val(itemname);
+          $(this).closest('.generic-composition-row').find('.generic_id').val(ui.item.generic_id)
+          $('.generic-btn-container .btn-add-item').removeAttr('disabled', 'disabled')
+          $('.clear-generic-tag').show()    
+        }   
+        return false;
+      },
+      create: function() {
+        $(this).data('ui-autocomplete')._renderItem = function(ul, item) {
+          return $('<li>')
+            .append('<a style=\"color:#000;text-shadow: 2px\">' + item.name + '&nbsp; &nbsp; &nbsp;' + '</a>')
+            .appendTo(ul);
+        };
+      },
+    });
+  }
+})
+
+$("#item_medicine_class").autocomplete({
+  minLength: 2,
+  source: function(request, response) {
+    $.ajax({
+      dataType: "json",
+      type: 'get',
+      url: '/generic_compositions/search_class',
+      data: {
+        q: request.term,
+        category: $('.AddedCategory').text(),
+        remote: "true"
+      },
+      success: function(data) {
+        response(data);
+      },
+      error: function(data) {}
+    });
+  },
+  select: function(event, ui) {
+    var itemname = ui.item.name;
+    $(this).val(itemname);
+    console.log(ui.item)
+    console.log(ui)
+    let counter = $('.item-class-card').length
+    if ($('.item_class_id[value='+ ui.item.class_id +']').length == 0)
+    {
+      $('#item_class_section').append(`
+        <div class="alert alert-info col-md-4 item-class-card">
+          <span class='btn-remove-class' aria-hidden="true">&times;</span></button>
+          <p>${itemname}</p>
+          <input type="hidden" name="inventory_item[medicine_class_name_attributes][${counter}][medicine_class]" class='item_class' readonly='true' value='${itemname}'>
+          <input type="hidden" name="inventory_item[medicine_class_name_attributes][${counter}][medicine_class_id]" class='item_class_id' readonly='true' value='${ui.item.class_id}'>
+        </div> 
+      `)
+    }
+    else
+    {
+      $('.item_class_id[value='+ ui.item.class_id +']').closest('.item-class-card').toggleClass('alert-danger', 1000).toggleClass('alert-danger', 1000);
+    }
+    $(this).val('');
+    return false;
+  },
+  create: function() {
+        $(this).data('ui-autocomplete')._renderItem = function(ul, item) {
+          return $('<li>')
+            .append('<a style=\"color:#000;text-shadow: 2px\">' + item.name + '&nbsp; &nbsp; &nbsp;' + '</a>')
+            .appendTo(ul);
+        };
+      },
+});
+
+$('#item_class_section').on('click', '.btn-remove-class', function(e){
+  e.preventDefault();
+  $(this).closest('.item-class-card').remove()
+  renumberIndex($('.item-class-card'), ['input', 'select'])
+})
+
+
+$('.category-name').on('click', function(e) {
+  e.preventDefault();
+  generic_class_category = $(this).text()
+  $(".AddedCategory").text(generic_class_category)
+  clearFilterButton()
+})
+
+$('.clear-filters-tag').on('click', function(e) {
+  e.preventDefault();
+  $('.AddedCategory').empty()
+  clearFilterButton()
+})
+
+<% if @item_category.type == 'medication' %>
+  clearFilterButton()
+<% end %>
+
+function clearFilterButton()
+{
+  if ( $('.AddedCategory').html().length < 1 )
+  {
+    $('.filter_text').hide()
+    $('.clear-filters-tag').hide()
+  }
+  else
+  {
+    $('.filter_text').show()
+    $('.clear-filters-tag').show()
+  }
+}
+
+function dispensing_unit_name() {
+  let name = $('#inventory_item_dispensing_unit_id option:selected').text()
+  $('#inventory_item_dispensing_unit').val(name)
+}
+
+$('#inventory_item_dispensing_unit_id').on('change', function() {
+  dispensing_unit_name()
+})
+
+dispensing_unit_name()
+
+function category_name() {
+  let name = $('#item_category option:selected').text()
+  $('#inventory_item_category').val(name)
+}
+
+function sub_category_name() {
+  let sub_category_name = $('#item_sub_category option:selected').text()
+  $('#inventory_item_sub_category_name').val(sub_category_name)
+}
+
+$('#item_category').on('change', function() {
+  category_name()
+})
+
+$('#item_sub_category').on('change', function() {
+  sub_category_name()
+})
+
+category_name()
+sub_category_name()

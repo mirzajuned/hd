@@ -1,0 +1,195 @@
+$('#opdfollowuptime-timepicker').timepicker({minuteStep: 5});
+var datepicker_options = {
+  dateFormat: "dd/mm/yy",
+  minDate: 0
+};
+$('.opdfollowupdate-datepicker').datepicker(datepicker_options);
+
+$('#opdfollowupdate-datepicker').on('change', function(){
+  var getdate = $("#opdfollowupdate-datepicker").datepicker("getDate");
+  timepicker_changed()
+  check_validation_status(
+    this, 'followup_is_valid',
+    'advice_step_advice', true,
+    'opdrecord_opdfollowuptimeframe'
+  );
+});
+
+$('.opdfollowupdate-datepicker').on('change', function(){
+  $('#bookappointment').prop('checked','true')
+})
+
+$(".opdfollowuptime-timepicker").on('change', function(){
+  timepicker_changed()
+}).trigger('change')
+
+function timepicker_changed() {
+  var timestamp = $("#opdfollowupdate-datepicker").val() + " " + $(".opdfollowuptime-timepicker").val()
+  $(".hidden_followup_timepicker").attr("value", timestamp)
+}
+
+function toggle_specialty_dropdown(){
+  if($('.advice_appointment_specialty_id').find('option').length === 1){
+    $(".specialty_dropdown_div").hide();
+  } else {
+    $(".specialty_dropdown_div").show();
+  }
+}
+toggle_specialty_dropdown();
+
+function get_booked_appointments(doctor_id, facility_id, specialty_id, date, flag) {
+  $.ajax({
+    url: '/opd_appointments/get_booked_appointments',
+    type: 'get',
+    data: {
+      doctor_id: doctor_id,
+      date: date,
+      facility_id: facility_id,
+      specialty_id: specialty_id,
+      flag: flag
+    },
+    success: function(res) {
+    },
+  });
+}
+
+function get_facility_specialties(facility_id) {
+  $.ajax({
+    type: "GET",
+    dataType: "json",
+    url: "/main/get_facility_specialties",
+    data: { facility_id: facility_id },
+
+    success: function (response) {
+      $('.advice_appointment_specialty_id').children().remove();
+      var validate_specialty_id = '<%= @appointment.specialty_id %>'
+
+      $.each(response, function (key, value) {
+        if (validate_specialty_id == value["_id"]) {
+          $('.advice_appointment_specialty_id').append($("<option></option>").attr("value", value["_id"]).text(value["name"]));
+        }
+      });
+
+      $('.advice_appointment_specialty_id').css("background-color",'rgb(247, 232, 225)')
+      setTimeout(function(argument) { $('.advice_appointment_specialty_id').css("background-color",'')  }, 100)
+
+      toggle_specialty_dropdown();
+
+      var specialty_id = $('.advice_appointment_specialty_id').val()
+      var doctor_id = $('#opdrecord_advice_attributes_appointment_doctor').val()
+      var facility_id = $('#opdrecord_advice_attributes_appointment_facility').val()
+      var date = $('.opdfollowupdate-datepicker').val()
+      get_booked_appointments(doctor_id, facility_id, specialty_id, date, null)
+    }
+  });
+}
+
+$('.opdfollowupdate-datepicker').change(function(){
+  date = this.value
+  doctor_id = $('#opdrecord_advice_attributes_appointment_doctor').val()
+  facility_id = $('#opdrecord_advice_attributes_appointment_facility').val()
+  specialty_id = $('.advice_appointment_specialty_id').val()
+  get_booked_appointments(doctor_id, facility_id, specialty_id, date, "dateselect")
+  if (!$("input[id^='opdrecord_advice_attributes_appointment_type_id_']").is(':checked')){
+    $('#opdrecord_advice_attributes_appointment_doctor').trigger("change")
+  }
+})
+
+$('#opdrecord_advice_attributes_appointment_facility').on("change",function(){
+  var facility_id = this.value;
+  let doctor_id = $('#opdrecord_advice_attributes_appointment_doctor').val();
+  let department_id = '485396012';
+  get_facility_specialties(facility_id)
+  check_time_slots(doctor_id, facility_id, department_id)
+});
+
+$('.advice_appointment_specialty_id').on("change", function(){
+  var specialty_id = this.value
+  var facility_id = $("#opdrecord_advice_attributes_appointment_facility").val();
+  var doctor_id = $('#opdrecord_advice_attributes_appointment_doctor').val()
+  var date = $('.opdfollowupdate-datepicker').val()
+  get_booked_appointments(doctor_id, facility_id, specialty_id, date, "dateselect")
+})
+
+$('#opdrecord_advice_attributes_appointment_doctor').on('change', function(e) {
+  let doctor_id = $(this).val();
+  let facility_id = $('#opdrecord_advice_attributes_appointment_facility').val();
+  let department_id = '485396012'
+  var date = $('.opdfollowupdate-datepicker').val()
+  var specialty_id = $('.advice_appointment_specialty_id').val()
+  get_booked_appointments(doctor_id, facility_id, specialty_id, date, "dateselect")
+  check_time_slots(doctor_id, facility_id, department_id)
+}).trigger('change');
+
+function check_time_slots(doctor_id, facility_id, department_id){
+  // Check TimeSlot
+  $.ajax({
+    type: 'GET',
+    dataType: 'json',
+    url: "/opd_appointments/user_time_slot_check",
+    data: { doctor_id, facility_id, department_id },
+    success: function(response) {
+      if (response) {
+        $('.opdfollowupdate-datepicker').datepicker('destroy');
+        $('#opdfollowupdate-datepicker').removeClass('opdfollowupdate-datepicker').removeClass('hasDatepicker');
+        $('.opd-followup-timepicker').html(`
+          <div class="bootstrap-timepicker timepicker">
+            <input type="text" name="opdfollowuptime" id="opdfollowuptime-timepicker" class="form-control full_width opdfollowuptime-timepicker " readonly="readonly" value='<%= @opdrecord.advice.try(:opdfollowuptime) ? @opdrecord.advice.try(:opdfollowuptime).strftime('%I:%M %p') : '' %>'>
+          </div>
+        `)
+        if ('<%= params[:action] %>' ==  'new') {
+          $('#opdfollowupdate-datepicker').val('');
+          $('#opdrecord_advice_attributes_opdfollowuptime').val('');
+        }
+      } else {
+        $('#opdfollowupdate-datepicker').addClass('opdfollowupdate-datepicker');
+        // $("#opdfollowupdate-datepicker").attr("readonly", false); 
+        $('.opdfollowupdate-datepicker').datepicker(datepicker_options);
+        // $("#opdfollowuptime-timepicker").attr("readonly", false); 
+        $('.opdfollowuptime-timepicker').timepicker({minuteStep: 5}).trigger('change');
+      }
+    }
+  });
+}
+
+$('[data-toggle="tooltip"]').tooltip();
+
+$("#clear_follow_up_date").on('click', function(e){
+  e.preventDefault();
+  $("#opdfollowupdate-datepicker").val('');
+  $('#bookappointment').prop('checked','false')
+  check_validation_status(
+    $("#opdfollowupdate-datepicker"), 'followup_is_valid',
+    'advice_step_advice', true,
+    'opdrecord_opdfollowuptimeframe'
+  );
+});
+
+$("#opdrecord_opdfollowuptimeframe").on('change', function(e){
+  check_validation_status(
+    this, 'followup_is_valid',
+    'advice_step_advice', true,
+    'opdfollowupdate-datepicker'
+  );
+});
+
+$('#opdfollowupdate-datepicker').on('click', function() {
+  if (!$(this).hasClass('opdfollowupdate-datepicker')) {
+    opdCalendarModal();
+  }
+});
+
+const opdCalendarModal = () => {
+  var doctor_id = $('#opdrecord_advice_attributes_appointment_doctor').val();
+  let facility_id = $('#opdrecord_advice_attributes_appointment_facility').val();
+  let department_id = '485396012'
+
+  $.ajax({
+    type: 'GET',
+    dataType: 'script',
+    url: "/opd_appointments/calendar_time_slot",
+    data: { doctor_id, facility_id, department_id },
+    success: function(response) {
+    }
+  });
+}

@@ -1,0 +1,74 @@
+<div class="row transaction-title">
+  <div class="col-sm-12 text-center" style="border-bottom:1px solid #ccc;border-top:1px solid #ccc;">
+    <strong>SON</strong>
+  </div>
+</div>
+<div class="row mb5 transaction-common-fields" style="margin-top:15px;">
+  <div class="col-sm-5">
+    <strong>Note</strong><br>
+    <%= f.text_field :note, { class: 'form-control p7_10 fullname', placeholder: "Transaction Note" } %>
+  </div>
+  <div class="col-sm-3">
+    <strong>Document Number</strong><br>
+    <%= f.text_field :document_number, { class: 'form-control document-number p7_10', placeholder: "Document Number" } %>
+  </div>  
+  <div class="col-sm-2">
+    <strong>Transaction Date</strong><br>
+    <% unless Authorization::PolicyHelper.verification(current_user.id,"HGP-100-104-104") %>
+      <%= f.text_field :transaction_date, { value: Date.current.strftime("%d/%m/%Y"), class: 'form-control p7_10 fullname', placeholder: "Date of transition", readonly: 'readonly' } %>
+    <% else %>
+      <%= f.text_field :transaction_date, { value: Date.current.strftime("%d/%m/%Y"), class: 'form-control p7_10 fullname transaction-datepicker', placeholder: "Date of transition" } %>
+    <% end %>
+  </div>
+  <div class="col-sm-2">
+    <strong>Transaction Time</strong><br>
+    <%= f.text_field :transaction_time_picker, { value: Time.current.strftime("%I:%M %p"), class: 'form-control p7_10 transaction-timepicker', disabled: !Authorization::PolicyHelper.verification(current_user.id, "HGP-100-104-104"), placeholder: "Time of transition" } %>
+    <%= f.hidden_field :transaction_time, { value: Time.current } %>
+  </div>
+  <%= f.hidden_field :entry_type, { value: "stock_opening" } %>
+  <%= f.hidden_field :entered_by, { value: current_user.fullname } %>
+  <%= f.hidden_field :user_id, { value: current_user.id } %>
+  <%= f.hidden_field :store_id, { value: @store_id } %>
+  <%= f.hidden_field :facility_id, { value: current_facility.id } %>
+  <%= f.hidden_field :organisation_id, { value: current_user.organisation_id } %>
+  <%= f.hidden_field :department_id, { value: @inventory_store&.department_id } %>
+  <%= f.hidden_field :department_name, { value: @inventory_store&.department_name } %>
+</div>
+
+<div class="row mb5" style="border-bottom:1px solid #eee;border-top:1px solid #eee;">
+  <div class="transaction-lots-list" style="margin-top:15px;">
+    <table class="table transaction-lots-table">
+      <thead class="transaction-table-head">
+      <tr class='thead-fixable'>
+        <td class='col-md-2 thead-fix'>Description</td>
+        <td class='col-md-1 thead-fix'>Quantity</td>
+        <td class='col-md-1 thead-fix'>Batch No.</td>
+        <td class='col-md-1 thead-fix'>Expiry</td>
+        <td class='col-md-1 thead-fix'>Taxable Amt.</td>
+        <td class='col-md-1 thead-fix'>GST %</td>
+        <td class='col-md-1 thead-fix'>Tax Incl.</td>
+        <td class='col-md-1 thead-fix'>Tax Amount</td>
+        <td class='col-md-1 thead-fix'>Unit Cost</td>
+        <td class='col-md-1 thead-fix'>Total</td>
+        <td class='col-md-1 thead-fix'>Action</td>
+      </tr>
+      </thead>
+    </table>
+  </div>
+
+  <div class="transaction-table-body" style="overflow-y: auto; font-size: 11px">
+    <% unless @stock_opening_items.blank? %>
+      <%= render 'inventory/transaction/stock_openings/lots.html',
+                 lots: @stock_opening_items, stock_opening: @stock_opening, f: f %>
+    <% end %>
+  </div>
+
+</div>
+
+<%= render partial: 'inventory/transaction/stock_openings/tax_details.html.erb', locals: { f:f } %>
+
+<style>
+  .transaction-datepicker:disabled, .transaction-timepicker:disabled {
+    cursor: not-allowed !important;
+  }
+</style>

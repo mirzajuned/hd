@@ -1,0 +1,469 @@
+function save_changes() {
+  calculate_tax()
+  validate_inventory_invoices_form()
+}
+
+function calTotalPrice() {
+  var each_item_totals = 0, each_item_tax = 0, net_amount ;
+  $('.item_total_price').each(function(){
+
+   // var item_taxable_amount = $(this).parents('.inventory-invoice-log-item').find('.item_taxable_amount')
+    each_item_totals += parseFloat($(this).val());
+    //each_item_tax += parseFloat($(item_taxable_amount).val())
+  });
+  $("#total_wt").val(each_item_totals.toFixed(2))
+  // $("#sub_total_tax").text(each_item_tax.toFixed(2))
+
+  net_amount = parseFloat(each_item_totals - $('#invoice_discount').val())
+
+  $('#grand_total_inc_discount').val(net_amount.toFixed(2))
+  var invoice_total_payment_remaining = net_amount - parseFloat($('#invoice_total_payment').val())
+  $('#invoice_total_payment_remaining').val(invoice_total_payment_remaining.toFixed(2))
+  advance_payment = $('#invoice_inventory_invoice_advance_payment').val("0")
+  amount_remaining = $('#invoice_inventory_invoice_amount_remaining').val(net_amount.toFixed(2))
+  $(".invoice_pending_advance_amount").trigger('change')
+}
+
+function calculate_tax(){
+  $('.item_total_price').each(function(){
+    var this_parent = $(this).parents('.inventory-invoice-log-item')
+    var quantity = parseFloat($(this_parent).find('.item_quantity').val() || 0)
+    var unit_item_list_price = parseFloat($(this_parent).find('.unit_item_list_price').val() || 0)
+    var unit_non_taxable_amount = parseFloat($(this_parent).find('.unit_non_taxable_amount').val()) || 0
+    var unit_taxable_amount = parseFloat($(this_parent).find('.unit_taxable_amount').val() || 0)
+    var tax_group_id = $(this_parent).find(".item_tax_group_id").val()
+
+    var taxable_amount = unit_taxable_amount * quantity
+    var non_taxable_amount = unit_non_taxable_amount * quantity
+    var item_total_price = taxable_amount + non_taxable_amount
+
+    $(this_parent).find('.item_taxable_amount').val(taxable_amount.toFixed(2))
+    $(this_parent).find('.item_non_taxable_amount').val(non_taxable_amount.toFixed(2))
+    $(this_parent).find('.item_total_price').val(item_total_price.toFixed(2))
+    $(this_parent).find('.item_total_price').trigger('change')
+
+    var gross_amount = 0
+    $('.item_total_price').each(function() {
+      gross_amount += parseFloat($(this).val());
+    })
+    var discount = parseFloat($('#invoice_discount').val() || 0)
+    discount_percent = (discount / gross_amount) * 100 || 0
+    var new_taxable_amount = taxable_amount - (taxable_amount * discount_percent) / 100
+    
+    var new_non_taxable_amount = non_taxable_amount - (non_taxable_amount * discount_percent) / 100
+    $(this_parent).find('.item_new_non_taxable_amount').val(new_non_taxable_amount.toFixed(2))
+    var get_service_count = $(this_parent).attr('data-child-index')
+    if (quantity > 0)
+    {
+      generate_tax_group(this_parent, (new_taxable_amount || 0), get_service_count)
+    } else {
+      $(this_parent).find('.tax_fields').html("")
+    }
+
+  });
+  calTotalPrice()
+  $("#grand_total_inc_discount").trigger('change')
+}
+
+function generate_tax_group(parent, taxable_amount, count) {
+  var lot_id = $(parent).find('.lot-id').val()
+  var item_tax_group = tax_breakup[lot_id]
+  var tax_rate_amount;
+  var group_rate = parseFloat(item_tax_group['group_rate'])
+  $(parent).find('.tax_fields').html("")
+  item_tax_group['tax_rates'].forEach(function(item) {
+    if (group_rate != 0.0) {
+      tax_rate_amount = (parseFloat(taxable_amount) * parseFloat(item.rate) / group_rate) || 0
+    } else {
+      tax_rate_amount = 0.0
+    }
+    $(parent).find('.tax_fields').append(`
+      <div class="tax_box">
+      <input type="hidden" name="invoice_inventory_invoice[items_attributes][${count}][tax_group][][amount]" value="${tax_rate_amount.toFixed(2)}" class="tax_group_id_amount">
+      <input type="hidden" name="invoice_inventory_invoice[items_attributes][${count}][tax_group][][name]" value="${item.name}" class="tax_group_id_name">
+      <input type="hidden" name="invoice_inventory_invoice[items_attributes][${count}][tax_group][][_id]" value="${item._id}" class="tax_group_id_id">
+      <input type="hidden" name="invoice_inventory_invoice[items_attributes][${count}][tax_group][][tax_rate]" value="${item.rate}" class="tax_rate">
+      <input type="hidden" name="invoice_inventory_invoice[items_attributes][${count}][tax_group][][tax_type]" value="${item.type}" class="tax_type">
+      </div>
+      `)
+  });
+}
+
+$("#grand_total_inc_discount").on('change', function(){
+  $("#tax-cage").html("")
+  var counter = 0
+    $('.tax_box').each(function(){ 
+      var tax_group_id2 = $(this).find('.tax_group_id_id').val()
+      var tax_group_id = $("#tax-cage").find('.tax_group_' + tax_group_id2)
+      var tax_group_amount = $(this).find('.tax_group_id_amount').val()
+      var taxable_amount = parseFloat($(this).closest('.inventory-invoice-log-item').find('.item_new_non_taxable_amount').val()) || 0
+      if(tax_group_id.length <= 0){
+        var tax_rate = parseFloat($(this).find('.tax_rate').val()).toFixed(2)
+        var tax_type = $(this).find('.tax_type').val()
+        var tax_group_name = $(this).find('.tax_group_id_name').val()
+        $("#tax-cage").prepend(`
+          <div class="row mb5 tax_group_${tax_group_id2}">
+          <div class="col-md-5 text-right"><b>${tax_group_name}</b></div>
+          <div class="col-md-3 text-center">:</div>
+          <div class="col-md-3 text-right">
+            <input style="width:92%;" class="tax_group_id_${tax_group_id2}" value="${tax_group_id2}" type="hidden" name="invoice_inventory_invoice[tax_breakup][][_id]" readonly="readonly">
+            <input style="width:92%;" class="tax_group_id_${tax_group_id2}"" value="${tax_group_name}" type="hidden" name="invoice_inventory_invoice[tax_breakup][][name]" readonly="readonly">
+            <input style="width:92%;" class="fi_input_style text-right tax_group_amount_${tax_group_id2}" value="${parseFloat(tax_group_amount).toFixed(2)}" type="text" name="invoice_inventory_invoice[tax_breakup][][amount]" readonly="readonly">
+            <input value="${tax_rate}" type="hidden" name="invoice_inventory_invoice[tax_breakup][][tax_rate]" readonly="readonly">
+            <input value="${tax_type}" type="hidden" name="invoice_inventory_invoice[tax_breakup][][tax_type]" readonly="readonly">
+            <input value="${taxable_amount}" type="hidden" name="invoice_inventory_invoice[tax_breakup][][taxable_amount]" class="taxable_amount_${tax_group_id2}">
+          </div>
+          </div>`)
+      } else {
+        var old_value = $(tax_group_id).find('.tax_group_amount_' + tax_group_id2).val()
+        var new_value = (parseFloat(tax_group_amount) + parseFloat(old_value)).toFixed(2)
+        $(tax_group_id).find('.tax_group_amount_' + tax_group_id2).val(new_value)
+        var old_taxable_amount = parseFloat($(tax_group_id).find('.taxable_amount_'+tax_group_id2).val()) || 0
+        $(tax_group_id).find('.taxable_amount_'+tax_group_id2).val(taxable_amount + old_taxable_amount)
+      }
+      if(counter == 0){
+        $("#tax-cage").attr('style', 'background: #eee;padding: 5px;font-size: smaller;')
+      }
+      counter = counter + 1
+    });
+
+  non_taxable_amount()
+})
+
+function non_taxable_amount(){
+  var non_taxable_amount = 0.0
+  $(".item_non_taxable_amount").each(function(){
+    non_taxable_amount = parseFloat(non_taxable_amount) + parseFloat($(this).val())
+  });
+  non_taxable_amount = parseFloat(non_taxable_amount).toFixed(2) || 0
+  var gross_amount = parseFloat($('#total_wt').val() || 0)
+  var discount = parseFloat($('#invoice_discount').val() || 0)
+  discount_percent = (discount / gross_amount) * 100 || 0
+  var non_taxable_amount = (non_taxable_amount - (non_taxable_amount * discount_percent) / 100)
+
+  if(non_taxable_amount != 0.0){
+    $("#tax-cage").find('.non_taxable_amount').remove()
+    $("#tax-cage").prepend('<div class="row mb5 non_taxable_amount"><div class="col-md-5 text-right"><b>Taxable Amount</b></div><div class="col-md-3 text-center">:</div><div class="col-md-3 text-right"><input style="width:92%;" class="fi_input_style text-right non_taxable_amount" value="' + parseFloat(non_taxable_amount).toFixed(2) + '" type="text" name="invoice_inventory_invoice[non_taxable_amount]" readonly="readonly"></div></div>')
+    $("#tax-cage").attr('style', 'background: #eee;padding: 5px;')
+  }
+}
+
+<!--non_taxable_amount()-->
+
+$('#invoice_discount').on('keyup change', function(event){
+  event.preventDefault();
+  total_wt = parseFloat($('#total_wt').val())
+  discount = $(this).val()
+  var discount_amount = (discount.length > 0) ? parseFloat(discount) : 0.00
+  var final_discount = discount_amount < total_wt ? discount_amount : total_wt
+  $(this).val(final_discount)
+  applyDiscount(final_discount)
+})
+
+function applyDiscount(discount){
+  var gross_amount = $("#total_wt").val(), net_amount = 0.00, total_taxable_amount = 0.00;
+  var discount_percent = (discount / gross_amount) * 100 || 0
+  net_amount = parseFloat(gross_amount - discount).toFixed(2)
+  var this_parent, quantity, non_taxable_amount, new_taxable_amount, new_non_taxable_amount, get_service_count, invoice_total_payment_remaining;
+  
+  $('#grand_total_inc_discount').val(net_amount)
+  invoice_total_payment_remaining = net_amount - (parseFloat($('#invoice_total_payment').val()) || 0)
+  $('#invoice_total_payment_remaining').val(invoice_total_payment_remaining.toFixed(2))
+  total_payment_balance = net_amount - (parseFloat($('#pending_invoice_advanced').val()) || 0)
+  $('#pending_invoice_total_payment_remaining').val(total_payment_balance.toFixed(2))
+  $('#invoice_inventory_invoice_amount_remaining').val(net_amount)
+  $("#tax-cage").html("")
+  $('.item_total_price').each(function(){
+    this_parent = $(this).parents('.inventory-invoice-log-item')
+    quantity = parseFloat($(this_parent).find('.item_quantity').val() || 0)
+    if (quantity > 0)
+    {
+      taxable_amount = parseFloat($(this_parent).find('.item_taxable_amount').val())
+      non_taxable_amount = parseFloat($(this_parent).find('.item_non_taxable_amount').val())
+      new_taxable_amount = taxable_amount - (taxable_amount * discount_percent) / 100
+      new_non_taxable_amount = non_taxable_amount - (non_taxable_amount * discount_percent) / 100
+      $(this_parent).find('.item_new_non_taxable_amount').val(new_non_taxable_amount.toFixed(2))
+      get_service_count = $(this_parent).attr('data-child-index')
+      generate_tax_group(this_parent, (new_taxable_amount || 0), get_service_count)
+      grand_total_inc_discount(this_parent)
+      total_taxable_amount += new_non_taxable_amount 
+    }
+  });
+  if(total_taxable_amount != 0.0){
+    $("#tax-cage").find('.non_taxable_amount').remove()
+    $("#tax-cage").prepend('<div class="row mb5 non_taxable_amount"><div class="col-md-5 text-right"><b>Taxable Amount</b></div><div class="col-md-3 text-center">:</div><div class="col-md-3 text-right"><input style="width:92%;" class="fi_input_style text-right non_taxable_amount" value="' + parseFloat(total_taxable_amount).toFixed(2) + '" type="text" name="invoice_inventory_invoice[non_taxable_amount]" readonly="readonly"></div></div>')
+    $("#tax-cage").attr('style', 'background: #eee;padding: 5px;')
+  }
+  payment_type()
+}
+
+
+
+function grand_total_inc_discount(item_parent){
+    item_parent.find('.tax_box').each(function(){ 
+      var tax_group_id2 = $(this).find('.tax_group_id_id').val()
+      var tax_group_id = $("#tax-cage").find('.tax_group_' + tax_group_id2)
+      var tax_group_amount = $(this).find('.tax_group_id_amount').val()
+      var taxable_amount = parseFloat($(this).closest('.inventory-invoice-log-item').find('.item_new_non_taxable_amount').val()) || 0
+      if(tax_group_id.length <= 0){
+        var tax_rate = parseFloat($(this).find('.tax_rate').val()).toFixed(2)
+        var tax_type = $(this).find('.tax_type').val()
+        var tax_group_name = $(this).find('.tax_group_id_name').val()
+        $("#tax-cage").prepend(`
+          <div class="row mb5 tax_group_${tax_group_id2}">
+          <div class="col-md-5 text-right"><b>${tax_group_name}</b></div>
+          <div class="col-md-3 text-center">:</div>
+          <div class="col-md-3 text-right">
+            <input style="width:92%;" class="tax_group_id_${tax_group_id2}" value="${tax_group_id2}" type="hidden" name="invoice_inventory_invoice[tax_breakup][][_id]" readonly="readonly">
+            <input style="width:92%;" class="tax_group_id_${tax_group_id2}"" value="${tax_group_name}" type="hidden" name="invoice_inventory_invoice[tax_breakup][][name]" readonly="readonly">
+            <input style="width:92%;" class="fi_input_style text-right tax_group_amount_${tax_group_id2}" value="${parseFloat(tax_group_amount).toFixed(2)}" type="text" name="invoice_inventory_invoice[tax_breakup][][amount]" readonly="readonly">
+            <input value="${tax_rate}" type="hidden" name="invoice_inventory_invoice[tax_breakup][][tax_rate]" readonly="readonly">
+            <input value="${tax_type}" type="hidden" name="invoice_inventory_invoice[tax_breakup][][tax_type]" readonly="readonly">
+            <input value="${taxable_amount}" type="hidden" name="invoice_inventory_invoice[tax_breakup][][taxable_amount]" class="taxable_amount_${tax_group_id2}">
+          </div>
+          </div>`)
+      } else {
+        var old_value = $(tax_group_id).find('.tax_group_amount_' + tax_group_id2).val()
+        var new_value = (parseFloat(tax_group_amount) + parseFloat(old_value)).toFixed(2)
+        $(tax_group_id).find('.tax_group_amount_' + tax_group_id2).val(new_value)
+        var old_taxable_amount = parseFloat($(tax_group_id).find('.taxable_amount_'+tax_group_id2).val()) || 0
+        $(tax_group_id).find('.taxable_amount_'+tax_group_id2).val(taxable_amount + old_taxable_amount)
+      }
+    });
+}
+
+
+
+
+$('#invoice_inventory_invoice_advance_payment').on('keyup change', function(){
+  payment_type()
+})
+
+
+$('.paymenttype').on('click', function(){
+  payment_type()
+})
+
+$('.invoice-order-datepicker').datepicker({
+    dateFormat: "dd/mm/yy",
+    maxDate: -0
+}).on('change', function(e) {
+  validateMaxTime()
+});
+
+$('.invoice-delivery-datepicker').datepicker({
+  dateFormat: "dd/mm/yy",
+  minDate: 0
+});
+
+
+$('.delivery_status').on('click', function(){
+  delivery_status()
+})
+
+
+$(".payment_received_breakups_date").datepicker({
+  dateFormat: "dd/mm/yy",
+  maxDate: -0
+});
+$(".payment_received_breakups_time").timepicker({minuteStep: 5});
+
+function validateMaxTime()
+{
+  var picker_time = moment($('.order-timepicker').val(), 'HH:mm a')
+  if ( ($('.invoice-order-datepicker').val() == "<%= Date.current.strftime("%d/%m/%Y") %>") && (moment().isBefore(picker_time)) )
+  {
+    $('.order-timepicker').timepicker('setTime', moment().format('HH:mm a'))
+  }
+}
+
+function setOrderDateTime()
+{
+  var date = $('#invoice_inventory_invoice_order_date').val()
+  var time = $('.order-timepicker').val()
+  //var date_time = moment(date+" "+time).format('YYYY-DD-MM HH:mm:ss')
+  $('#invoice_inventory_invoice_order_date_time').val(date.concat(" ",time))
+}
+setOrderDateTime()
+
+$('.order-timepicker').timepicker({
+  defaultTime: 'current',
+    minuteStep: 1
+  }).on('changeTime.timepicker', function(e) {  
+    validateMaxTime()
+    setOrderDateTime()
+  });
+
+
+
+function delivery_status() {
+  if ($('.delivery_status:checked').attr("id") == 'delivery_completed'){
+    $('.payment-details-section').show()
+    $('.delivery-status-form').hide()
+    $("#fullpaymentform").prop("checked", true);
+    $('.pending-advance-payment').hide()
+    $('.pending-advance-payment-content').hide()
+    payment_type()
+    $("#invoice_inventory_invoice_fitting_required").prop("checked", false);
+    $('#invoice_inventory_invoice_delivery_date').attr("disabled", false)
+    $('.invoice_pending_advances_mode_of_payment').val("")
+    $('.invoice_pending_advance_amount').val("")
+    check_fitting_value()
+    $('#invoice_total_payment_remaining').val($('#grand_total_inc_discount').val())
+    $('.payment_received_breakups_mode_of_payment').val("")
+    $('.payment_received_breakups_amount').val(0)
+    $('.payment_received_breakups_total_amount').val(0)
+    $('#invoice_total_payment').val(0)
+    $('#invoice_payment_received_total').val(0)
+    $('.advance_payment_breakups_amount').val(0)
+    $('#invoice_advance_payment_total').val(0)
+  } else {
+    $('.pending-advance-payment').show()
+    $('.pending-advance-payment-content').show()
+    $('.payment-details-section').hide()
+    $("#advancepaymentform").prop("checked", true);
+    $('.delivery-status-form').show()
+    $('.pending-payment').hide()
+    $('#invoice_inventory_invoice_delivery_date').attr("disabled", true)
+    $('.payment_received_breakups_mode_of_payment').val('')
+    $('.payment_received_breakups_amount').val('')
+    $('.payment_received_breakups_total_amount').val('')
+    $('.advance_payment_breakups_amount').val('')
+    $('#invoice_advance_payment_total').val('')
+    $('#invoice_total_payment_remaining').val('')
+    $('#invoice_total_payment').val('')
+    $('#invoice_payment_received_total').val('')
+    $('#pending_invoice_total_payment_remaining').val($('#grand_total_inc_discount').val())
+    $('#pending_invoice_advanced').val("0")
+    payment_type()
+  }
+}
+
+function payment_type(){
+  if ($('.paymenttype:checked').attr("id") == 'fullpaymentform'){
+    $('#invoice_inventory_invoice_advance_payment').attr("disabled", true)
+    $('#invoice_inventory_invoice_amount_remaining').attr("disabled", true)
+    // $('#invoice_inventory_invoice_payment_pending').val(0)
+    $('#invoice_inventory_invoice_invoice_payment_type').val("Full Payment")
+    //$('.advance_payment_fields').hide()
+  } else{
+    $('.advance_payment_fields').show()
+    grand_total=  parseFloat($('#grand_total_inc_discount').val())
+    advance_payment = parseFloat($('#invoice_inventory_invoice_advance_payment').val()) || 0
+    amount_remaining = grand_total
+    $('#invoice_inventory_invoice_advance_payment').attr("disabled", false)
+    $('#invoice_inventory_invoice_amount_remaining').attr("disabled", false)
+    $('#invoice_inventory_invoice_amount_remaining').val(amount_remaining)
+    $('#invoice_inventory_invoice_payment_received').val(advance_payment)
+    // $('#invoice_inventory_invoice_payment_pending').val(amount_remaining)
+    $('#invoice_inventory_invoice_invoice_payment_type').val("Advance Payment")
+
+  }
+}
+
+payment_type()
+
+$('.delete_empty_item').on('click', function(){
+  if ($('.inventory-invoice-log-item').length > 1){
+    $(this).closest('.inventory-invoice-log-item').remove()
+    var id = $(this).val()
+    $('#'+id).css('background-color', '')
+    $('#'+id).removeClass('disabled_row')
+    if (checkItem.includes(id)) {
+      checkItem.pop(id)
+    }
+    delete tax_breakup[id];
+    
+  }
+<!--  calTotalPrice()-->
+  calculate_tax()
+})
+
+
+$(".item_quantity").on('change keyup', function(){
+  calculate_tax()
+})
+
+$("#invoice_inventory_invoice_fitting_required").on("click", function() {
+  check_fitting_value()
+})
+
+function check_fitting_value() {
+  if ($("#invoice_inventory_invoice_fitting_required").prop('checked')) {
+    $('.fitting-fields').show()
+  } else {
+    $('.fitting-fields').hide()
+  }
+}
+
+$("#invoice_inventory_invoice_fitter_id").on('change', function() {
+  let fitter_name = $("#invoice_inventory_invoice_fitter_id :selected").text();
+  $('#fitter_name').val(fitter_name)
+})
+
+$('#invoice_inventory_invoice_order_date').on('change', function() {
+  setOrderDateTime()
+})
+
+$('.item_quantity').focus();
+
+$(".item_quantity").keypress(function(e) {
+  if(e.which == 13) {
+    e.preventDefault();
+    if ($("#search_type").val() == 'Description') {
+      $("#lots_search").focus();
+    } else {
+      $("#lots_search_barcode").focus();
+    }
+  }
+});
+
+$(".invoice_pending_advance_amount").on('change keyup', function(){
+  var advance = parseFloat($(this).val()) || 0
+  var net_amount = parseFloat($('#grand_total_inc_discount').val())
+  $('#pending_invoice_total_payment_remaining').val(net_amount - advance)
+  $('#pending_invoice_advanced').val(advance)
+});
+
+$(".invoice_pending_advances_mode_of_payment").on('change', function(){
+  var mode_of_payment = $(this).val()
+  var amount = $(".invoice_pending_advance_amount").val()
+  var rootdiv = '<div class="col-sm-4 col-md-offset-3 mt1" style="border: 1px solid rgb(204, 204, 204);padding: 5px;">'
+  if(mode_of_payment.length > 0){
+    if(mode_of_payment == "Cash"){
+      $(".mode_of_payment_details_v2").html('<input type="hidden" name="invoice_inventory_invoice[pending_advance_payments_attributes][cash]" id="advance_payment_cash" class="form-control" value="' + amount + '">')
+      $(".mode_of_payment_details_v2").hide()
+    } else if(mode_of_payment == "Card"){
+      $(".mode_of_payment_details_v2").html(rootdiv+'<div class="card_details"><div class="col-md-6"><b>Card Number</b><input type="hidden" name="invoice_inventory_invoice[pending_advance_payments_attributes][card]" id="advance_payment_card" class="form-control" value="' + amount + '"><input type="text" name="invoice_inventory_invoice[pending_advance_payments_attributes][card_number]" id="advance_payment_card_number" class="form-control p7_10" minlength="4" maxlength="4" onKeyPress="return event.charCode >= 48 && event.charCode <= 57" value="" placeholder="Card Number"></div><div class="col-md-6"><b>Transaction Note</b><input type="text" name="invoice_inventory_invoice[pending_advance_payments_attributes][card_transaction_note]" id="advance_payment_card_transaction_note" class="form-control p7_10" value="" placeholder="Transaction Note"></div></div></div>')
+      $(".mode_of_payment_details_v2").show()
+    } else if(mode_of_payment == "Paytm"){
+      $(".mode_of_payment_details_v2").html(rootdiv+'<div class="paytm_details"><div class="col-md-6"><b>Transaction Id</b><input type="text" name="invoice_inventory_invoice[pending_advance_payments_attributes][paytm_transaction_id]" id="advance_payment_paytm_transaction_id" class="form-control p7_10" value="" placeholder="Transaction Id"></div><div class="col-md-6"><b>Transaction Note</b><input type="text" name="invoice_inventory_invoice[pending_advance_payments_attributes][paytm_transaction_note]" id="advance_payment_paytm_transaction_note" class="form-control p7_10" value="" placeholder="Transaction Note"></div></div></div>')
+      $(".mode_of_payment_details_v2").show()
+    } else if(mode_of_payment == "Google Pay"){
+      $(".mode_of_payment_details_v2").html(rootdiv+'<div class="gpay_details"><div class="col-md-6"><b>Transaction Id</b><input type="text" name="invoice_inventory_invoice[pending_advance_payments_attributes][gpay_transaction_id]" id="advance_payment_gpay_transaction_id" class="form-control p7_10" value="" placeholder="Transaction Id"></div><div class="col-md-6"><b>Transaction Note</b><input type="text" name="invoice_inventory_invoice[pending_advance_payments_attributes][gpay_transaction_note]" id="advance_payment_gpay_transaction_note" class="form-control p7_10" value="" placeholder="Transaction Note"></div></div></div>')
+      $(".mode_of_payment_details_v2").show()
+    } else if(mode_of_payment == "PhonePe"){
+      $(".mode_of_payment_details_v2").html(rootdiv+'<div class="phonepe_details"><div class="col-md-6"><b>Transaction Id</b><input type="text" name="invoice_inventory_invoice[pending_advance_payments_attributes][phonepe_transaction_id]" id="advance_payment_phonepe_transaction_id" class="form-control p7_10" value="" placeholder="Transaction Id"></div><div class="col-md-6"><b>Transaction Note</b><input type="text" name="invoice_inventory_invoice[pending_advance_payments_attributes][phonepe_transaction_note]" id="advance_payment_phonepe_transaction_note" class="form-control p7_10" value="" placeholder="Transaction Note"></div></div></div>')
+      $(".mode_of_payment_details_v2").show()
+    } else if(mode_of_payment == "Online Transfer"){
+      $(".mode_of_payment_details_v2").html(rootdiv+'<div class="transfer_details"><div class="col-md-6"><b>Tranfer Date</b><input type="text" name="invoice_inventory_invoice[pending_advance_payments_attributes][transfer_date]" id="advance_payment_transfer_date" class="form-control p7_10" placeholder="Transfer Date" readonly="readonly"></div><div class="col-md-6"><b>Transaction Note</b><input type="text" name="invoice_inventory_invoice[pending_advance_payments_attributes][transfer_note]" id="advance_payment_transfer_note" class="form-control p7_10" value="" placeholder="Transaction Note"></div></div></div>')
+      $(".mode_of_payment_details_v2").show()
+    } else if(mode_of_payment == "Cheque"){
+      $(".mode_of_payment_details_v2").html(rootdiv+'<div class="cheque_details"><div class="col-md-6"><b>Cheque Date</b><input type="text" name="invoice_inventory_invoice[pending_advance_payments_attributes][cheque_date]" id="advance_payment_cheque_date" class="form-control p7_10" placeholder="Cheque Date" readonly="readonly"></div><div class="col-md-6"><b>Transaction Note</b><input type="text" name="invoice_inventory_invoice[pending_advance_payments_attributes][cheque_note]" id="advance_payment_cheque_note" class="form-control p7_10" value="" placeholder="Transaction Note"></div></div></div>')
+      $(".mode_of_payment_details_v2").show()
+    } else if(mode_of_payment == "Others"){
+      $(".mode_of_payment_details_v2").html(rootdiv+'<div class="other_details"><div class="col-md-6"><b>Transaction Id</b><input type="text" name="invoice_inventory_invoice[pending_advance_payments_attributes][other_transaction_id]" id="advance_payment_other_transaction_id" class="form-control p7_10" value="" placeholder="Transaction Id"></div><div class="col-md-6"><b>Transaction Note</b><input type="text" name="invoice_inventory_invoice[pending_advance_payments_attributes][other_note]" id="advance_payment_other_note" class="form-control p7_10" value="" placeholder="Transaction Note"></div></div></div>')
+      $(".mode_of_payment_details_v2").show()
+    } else {
+      $(".mode_of_payment_details_v2").html('')
+      $(".mode_of_payment_details_v2").hide()
+    }
+  } else {
+    $(".mode_of_payment_details_v2").html('')
+    $(".mode_of_payment_details_v2").hide()
+  }
+
+  $("#advance_payment_cheque_date").datepicker(datepicker_options)
+  $("#advance_payment_transfer_date").datepicker(datepicker_options)
+});
+

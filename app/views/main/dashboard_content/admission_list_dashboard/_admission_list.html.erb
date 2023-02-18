@@ -1,0 +1,89 @@
+<table class="table table-warning mb30">
+  <thead>
+  <tr>
+    <th style="font-size:12px;">#</th>
+    <th style="font-size:12px;">Patient ID</th>
+    <th style="font-size:12px;">Patient Name</th>
+    <!-- <th style="font-size:12px;">Reason For Admission</th> -->
+    <% if !Ward.find_by(:organisation_id => current_user.organisation_id).nil? %>
+        <th style="font-size:12px;">Ward/Bed</th>
+    <% end %>
+    <th style="font-size:12px;"></th>
+  </tr>
+  </thead>
+  <tbody>
+  <% if @facility == "all" %>
+    <% @fac_list = current_user.organisation.facilities.where(is_active: true) %>
+    <% if current_user.has_role?(:doctor) %>
+      <% @admission_list_today = Admission.where(:doctor => current_user.id, :admissiondate.gte => @current_date, :admissiondate.lt => @current_date + 1,:isdischarged => false, is_deleted: false).order(admissiontime: :desc) %>
+    <% else %>
+      <% if @user.nil? %>
+        <% @admission_list_today = Admission.where(:facility_id.in =>  current_user.facility_ids ,:admissiondate.gte => @current_date, :admissiondate.lt => @current_date + 1,:isdischarged => false, is_deleted: false).order(admissiontime: :desc) %>
+      <% else %>
+        <% @admission_list_today = Admission.where( :admissiondate.gte => @current_date, :admissiondate.lt => @current_date + 1,:isdischarged => false, :doctor => @user.id.to_s, is_deleted: false).order(admissiontime: :desc) %>
+      <% end %>
+    <% end %>
+  <%else%>
+    <% @fac_list = [@facility] %>
+    <% if current_user.has_role?(:doctor) %>
+      <% @admission_list_today = Admission.where(:facility_id => @facility.id.to_s, :doctor => current_user.id, :admissiondate.gte => @current_date, :admissiondate.lt => @current_date + 1,:isdischarged => false, is_deleted: false).order(admissiontime: :desc) %>
+    <% else %>
+      <% if @user.nil? %>
+        <% @admission_list_today = Admission.where(:facility_id => @facility.id.to_s, :admissiondate.gte => @current_date, :admissiondate.lt => @current_date + 1,:isdischarged => false, is_deleted: false).order(admissiontime: :desc) %>
+      <% else %>
+        <% @admission_list_today = Admission.where(:facility_id => @facility.id.to_s, :admissiondate.gte => @current_date, :admissiondate.lt => @current_date + 1,:isdischarged => false, :doctor => @user.id.to_s, is_deleted: false).order(admissiontime: :desc) %>
+      <% end %>
+    <% end %>
+  <%end%>
+
+
+  <!-- If Appointment count is more than 0 show "td" -->
+  <% if @admission_list_today.count > 0 %>
+    <% @fac_list.each do |fac| %>
+      <% if @fac_list.count > 1 && @admission_list_today.where(facility_id: fac.id.to_s).count > 0 %>
+        <tr>
+          <td style="font-size:12px;text-align:center;background-color:#eee;color:#000;font-weight:bold;" colspan="5"><%= fac.name.upcase %></td>
+        </tr>
+      <% end %>
+      <% @admission_list_today.where(facility_id: fac.id.to_s).limit(15).each.with_index do |admission_list_today,i| %>
+          <tr>
+            <td style="font-size:12px;"><%= i+1 %></td>
+            <td style="font-size:12px;"><% @abc = PatientIdentifier.find_by(patient_id: admission_list_today.patient_id).try(:patient_org_id).split("-") %><%= @abc[1] %>-<%= @abc[2] %></td>
+            <td style="font-size:12px;"><%= admission_list_today.patient.fullname %></td>
+            <!-- <td style="font-size:12px;"><%= admission_list_today.admissionreason %></td> -->
+            <% if !Ward.find_by(:organisation_id => current_user.organisation_id).nil? %>
+                <% if admission_list_today.room? %>
+                    <td style="font-size:12px;"><%= admission_list_today.room.code %>/<%= admission_list_today.room.beds.find_by(:id => admission_list_today.bed_id.to_s).code %></td>
+                <% else %>
+                    <td style="font-size:12px;">Daycare</td>
+                <% end %>
+            <% end %>
+            <td style="font-size:12px;" class="table-action">
+              <%= link_to patients_summary_path(:patientid => admission_list_today.patient.id, :admission_id => admission_list_today.id, :opd => 440654001), :class => "patientsummary ps", :id => "patientsummary ps", :title => "Patient Summary", :data => {:remote => true, :toggle => "tooltip", :placement => "bottom"} do %><i class="fa fa-file-alt"></i><% end %>
+            </td>
+          </tr>
+      <% end %>
+      <!-- If Admission count is less than 0 dont show "td" -->
+    <% end %>
+  <%else%>
+      <td></td>
+      <td>No Admission Today</td>
+  <%end%>
+  </tbody>
+</table>
+<div class="pull-left" style="margin-top:-20px;">
+</div>
+<div class="pull-right" style="margin-top:-20px;">
+  <%if @facility == "all" %>
+  <%else%>
+    <% if @user.nil? %>
+      <% if @admission_list_today.count > 0 %>
+        <%= link_to ipd_patients_printadmission_by_facility_path(:facility_id => @facility.id.to_s, :admissiondate => @current_date, :organisation => current_user.organisation, :format => :pdf), :class => "btn btn-sm btn-darkblue", :target => "_blank" do %> <i class="fa fa-print"></i> <%=@facility.name%><% end %>
+      <% end %>
+    <% else %>
+      <% if @admission_list_today.count > 0 %>
+        <%= link_to ipd_patients_printadmission_by_facility_path(:facility_id => @facility.id.to_s, :admissiondate => @current_date, :organisation => current_user.organisation, :doctor => @user.id, :format => :pdf), :class => "btn btn-sm btn-darkblue", :target => "_blank" do %> <i class="fa fa-print"></i> <%=@user.fullname%><% end %>
+      <% end %>
+    <% end %>
+  <%end%>
+</div>

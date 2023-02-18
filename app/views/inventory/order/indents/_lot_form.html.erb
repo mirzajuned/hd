@@ -1,0 +1,780 @@
+<% s_no = 1 %>
+<%= f.fields_for :items, :child_index => index do |builder| %>
+  <% unless builder.object.try(:stock).to_f == builder.object.try(:stock_received).to_f %>
+    <tr width="100%" class="purchase-order-log-item tr_items" data-child-index=<%= builder.options[:child_index] %>>
+        <% item = Inventory::Item.find_by(id: builder.object.item_id) %>
+        <% item_units = item&.item_units.to_i %>
+        <% tax_group = TaxGroup.find_by(id: item.tax_group_id) %>
+        <% tax_rate_details = tax_group.tax_rate_details.collect{|tax_rate| tax_rate.merge(type: TaxRate.find(tax_rate[:_id]).type)} %>
+        <% variant_reference_id = builder.object.variant_reference_id %>
+        <script>
+          var tax_group = {}
+          if (tax_breakup == undefined) {
+            var tax_breakup = {}
+          } else {
+          }
+          tax_group['tax_rates'] = <%= raw tax_rate_details.to_json %>
+          tax_group['id'] = '<%= tax_group.id%>'
+          tax_group['group_rate'] = '<%= tax_group.rate%>'
+          tax_breakup['<%= variant_reference_id %>'] = tax_group
+        </script>
+        <!-- <td> -->
+          <%= builder.hidden_field :item_code %>
+          <%= builder.hidden_field :default_variant_code %>
+          <%= builder.hidden_field :item_id %>
+          <%= builder.hidden_field :variant_id %>
+          <%= builder.hidden_field :default_variant_id %>
+          <%= builder.hidden_field :category %>
+          <%= builder.hidden_field :barcode %>
+          <%= builder.hidden_field :barcode_present %>
+          <%= builder.hidden_field :variant_reference_id, { value: builder.object.variant_reference_id, class: 'variant-reference-id' } %>
+          <%= builder.hidden_field :item_reference_id %>
+          <%= builder.hidden_field :facility_id %>
+          <%= builder.hidden_field :store_id %>
+          <%= builder.hidden_field :organisation_id %>
+          <%= builder.hidden_field :search %>
+          <%= builder.hidden_field :variant_identifier %>
+          <%= builder.hidden_field :mark_up %>
+          <%= builder.hidden_field :mrp %>
+          <%#= builder.hidden_field :list_price %>
+          <%= builder.hidden_field :unit_non_taxable_amount, {class: 'unit-non-taxable-amount' } %>
+          <%= builder.hidden_field :unit_taxable_amount, {class: 'unit-taxable-amount' } %>
+          <%= builder.hidden_field :tax_rate, {class: 'tax-rate' } %>
+          <%= builder.hidden_field :tax_name %>
+          <%= builder.hidden_field :tax_inclusive, {class: 'tax-inclusive' } %>
+          <%= builder.hidden_field :stock_package, {class: 'stock-package' } %>
+          <%= builder.hidden_field :stock_subpackage, {class: 'stock-subpackage' } %>
+          <%= builder.hidden_field :stock_unit, {class: 'stock-unit' } %>
+          <%= builder.hidden_field :mrp_pack%>
+          <%= builder.hidden_field :mrp_pack_denomination %>
+          <%= builder.hidden_field :list_price_pack, {class: 'list-price-pack' } %>
+          <%= builder.hidden_field :list_price_pack_denomination, {class: 'list-price-pack-denomination' } %>
+          <%= builder.hidden_field :purchase_tax_amount, class: 'item_barcode modalRequest_input_style purchase_tax_amount', style: 'width:100%; text-align:left', readonly: true %>
+          <%= builder.hidden_field :discount_per_unit %>
+          <%= builder.hidden_field :item_discount_percent, {class: "item_discount_percent" }  %>
+          <%= builder.hidden_field :indent_remaining_quantity, {class: "indent_remaining_quantity"} %>
+
+
+          <% builder.object.custom_field_data.each do |k,v| %>
+            <%= builder.hidden_field :custom_field_data, {value: v,name: "inventory_order_purchase[items_attributes][#{builder.options[:child_index] }][custom_field_data][#{k}]"} %>
+          <% end %>
+
+          <%= builder.select :custom_field_tags,builder.object.custom_field_tags,{include_hidden: false}, {multiple:true, style: "display: none;"} %>
+
+        <!-- </td> -->
+        <td class="font_size set_index" style="width: 30px;">
+          <span class="s_no"><%= s_no %></span>
+        </td>
+        <td class="font_size descriptionWrapper input-icons" style="width: 180px;">
+          <%= builder.hidden_field :_destroy,  {value: 0 ,class: 'form-control' } %>
+          <%= builder.hidden_field :description, readonly: true, :class => "item_description input-field modalRequest_input_readonly_style", :placeholder=>"Description", :style=>"width:90%;text-align:left; font-weight: bold;background-image:none;"%>
+          <b><%= item.description%></b>
+          <span class="info-text" style="text-align: left"><%= builder.object.custom_field_tags.join(', ') %></span>
+          <a class="tool" data-toggle="tooltip" data-placement="right" title="<%= item.description%>&#013;<%= item.item_code%>&#013;<%= item.category %>&#013;<%= item.sub_category_name %>" class="indent_item_description_info"><i class="fa fa-info-circle" aria-hidden="true"></i></a>
+
+          <%= builder.hidden_field :batch_no, :class => "item_batch modalRequest_input_style info-text", :placeholder=>"Auto-Generate/Enter Batch No.", :style=>"width:100%;text-align:left"%>
+          <%= builder.hidden_field :self_batched %>
+        </td>
+
+        <td class="order-rate font_size" style="width: 85px;">
+            <div class="td-input-group">
+              <div class="mr-1">
+              <%= builder.text_field :unit_cost_without_tax, :class => "col-md-5 col-sm-5 col-xs-5  unit_price_excluding_tax modalRequest_input_readonly_style info-text",:style=>"width:100%;text-align:left; background-color: lightgray;background-color: #ffc;border: 1px solid #ccc;background-image:none;", onkeypress: 'return event.charCode >= 46 && event.charCode <= 57', oninput: 'this.value = this.value.match(/^\d+\.?\d{0,2}/);',required: true %>
+              </div>
+              <!-- <div class="col-md-2"> -->
+                <%= link_to show_vendor_purchase_rate_inventory_stores_path(store_id: @inventory_store.id, variant_id: builder.object.variant_id), id: 'show_vendor_purchase_rate', data: { remote: true, toggle: 'modal', target: '#vendor-purchase-rate-modal' }, class: 'btn btn-primary btn-xs', style: "line-height: 13px;padding: 3px;" do %><i class=""></i>PR<% end %>
+              <!-- </div> -->
+            </div>
+          <!-- <div class="row"> -->
+            <!-- <label class="col-md-7 col-sm-7 col-xs-7 info-label">Selling</label> -->
+            <%= builder.hidden_field :list_price, :class => "col-md-5 col-sm-5 col-xs-5 unit_item_list_price modalRequest_input_style info-text", :placeholder=>"Enter Selling Price", :style=>"text-align:left", onkeypress: 'return event.charCode >= 46 && event.charCode <= 57', oninput: 'this.value = this.value.match(/^\d+\.?\d{0,2}/);' %>
+          <!-- </div> -->
+        </td>
+        <td class="font_size text-center" style="width: 80px;">
+
+          <% if @indent.present? && params[:action] == 'edit' %>
+            <span class="info-text" style="text-align: left"><%= builder.object.try(:indent_original_ordered_quantity).to_f %></span>
+            <%#= builder.hidden_field :po_ordered_quantity, value: builder.object.try(:po_ordered_quantity).to_f %>
+            <%#= builder.hidden_field :po_original_ordered_quantity, value: builder.object.try(:po_original_ordered_quantity).to_f %>
+            <%#= builder.hidden_field :po_item_id, value: builder.object.try(:po_item_id) %>
+          <% else %>
+            <span class="info-text" style="text-align: left">
+              <%#= builder.object.try(:stock_received).to_i + builder.object.try(:free_stock_received).to_i%>
+              <%= (builder.object.try(:stock).to_f&.round(2)) %>
+            </span>
+            <%#= builder.hidden_field :po_ordered_quantity, value: inventory_stock_receiving(builder.object)&.round(2) %>
+            <%#= builder.hidden_field :po_original_ordered_quantity, value: builder.object.try(:stock).to_f %>
+            <%#= builder.hidden_field :po_item_id, value: builder.object&.id %>
+          <% end %>
+
+
+
+        </td>
+        <td class="font_size text-center" style="width: 85px;">
+          <!-- <label class="col-md-7 col-sm-7 col-xs-7 info-label">Pending Qty.</label> -->
+          <div class="td-input-group">
+
+            <% indent_item = @indent.items.find_by(id: builder.object.indent_item_id) %>
+            <% if indent_item.present? %>
+              <% indent_stock = indent_item&.stock.to_f %>
+              <% indent_stock_received = indent_item&.stock_received.to_f %>
+              <% remaining_stock = indent_stock - indent_stock_received %>
+              <% paid_max = (remaining_stock + builder.object.try(:paid_stock).to_f)&.round(2) %>
+              <% pending_qty = remaining_stock %>
+            <% else %>
+              <% paid_max = (builder.object.try(:stock).to_f&.round(2) - builder.object.try(:stock_received).to_f&.round(2)) %>
+              <% pending_qty = builder.object.try(:stock).to_f&.round(2) - builder.object.try(:stock_received).to_f&.round(2) %>
+            <% end %>
+
+            <%# if @indent.present? && params[:action] == 'edit' %>
+              <%# pending_qty = builder.object.try(:indent_original_ordered_quantity).to_f&.round(2) - builder.object.try(:paid_stock).to_f&.round(2) %>
+            <%# else %>
+              <%# pending_qty = builder.object.try(:stock).to_f&.round(2) - builder.object.try(:stock_received).to_f&.round(2) %>
+            <%# end %>
+            <span class="info-text" style="text-align: left"><%= pending_qty %>
+            <%#= builder.object.try(:stock).to_i %>
+            <%= link_to lot_stock_data_inventory_stores_path(store_id: @inventory_store.id, variant_id: builder.object.variant_id), id: 'show_vendor_purchase_rate', data: { remote: true, toggle: 'modal', target: '#vendor-purchase-rate-modal' }, class: 'btn btn-primary btn-xs', style: "line-height: 13px;padding: 3px;" do %><i class=""></i>SA<% end %>
+          </span>
+          </div>
+        </td>
+        <td class="col-md-1 font_size" style="width: 50px;">
+          <%= builder.hidden_field :tax_group_id, readonly: true, :class => "item_tax_group_id modalRequest_input_style", :placeholder=>"Tax", :style=>"width:100%;text-align:left" %>
+          <div class="tax_fields"></div>
+          <%= builder.text_field :tax_rate, class: 'item_barcode modalRequest_input_style', style: 'width:100%;border:none;text-align: center', readonly: true %>
+          <%= builder.hidden_field :item_cost_without_tax, class: 'item_barcode modalRequest_input_style item_cost_without_tax', style: 'width:100%; text-align:left', readonly: true %>
+          <%= builder.hidden_field :unit_purchase_tax_amount, class: 'item_barcode modalRequest_input_style unit_purchase_tax_amount', style: 'width:100%; text-align:left', readonly: true %>
+          <%= builder.hidden_field :unit_cost_without_tax, class: 'item_barcode modalRequest_input_style unit_cost_without_tax', style: 'width:100%; text-align:left', readonly: true %>
+           <%= builder.hidden_field :unit_cost, class: 'item_barcode modalRequest_input_style unit_cost', style: 'width:100%; text-align:left', readonly: true %>
+          <%= builder.hidden_field :item_taxable_amount_with_disc, :class => "item_taxable_amount_with_disc", :value => '0.0' %>
+          <%= builder.hidden_field :currency_symbol, :value => current_facility.currency_symbol %>
+          <%= builder.hidden_field :currency_id, :value => current_facility.currency_id %>
+        </td>
+        <td class="font_size" style="width: 85px;">
+          <!-- <div class="row">
+            <label class="col-md-7 col-sm-7 col-xs-7 info-label">Ordered</label>
+            <span class="col-md-5 col-sm-5 col-xs-5 info-text" style="text-align: left"><%#= builder.object.try(:stock_received).to_i + builder.object.try(:free_stock_received).to_i%></span>
+          </div> -->
+         <% if @indent.present? && params[:action] == 'edit' %>
+              <% paid_qty = (builder.object.try(:paid_stock).to_f&.round(2) + builder.object.try(:stock_received).to_f&.round(2)) %>
+          <% else %>
+              <% paid_qty = (builder.object.try(:stock).to_f&.round(2) - builder.object.try(:stock_received).to_f&.round(2)) %>
+          <% end %>
+              <!-- <label class="col-md-7 col-sm-7 col-xs-7 info-label">Paid Qty.</label> -->
+              <%= builder.number_field :paid_stock, :class => "col-md-5 col-sm-5 col-xs-5 check_order_quantity item_quantity modalRequest_input_style info-text", :placeholder=>"Qty", :style=>"text-align:center;width: 69%; background-color: lightgray;background-color: #ffc;border: 1px solid #ccc;background-image:none;", onkeypress: 'return event.charCode >= 46 && event.charCode <= 57',min: 0.1,max: paid_max, value: paid_qty  %>
+                <div class="paid_stock_error"></div>
+                <div class="inventory_transaction_purchase_items_attributes_<%=builder.options[:child_index]  %>_paid_stock" value="<%= (builder.object.try(:stock).to_f&.round(2) - builder.object.try(:stock_received).to_f&.round(2)) %>"></div>
+
+              <%= builder.hidden_field :stock, value: (builder.object.try(:stock).to_f&.round(2) - builder.object.try(:stock_received).to_f&.round(2)), :class => "col-md-5 col-sm-5 col-xs-5 item_quantity stock modalRequest_input_style info-text", :placeholder=>"Qty", :style=>"text-align:left; background-color: lightgray;", onkeypress: 'return event.charCode >= 46 && event.charCode <= 57' %>
+              <input type="hidden" value="<%= (builder.object.try(:stock).to_f&.round(2) - (builder.object.try(:stock_received).to_f&.round(2) + builder.object.try(:free_stock_received).to_f&.round(2))) %>" id="item_max_quantity_<%= builder.options[:child_index] %>", class="item_max_quantity modalRequest_input_style" placeholder="" style="width:90%;text-align:left" />
+
+            <div class="col-md-2">
+              <a  data-toggle="tooltip" data-placement="right" title="Item can be in multiple of <%= item_units.to_i %>" class=""><i class="fa fa-info-circle" aria-hidden="true"></i></a>
+            </div>
+          </td>
+          <td class="font_size" style="width: 70px;">
+            <!-- <label class="col-md-7 col-sm-7 col-xs-7 info-label">Free Qty</label> -->
+            <%= builder.text_field :stock_free_unit, :class => "col-md-5 col-sm-5 col-xs-5 free_stock  check_order_quantity modalRequest_input_style info-text stock-subpackage", :placeholder=>"Qty", :style=>"text-align:center;width: 100%; background-color: lightgray;background-color: #ffc;border: 1px solid #ccc;background-image:none;", onkeypress: 'return event.charCode >= 46 && event.charCode <= 57', min: 0, value: (builder.object.try(:stock_free_unit).to_f&.round(2))%>
+              <div class="inventory_transaction_purchase_items_attributes_<%=builder.options[:child_index]  %>_stock_free_unit" value="<%= (builder.object.try(:stock_free_unit).to_f&.round(2)) %>"></div>
+              <div class="inventory_order_purchase_items_attributes_<%= builder.options[:child_index]%>_stock_free_unit"></div>
+
+              <% if @indent.present? && params[:action] == 'edit' %>
+                <%= builder.hidden_field :indent_item_id, value: builder.object&.indent_item_id %>
+                <%= builder.hidden_field :indent_ordered_quantity, value: builder.object.try(:indent_ordered_quantity).to_i, class: 'indent_ordered_quantity' %>
+                <%= builder.hidden_field :indent_original_ordered_quantity, value: builder.object.try(:indent_original_ordered_quantity).to_i %>
+              <% else %>
+                <%= builder.hidden_field :indent_item_id, value: builder.object&.id %>
+                <%= builder.hidden_field :indent_ordered_quantity, value: builder.object.try(:stock).to_i, class: 'indent_ordered_quantity' %>
+                <%= builder.hidden_field :indent_original_ordered_quantity, value: builder.object.try(:stock).to_i %>
+              <% end %>
+
+          </td>
+
+        <td class="font_size" style="width: 100px;">
+          <div class="input-group">
+            <%= builder.text_field :item_discount_show, value: builder.object.try(:item_discount_type) == "%" ? builder.object.try(:item_discount_percent) : builder.object.try(:item_discount) , :class => "form-control item_discount_show modalRequest_input_style info-text", :placeholder=>"Amount", :style=>"width:103%;text-align:left;border: 1px solid #ccc;background-image:none;height: 50%",onkeypress: 'return event.charCode >= 46 && event.charCode <= 57'%>
+            <span class="input-group-addon form-control-custom-slash" style="padding: 0px;border: none">|</span>
+            <%= builder.select(:item_discount_type, options_for_select(["#{current_facility.currency_symbol}","%"], builder.object&.item_discount_type), {}, {:class => 'form-control item_discount_type modalRequest_input_style',style: 'width:100%;text-align:left;background-color: white;border: 1px solid #ccc;background-image:none;height: 34px;min-width: 45px;'})  %>
+            <%= builder.hidden_field :item_discount, class: "item_discount modalRequest_input_style"%>
+            <%= builder.hidden_field :cost_before_discount, class: "cost_before_discount"%>
+          </div>
+          <div class="item_discount_show_value-<%= builder.options[:child_index] %>"><%= builder.object.item_discount&.round(2) %></div>
+        </td>
+        <td class="font_size text-center" style="width: 60px;">
+          <%= builder.text_field :amount_after_tax, readonly: true ,:class => "amount_after_tax modalRequest_input_readonly_style info-text", :placeholder=>"0.00", :style=>"width:100%;text-align:left;background-image:none;" %>
+          <%= builder.hidden_field :total_cost, readonly: true ,:class => "price_including_tax modalRequest_input_readonly_style info-text", :placeholder=>"Total Cost Price", :style=>"width:100%;text-align:left" %>
+        </td>
+        <% if @sub_stores.size > 1 %>
+          <td class="font_size" style="width: 70px;">
+              <%= builder.select(:sub_store_id, options_for_select(@sub_stores,builder.object.try(:sub_store_id)), {include_blank: "Select"}, {:class => 'form-control sub_store_id modalRequest_input_readonly_style',style: 'text-align:left;background-color: white;border: 1px solid #ccc;height: 24px;padding: 2px 2px;width:100%;',required: false})  %>
+              <%= builder.hidden_field :sub_store_name,value: builder.object.try(:sub_store_name), class: "sub_store_id item_max_quantity modalRequest_input_style",required: false %>
+            <% else %>
+              <%= builder.hidden_field :sub_store_id,value: builder.object.try(:sub_store_id), class: "sub_store_id item_max_quantity modalRequest_input_style",required: false %>
+              <%= builder.hidden_field :sub_store_name,value: builder.object.try(:sub_store_name), class: "sub_store_id item_max_quantity modalRequest_input_style",required: false %>
+          </td>
+        <% end %>
+        <td class="font_size" style="width: 85px;">
+           <%= builder.text_field :remarks ,:class => "remarks modalRequest_input_style", :placeholder=>"Remark", :style=>"width:100%;text-align:left; background-color: #ffc; background-image: none;border: 1px solid #ccc;",value: (@indent.present? && params[:action] == 'edit' ? builder.object.remarks : builder.object.indent_remarks) %>
+        </td>
+        <td class="font-size text-center" style="width: 85px;">
+          <button type="button" class="btn btn-link hg-tooltip delete_empty_item" tabindex="-1" style="padding:0px;" title="Remove From List"><i class="fa fa-trash-alt" style="color:#000;"></i></button>
+        </td>
+      <!-- </tr> -->
+    </tr>
+  <% end %>
+  <% s_no += 1 %>
+<% end %>
+<tr>
+  <td style="width: 30px;"></td>
+  <td style="width: 180px;"></td>
+  <td style="width: 85px;"></td>
+  <td style="width: 80px;"></td>
+  <td style="width: 85px;"></td>
+  <td style="width: 50px;"></td>
+  <td style="width: 85px;">
+    <b><input type="text" name="", class="fi_input_style input_focus_none" id="total_paid_quantity", readonly: readonly style="background-image: none;width:100%;text-align: center;"></b>
+  </td>
+  <td style="width: 70px;">
+    <b><input type="text" name="", class="fi_input_style input_focus_none" id="total_free_quantity", readonly: readonly style="background-image: none;width: 100%;text-align: center;"></b>
+  </td>
+  <td style="width: 100px;"></td>
+  <td style="width: 60px;"></td>
+  <%if @sub_stores.size > 1 %>
+    <td style="width: 70px;"></td>
+  <% end %>
+  <td style="width: 85px;"></td>
+  <td style="width: 85px;"></td>
+</tr>
+
+<script>
+  calculate_purchase_order_tax()
+  calNetAmount()
+  set_index()
+
+  function set_index(){
+    count = 0
+    $(".purchase-order-log-item").each(function(){
+      index = count + 1
+      $(this).find('.s_no').text(index)
+      count += 1
+    })
+  }
+  $('.delete_empty_item').on('click', function(){
+    if ($('.purchase-order-log-item').length > 1){
+      var id = $(this).closest('.purchase-order-log-item').find('.item-id').val()
+      $(this).closest('.purchase-order-log-item').remove()
+      delete tax_breakup[id];
+    }
+  })
+
+  $(".sub_store_id").on("click",function(){
+    var id = $(this).attr("id");
+    var sub_store_name = $("#" + id + ' option:Selected').text();
+    $("#" + id.replace("sub_store_id","sub_store_name")).val(sub_store_name);
+  })
+
+  $(".item_discount_type").on("click",function(){
+    var this_parent = $(this).parents('.purchase-order-log-item')
+    indent_purchase_order(this_parent)
+  });
+
+  $('.item_discount_show').on('change keyup', function() {
+    var this_parent = $(this).parents('.purchase-order-log-item')
+    this_parent.find(".item_discount").val($(this).val())
+    indent_purchase_order(this_parent)
+  })
+ 
+  function calculate_item_discount(_this){
+    var id = $(_this).attr("id")
+    let discount_type = $("#" + id.replace("item_discount_show","item_discount_type")).val();
+    let item_discount = parseFloat($(_this).val()) || 0;
+    let quantity = parseFloat($("#" + id.replace("item_discount_show","paid_stock")).val());
+    let unit_cost_without_tax = parseFloat($("#" + id.replace("item_discount_show","unit_cost_without_tax")).val()) || 0;
+    let cost_before_discount = (quantity * unit_cost_without_tax) || 0
+    let tax_rate = parseFloat($("#" + id.replace("item_discount_show","tax_rate")).val());
+    if (discount_type == "%"){
+      if (item_discount >= 0 && item_discount <= 100){
+         item_discount_show = parseFloat(((item_discount * cost_before_discount)/100));
+         $("#" + id.replace("item_discount_show","item_discount_percent")).val(item_discount)
+      }else{
+        // item_discount = 0
+         item_discount_show = parseFloat(((item_discount * cost_before_discount)/100));
+      }
+    }
+    else{
+      item_discount_show =  parseFloat(item_discount)
+    }
+    // isNaN(item_discount_show) || item_discount_show == '' ||
+    if (item_discount_show < 0 || item_discount_show > cost_before_discount){
+      $(_this).val(0);
+      discount = 0;
+      item_discount_show = 0;
+    }
+    cost_before_tax = (cost_before_discount - item_discount_show) || 0
+    tax_amount = ((tax_rate * cost_before_tax)/100)
+    cost_after_tax = cost_before_tax + tax_amount
+    $("#" + id.replace("item_discount_show","total_cost")).val(cost_after_tax.toFixed(2));
+    $("#" + id.replace("item_discount_show","item_discount")).val(item_discount_show);
+    // $("#" + id.replace("item_discount_show","item_discount_show")).val(item_discount_show.toFixed(2));
+    $("#" + id.replace("item_discount_show","amount_after_tax")).val(cost_after_tax.toFixed(2));
+    $("#" + id.replace("item_discount_show","unit_purchase_tax_amount")).val((tax_amount/quantity));
+    $("#" + id.replace("item_discount_show","discount_per_unit")).val((item_discount_show/quantity));
+    $("#" + id.replace("item_discount_show","cost_before_discount")).val(cost_before_discount);
+  
+    var key = parseInt(id.split("_")[5])
+    if (item_discount_show > 0) {
+      $(".item_discount_show_value-"+key).text(" - " + item_discount_show.toFixed(2));
+    } else {
+       $(".item_discount_show_value-"+key).text('0');
+    }
+    calculate_purchase_order_tax()
+  }
+
+  function calNetAmount() {
+    var each_item_totals = 0;
+    var each_item_net_amount_totals = 0;
+    var each_item_tax_totals = 0;
+    var each_item_discount_totals = 0;
+    var each_item_taxable_amount_totals = 0;
+    tax_details = {}
+    $("#tax_details").html("")
+    $(".amount_after_tax").each(function(){
+      data = calculate_overall_total(this)
+      each_item_net_amount_totals += parseFloat($(this).val() || 0);
+      each_item_totals += data["total_cost"];
+      each_item_tax_totals += data["taxable_amount"];
+      each_item_discount_totals += data["item_discount_show"]|| 0;
+      each_item_taxable_amount_totals += data["amt_before_tax"];
+      var tax_name = $("#" + $(this)[0].id.replace("amount_after_tax","tax_name")).val();
+      var purchase_tax_amount  = parseFloat($("#" + $(this)[0].id.replace("amount_after_tax","purchase_tax_amount")).val()).toFixed(2)
+      if (tax_details[tax_name] == undefined){
+        tax_details[tax_name] = parseFloat(purchase_tax_amount)
+      }else{
+        tax_details[tax_name] = parseFloat(tax_details[tax_name]) + parseFloat(purchase_tax_amount)
+      }
+      // $("#tax_details").prepend(`<div class="col-sm-12">
+      //       <div class="col-sm-6 font_size">
+      //         <b>${tax_name}</b>
+      //       </div>
+      //       <div class="col-sm-1 text-center font_size">
+      //         :
+      //       </div>
+      //       <div class="col-sm-4 font_size" style="padding-left: 18px;text-align: left">
+      //         ${purchase_tax_amount}
+      //         <%#= f.text_field :tax_amount, class: 'fi_input_style input_focus_none', placeholder: 'Amount', style: 'width:92%; background-image: none;', value: 0, readonly: true %>
+      //       </div>
+      //     </div>`)
+    });
+
+    for (var key in tax_details) {
+      if (tax_details.hasOwnProperty(key)) {
+        $("#tax_details").prepend(`<div class="col-sm-12">
+            <div class="col-sm-6 font_size">
+              <b>${key}</b>
+            </div>
+            <div class="col-sm-1 text-center font_size">
+              :
+            </div>
+            <div class="col-sm-4">
+              <input class="fi_input_style" style="width:92%; background-image: none;" readonly="readonly" type="text" value="${tax_details[key].toFixed(2)}">
+            </div>
+          </div>`)
+      }
+    }
+    var other_charge_cost = parseFloat($("#total_other_charges_amount").val()) || 0
+    var total_net_amount  = (each_item_net_amount_totals + other_charge_cost) || 0
+    $("#inventory_order_purchase_net_amount").val(total_net_amount.toFixed(2))
+    $("#inventory_order_purchase_total_cost").val(each_item_totals.toFixed(2))
+    $("#inventory_order_purchase_discount").val(each_item_discount_totals.toFixed(2))
+    $("#inventory_order_purchase_tax_amount").val(each_item_tax_totals.toFixed(2))
+    $("#inventory_order_purchase_purchase_taxable_amount").val(each_item_taxable_amount_totals.toFixed(2))
+    $("#inventory_order_purchase_amount_remaining").val(total_net_amount.toFixed(2))
+  }
+
+  function calculate_overall_total(_this){
+    let quantity = parseFloat($("#"+$(_this)[0].id.replace("amount_after_tax","paid_stock")).val());
+    let unit_cost_without_tax = parseFloat($("#"+$(_this)[0].id.replace("amount_after_tax","unit_cost_without_tax")).val()) || 0;
+    let amt_before_discount = quantity * unit_cost_without_tax
+    let discount = parseFloat($("#"+$(_this)[0].id.replace("amount_after_tax","item_discount")).val());
+    let tax_rate = parseFloat($("#"+$(_this)[0].id.replace("amount_after_tax","tax_rate")).val());
+    let amt_before_tax
+    item_discount_show = discount
+    amt_before_tax = (amt_before_discount - item_discount_show) || 0
+    taxable_amount = ((tax_rate * amt_before_tax)/100) || 0
+    return {"item_discount_show": item_discount_show,"taxable_amount": taxable_amount,"total_cost": amt_before_discount,"amt_before_tax": amt_before_tax}
+  }
+
+  function indent_purchase_order(this_parent) {
+    var item_quantity = parseFloat($(this_parent).find('.item_quantity').val() || 0)
+    // var unit_price_including_tax = parseFloat($(this_parent).find('.unit_price_including_tax').val() || 0)
+    var unit_price_including_tax = parseFloat($(this_parent).find('.unit_cost').val() || 0)
+    var unit_price_excluding_tax = parseFloat($(this_parent).find('.unit_price_excluding_tax').val() || 0)
+
+    var stock_package = 0
+    var stock_sub_package = 0
+    var stock_unit = item_quantity
+    var stock_free_unit = parseFloat($(this_parent).find('.free_stock').val()) || 0
+    var stock = stock_unit + stock_free_unit
+    $(this_parent).find('.stock-package').val(stock_package.toFixed(2))
+    $(this_parent).find('.stock-sub-package').val(stock_sub_package.toFixed(2))
+    $(this_parent).find('.stock-unit').val(stock_unit.toFixed(2))
+    $(this_parent).find('.stock-free-unit').val(stock_free_unit.toFixed(2) || 0)
+    $(this_parent).find('.stock').val(stock.toFixed(2))
+    $(this_parent).find('.indent_ordered_quantity').val(stock.toFixed(2))
+    var price_including_tax = item_quantity * unit_price_including_tax
+
+    $(this_parent).find('.price_including_tax').val(price_including_tax.toFixed(2))
+    $(this_parent).find('.unit_cost_without_tax').val(unit_price_excluding_tax)
+    
+    var discount = $(this_parent).find(".item_discount_show")
+    // if ($(this_parent).find('.free_stock').val() == '' ){
+    //   $(this_parent).find('.free_stock').val(0)
+    // }
+    calculate_item_discount(discount)
+    calculate_purchase_order_tax()
+  }
+
+  function calculate_without_tax_unit_price(this_parent) {
+    var tax_inclusive = $(this_parent).find(".tax-inclusive").val()
+    var unit_cost_price = parseFloat($(this_parent).find(".unit_price_including_tax").val()) || 0
+    var tax_rate = parseFloat($(this_parent).find(".tax-rate").val()) || 0
+    var tax_amount = (unit_cost_price * tax_rate)/(100 + tax_rate)
+    var unit_cost_without_tax = unit_cost_price - tax_amount
+    var item_quantity = parseFloat($(this_parent).find('.item_quantity').val() || 0)
+    var item_cost_without_tax = unit_cost_without_tax * item_quantity
+    $(this_parent).find(".unit_purchase_tax_amount").val(tax_amount)
+    $(this_parent).find(".item_cost_without_tax").val(item_cost_without_tax)
+    $(this_parent).find(".unit_cost_without_tax").val(unit_cost_without_tax)
+    $(this_parent).find(".cost_before_discount").val(unit_cost_without_tax)
+  }
+
+  function calculate_with_tax_unit_price(this_parent){
+    var tax_inclusive = $(this_parent).find(".tax-inclusive").val()
+    var unit_cost_without_tax = parseFloat($(this_parent).find(".unit_price_excluding_tax").val()) || 0
+    var tax_rate = parseFloat($(this_parent).find(".tax-rate").val()) || 0
+    var tax_amount = (unit_cost_without_tax * tax_rate) / 100
+    var unit_cost = (unit_cost_without_tax * tax_rate) / 100 + unit_cost_without_tax
+    var item_quantity = parseFloat($(this_parent).find('.item_quantity').val() || 0)
+    var item_cost_without_tax = unit_cost_without_tax * item_quantity
+    $(this_parent).find(".unit_purchase_tax_amount").val(tax_amount)
+    $(this_parent).find(".item_cost_without_tax").val(item_cost_without_tax)
+    $(this_parent).find(".unit_cost").val(unit_cost)
+    $(this_parent).find(".unit_cost").val(unit_cost)
+  }
+
+  // $('.unit_price_including_tax').on('change keyup', function() {
+  //   var this_parent = $(this).parents('.purchase-order-log-item')
+  //   calculate_without_tax_unit_price(this_parent)
+  //   indent_purchase_order(this_parent)
+  // })
+
+  $(".unit_price_excluding_tax").on('change keyup',function(){
+    var this_parent = $(this).parents('.purchase-order-log-item')
+    calculate_with_tax_unit_price(this_parent)
+    indent_purchase_order(this_parent)
+  })
+
+  $(".item_quantity").on("change keyup", function () {
+
+    // var item_quantity = parseFloat($(this).val()) || 0
+
+    var this_parent = $(this).parents('.purchase-order-log-item')
+
+    indent_purchase_order(this_parent)
+    // calTotalPrice()
+  })
+
+  $(".free_stock").on("change keyup", function(){
+    var this_parent = $(this).parents('.purchase-order-log-item')
+
+    indent_purchase_order(this_parent)
+  })
+
+  $(".unit_item_list_price").on("change keyup", function () {
+    var unit_item_list_price = parseFloat($(this).val()) || 0
+    var this_parent = $(this).parents('.purchase-order-log-item')
+    $(this_parent).find('.list-price-pack').val(unit_item_list_price.toFixed(2))
+    $(this_parent).find('.list-price-pack-denomination').val('Unit')
+    calculate_tax(this)
+  })
+
+  function calculate_tax(_this){
+    var this_parent = $(_this).parents('.purchase-order-log-item')
+    console.log("yojhoho",this_parent)
+
+    console.log('$(this_parent).find(".tax-inclusive")', $(this_parent).find(".tax-inclusive"))
+    var tax_inclusive = $(this_parent).find(".tax-inclusive").val()
+    var selling_price = parseFloat($(this_parent).find(".unit_item_list_price").val())
+    var tax_rate = parseFloat($(this_parent).find(".tax-rate").val()) || 0
+
+    console.log(tax_inclusive, selling_price, tax_rate)
+
+    if(tax_inclusive == 'true'){
+      var unit_taxable_amount = (selling_price * tax_rate)/(100 + tax_rate)
+      var unit_non_taxable_amount = selling_price - unit_taxable_amount
+      var total_amount = selling_price
+    } else {
+      var unit_taxable_amount = (selling_price * tax_rate)/100
+      var unit_non_taxable_amount = selling_price
+      var total_amount = selling_price + unit_taxable_amount
+    }
+
+    $(this_parent).find(".unit-non-taxable-amount").val(unit_non_taxable_amount.toFixed(2))
+    $(this_parent).find(".unit-taxable-amount").val(unit_taxable_amount.toFixed(2))
+
+  }
+
+  function calTotalPrice() {
+    var each_item_totals = 0;
+    $('.price_including_tax').each(function(){
+      each_item_totals += parseFloat($(this).val()) || 0;
+    });
+    $("#inventory_order_purchase_total_cost").val(each_item_totals.toFixed(2))
+    var total_cost = parseFloat($('#inventory_order_purchase_total_cost').val()) || 0
+    var item_discount_show = parseFloat($('#inventory_order_purchase_discount').val()) || 0
+    var net_amount = total_cost - item_discount_show
+    $("#inventory_order_purchase_net_amount").val(net_amount.toFixed(2))
+    $("#inventory_order_purchase_amount_remaining").val(net_amount.toFixed(2))
+  }
+
+  $('#inventory_order_purchase_discount').on('keyup', function() {
+    var total_cost = parseFloat($('#inventory_order_purchase_total_cost').val()) || 0
+    var item_discount_show = parseFloat($('#inventory_order_purchase_discount').val()) || 0
+    var amount_paid = parseFloat($('#inventory_order_purchase_amount_paid').val()) || 0
+    var net_amount = total_cost - item_discount_show
+    $('#inventory_order_purchase_net_amount').val(net_amount.toFixed(2))
+    $('#inventory_order_purchase_amount_remaining').val(net_amount.toFixed(2))
+    calculate_purchase_order_tax()
+  })
+
+  function calculate_purchase_order_tax() {
+    var total_paid_stock = 0
+    var total_free_stock = 0
+    $('.price_including_tax').each(function(){
+      var this_parent = $(this).parents('.purchase-order-log-item')
+      var quantity = parseFloat($(this_parent).find('.item_quantity').val() || 0)
+      var tax_group_id = $(this_parent).find(".item_tax_group_id").val()
+      // var unit_purchase_tax_amount = parseFloat($(this_parent).find(".unit_purchase_tax_amount").val()) || 0
+      var unit_cost_price = parseFloat($(this_parent).find('.unit_price_including_tax').val() || 0)
+
+      var unit_cost_price = parseFloat($(this_parent).find('.unit_cost').val() || 0)
+      var unit_cost_without_tax = parseFloat($(this_parent).find('.unit_price_excluding_tax').val() || 0)
+      var tax_rate = parseFloat($(this_parent).find('.tax-rate').val() || 0)
+      // var tax_amount = ((unit_cost_price * tax_rate)/(100 + tax_rate)) || 0
+      // --------------------------------------
+      var discount = parseFloat($("#"+$(this)[0].id.replace("total_cost","item_discount")).val()) || 0
+      // var tax_rate = parseFloat($("#"+$(this)[0].id.replace("total_cost","tax_rate")).val())
+      var paid_stock = parseFloat($("#"+$(this)[0].id.replace("total_cost","paid_stock")).val())
+      var stock_free_unit = parseFloat(this_parent.find('.free_stock').val() || 0)
+      // var unit_cost_without_tax = parseFloat($("#"+$(this)[0].id.replace("total_cost","unit_cost_without_tax")).val()) || 0
+      var total_cost = unit_cost_without_tax * paid_stock
+      amt_before_tax = total_cost - discount
+      tax_amount =  (((tax_rate * amt_before_tax)/100))
+      $(this_parent).find(".purchase_tax_amount").val(tax_amount)
+      purchase_tax_amount = parseFloat($(this_parent).find(".purchase_tax_amount").val()) || 0
+      total_paid_stock += paid_stock
+      total_free_stock += stock_free_unit
+    // -------------------------------------
+      // var unit_cost_without_tax = unit_cost_price - tax_amount
+      // $('#unit_cost_without_tax').val(unit_cost_without_tax.toFixed(2))
+      // $('#unit_purchase_tax_amount').val(tax_amount)
+
+      // var purchase_tax_amount = tax_amount * quantity
+      $(this_parent).find('.price_including_tax').trigger('change')
+      var gross_amount = 0
+      $('.price_including_tax').each(function() {
+        gross_amount += parseFloat($(this).val() || 0);
+      })
+    
+      // var discount = parseFloat($('#inventory_order_purchase_discount').val() || 0)
+      // discount_percent = (discount / gross_amount) * 100
+      // var purchase_tax_amount = purchase_tax_amount - (purchase_tax_amount * discount_percent) / 100
+      var get_service_count = $(this_parent).attr('data-child-index')
+      // var item_cost_without_tax = $(this_parent).find(".item_cost_without_tax").val()
+      // var taxable_amount_with_disc = item_cost_without_tax - (item_cost_without_tax * discount_percent) / 100
+      $(this_parent).find('.item_taxable_amount_with_disc').val(amt_before_tax.toFixed(2))
+      if(parseFloat(purchase_tax_amount).toFixed(2) == "NaN"){
+        var purchase_tax_amount = 0.0
+      }
+
+      generate_tax_group(this_parent, (purchase_tax_amount || 0), get_service_count)
+
+      // $.ajax({
+      //   type: 'GET',
+      //   dataType: 'JSON',
+      //   data: { tax_group_id: tax_group_id, taxable_amount: purchase_tax_amount},
+      //   url: '/invoice/invoices/tax_breakup',
+      //   success: function(response) {
+      //     $(this_parent).find('.tax_fields').html("")
+      //     $.each(response.tax, function(key, value) {
+      //       $(this_parent).find('.tax_fields').append('<div class="tax_box"><input type="hidden" name="inventory_order_purchase[items_attributes][' + get_service_count + '][tax_group][][amount]" value="' + parseFloat(value[2]).toFixed(2) + '" class="tax_group_id_amount"><input type="hidden" name="inventory_order_purchase[items_attributes][' + get_service_count + '][tax_group][][name]" value="' + value[1] + '" class="tax_group_id_name"><input type="hidden" name="inventory_order_purchase[items_attributes][' + get_service_count + '][tax_group][][_id]" value="' + value[0] + '" class="tax_group_id_id">'+
+      //       '<input type="hidden" name="inventory_order_purchase[items_attributes][' + get_service_count + '][tax_group][][tax_rate]" value="'+value[3]+'" class="tax_rate">'+
+      //       '<input type="hidden" name="inventory_order_purchase[items_attributes][' + get_service_count + '][tax_group][][tax_type]" value="'+value[4]+'" class="tax_type">'+
+      //         '</div>')
+      //     });
+      //     // calTotalPrice()
+      //     calNetAmount()
+      //     $("#inventory_order_purchase_net_amount").trigger('change')
+      //   }
+      // })
+
+    });
+    calNetAmount()
+    $("#inventory_order_purchase_net_amount").trigger('change');
+    $('#total_paid_quantity').val(total_paid_stock || 0)
+    $('#total_free_quantity').val(total_free_stock || 0)
+    $('#inventory_order_purchase_po_total_paid_stock').val(total_paid_stock || 0)
+    $('#inventory_order_purchase_remaining_po_total_paid_stock').val(total_paid_stock || 0)
+  }
+
+  function generate_tax_group(parent, taxable_amount, count) {
+    if (Object.keys(tax_breakup).length > 0) {
+      var variant_reference_id = $(parent).find('.variant-reference-id').val()
+      var item_tax_group = tax_breakup[variant_reference_id]
+      var tax_rate_amount;
+      var group_rate = parseFloat(item_tax_group['group_rate'])
+      $(parent).find('.tax_fields').html("")
+      item_tax_group['tax_rates'].forEach(function(item) {
+        if (group_rate != 0.0) {
+          tax_rate_amount = (parseFloat(taxable_amount) * parseFloat(item.rate) / group_rate) || 0
+        } else {
+          tax_rate_amount = 0.0
+        }
+        $(parent).find('.tax_fields').append(`
+          <div class="tax_box">
+          <input type="hidden" name="inventory_order_purchase[items_attributes][${count}][tax_group][][amount]" value="${tax_rate_amount.toFixed(2)}" class="tax_group_id_amount">
+          <input type="hidden" name="inventory_order_purchase[items_attributes][${count}][tax_group][][name]" value="${item.name}" class="tax_group_id_name">
+          <input type="hidden" name="inventory_order_purchase[items_attributes][${count}][tax_group][][_id]" value="${item._id}" class="tax_group_id_id">
+          <input type="hidden" name="inventory_order_purchase[items_attributes][${count}][tax_group][][tax_rate]" value="${item.rate}" class="tax_rate">
+          <input type="hidden" name="inventory_order_purchase[items_attributes][${count}][tax_group][][tax_type]" value="${item.type}" class="tax_type">
+          </div>
+          `)
+      });
+    }
+  }
+
+  $("#inventory_order_purchase_net_amount").on('change', function(){
+    $("#tax-cage").html("")
+    var tax_field = $('.tax_fields')
+    var counter = 0
+    for (var j = tax_field.length - 1; j >= 0; j--) {
+
+      var tax_box = $(tax_field[j]).find('.tax_box')
+      for (var i = tax_box.length - 1; i >= 0; i--) {
+        var tax_group_id2 = $(tax_box[i]).find('.tax_group_id_id').val()
+        var tax_group_id = $("#tax-cage").find('.tax_group_' + tax_group_id2)
+        var tax_group_name = $(tax_box[i]).find('.tax_group_id_name').val()
+        var tax_group_amount = $(tax_box[i]).find('.tax_group_id_amount').val()
+        var tax_rate = parseFloat($(tax_box[i]).find('.tax_rate').val()).toFixed(2)
+        var tax_type = $(tax_box[i]).find('.tax_type').val()
+        var taxable_amount = parseFloat($(tax_box[i]).closest('.purchase-order-log-item').find('.item_taxable_amount_with_disc').val()) || 0
+        
+        if(tax_group_id.length <= 0){
+          $("#tax-cage").prepend(`
+          <div class="row mb5 tax_group_${tax_group_id2}">
+          <div class="col-md-5 text-right"><b>${tax_group_name}</b></div>
+          <div class="col-md-3 text-center">:</div><div class="col-md-3 text-right">
+          <input style="width:92%;" class="tax_group_id_${tax_group_id2}" value="${tax_group_id2}" type="hidden" name="inventory_order_purchase[tax_breakup][][_id]" readonly="readonly">
+          <input style="width:92%;" class="tax_group_id_${tax_group_id2}" value="${tax_group_name}" type="hidden" name="inventory_order_purchase[tax_breakup][][name]" readonly="readonly">
+          <input style="width:92%;" class="fi_input_style text-right tax_group_amount_${tax_group_id2}" value="${parseFloat(tax_group_amount).toFixed(2)}" type="text" name="inventory_order_purchase[tax_breakup][][amount]" readonly="readonly">
+          <input value="${tax_rate}" type="hidden" name="inventory_order_purchase[tax_breakup][][tax_rate]" readonly="readonly">
+          <input value="${tax_type}" type="hidden" name="inventory_order_purchase[tax_breakup][][tax_type]" readonly="readonly">
+          <input value="${taxable_amount}" type="hidden" name="inventory_order_purchase[tax_breakup][][taxable_amount]" class="taxable_amount_${tax_group_id2}">
+          </div></div>`)
+        } else {
+          var old_value = $(tax_group_id).find('.tax_group_amount_' + tax_group_id2).val()
+          var new_value = (parseFloat(tax_group_amount) + parseFloat(old_value)).toFixed(2)
+          $(tax_group_id).find('.tax_group_amount_' + tax_group_id2).val(new_value)
+          var old_taxable_amount = parseFloat($(tax_group_id).find('.taxable_amount_'+tax_group_id2).val()) || 0
+          $(tax_group_id).find('.taxable_amount_'+tax_group_id2).val(taxable_amount + old_taxable_amount)
+        }
+        if(counter == 0){
+          $("#tax-cage").attr('style', 'background: #eee;padding: 5px;font-size: smaller;')
+        }
+        counter = counter + 1
+      }
+    }
+
+    purchase_taxable_amount()
+  })
+
+  function purchase_taxable_amount(){
+    var purchase_taxable_amount = 0.0
+    $('.price_including_tax').each(function(){
+      var this_parent = $(this).parents('.purchase-order-log-item')
+      var quantity = parseFloat($(this_parent).find('.item_quantity').val() || 0)
+
+      var unit_cost_price = parseFloat($(this_parent).find('.unit_cost').val() || 0)
+      var tax_rate = parseFloat($(this_parent).find('.tax-rate').val() || 0)
+      var tax_amount = (unit_cost_price * tax_rate)/(100 + tax_rate)
+      var unit_cost_without_tax = unit_cost_price - tax_amount
+      $('#unit_cost_without_tax').val(unit_cost_without_tax.toFixed(2))
+      $('#unit_purchase_tax_amount').val(tax_amount)
+
+
+      var unit_cost_without_tax = unit_cost_without_tax.toFixed(2)
+      var item_cost_without_tax = unit_cost_without_tax * quantity
+      purchase_taxable_amount = purchase_taxable_amount + item_cost_without_tax
+    })
+
+    if(parseFloat(purchase_taxable_amount).toFixed(2) == "NaN"){
+      var purchase_taxable_amount = 0.0
+    }
+    var gross_amount = parseFloat($('#inventory_order_purchase_total_cost').val() || 0)
+    var discount = parseFloat($('#inventory_order_purchase_discount').val() || 0)
+    discount_percent = ((discount / gross_amount) * 100) || 0
+    var purchase_taxable_amount = purchase_taxable_amount - (purchase_taxable_amount * discount_percent) / 100
+    if(purchase_taxable_amount != 0.0){
+      $("#tax-cage").find('.purchase_taxable_amount').remove()
+      $("#tax-cage").prepend('<div class="row mb5 purchase_taxable_amount"><div class="col-md-5 text-right"><b>Taxable Amount</b></div><div class="col-md-3 text-center">:</div><div class="col-md-3 text-right"><input style="width:92%;" class="fi_input_style text-right purchase_taxable_amount" value="' + parseFloat(purchase_taxable_amount).toFixed(2) + '" type="text" name="inventory_order_purchase[purchase_taxable_amount]" readonly="readonly"></div></div>')
+      $("#tax-cage").attr('style', 'background: #eee;padding: 5px;')
+    }
+    $("#tax-cage").hide();
+  }
+
+  $('#inventory_order_purchase_vendor_location_id').on('change', function() {
+  var vendor_location_id = $('#inventory_order_purchase_vendor_location_id').val()
+  if (vendor_location_id != '') {
+    $.ajax({
+      type: "GET",
+      dataType: "JSON",
+      data: { vendor_location_id: vendor_location_id },
+      url: "/inventory/order/purchases/vendor_details",
+      success: function(response) {
+        po_expiry_date = response.po_expiry_date
+        credit_days = response.credit_days
+        $('#inventory_order_purchase_vendor_credit_days').val(credit_days)
+        $('#inventory_order_purchase_po_expiry_date').val(po_expiry_date)
+      }
+    })
+  }
+})
+</script>
+
+<style>
+  .info-label {
+    padding-right: 0px;
+    padding-left: 3px;
+    font-style: oblique;
+    color: #999999;
+    font-size: 12px;
+  }
+  .info-text {
+    padding-right: 0px;
+    padding-left: 3px;
+    color: #777777;
+    font-size: 12px;
+  }
+  .descriptionWrapper{
+    position: relative !important;
+  }
+  .indent_item_description_info{
+    position: absolute;
+    top: 15px;
+    right: 15px;
+  }
+  .td-input-group {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+</style>

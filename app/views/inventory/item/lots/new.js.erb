@@ -1,0 +1,163 @@
+jQuery(".add_item_lot").html("<%= escape_javascript(render '/inventory/item/lots/'+@inventory_item.category) %>")
+
+$("#lot_stock_pack").on("keyup change",function(){
+  calculateTotalStock()
+});
+
+$("#price_pack").on("keyup change",function(){
+  calculateUnitPrice()
+});
+
+$("#mrp_pack").on("keyup change",function(){
+  calculateUnitMRP()
+});
+
+$("#list_price_pack").on("keyup change",function(){
+  onkeyupListPrice()
+});
+
+$("#mark_up").on("keyup change",function(){
+  onkeyupMarkup()
+});
+
+$("#inventory_item_sub_units").on("keyup change",function(){
+  onkeyupSubUnits()
+});
+
+
+function onkeyupSubUnits(){
+  if ($('#inventory_item_sub_units').val() !== "") {
+    calculateTotalStock();
+    calculateUnitPrice();
+    calculateUnitMRP();
+  }
+}
+
+
+function calculateTotalStock(){
+  var item_sub_units, stock, total_units;
+  stock = $('#lot_stock_pack').val();
+  item_sub_units = $('#inventory_item_sub_units').val();
+  total_units = stock * item_sub_units;
+  $('#lot_stock').val(total_units);
+}
+
+function calculateUnitPrice(){
+  var item_price, item_sub_units, unit_item_price;
+  item_sub_units = $('#inventory_item_sub_units').val();
+  item_price = $('#price_pack').val();
+  unit_item_price = item_price / item_sub_units;
+  unit_item_price = Math.round(unit_item_price * 100) / 100;
+  $('#price').val(unit_item_price);
+  onkeyupListPrice();
+}
+
+function calculateUnitMRP(){
+  var item_mrp, item_sub_units, unit_item_list_price, unit_item_mrp;
+  item_mrp = $('#mrp_pack').val();
+  item_sub_units = $('#inventory_item_sub_units').val();
+  unit_item_mrp = item_mrp / item_sub_units;
+  unit_item_mrp = Math.round(unit_item_mrp * 100) / 100;
+  $('#mrp').val(unit_item_mrp);
+  $('#list_price_pack').val(item_mrp);
+  unit_item_list_price = item_mrp / item_sub_units;
+  unit_item_list_price = Math.round(unit_item_list_price * 100) / 100;
+  if (!(item_mrp === void 0 || item_sub_units === void 0)) {
+    $('#list_price').val(unit_item_list_price);
+  } else {
+    $("#list_price").val(item_mrp);
+  }
+  calculateMarkup();
+}
+
+function onkeyupListPrice(){
+  var item_mrp, item_price, item_sub_units, listprice, markup, max_unit_item_list_price, maxlistprice, maxmarkup, unit_item_list_price;
+  item_mrp = $('#mrp_pack').val();
+  item_price = $('#price_pack').val();
+  listprice = $('#list_price_pack').val();
+  item_sub_units = $('#inventory_item_sub_units').val();
+  markup = ((parseFloat(listprice) - parseFloat(item_price)) / parseFloat(item_price)) * 100;
+  markup = Math.round(markup * 100) / 100;
+  maxlistprice = item_mrp;
+  maxmarkup = ((parseFloat(item_mrp) - parseFloat(item_price)) / parseFloat(item_price)) * 100;
+  maxmarkup = Math.round(maxmarkup * 100) / 100;
+  parseFloat($("#price").val());
+  if (parseFloat(listprice) > parseFloat(maxlistprice)) {
+    $('#list_price_pack').val(maxlistprice);
+  }
+  if (!(markup < 0 || item_price === "" || item_price === void 0 || markup > maxmarkup)) {
+    $('#mark_up').val(markup);
+  } else {
+    $('#mark_up').val(maxmarkup);
+  }
+  unit_item_list_price = listprice / item_sub_units;
+  unit_item_list_price = Math.round(unit_item_list_price * 100) / 100;
+  max_unit_item_list_price = maxlistprice / item_sub_units;
+  max_unit_item_list_price = Math.round(max_unit_item_list_price * 100) / 100;
+  if (!(listprice === "" || item_sub_units === "" || unit_item_list_price > max_unit_item_list_price)) {
+    return $('#list_price').val(unit_item_list_price);
+  } else {
+    return $('#list_price').val(max_unit_item_list_price);
+  }
+}
+
+function onkeyupMarkup(){
+  var item_mrp, item_price, item_sub_units, listprice, markup, maxlistprice, maxmarkup, unit_item_list_price;
+  item_mrp = $('#mrp_pack').val();
+  item_price = $('#price_pack').val();
+  item_sub_units = $('#inventory_item_sub_units').val();
+  markup = $('#mark_up').val();
+  maxlistprice = item_mrp;
+  maxmarkup = ((parseFloat(item_mrp) - parseFloat(item_price)) / parseFloat(item_price)) * 100;
+  maxmarkup = Math.round(maxmarkup * 100) / 100;
+  if (parseFloat(markup) > parseFloat(maxmarkup)) {
+    $('#mark_up').val(maxmarkup);
+  }
+  listprice = parseFloat(item_price) + parseFloat(item_price * markup / 100);
+  if (!(listprice < 0 || item_price === "" || item_price === void 0 || listprice > maxlistprice)) {
+    $('#list_price_pack').val(listprice);
+    unit_item_list_price = listprice / item_sub_units;
+    unit_item_list_price = Math.round(unit_item_list_price * 100) / 100;
+    return $('#list_price').val(unit_item_list_price);
+  } else {
+    $('#list_price_pack').val(maxlistprice);
+    unit_item_list_price = maxlistprice / item_sub_units;
+    unit_item_list_price = Math.round(unit_item_list_price * 100) / 100;
+    return $('#list_price').val(unit_item_list_price);
+  }
+}
+
+function calculateMarkup(){
+  var item_mrp, item_price, maxmarkup;
+  item_mrp = $('#mrp_pack').val();
+  item_price = $('#price_pack').val();
+  if (!(item_price === void 0 || item_mrp === void 0 || item_price === "" || item_mrp === "")) {
+    maxmarkup = ((parseFloat(item_mrp) - parseFloat(item_price)) / parseFloat(item_price)) * 100;
+    maxmarkup = Math.round(maxmarkup * 100) / 100;
+    if (!(maxmarkup < 0)) {
+      return $('#mark_up').val(maxmarkup);
+    } else {
+      return $('#mark_up').val("");
+    }
+  }
+}
+
+jQuery.extend(jQuery.validator.messages, {
+  required: "Required",
+  remote: "Please fix this field.",
+  email: "Please enter a valid email address.",
+  url: "Please enter a valid URL.",
+  date: "Please enter a valid date.",
+  dateISO: "Invalid date.",
+  number: "Invalid No.",
+  digits: "Please enter only digits.",
+  creditcard: "Please enter a valid credit card number.",
+  equalTo: "Please enter the same value again.",
+  accept: "Please enter a value with a valid extension.",
+  maxlength: jQuery.validator.format("Please enter no more than {0} characters."),
+  minlength: jQuery.validator.format("Please enter at least {0} characters."),
+  rangelength: jQuery.validator.format("Please enter a value between {0} and {1} characters long."),
+  range: jQuery.validator.format("Please enter a value between {0} and {1}."),
+  max: jQuery.validator.format("Please enter a value less than or equal to {0}."),
+  min: jQuery.validator.format("Please enter a value greater than or equal to {0}.")
+});

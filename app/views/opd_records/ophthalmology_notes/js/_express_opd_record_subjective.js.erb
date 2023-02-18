@@ -1,0 +1,533 @@
+var children = { data: [] };
+var children1 = { data: [] };
+var children2 = { data: [] };
+
+function add_new_tree(treename, data) {
+  $('#' + treename).tree({
+    dataSource: function(options, callback) {
+      setTimeout(function() {
+        callback(data);
+      }, 400);
+    },
+    multiSelect: false,
+    cacheItems: false,
+    folderSelect: false
+  });
+}
+
+function new_tags_unique_id() {
+  var uniqueid = Math.floor(Math.random() * 26) + Date.now();
+  return uniqueid;
+}
+
+function new_tags_mongo_id() {
+  var id = "";
+  $.ajax({
+    async: false,
+    type: "GET",
+    url: "/out_patient_templates_tags/new_id.json",
+    data: {
+      remote: "true"
+    }
+  }).done(function(data) {
+    id = data["_id"];
+  });
+  return id;
+}
+
+function search_selected_tags(selectfieldname, search_tag) {
+  var search_selected_tags_return = "";
+  $.each($("." + selectfieldname + " option"), function(option_label, option_value) {
+    if (option_value.value === search_tag) {
+      search_selected_tags_return = option_value.value + "###" + option_value.text;
+    }
+  });
+  return search_selected_tags_return;
+}
+
+$('#myTree').tree({
+  dataSource: function(options, callback) {
+    setTimeout(function() {
+      callback(children);
+    }, 400);
+  },
+  multiSelect: false,
+  cacheItems: true,
+  folderSelect: false
+});
+
+$(document).ready(function() {
+
+  $("#opdrecord_chiefcomplaint").select2({
+    tags: true,
+    tokenSeparators: [',', ';'],
+    createTag: function(tag) {
+      return {
+        id: "#!##" + new_tags_unique_id(),
+        text: tag.term
+      };
+    },
+    theme: "bootstrap",
+    minimumInputLength: 1,
+    multiple: true,
+    ajax: {
+      type: "GET",
+      url: "/out_patient_templates_tags/search_chief_complaint_tags",
+      dataType: 'json',
+      delay: 250,
+      data: function(params) {
+        return {
+          q: params.term, // search term
+          page: params.page
+        };
+      },
+      processResults: function(data, page) {
+        return {
+          results: $.map(data, function(item) {
+            return {
+              text: item.text,
+              id: item.id
+            }
+          })
+        };
+      },
+      cache: true
+    }
+  });
+
+  $("#opdrecord_chiefcomplaint").on('change', function(ev) {
+    lis = $(ev.currentTarget).parent().find("ul.select2-selection__rendered li");
+    for (i = 0; i < lis.length; i++) {
+      attach_event_to_x(lis[i]);
+    }
+  });
+
+  function attach_event_to_x(li) {
+    $(li).find(".select2-selection__choice__remove").on('click', function(e) {
+      target_field = $("#opdrecord_chiefcomplaint_selectedtagnames")
+      target_value = $(target_field).val()
+
+      target_field_id = $("#opdrecord_chiefcomplaint_selectedtags")
+      target_value_id = $(target_field_id).val()
+
+      val_to_replace = $(e.currentTarget).parent().text().replace("×", "")
+
+      value_array = target_value.split(",")
+      value_array_id = target_value_id.split(",")
+
+      index = value_array.indexOf(val_to_replace);
+
+      value_array.splice(index, 1);
+      value_array_id.splice(index, 1);
+
+
+      target_field.val(value_array.join(","))
+      target_field_id.val(value_array_id.join(","))
+    });
+  }
+
+  $(".chief_complaint_sync").on('click', function() {
+    var opdrecord_new_tags_hash_array = [];
+    if ($(".opdrecord_chiefcomplaint_selectedtags").val().length > 0) {
+
+      var opdrecord_chiefcomplaint_array = $(".opdrecord_chiefcomplaint_selectedtags").val().split(",");
+      $.each(opdrecord_chiefcomplaint_array, function(label_value, tag_value) {
+        if (tag_value.substring(0, 1) === "#") {
+          opdrecord_new_tags_hash_array.push(search_selected_tags(tag_value));
+        }
+      });
+
+      var params = { new_tags: opdrecord_new_tags_hash_array.toString() };
+      $.ajax({
+
+        type: "GET",
+        url: "/out_patient_templates_tags/add_chief_complaint_tag",
+        dataType: 'json',
+        data: {
+          ajax: params,
+          remote: "true"
+        }
+
+      }).done(function(data) {
+
+        $.each(data, function(data_label, data_value) {
+          $(".opdrecord_chiefcomplaint_selectedtags").val($(".opdrecord_chiefcomplaint_selectedtags").val().replace(data_value['oldid'], data_value['newid']));
+        });
+
+      });
+
+    }
+    return false;
+  });
+
+  function formatRepo(repo) {
+    if (repo.loading) return repo.text;
+
+    var markup = '<div class="clearfix">';
+
+    markup += '</div>';
+
+    return markup;
+  }
+
+  function hgtemplateSelection(repo) {
+    return repo.text + "hi";
+  }
+
+  $('.select2_selectedtags').on('select2:select', function(e) {
+    var current_class = $(this).attr("class");
+    var target_tags_id = $(this).attr("target-tags-id");
+    var target_tagnames_id = $(this).attr("target-tagnames-id");
+    var target_tags_value = "";
+    var target_tagnames_value = "";
+    var target_tags_prev_value = $("#" + target_tags_id).val();
+    var target_tagnames_prev_value = $("#" + target_tagnames_id).val();
+
+    if (target_tags_prev_value.length > 0) {
+      var id_values_array = target_tags_prev_value.split(",");
+      var names_values_array = target_tagnames_prev_value.split(",");
+      id_values_array.push(e.params['data'].id);
+      names_values_array.push(e.params['data'].text);
+    } else {
+      var id_values_array = [];
+      var names_values_array = [];
+      id_values_array.push(e.params['data'].id);
+      names_values_array.push(e.params['data'].text);
+    }
+    $("#" + target_tags_id).val(id_values_array.toString());
+    $("#" + target_tagnames_id).val(names_values_array.toString());
+  });
+
+  $('.select2-selection__rendered').on('keydown', function(e) {
+
+    var code = e.keyCode || e.which;
+    if (code === 188 || code === 186) {
+      var containerid = ($(this).parents('div')[0].id);
+      var selectchild = ($("#" + containerid)[0]).firstElementChild.id
+      var target_tags_id = $("#" + selectchild).attr("target-tags-id")
+      var target_tagnames_id = $("#" + selectchild).attr("target-tagnames-id");
+
+      var target_tags_value = "";
+      var target_tagnames_value = "";
+      var target_tags_prev_value = $("#" + target_tags_id).val();
+      var target_tagnames_prev_value = $("#" + target_tagnames_id).val();
+
+      setTimeout(function() {
+        var current_tag_id = $("#" + selectchild).find("option").last().text()
+        var current_tag_val = $("#" + selectchild).find("option").last().val()
+
+        if (target_tags_prev_value.length > 0) {
+          var id_values_array = target_tags_prev_value.split(",");
+          var names_values_array = target_tagnames_prev_value.split(",");
+
+          id_values_array.push(current_tag_val);
+          names_values_array.push(current_tag_id);
+        } else {
+          var id_values_array = [];
+          var names_values_array = [];
+          id_values_array.push(current_tag_val);
+          names_values_array.push(current_tag_id);
+        }
+
+        $("#" + target_tags_id).val(id_values_array.toString());
+        $("#" + target_tagnames_id).val(names_values_array.toString());
+      }, 100);
+
+    }
+  });
+
+  $('#opdrecord_custom_toplaboratoryinvestigation').on('click', function(event) {
+    var laboratoryinvestigationname = $("#opdrecord_custom_toplaboratoryinvestigation option:selected").text();
+
+    if (laboratoryinvestigationname.length > 0) {
+      var row_count = $(".laboratoryinvestigations-added").find('.addedlaboratoryinvestigationlist').length;
+      var loinc_code = $("#opdrecord_custom_toplaboratoryinvestigation option:selected").val();
+      var consultant_id = $("#opdrecord_view_owner_id").val();
+      var vals = $('.laboratoryinvestigation_id').map(function(){
+        return $(this).val()
+      }).get();
+
+      if(vals.indexOf(loinc_code) == -1) {
+        $.ajax({
+          dataType: "script",
+          type: "GET",
+          url: "/opd_records/append_custom_laboratory_investigation",
+          data: {loinc_code: loinc_code, consultant_id: consultant_id, row_count: row_count},
+          success: function(response){
+            // $("#opdrecord_custom_toplaboratoryinvestigation option:selected").prop("selected", false);
+          },
+          complete: function (data) {
+            _renumber_id_after_remove("tbody.laboratoryinvestigations-added", "div.laboratoryinvestigations-removed");
+          }
+        });
+      }
+      $("#opdrecord_custom_toplaboratoryinvestigation option:selected").prop("selected", false);
+    }
+    return false;
+  });
+
+  $('#opdrecord_toplaboratoryinvestigation').on('click', function(event) {
+    var laboratoryinvestigationname = $("#opdrecord_toplaboratoryinvestigation option:selected").text();
+
+    if (laboratoryinvestigationname.length > 0) {
+      var row_count = $(".laboratoryinvestigations-added").find('.addedlaboratoryinvestigationlist').length
+      var loinc_code = $("#opdrecord_toplaboratoryinvestigation option:selected").val()
+      var consultant_id = $("#opdrecord_view_owner_id").val()
+      var vals = $('.laboratoryinvestigation_id').map(function(){
+        return $(this).val()
+      }).get();
+      if(vals.indexOf(loinc_code) == -1) {
+        $.ajax({
+          dataType: "script",
+          type: "GET",
+          url: "/opd_records/append_laboratory_investigation",
+          data: {loinc_code: loinc_code, consultant_id: consultant_id, row_count: row_count},
+          success: function(response){
+            $("#opdrecord_custom_toplaboratoryinvestigation option:selected").prop("selected", false);
+          },
+          complete: function (data) {
+            _renumber_id_after_remove("tbody.laboratoryinvestigations-added", "div.laboratoryinvestigations-removed");    
+          }
+        });
+      }
+      $("#opdrecord_custom_toplaboratoryinvestigation option:selected").prop("selected", false);
+    }
+    return false;
+  });
+ 
+  $('#opdrecord_toplaboratoryinvestigation_tab').on('change', function(){
+    var laboratoryinvestigationname = $("#opdrecord_toplaboratoryinvestigation_tab option:selected").text();
+
+    if (laboratoryinvestigationname.length > 0) {
+      var row_count = $(".laboratoryinvestigations-added").find('.addedlaboratoryinvestigationlist').length;
+      var loinc_code = $("#opdrecord_toplaboratoryinvestigation_tab option:selected").val();
+      var consultant_id = $("#opdrecord_view_owner_id").val();
+      var vals = $('.laboratoryinvestigation_id').map(function(){
+        return $(this).val()
+      }).get();
+      if(vals.indexOf(loinc_code) == -1) {
+        $.ajax({
+          dataType: "script",
+          type: "GET",
+          url: "/opd_records/append_laboratory_investigation",
+          data: {loinc_code: loinc_code, consultant_id: consultant_id, row_count: row_count},
+          success: function(response){
+            // $('#opdrecord_toplaboratoryinvestigation_tab option:selected').removeAttr('selected');
+          },
+          complete: function (data) {
+            _renumber_id_after_remove("tbody.laboratoryinvestigations-added", "div.laboratoryinvestigations-removed");  
+          }
+        });
+      }
+      $('#opdrecord_toplaboratoryinvestigation_tab option:selected').removeAttr('selected');
+    }
+    return false;
+  });
+
+  $('.laboratoryinvestigations-added').on('click', ".investigationstage", function() {
+    if ($(this).val() == 'P') {
+      $(this).parent().parent().find('.label-findings').remove()
+      $(this).parent().parent().append("<div class='label-findings' style='font-weight: bold; text-align: center'>Findings</div>");
+      $(this).parents('.addedlaboratoryinvestigationlist').children().children().children().children('.opdrecord_investigation_performed').attr('type', 'text').css('margin-top', '3%');
+
+      // Update Performed Fields
+      var laboratory_investigation = $(this).closest('.addedlaboratoryinvestigationlist')
+      advised_by_id = $(laboratory_investigation).find('.advised_by_id').val()
+      advised_by = $(laboratory_investigation).find('.advised_by').val()
+      advised_at_facility_id = $(laboratory_investigation).find('.advised_at_facility_id').val()
+      advised_at_facility = $(laboratory_investigation).find('.advised_at_facility').val()
+      advised_datetime = $(laboratory_investigation).find('.advised_datetime').val()
+
+      $(laboratory_investigation).find('.is_performed').val(true)
+      $(laboratory_investigation).find('.performed_by_id').val(advised_by_id)
+      $(laboratory_investigation).find('.performed_by').val(advised_by)
+      $(laboratory_investigation).find('.performed_at_facility_id').val(advised_at_facility_id)
+      $(laboratory_investigation).find('.performed_at_facility').val(advised_at_facility)
+      $(laboratory_investigation).find('.performed_datetime').val(advised_datetime)
+    } else {
+      $(this).parent().parent().children('.label-findings').remove();
+      $(this).parents('.addedlaboratoryinvestigationlist').children().children().children().children('.opdrecord_investigation_performed').attr('type', 'hidden').css('margin-top', '0%').val('');
+
+      // Update Performed Fields
+      var laboratory_investigation = $(this).closest('.addedlaboratoryinvestigationlist')
+      $(laboratory_investigation).find('.is_performed').val(false)
+      $(laboratory_investigation).find('.performed_by_id').val("")
+      $(laboratory_investigation).find('.performed_by').val("")
+      $(laboratory_investigation).find('.performed_at_facility_id').val("")
+      $(laboratory_investigation).find('.performed_at_facility').val("")
+      $(laboratory_investigation).find('.performed_datetime').val("")
+    }
+  });
+
+  $('.investigations-added').on("change", ".loinccode", function() {
+    event.preventDefault();
+    var fieldcounter;
+    fieldcounter = _split_underscore_from_id_attr($(this).attr('id'), 3); //$(this).attr('id').split("_")[3];
+    var investigationlist_qualifier_text_laterality_id = _contruct_id_attr_common(ROOT, INVESTIGATIONLIST, ATTRIBUTES, fieldcounter, "laterality");
+    var investigationlist_investigationfullcode_id = _contruct_id_attr_common(ROOT, INVESTIGATIONLIST, ATTRIBUTES, fieldcounter, "investigationfullcode");
+    $("#" + investigationlist_qualifier_text_laterality_id).val($("option:selected", this).text());
+    RADIOLOGYARRAY.push($("option:selected", this).text());
+    RADIOLOGYARRAY.push($("option:selected", this).val());
+    $("#" + investigationlist_investigationfullcode_id).val(RADIOLOGYARRAY.join().replace(/,/g, "###"));
+  });
+
+  $('.investigations-added').on('click', "a[name*='investigationdeletebutton']", function() {
+    event.preventDefault();
+    var investigations_removed_tr_html;
+    var fieldcounter;
+    fieldcounter = $(this).attr('id').slice(-1);
+    var investigations_tr_array = $(this).parents('.investigationlist').find(".id");
+    $(this).parents('.investigationlist').find("input[class*='radiologyinvestigation_id']").removeClass('radiologyinvestigation_id');
+    if (investigations_tr_array.length > 0) {
+      $(this).parents('.investigationlist').find("input[name*='_destroy']").val("1");
+      investigations_removed_tr_html = $(this).parents('.investigationlist').wrap('<p/>').parent().html();
+      $(this).parents('.investigationlist').unwrap();
+      $('.investigations-removed').append(investigations_removed_tr_html);
+      $(this).parents('.investigationlist').remove();
+      _renumber_id_after_remove("tbody.investigations-added", "div.investigations-removed");
+    } else {
+      $(this).parents('.investigationlist').remove();
+      _renumber_id_after_remove("tbody.investigations-added", "div.investigations-removed");
+    }
+
+    check_validation_status(
+      $('#investigations-added'), 
+      'investigation_is_valid', step_name,
+      true, 'opthalinvestigations-added,laboratoryinvestigations-added'
+    );
+  });
+
+  $('.laboratoryinvestigations-added').on('click', "a[name*='addedlaboratoryinvestigationdeletebutton']", function() {
+    event.preventDefault();
+    var laboratoryinvestigations_removed_tr_html;
+    var fieldcounter;
+    fieldcounter = $(this).attr('id').slice(-1);
+    var addedlaboratoryinvestigationlist_tr_array = $(this).parents('.addedlaboratoryinvestigationlist').find(".id");
+    $(this).parents('.addedlaboratoryinvestigationlist').find("input[class*='laboratoryinvestigation_id']").removeClass('laboratoryinvestigation_id');
+    if (addedlaboratoryinvestigationlist_tr_array.length > 0) {
+      $(this).parents('.addedlaboratoryinvestigationlist').find("input[name*='_destroy']").val("1");
+      laboratoryinvestigations_removed_tr_html = $(this).parents('.addedlaboratoryinvestigationlist').wrap('<p/>').parent().html();
+      $(this).parents('.addedlaboratoryinvestigationlist').unwrap();
+      $('.laboratoryinvestigations-removed').append(laboratoryinvestigations_removed_tr_html);
+      $(this).parents('.addedlaboratoryinvestigationlist').remove(); // delete if button being removed is equal to number of tr elements.
+      _renumber_id_after_remove("tbody.laboratoryinvestigations-added", "div.laboratoryinvestigations-removed");
+    } else {
+      $(this).parents('.addedlaboratoryinvestigationlist').remove(); // delete if button being removed is equal to number of tr elements.
+      _renumber_id_after_remove("tbody.laboratoryinvestigations-added", "div.laboratoryinvestigations-removed");
+    }
+    check_validation_status(
+      $('#laboratoryinvestigations-added'), 
+      'investigation_is_valid', step_name,
+      true, 'opthalinvestigations-added,investigations-added'
+    );
+  });
+
+  $('#opdrecord_toplaboratoryinvestigation_tab').on('change', function(){
+    var row_count = $(".laboratoryinvestigations-added").find('.addedlaboratoryinvestigationlist').length
+    var loinc_code = $("#opdrecord_toplaboratoryinvestigation_tab option:selected").val()
+    var vals = $('.laboratoryinvestigation_id').map(function(){
+      return $(this).val()
+    }).get();
+    $.ajax({
+      dataType: "script",
+      type: "GET",
+      url: "/opd_records/append_laboratory_investigation",
+      data: { loinc_code: loinc_code, row_count: row_count },
+      success: function(response){
+        $('#opdrecord_toplaboratoryinvestigation_tab option:selected').removeAttr('selected');
+      },
+      complete: function (data) {
+        _renumber_id_after_remove("tbody.laboratoryinvestigations-added", "div.laboratoryinvestigations-removed");    
+      }
+    })
+  });
+
+  $('#opdrecord_custom_toplaboratoryinvestigation_tab').on('change', function(){
+    var laboratoryinvestigationname = $("#opdrecord_custom_toplaboratoryinvestigation_tab option:selected").text();
+
+    if (laboratoryinvestigationname.length > 0) {
+      var row_count = $(".laboratoryinvestigations-added").find('.addedlaboratoryinvestigationlist').length
+      var loinc_code = $("#opdrecord_custom_toplaboratoryinvestigation_tab option:selected").val()
+      var consultant_id = $("#opdrecord_view_owner_id").val()
+      var vals = $('.laboratoryinvestigation_id').map(function(){
+        return $(this).val()
+      }).get();
+
+      if(vals.indexOf(loinc_code) == -1) {
+        $.ajax({
+          dataType: "script",
+          type: "GET",
+          url: "/opd_records/append_custom_laboratory_investigation",
+          data: {loinc_code: loinc_code, consultant_id: consultant_id, row_count: row_count},
+          success: function(response){
+            // $('#opdrecord_custom_toplaboratoryinvestigation_tab option:selected').removeAttr('selected');
+          },
+          complete: function (data) {
+            _renumber_id_after_remove("tbody.laboratoryinvestigations-added", "div.laboratoryinvestigations-removed");
+          }
+        }); 
+      }
+      $('#opdrecord_custom_toplaboratoryinvestigation_tab option:selected').removeAttr('selected');
+    }
+    return false;
+  });
+
+  $('.investigations-added').on("change", ".loinccode" ,function() {
+    event.preventDefault();
+    var fieldcounter;
+    fieldcounter = _split_underscore_from_id_attr($(this).attr('id'), 3); //$(this).attr('id').split("_")[3];
+    var investigationlist_qualifier_text_laterality_id = _contruct_id_attr_common(ROOT, INVESTIGATIONLIST, ATTRIBUTES, fieldcounter, "laterality");
+    var investigationlist_investigationfullcode_id = _contruct_id_attr_common(ROOT, INVESTIGATIONLIST, ATTRIBUTES, fieldcounter, "investigationfullcode");
+    $("#"+investigationlist_qualifier_text_laterality_id).val($("option:selected", this).text());
+    RADIOLOGYARRAY.push($("option:selected", this).text());
+    RADIOLOGYARRAY.push($("option:selected", this).val());
+    $("#"+investigationlist_investigationfullcode_id).val(RADIOLOGYARRAY.join().replace(/,/g,"###"));
+  });
+});
+
+$('#search_laboratory_investigations').autocomplete({
+  minLength: 2,
+  source: function(request, response) {
+    var speciality_id = $("#opdrecord_specalityid").val()
+    $.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/laboratory_investigation_data/search',
+      data: {search: request.term, speciality_id: speciality_id, remote: "true" },
+      success: function(data) {
+        response(data);
+      },
+      error: function(data) {
+      }
+    });
+  },
+  select: function( event, ui ) {
+    var row_count = $(".laboratoryinvestigations-added").find('.addedlaboratoryinvestigationlist').length
+    var loinc_code = ui.item.loinc_code
+    var consultant_id = $("#opdrecord_view_owner_id").val()
+    var vals = $('.laboratoryinvestigation_id').map(function(){
+      return $(this).val()
+    }).get();
+    if(vals.indexOf(loinc_code) == -1) {
+      $.ajax({
+        dataType: "script",
+        type: "GET",
+        url: "/opd_records/append_laboratory_investigation",
+        data: { loinc_code: loinc_code, consultant_id: consultant_id, row_count: row_count },
+        complete: function (data) {
+          _renumber_id_after_remove("tbody.laboratoryinvestigations-added", "div.laboratoryinvestigations-removed");    
+        }
+      });
+    }
+    setTimeout(function() {
+      $("#search_laboratory_investigations").val("")
+    }, 50);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+        return $('<li>').append('<a>' + item.label  + '&nbsp; &nbsp; &nbsp;' + "<span class=\"badge pull-right\">" + item.investigation_type_label + "</span>" + '</a>').appendTo(ul);
+    };
+ },
+  close: function() {
+  }
+});

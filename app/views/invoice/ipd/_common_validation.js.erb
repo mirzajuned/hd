@@ -1,0 +1,225 @@
+function ipd_invoice_page() {
+  if ($('.invoice_insurer_id').val() == '')
+  {
+    $('.invoice_insurer_group_id').val('')
+  }
+  $("#new_invoice_ipd").validate({
+    rules: {
+      "invoice_ipd[amount_remaining]": {
+        required: true,
+        min: 0
+      },
+      "invoice_ipd[invoice_type]": {
+        required: true,
+      },
+      //"invoice_ipd[payer_master_id]": {
+      //  required: true,
+      //},
+
+      "invoice_ipd[insurer_id]": {
+        required: true,
+      }
+    },
+    messages: {
+      "invoice_ipd[amount_remaining]": {
+        required: "Amount Remaining Cannot Be Empty",
+        min: "Amount Remaining Cannot Be Less Than Zero"
+      },
+      "invoice_ipd[invoice_type]": {
+        required: "*Required",
+      }
+    },
+    errorPlacement: function (error, element) {
+      var name = $(element).attr('name');
+      if(name == "invoice_ipd[invoice_type]") {
+        $(".invoice_type").siblings("label").css('text-shadow','red 0px 0px 10px')
+      } else if(name == "invoice_ipd[payment_pending]") {
+        $("#payment-pending-error").append(error)
+      } else if($(element).hasClass("select2-hidden-accessible")) {
+        element = $(element).siblings(".select2-container");
+        error.insertAfter(element);
+      } else {
+        error.insertAfter(element);
+      }
+    }
+  });
+}
+
+function ipd_invoice_page_edit() {
+  if($('.invoice-payment-type:checked').val() == "Credit"){
+    $('#invoice_ipd_mode_of_payment').val("")
+    $(".options-text-field").html("")
+  }
+  $("#invoice_edit_form_ipd").validate({
+    rules: {
+      "invoice_ipd[comments]": {
+        required: true,
+      },
+      "invoice_ipd[amount_remaining]": {
+        required: true,
+        min: 0
+      },
+      "invoice_ipd[invoice_type]": {
+        required: true,
+      },
+      //"invoice_ipd[payer_master_id]": {
+      //  required: true,
+      //},
+
+      "invoice_ipd[insurer_id]": {
+        required: true,
+      }
+    },
+    messages: {
+      "invoice_ipd[comments]": {
+        required: "Please Give Reason for Edit"
+      },
+      "invoice_ipd[amount_remaining]": {
+        required: "Amount Remaining Cannot Be Empty",
+        min: "Amount Remaining Cannot Be Less Than Zero"
+      },
+      "invoice_ipd[invoice_type]": {
+        required: "*Required",
+      }
+    },
+    errorPlacement: function (error, element) {
+      var name = $(element).attr('name');
+      if(name == "invoice_ipd[invoice_type]") {
+        $(".invoice_type").siblings("label").css('text-shadow','red 0px 0px 10px')
+      // } else if(name == "invoice_opd[payment_pending]") {
+      } else if(name == "invoice_ipd[payment_pending]") {
+        $("#payment-pending-error").append(error)
+      } else if($(element).hasClass("select2-hidden-accessible")) {
+        element = $(element).siblings(".select2-container");
+        error.insertAfter(element);
+      } else {
+        error.insertAfter(element);
+      }
+    }
+  });
+}
+
+$.validator.addMethod("ServiceName", $.validator.methods.required,
+  "Service Name cannot be blank");
+
+$.validator.addMethod("ServiceTotal", $.validator.methods.number,
+  "Amount Should be Number");
+
+$.validator.addMethod("ServiceTotalPresence", $.validator.methods.required,
+  "Amount cannot be blank");
+
+$.validator.addMethod("ItemDescription", $.validator.methods.required,
+  "Description cannot be blank");
+
+$.validator.addMethod("ItemQuantity", $.validator.methods.number,
+  "Quantity Should be Number");
+
+$.validator.addMethod("ItemQuantityPresence", $.validator.methods.required,
+  "Quantity cannot be blank");
+
+$.validator.addMethod("ItemUnitPrice", $.validator.methods.number,
+  "Unit Price Should be Number");
+
+$.validator.addMethod("ItemUnitPricePresence", $.validator.methods.required,
+  "Unit Price cannot be blank");
+
+$.validator.addMethod("DisountReason", $.validator.methods.required,
+  "Please Give Reason for Discount");
+// Discount Reason cannot be blank
+
+// $.validator.addMethod("ModeOfPayment", $.validator.methods.required,
+//   "MOP Required");
+
+$.validator.addClassRules("service_name", { ServiceName: true});
+$.validator.addClassRules("service_total", { ServiceTotal: true, ServiceTotalPresence: true});
+$.validator.addClassRules("i_description", { ItemDescription: true});
+$.validator.addClassRules("i_quantity", { ItemQuantity: true, ItemQuantityPresence: true});
+$.validator.addClassRules("i_unit_price", { ItemUnitPrice: true, ItemUnitPricePresence: true});
+$.validator.addClassRules("payment_received_breakups_mode_of_payment", { ModeOfPayment: true});
+$.validator.addClassRules("invoice_payment_pending", { PaymentPending: true});
+$.validator.addClassRules("payment_received_breakups_amount", { PaymentBreakupAmount: true });
+$.validator.addClassRules("discount_reason", { DisountReason: true});
+$.validator.addClassRules("additional_discount_comment", { DisountReason: true});
+
+$.validator.addMethod("ModeOfPayment", function(value, element) {
+  var mop = $(element).val()
+  var amount = $(element).closest(".payment_received_row").find(".payment_received_breakups_amount").val()
+
+  if(mop != ""){
+    return true
+  } else if((parseFloat(amount) >= 0) && (mop == "")) {
+    return false
+  } else {
+    return true
+  }
+}, "MOP Required");
+
+$.validator.addMethod("PaymentPending", function(value, element) {
+  var payment_pending_amount = parseInt($(element).val())
+  var invoice_type = $(".invoice_type:checked").val()
+
+  if((payment_pending_amount == 0) && invoice_type != "cash"){
+    return false
+  } else {
+    return true
+  }
+}, "Amount cant be zero if Credit is selected.");
+
+$.validator.addMethod("INumber", $.validator.methods.number,
+    "Please enter a number");
+
+$.validator.addMethod("cashandcardTotal", function(value, element) {
+  return this.optional(element) || parseFloat($(".invoice_payment_received_breakups_amount").val()) == parseFloat($(".cash_payment").val()) + parseFloat($(".card_payment").val());
+}, "Sum of cash & card must be equal to total amount.");
+
+$.validator.addMethod("PaymentReceived", function(value, element) {
+  return parseInt($("#invoice_net_total").val()) == parseInt($("#invoice_total_payment").val());
+}, "Should match Net Total");
+
+$.validator.addClassRules("card_payment", { cashandcardTotal: true, required: true, INumber:true});
+$.validator.addClassRules("cash_payment", { required: true, INumber:true});
+$.validator.addClassRules("invoice_total_payment", { PaymentReceived: true });
+
+$.validator.addMethod("PaymentBreakupAmount", function(value, element) {
+  var amount = $(element).val()
+  if (parseFloat(amount) < 0) {
+    return false
+  } else if (amount == "")  {
+    return false
+  } else {
+    return true
+  }
+}, "");
+
+function calculate_offer_discount(){
+  var total_of_all_discount = (parseFloat($('.total_discount').val()) + parseFloat($('.total_offer').val())).toFixed(2)
+  $('.total_offer_discount').val(total_of_all_discount);
+}
+
+function get_service_offer_count_template(service_id, current_row_id) {
+  if(service_id != ''){
+    $.ajax({
+      type: "get",
+      dataType: "json",
+      url: "/invoice/invoices/get_offer_count?department_id=486546481&service_id="+service_id+"&type=service",
+      success: function(response){
+        offer_count = response['count'];
+        if(offer_count > 0) {
+          $('#'+current_row_id).find('.field_for_price').find('.add-discount-offer').attr('data-toggle','dropdown')
+          $('#'+current_row_id).find('.field_for_price').find('.add-discount-offer').removeClass('add_item_discount')
+        } else {
+          $('#'+current_row_id).find('.field_for_price').find('.add-discount-offer').removeAttr('data-toggle')
+          $('#'+current_row_id).find('.field_for_price').find('.add-discount-offer').addClass('add_item_discount')
+          if(parseFloat($('#'+current_row_id).find('.service_discount_amount').val()) > 0) {
+            $('#'+current_row_id).find('.field_for_price').find('.add-discount-offer').addClass('hidden')
+          } else {
+            $('#'+current_row_id).find('.field_for_price').find('.add-discount-offer').removeClass('hidden')
+          }
+        }
+      }
+    });
+  } else {
+    $('#'+current_row_id).find('.field_for_price').find('.add-discount-offer').removeAttr('data-toggle')
+    $('#'+current_row_id).find('.field_for_price').find('.add-discount-offer').addClass('add_item_discount')
+  }
+}

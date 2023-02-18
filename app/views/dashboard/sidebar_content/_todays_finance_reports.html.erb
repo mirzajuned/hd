@@ -1,0 +1,154 @@
+<div class="row">
+  <div class="col-sm-12" style="display:inline;">
+    <h5 class="subtitle mb5" style="display:inline;">Today's Reports<span class="btn btn-link btn-minimize-view pull-right" style="padding:0px;margin:-5px;"><b style="font-size:30px;">-</b></span></h5>
+  </div>
+</div>
+<div class="row show-reports toggle-view" style="display: none;">
+  <div class="col-md-12">
+    <div class="row mb10">
+      <div class="col-md-12">
+        <b>OPD</b>
+      </div>
+      <div class="col-md-12">
+        <div class="row" style="margin:0;">
+          <div class="col-sm-6">
+            Receipt
+          </div>
+          <div class="col-sm-4">
+            <% opd_invoices = @invoice_opd.group_by(&:currency_symbol) %>
+            <% opd_invoices.each do |currency_symbol, invoices| %>
+              <%= currency_symbol %><%= invoices.map{ |invoice| invoice.net_amount.to_f }.sum %><br>
+            <% end %>
+            <% if @invoice_opd.count <= 0 %>
+              <%= current_facility.currency_symbol %>0<br>
+            <% end %>
+          </div>
+          <div class="col-sm-2">
+            <% if (@invoice_opd.pluck(:net_amount).inject(0){|sum,x| sum + x }).to_i != 0 %>
+              <%= link_to reports_daily_report_path(:date => Date.current, location: "OPD Invoice", :format => :pdf), style:"margin:0px;", :target => "_blank" do %><i class="fa fa-print"></i><% end %>
+            <% else %>
+              <a class="disable-click" href="" style="margin:0px;"><i class="fa fa-print"></i></a>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="row mb10">
+      <div class="col-md-12">
+        <b>IPD</b>
+      </div>
+      <div class="col-md-12">
+        <div class="row" style="margin:0;">
+          <div class="col-sm-6">
+            Receipt
+          </div>
+          <div class="col-sm-4">
+            <% ipd_invoices = @invoice_ipd.group_by(&:currency_symbol) %>
+            <% ipd_invoices.each do |currency_symbol, invoices| %>
+              <%= currency_symbol %><%= invoices.map{ |invoice| invoice.net_amount.to_f }.sum %><br>
+            <% end %>
+            <% if @invoice_ipd.count <= 0 %>
+              <%= current_facility.currency_symbol %>0<br>
+            <% end %>
+          </div>
+          <div class="col-sm-2">
+            <% if (@invoice_ipd.pluck(:net_amount).inject(0){|sum,x| sum + x }).to_i != 0 %>
+              <%= link_to reports_daily_report_path(:date => Date.current, location: "IPD Invoice", :format => :pdf), style:"margin:0px;", :target => "_blank" do %><i class="fa fa-print"></i><% end %>
+            <% else %>
+              <a class="disable-click" href="" style="margin:0px;"><i class="fa fa-print"></i></a>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+    <% unless @pharmacy.nil? && @optical.nil? %>
+      <div class="row mb10">
+        <div class="col-md-12">
+          <b>Others</b>
+        </div>
+        <div class="col-md-12">
+          <div class="row" style="margin:0;">
+            <% unless @pharmacy.nil? %>
+            <div class="col-sm-6">
+              Pharmacy
+            </div>
+            <div class="col-sm-4">
+              <% pharmacy_invoices = @invoice_pharmacy.group_by(&:currency_symbol) %>
+              <% pharmacy_invoices.each do |currency_symbol, invoices| %>
+                <%= currency_symbol %><%= invoices.map{ |invoice| invoice.total.to_f }.sum %><br>
+              <% end %>
+              <% if @invoice_pharmacy.count <= 0 %>
+                <%= current_facility.currency_symbol %>0<br>
+              <% end %>
+            </div>
+            <div class="col-sm-2">
+              <% if (@invoice_pharmacy.pluck(:total).inject(0){|sum,x| sum + x }).to_i != 0 %>
+                <%= link_to reports_daily_report_path(:date => Date.current, location: "Pharmacy", :format => :pdf), style:"margin:0px;", :target => "_blank" do %><i class="fa fa-print"></i><% end %>
+              <% else %>
+                <a class="disable-click" href="" style="margin:0px;"><i class="fa fa-print"></i></a>
+              <% end %>
+            </div>
+            <% end %>
+            <% unless @optical.nil? %>
+            <div class="col-sm-6">
+              Optical
+            </div>
+            <div class="col-sm-4">
+              <% optical_invoices = @invoice_optical.group_by(&:currency_symbol) %>
+              <% optical_invoices.each do |currency_symbol, invoices| %>
+                <%= currency_symbol %><%= invoices.map{ |invoice| invoice.total.to_f }.sum %><br>
+              <% end %>
+              <% if @invoice_optical.count <= 0 %>
+                <%= current_facility.currency_symbol %>0<br>
+              <% end %>
+            </div>
+            <div class="col-sm-2">
+              <% if (@invoice_optical.pluck(:total).inject(0){|sum,x| sum + x }).to_i != 0 %>
+                <%= link_to reports_daily_report_path(:date => Date.current, location: "Optical", :format => :pdf), style:"margin:0px;", :target => "_blank" do %><i class="fa fa-print"></i><% end %>
+              <% else %>
+                <a class="disable-click" href="" style="margin:0px;"><i class="fa fa-print"></i></a>
+              <% end %>
+            </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    <% end %>
+    <hr style="margin: 5px;">
+    <div class="row mb10">
+      <div class="col-md-12">
+        <div class="row" style="margin:0;">
+          <div class="col-md-6">
+            <b style="color:#000;">TOTAL</b>
+          </div>
+          <div class="col-md-4">
+            <b style="color:#000;">
+              <% invoices_total = opd_invoices.merge!(ipd_invoices){|key,oldval,newval| oldval + newval } %>
+              <% if @pharmacy.present? %>
+                <% invoices_total = invoices_total.merge!(pharmacy_invoices){|key,oldval,newval| oldval + newval } %>
+              <% end %>
+              <% if @optical.present? %>
+                <% invoices_total = invoices_total.merge!(optical_invoices){|key,oldval,newval| oldval + newval } %>
+              <% end %>
+              <% invoices_total.each do |currency_symbol, invoices| %>
+                <%= currency_symbol %><%= invoices.map{ |invoice| (invoice.try(:net_amount) || invoice.try(:total)).to_f }.sum || 0 %><br>
+              <% end %>
+              <% if invoices_total.count <= 0 %>
+                <%= current_facility.currency_symbol %>0<br>
+              <% end %>
+            </b>
+          </div>
+          <div class="col-md-2">
+            <% if false %>
+              <% if invoices_total.count > 0 %>
+                <%= link_to reports_daily_report_summary_path(:date => Date.current, location: "All", :format => :pdf), style:"margin:0px;", :target => "_blank" do %><i class="fa fa-print"></i><% end %>
+              <% else %>
+                <a class="disable-click" href="" style="margin:0px;"><i class="fa fa-print"></i></a>
+              <% end %>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

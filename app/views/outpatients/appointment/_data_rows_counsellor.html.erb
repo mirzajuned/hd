@@ -1,0 +1,216 @@
+<% appointment_list.try(:each) do |appointment| %>
+  <% patient = @patient_fields.find { |p| p[:id].to_s == appointment.patient_id.to_s } %>
+  <% unless tab == 'all_today' %>
+    <% if appointment.in_department == true %>
+      <% department_name = Department.find_by(id: appointment.department_id)&.name %>
+      <% title = department_name.to_s.titleize %>
+      <% user_name = department_name.to_s.titleize %>
+    <% else %>
+      <% if appointment.with_user_role == "doctor" %>
+        <% title = "Dr. #{appointment.with_user}".titleize %>
+        <% user_name = "Dr. #{appointment.with_user}".titleize %>
+      <% else %>
+        <% title = "#{appointment.with_user_role} #{appointment.with_user}".titleize %>
+        <% user_name = appointment.with_user.to_s.titleize %>
+      <% end %>
+    <% end %>
+  <% end %>
+  <% counsellor_record = CounsellorRecord.find_by(appointment_id: appointment.appointment_id.to_s)%>
+  <% counsellor_name = counsellor_record.present? ? User.find_by(id: counsellor_record.user_id.to_s)&.fullname : '' %>
+  <% margin_top = (counsellor_name.present? && tab == 'all_today') ? "margin-top: 12px;" : '' %>
+  <div class='row no_margin summary_appointment summary_appointment_clickable' data-appointment-id='<%= appointment.appointment_id %>'>
+    <div class='col-sm-3 no_padding text-left patient_name' style="overflow: hidden;white-space: nowrap; text-overflow: ellipsis; <%=margin_top%>">
+      <span>
+        <% if patient.present? %>
+          <span title="<%= patient[:title] %>"><%= patient[:bang] ? "<b><i class='fa fa-exclamation' style='font-size: 14px;color:#FF8735;'></i>&nbsp;</b>".html_safe : "" %></span>
+        <% end %>
+        <% if appointment.token_number.present? %>
+          <label class="label label-danger show-token-label" style="border-radius: 100%;"><%= appointment.token_number.to_i %></label>&nbsp;
+        <% end %>
+        <b><%= appointment.patient_name.to_s.upcase %></b>
+        <% if appointment.try(:patient_type).present? %>
+          <br>
+         <span class="label" style="'margin-top:-5px;margin-bottom:-5px;' font-size: 10px;overflow: hidden;white-space: nowrap; text-overflow: ellipsis; background: <%= appointment.try(:patient_type_color) %>"><%= appointment.try(:patient_type) %>
+         </span>
+        <% end %>
+      </span>
+    </div>
+    <div class='col-sm-2 no_padding text-center' style="overflow: hidden;white-space: nowrap; text-overflow: ellipsis; <%=margin_top%> <% if appointment.try(:appointment_category_label).present? %><%= 'margin-top:-5px;margin-bottom:-5px;' %><% end %>">
+      <% if appointment.try(:appointment_category_label).present? %>
+        <span class="label" style="font-size:10px;background: <%= appointment.try(:appointment_category_color) %>"><%= appointment.try(:appointment_category_label) %></span><br>
+      <% end %>
+      <span class="label" style="background: <%= appointment.appointment_type_color %>" title="<%= appointment.try(:appointment_type_comment) %>"><%= appointment.appointment_type_label %><%= "#{' - ' + appointment.try(:appointment_type_comment) if appointment.try(:appointment_type_comment).present? } " %></span>
+    </div>
+    <div class="col-sm-2 no_padding text-center" style=" <%=margin_top%>">
+      <% if tab == "my_queue" %>
+        <%= appointment.total_transition_time_in_org %>
+      <% elsif tab == "followup" %>
+         Followup on <%= appointment.counsellingdate.strftime("%d %b'%y") %>
+<!--         Followup on <%#= appointment.followupdates.last.strftime("%d %b'%y") %>-->
+      <% else %>
+          <% if appointment.state == 'converted' and appointment.surgerydates.length > 0 %>
+              Surgery on <br><%= Date.parse(appointment.surgerydates.last).strftime("%d %b'%y") %>
+          <% elsif  appointment.state == 'converted' %>
+              <%= appointment.converted_state.last %>
+          <% elsif appointment.state == "followup" %>
+              Followup on <%= appointment.counsellingdate.strftime("%d %b'%y") %>
+          <% else %>
+              <%= appointment.appointmentdate.try(:strftime,"%d %b'%y") %>
+          <% end %>
+      <% end %>
+    </div>
+    <div class="col-sm-2 no_padding text-center" style=" <%=margin_top%>">
+      <%= appointment.start_time.try(:strftime, '%I:%M %p') %>
+    </div>
+    <div class='col-sm-2 no_padding text-center' style=" overflow: hidden;white-space: nowrap; text-overflow: ellipsis;">
+      <% if appointment.state == "tpa_department" %>
+        <% label  = 'TPA Department' %>
+      <% else %>
+        <% label  = appointment.state.split("_").join(" ").capitalize %>
+      <% end %>
+      <% state = appointment.state == 'check_out' ? 'Waiting' : appointment.state.split('_').join(' ').titleize %>
+      <% if tab == 'all_today' %>
+        <span class="label label-info" title="<%= state %>"><%= state %></span>
+      <% else %>
+        <span class="label label-info" title="<%= state %>"><%= state %></span>
+        <% if appointment.state == 'check_out' && appointment.station_id.present? && @queue_management_present && !appointment.with_user.present? %>
+          <span class="label label-success" title="<%= title %>"><%= appointment&.station_name || 'Station' %></span>
+        <% else %>
+        <% end %>
+        <% if appointment.with_user.present? %>
+          <span class="label label-success" title="<%= title %>"><%= user_name %></span>
+        <% end %>
+      <% end %>
+      <!-- <span class="badge badge-success" style="display: block;margin: auto;padding: 5px;"><%#= label %></span> -->
+      <% if counsellor_name.present? && tab == "all_today" %>
+        <span class="badge badge-success" style="margin-top: 2px;"> <%= counsellor_name %> </span>
+      <% end %>
+    </div>
+
+    
+    <% if tab == "my_queue" %>
+      <% if appointment.referral %>
+          <div class="col-sm-1 col-sm-1-shared  no_padding text-right" style=" <%=margin_top%>">
+            <span class="badge badge-warning" title="Dr. <%= appointment.referring_doctor %>">R</span>
+          </div>
+      <% end %>
+      <div class="col-sm-1 col-sm-1-shared no_padding text-right" id="dilation-state" style=" <%=margin_top%>">
+        <% unless appointment.dilation_state.nil? %>
+          <span class="dilated_d badge badge-<%= appointment.dilation_state_color %>">D</span>
+        <% end %>
+      </div>
+    <% end %>
+
+    <% if tab != "today" %>
+      <div class="col-sm-1 col-sm-1-shared no_padding text-right" id="dilation-state" style="display: none;  <%=margin_top%>">
+        <% unless appointment.try(:tpa_state).nil? %>
+          <% if appointment.try(:tpa_state) != 'deleted' %>
+            <% tpa_state = appointment.tpa_state.split("_").join(" ").titleize %>
+            <% tpa_state = "Insurance status - #{tpa_state}" %>
+            <span class="glyphicon glyphicon-exclamation-sign" title="<%= tpa_state %>" ></span>
+          <% end %>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+<% end %>
+
+<% if tab == "all" && @not_arrived.count > 0 %>
+  <div style="padding:3px;background:#eee;">Not Arrived</div>
+  <% @not_arrived.try(:each) do |appointment| %>
+    <% patient = @patient_fields.find { |p| p[:id].to_s == appointment.patient_id.to_s } %>
+      <div class='row no_margin summary_appointment summary_appointment_clickable' data-appointment-id='<%= appointment.appointment_id %>'>
+        <div class='col-sm-3 no_padding text-left patient_name' style="overflow: hidden;white-space: nowrap; text-overflow: ellipsis;" title="<%= appointment.patient_name.to_s.upcase %>">
+          <span>
+            <% if patient.present? %>
+              <span title="<%= patient[:title] %>"><%= patient[:bang] ? "<b><i class='fa fa-exclamation' style='font-size: 14px;color:#FF8735;'></i>&nbsp;</b>".html_safe : "" %></span>
+            <% end %>
+            <% if appointment.token_number.present? %>
+              <label class="label label-danger show-token-label" style="border-radius: 100%;"><%= appointment.token_number.to_i %></label>&nbsp;
+            <% end %>
+            <b><%= appointment.patient_name.to_s.upcase %></b>
+            <% if appointment.try(:patient_type).present? %>
+              <br>
+             <span class="label" style="'margin-top:-5px;margin-bottom:-5px;' font-size: 10px;overflow: hidden;white-space: nowrap; text-overflow: ellipsis; background: <%= appointment.try(:patient_type_color) %>"><%= appointment.try(:patient_type) %>
+             </span>
+            <% end %>
+          </span>
+        </div>
+        <div class='col-sm-2 no_padding text-center' style="overflow: hidden;white-space: nowrap; text-overflow: ellipsis;<% if appointment.try(:appointment_category_label).present? %><%= 'margin-top:-5px;margin-bottom:-5px;' %><% end %>">
+          <% if appointment.try(:appointment_category_label).present? %>
+              <span class="label" style="font-size:10px;background: <%= appointment.try(:appointment_category_color) %>"><%= appointment.try(:appointment_category_label) %></span><br>
+          <% end %>
+          <span class="label" style="background: <%= appointment.appointment_type_color %>" title="<%= appointment.try(:appointment_type_comment) %>"><%= appointment.appointment_type_label %> <%= "#{' - ' + appointment.try(:appointment_type_comment) if appointment.try(:appointment_type_comment).present? } " %></span>
+        </div>
+        <div class='col-sm-2 no_padding text-center' style="overflow: hidden;white-space: nowrap; text-overflow: ellipsis;">
+          <span>NA</span>
+        </div>
+        <div class='col-sm-2 no_padding text-center' style="overflow: hidden;white-space: nowrap; text-overflow: ellipsis;">
+          <span><%= appointment.start_time.try(:strftime, '%I:%M %p') %></span>
+        </div>
+        <div class='col-sm-2 no_padding text-center' style="overflow: hidden;white-space: nowrap; text-overflow: ellipsis;">
+          <span class="label label-success">Not Arrived</span>
+        </div>
+        <% if appointment.referral %>
+            <div class="col-sm-1 col-sm-1-shared  no_padding text-right">
+              <span class="badge badge-warning" >R</span>
+            </div>
+        <% end %>
+        <div class="col-sm-1 col-sm-1-shared no_padding text-right" id="dilation-state">
+          <% unless appointment.dilation_state.nil? %>
+            <span class="dilated_d badge badge-<%= appointment.dilation_state_color %>">D</span>
+          <% end %>
+        </div>
+      </div>
+  <% end %>
+<% end %>
+
+<% if (tab == "all" || tab == "all_op" ) && @completed.count > 0 %>
+  <div style="padding:3px;background:#eee;">Completed</div>
+  <% @completed.try(:each) do |appointment| %>
+    <% patient = @patient_fields.find { |p| p[:id].to_s == appointment.patient_id.to_s } %>
+      <div class='row no_margin summary_appointment summary_appointment_clickable' data-appointment-id='<%= appointment.appointment_id %>'>
+        <div class='col-sm-3 no_padding text-left patient_name' style="overflow: hidden;white-space: nowrap; text-overflow: ellipsis;" title="<%= appointment.patient_name.to_s.upcase %>">
+          <span>
+            <% if patient.present? %>
+              <span title="<%= patient[:title] %>"><%= patient[:bang] ? "<b><i class='fa fa-exclamation' style='font-size: 14px;color:#FF8735;'></i>&nbsp;</b>".html_safe : "" %></span>
+            <% end %>
+            <% if appointment.token_number.present? %>
+              <label class="label label-danger show-token-label" style="border-radius: 100%;"><%= appointment.token_number.to_i %></label>&nbsp;
+            <% end %>
+            <b><%= appointment.patient_name.to_s.upcase %></b>
+            <% if appointment.try(:patient_type).present? %>
+              <br>
+             <span class="label" style="'margin-top:-5px;margin-bottom:-5px;' font-size: 10px;overflow: hidden;white-space: nowrap; text-overflow: ellipsis; background: <%= appointment.try(:patient_type_color) %>"><%= appointment.try(:patient_type) %>
+             </span>
+            <% end %>
+          </span>
+        </div>
+        <div class='col-sm-2 no_padding text-center' style="overflow: hidden;white-space: nowrap; text-overflow: ellipsis;<% if appointment.try(:appointment_category_label).present? %><%= 'margin-top:-5px;margin-bottom:-5px;' %><% end %>">
+          <% if appointment.try(:appointment_category_label).present? %>
+              <span class="label" style="font-size:10px;background: <%= appointment.try(:appointment_category_color) %>"><%= appointment.try(:appointment_category_label) %></span><br>
+          <% end %>
+          <span class="label" style="background: <%= appointment.appointment_type_color %>" title="<%= appointment.try(:appointment_type_comment) %>"><%= appointment.appointment_type_label %> <%= "#{' - ' + appointment.try(:appointment_type_comment) if appointment.try(:appointment_type_comment).present? } " %></span>
+        </div>
+        <div class='col-sm-2 no_padding text-center' style="overflow: hidden;white-space: nowrap; text-overflow: ellipsis;">
+          <span><%= appointment.total_transition_time_in_org %></span>
+        </div>
+        <div class='col-sm-2 no_padding text-center' style="overflow: hidden;white-space: nowrap; text-overflow: ellipsis;">
+          <span><%= appointment.start_time.try(:strftime, '%I:%M %p') %></span>
+        </div>
+        <div class='col-sm-2 no_padding text-center' style="overflow: hidden;white-space: nowrap; text-overflow: ellipsis;">
+          <span class="label label-success">Completed</span>
+        </div>
+        <% if appointment.referral %>
+            <div class="col-sm-1 col-sm-1-shared  no_padding text-right">
+              <span class="badge badge-warning">R</span>
+            </div>
+        <% end %>
+        <div class="col-sm-1 col-sm-1-shared no_padding text-right" id="dilation-state">
+          <% unless appointment.dilation_state.nil? %>
+            <span class="dilated_d badge badge-<%= appointment.dilation_state_color %>">D</span>
+          <% end %>
+        </div>
+      </div>
+  <% end %>
+<% end %>

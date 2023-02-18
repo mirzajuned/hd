@@ -1,0 +1,164 @@
+$('.tooltip-inner').tooltip();
+
+$('#all-investigation-reports').on('click', function(e) {
+  e.preventDefault();
+  console.log('here')
+  let edit_template = $('.edit-template')
+  let template_ids = [];
+
+  for (let i = 0; i < edit_template.length; i++) {
+    let template_id = $(edit_template[i]).attr('data-template-id');
+    template_ids.push(template_id)
+  }
+
+  $.ajax({
+    data: {
+      template_ids: template_ids,
+      patient_id: '<%= @patient.id.to_s %>'
+    },
+    url: '/ehr_investigation/records/show_all_reports'
+  })
+})
+
+$(".create-all").on('click', function(e) {
+  e.preventDefault();
+  let tab = $(this).attr('data-link-id')
+  let id = $('*[data-tab-id=' + tab + ']').children().attr('href')
+  let new_templates = $(id).find('.create-template')
+  let investigation_ids = []
+  for (let i = 0; i < new_templates.length; i++) {
+    let investigation_id = $(new_templates[i]).attr('data-investigation-id');
+    investigation_ids.push(investigation_id)
+  }
+  $.ajax({
+    data: {
+      investigation_ids: investigation_ids,
+      patient_id: '<%= @patient.id.to_s %>'
+    },
+    url: '/ehr_investigation/records/all_reports_new'
+  })
+})
+
+$("#counsel-all").on('click', function(e) {
+  e.preventDefault();
+  let tab = $(".investigation-tab.active").attr("data-tab-id")
+  let id = $('*[data-tab-id=' + tab + ']').children().attr('href')
+  let counselling_templates = $(id).find('.counselled')
+  let investigation_ids = []
+  for (let i = 0; i < counselling_templates.length; i++) {
+    let investigation_id = $(counselling_templates[i]).attr('data-investigation-id');
+    investigation_ids.push(investigation_id)
+  }
+
+  $.ajax({
+    data: {
+      investigation_ids: investigation_ids,
+      patient_id: '<%= @patient.id.to_s %>',
+      task: 'counselling'
+    },
+    url: '/investigation/investigation_details/action_on_multiple_investigation'
+  })
+})
+
+$("#payment-all").on('click', function(e) {
+  e.preventDefault();
+  let tab = $(".investigation-tab.active").attr("data-tab-id")
+  let id = $('*[data-tab-id=' + tab + ']').children().attr('href')
+  let payment_templates = $(id).find('.payments')
+  let investigation_ids = []
+  for (let i = 0; i < payment_templates.length; i++) {
+    let investigation_id = $(payment_templates[i]).attr('data-investigation-id');
+    investigation_ids.push(investigation_id)
+  }
+
+  $.ajax({
+    data: {
+      investigation_ids: investigation_ids,
+      patient_id: '<%= @patient.id.to_s %>',
+      task: 'payments'
+    },
+    url: '/investigation/investigation_details/action_on_multiple_investigation'
+  })
+})
+
+$("#review-all").on('click', function(e) {
+  e.preventDefault();
+  let review_templates = $('.reviewed')
+  let investigation_ids = []
+  for (let i = 0; i < review_templates.length; i++) {
+    let investigation_id = $(review_templates[i]).attr('data-investigation-id');
+    investigation_ids.push(investigation_id)
+  }
+
+  $.ajax({
+    data: {
+      investigation_ids: investigation_ids,
+      patient_id: '<%= @patient.id.to_s %>',
+      task: 'review'
+    },
+    url: '/investigation/investigation_details/action_on_multiple_investigation'
+  })
+})
+
+$("#btn-investigation-details-refresh").on('click', function(e) {
+  e.preventDefault()
+  let _this = this
+  let inv_tab = $(".tab_active_investigation").find(".active").attr('data-tab-id')
+  let show_all = $("#show-all").attr('data-show-all')
+
+  if ($("#investigationWizard").length > 0) {
+    $("#investigation-wizard-inhere").html(`
+      <div id='investigationWizard' class='basic-wizard' style='border:1px solid #aaa;'>
+        <ul class='nav nav-pills nav-justified tab_active_investigation'>
+          <% if @appointment.specialty_id == '309988001' %>
+            <li role='presentation' data-tab-id='ophthal'>
+              <a href='#investigation-ophthal-details' class='investigation-details' data-toggle='tab'>Ophthal (0)</a>
+            </li>
+          <% end %>
+          <li role='presentation' data-tab-id='laboratory'>
+            <a href='#investigation-laboratory-details' class='investigation-details' data-toggle='tab'>Laboratory (0)</a>
+          </li>
+          <li role='presentation' data-tab-id='radiology'>
+            <a href='#investigation-radiology-details' class='investigation-details' data-toggle='tab'>Radiology (0)</a>
+          </li>
+        </ul>
+        <div class='tab-content investigation-form-body'>
+          <div class='tab-pane active' id='investigation-ophthal-details'>
+            <p class='text-center'>Please Wait...</p>
+          </div>
+        </div>
+      </div>
+    `)
+  } else {
+    $("#investigation-wizard-inhere").html(`<div class='col-md-12'>No Investigation</div>`)
+  }
+
+  $.ajax({
+    url: '/outpatients/refresh_investigation',
+    dataType: 'script',
+    type: 'GET',
+    data: {
+      patient_id: '<%= @patient.id.to_s %>',
+      appointment_id: '<%= @appointment.id.to_s %>',
+      current_date: '<%= params[:current_date] %>',
+      inv_tab: inv_tab,
+      show_all: show_all,
+      new_ui: true
+    },
+    success: function() {
+    }
+  })
+})
+
+$("#show-all").on('click', function(e) {
+  let showAll = $(this).attr("data-show-all")
+  if (showAll == 'true') {
+    $(this).attr("data-show-all", 'false')
+    $(this).html('Show All')
+  } else {
+    $(this).attr("data-show-all", 'true')
+    $(this).html('Show Appt')
+  }
+
+  $("#btn-investigation-details-refresh").trigger('click');
+})

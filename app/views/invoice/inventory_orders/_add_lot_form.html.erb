@@ -1,0 +1,121 @@
+<%= f.fields_for :items, :child_index => (index || (Time.current.to_f.round(3)*1000).to_i) do |builder| %>
+  <table width="100%" class="inventory-invoice-log-item lot-table lot-table-<%=lot.id%>" data-child-index=<%= builder.options[:child_index] %>>
+    <tr>
+      <%= builder.hidden_field :item_code, { value: variant.item_code } %>
+      <%= builder.hidden_field :variant_code, { value: variant.variant_code } %>
+      <%= builder.hidden_field :item_id, { value: variant.item_id } %>
+      <%= builder.hidden_field :lot_id, { value: lot.id, class: 'lot-id' } %>
+      <%= builder.hidden_field :variant_id, { value: variant.id } %>
+      <%= builder.hidden_field :category, { value: variant.category_name } %>
+      <%= builder.hidden_field :barcode, { value: variant.barcode } %>
+      <%= builder.hidden_field :barcode_present, { value: variant.barcode_present } %>
+      <%= builder.hidden_field :variant_reference_id, { value: variant.reference_id } %>
+      <%= builder.hidden_field :item_reference_id, { value: item.reference_id } %>
+      <%= builder.hidden_field :facility_id, { value: variant.facility_id } %>
+      <%= builder.hidden_field :store_id, { value: variant.store_id } %>
+      <%= builder.hidden_field :organisation_id, { value: variant.organisation_id } %>
+      <%= builder.hidden_field :search, { value: lot.search } %>
+      <%= builder.hidden_field :variant_identifier, { value: variant.variant_identifier } %>
+      <%= builder.hidden_field :mrp, { value: lot.mrp } %>
+      <%= builder.hidden_field :list_price, { value: lot.list_price } %>
+      <%= builder.hidden_field :model_no, { value: lot.model_no } %>
+      <%= builder.hidden_field :srn_required, { value: 'false', class: 'srn-required' } %>
+
+      <td class="col-md-1 col-sm-1 col-xs-1">
+
+        <% if lot.custom_field_data.present? %>
+          <% lot.custom_field_data.each do |k,v| %>
+            <%= builder.hidden_field :custom_field_data, {value: v,name: "invoice_inventory_order[items_attributes][#{ builder.options[:child_index] }][custom_field_data][#{k}]"} %>
+          <% end %>
+        <% end %>
+
+        <%= builder.select :custom_field_tags,options_for_select(lot.custom_field_tags,lot.custom_field_tags),{include_hidden: false}, {multiple:true, style: "display: none;"} %>
+        <strong><%= lot.description %></strong>
+        <%= builder.hidden_field :description,value: item.description,readonly: true, :class => "item_description modalRequest_input_style", :placeholder=>"Description" %>
+        <%= builder.hidden_field :_destroy,  {value: 0 ,class: 'form-control' } %>
+      </td>
+      <td class="col-md-1 col-sm-1 col-xs-1", style="">
+        <label class="label label-info" style="font-size: 10px; padding: 2px"><%= lot.batch_no %></label>
+        <%= builder.hidden_field :batch_no,value: lot.batch_no,readonly: true, :class => "item_batch modalRequest_input_style", :placeholder=>"Batch" %>
+        <%= builder.hidden_field :self_batched,value: lot.self_batched %>
+      </td>
+      <td class="col-md-1 col-sm-1 col-xs-1", style="">
+        <% if lot.model_no.present? %>
+          <%= lot.model_no %>
+        <%else %>
+          N.A
+        <%end %>
+      </td>
+      <td class="col-md-1 col-sm-1 col-xs-1">
+        <% stock_val = @lot_units.present? ? @lot_units.size : '' %>
+        <% total_cost = @lot_units.present? ? stock_val * @lot.list_price : 0 %>
+        <% readonly = @lot_units.present? ? true : false %>
+        <% if @lot_units.present? %>
+          <%= builder.select :lot_unit_ids, options_for_select(@lot_units, @lot_units ), { include_hidden: false }, multiple: true, style: "display: none;"%>
+        <% end %>
+        <%= builder.number_field :quantity, value: stock_val, :class => "item_quantity modalRequest_input_style", :placeholder=>"Qty", :style=>"width:100%;text-align:left", min: '0.1', readonly: readonly %>
+        <input type="hidden" value= "<%= lot&.available_stock %>" class="item_max_quantity modalRequest_input_style" placeholder="" style="width:90%;text-align:left" />
+      </td>
+      <td class="col-md-1 col-sm-1 col-xs-1">
+        <% if lot.expiry.present? %>
+          <%= lot.expiry %>
+        <%else %>
+          N.A
+        <%end %>
+        <%= builder.hidden_field :expiry_present, value: lot.expiry_present,readonly: true, :class => "", :placeholder=>"Expiry" %>
+        <%= builder.hidden_field :expiry, value: lot.expiry,readonly: true, :class => "exp_datepicker item_expiry modalRequest_input_style", :placeholder=>"Expiry" %>
+      </td>
+
+      <td class="col-md-1 col-sm-1 col-xs-1">
+        <%= lot.list_price %>
+        <%= builder.hidden_field :list_price, value: lot.list_price,readonly: true, :class => "unit_item_list_price modalRequest_input_style", :style=>"width:100%;text-align:left" %>
+        <%= builder.hidden_field :unit_non_taxable_amount, value: lot.unit_non_taxable_amount,readonly: true, :class => "unit_non_taxable_amount modalRequest_input_style", :style=>"width:100%;text-align:left" %>
+        <%= builder.hidden_field :unit_taxable_amount, value: lot.unit_taxable_amount,readonly: true, :class => "unit_taxable_amount modalRequest_input_style", :style=>"width:100%;text-align:left" %>
+      </td>
+
+      <td class="col-md-1 col-sm-1">
+        <div class="tax_fields"></div>
+        <%= lot.tax_rate %>
+
+        <%= builder.hidden_field :tax_rate, value: lot.tax_rate,readonly: true, :class => "item_tax_rate modalRequest_input_style", :placeholder=>"Tax", :style=>"width:100%;text-align:left" %>
+        <%= builder.hidden_field :tax_group_id, value: lot.tax_group_id,readonly: true, :class => "item_tax_group_id modalRequest_input_style", :placeholder=>"Tax", :style=>"width:100%;text-align:left" %>
+      </td>
+
+      <td class="col-md-1 col-sm-1">
+        <%= lot.tax_inclusive %>
+
+        <%= builder.hidden_field :tax_inclusive, value: lot.tax_inclusive,readonly: true, :class => "item_tax_inclusive modalRequest_input_style", :placeholder=>"Tax", :style=>"width:100%;text-align:left" %>
+      </td>
+
+      <td class="col-md-1 col-sm-1">
+        <%= builder.text_field :non_taxable_amount, :class => "item_non_taxable_amount modalRequest_input_style", :placeholder=>"NonTaxable Amount", style: "width:90%;text-align:left", :value => '0.0' %>
+        <%= builder.hidden_field :item_new_non_taxable_amount, :class => "item_new_non_taxable_amount modalRequest_input_style", :value => '0.0' %>
+      </td>
+
+      <td class="col-md-1 col-sm-1">
+        <%= builder.text_field :taxable_amount,readonly: true, :class => "item_taxable_amount modalRequest_input_style", :placeholder=>"Tax", :style=>"width:100%;text-align:left" %>
+      </td>
+
+
+      <td class="col-md-1 col-sm-1 col-xs-1 font_size">
+        <%= builder.text_field :total_list_price,readonly: true ,:class => "modalRequest_input_style item_total_price", :placeholder=>"", :style=>"width:100%;text-align:left" %>
+      </td>
+
+      <td class="col-md-1 col-sm-1 col-xs-1 font-size text-center">
+        <button type="button" class="btn btn-link hg-tooltip delete_empty_item" tabindex="-1" style="padding:0px;" title="Remove From List" value="<%= lot.id %>"><i class="fa fa-trash-alt" style="color:#000;"></i></button>
+        <% if @lot_units.present? %>
+          <%= link_to new_lot_invoice_inventory_orders_path(lot_id: lot.id, lot_unit_ids: @lot_units, class_val: "lot-table-#{@lot.id}"), id: 'edit_added_lot_unit', data: { remote: true, toggle: 'modal', target: '#add-unit-lot-modal' }, class: 'btn btn-xs' do %><i class="fa fa-edit"></i><% end %>
+        <% end %>
+      </td>
+    </tr>
+  </table>
+<% end %>
+
+
+<style type="text/css">
+  .modal {
+    background: rgba(0, 0, 0, 0.61);
+    overflow-x: auto;
+    overflow-y: auto;
+  }
+</style>

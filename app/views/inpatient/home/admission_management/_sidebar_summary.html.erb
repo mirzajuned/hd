@@ -1,0 +1,204 @@
+<div class="row no-margin text-center">
+  <div class="row no_margin" style="width: 98%; margin-top: -15px;margin-left:7px;">
+    <ul class="nav nav-tabs tab_active" role="tablist">
+      <li role="presentation" class="full-width active">
+        <a href="#admission_current_date" aria-controls="home" role="tab" data-toggle="tab">
+        <span style="display: block; font-size: 16px;" class="admission_current_date_count"></span>
+          Scheduled <% if @current_date == Date.current %> Today <% else %> <%= @current_date.strftime("%d %b'%y") %> <% end %>
+        </a>
+      </li>
+      <li role="presentation" class="full-width">
+        <a href="#admission_all" aria-controls="home" role="tab" data-toggle="tab">
+        <span style="display: block; font-size: 16px;" class="admission_all_count"></span>
+          Admitted
+        </a>
+      </li>
+      <% unless @current_date > Date.current %>
+        <li role="presentation" class="full-width">
+          <a href="#discharge_current_date" aria-controls="home" role="tab" data-toggle="tab">
+          <span style="display: block; font-size: 16px;" class="discharge_current_date_count"></span>
+            Discharged <%= @patient %> <% if @current_date == Date.current %> Today <% else %> <%= @current_date.strftime("%d %b'%y") %> <% end %>
+          </a>
+        </li>
+      <% end %>
+    </ul>
+  </div>
+
+
+  <div class="row no_margin  summary_body collapse in" id="summary_appiontments_today">
+    <div class="admission_today">
+      <div class="tab-content" style="width:95%; margin-left:10px;">
+        <div role="tabpanel" class="admission_type_content tab-pane active" id="admission_current_date">
+          
+        </div>
+        <div role="tabpanel" class="admission_type_content tab-pane" id="admission_all">
+          
+        </div>
+        <div role="tabpanel" class="admission_type_content tab-pane" id="discharge_current_date">
+          
+        </div>
+      </div>
+    </div>
+  </div><!-- summary_body -->
+</div>
+
+<style type="text/css">
+  <% if @current_date == Date.current %>
+    .full-width{
+      width: 33.33%;
+      text-align: center;
+      text-transform: uppercase;
+    }
+  <% else %>
+    .full-width{
+      width: 50%;
+      text-align: center;
+      text-transform: uppercase;
+    }
+  <% end %>
+
+  #footer {
+    position: fixed;
+    bottom: 0;
+    width: 32%;
+    background-color: #fff;
+    height: 30px;
+    color: #333;
+  }
+
+  .appointment-filter{
+    text-align: center;
+    font-size: 12px;
+    border: 0.5px solid #effa2b;
+    text-transform: uppercase;
+  }
+  .nav-tabs{
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+    margin: 1em 0 2em;
+    font-weight: 300;
+    font-size: 9px;
+  }
+  .nav-tabls ul {
+    width: 100%;
+  }
+  .nav-tabs > li > a {
+    border: 0;
+    padding: 10px 0;
+    color: #666;
+  }
+
+  .summary_admission {
+    border-width: 1px 1px 1px 3px;
+    border-style: solid;
+    border-color: rgb(53, 70, 112);
+    padding:5px;
+  }
+</style>
+
+<script type="text/javascript">
+  <% if @current_date != Date.current %>
+    $(".admission_all_count").closest(".full-width").hide();
+    $("#admission_all").hide();
+    $("#admission_all").removeClass("active");
+    $("#admission_current_date").addClass("active")
+    $(".admission_all_count").closest(".full-width").removeClass("active");
+    $(".admission_current_date_count").closest(".full-width").addClass("active");
+  <% end %>
+
+  <% admission_all_count = 0 %>
+  <% discharge_current_date_count = 0 %>
+  <% admission_current_date_count = 0 %>
+  <% @admission_all.sort(admissiontime: :desc).each.with_index do |adm| %>
+    <% @docname = User.find_by(id: adm.doctor).fullname %>
+    <% if !(adm.isdischarged?) && @current_date == Date.current %>
+      <% if adm.admissiondate <= Date.current && adm.patient_arrived %>
+        $("#admission_all").append("<div class='row no_margin summary_admission summary_admission_clickable' data-admission-id='<%= adm.id %>'><div class='col-sm-5 no_padding text-left'><span><%= adm.patient.fullname %></span></div><div class='col-sm-3 no_padding text-left'><span style='font-size: 12px;'><%= adm.admissiontime.strftime('%I:%M %p') %><% unless adm.admissiondate == Date.current %><%= adm.admissiondate.strftime(' (%d%b)') %><% else %> (Today)<% end %></span></div><div class='col-sm-2 no_padding text-center'><b style='font-size:12px;'><%= @docname %></b></div><div class='col-sm-2 no_padding text-right'><% if adm.insurance_status == "Not Insured" %><span class='badge'>Not Insured</span><% elsif adm.insurance_status == 'Waiting' %><span class='badge badge-info'>Status: Waiting</span><% elsif adm.insurance_status == 'Approved' %><span class='badge badge-success'>Status: Approved</span><% else %><span class='badge badge-danger'>Status: Rejected</span><% end %></div><div class='col-md-3 no_padding text-left'><span style='font-size:12px;'><%= PatientIdentifier.find_by(patient_id: adm.patient_id).try(:patient_org_id) %></span></div><div class='col-sm-6 no_padding text-left'>Reason : <b style='font-size:12px;'><%= adm.admissionreason %></b></div><div class='col-md-3 no_padding text-right'><span style='font-size:12px;'><% if adm.bed_id.nil? %>Ward/Room/Bed: Daycare<% else %>Ward/Room/Bed: <%= Room.find(adm.room_id).ward.code %>/<%= Room.find(adm.room_id).code %>/<%= Room.find(adm.room_id).beds.find(adm.bed_id).code %><% end %></span></div></div>")
+        <% admission_all_count = admission_all_count + 1 %>
+      <% end %>
+    <% elsif adm.isdischarged && adm.dischargedate == @current_date %>
+      $("#discharge_current_date").append("<div class='row no_margin summary_admission summary_admission_clickable' data-admission-id='<%= adm.id %>'><div class='col-sm-5 no_padding text-left'><span><%= adm.patient.fullname %></span></div><div class='col-sm-3 no_padding text-left'><span style='font-size: 12px;'><%= adm.admissiontime.strftime('%I:%M %p') %></span></div><div class='col-sm-2 no_padding text-center'><b style='font-size:12px;'><%= @docname %></b></div><div class='col-sm-2 no_padding text-right'><% if adm.insurance_status == "Not Insured" %><span class='badge'>Not Insured</span><% elsif adm.insurance_status == 'Waiting' %><span class='badge badge-info'>Status: Waiting</span><% elsif adm.insurance_status == 'Approved' %><span class='badge badge-success'>Status: Approved</span><% else %><span class='badge badge-danger'>Status: Rejected</span><% end %></div><div class='col-md-3 no_padding text-left'><span style='font-size:12px;'><%= PatientIdentifier.find_by(patient_id: adm.patient_id).try(:patient_org_id) %></span></div><div class='col-sm-6 no_padding text-left'>Reason : <b style='font-size:12px;'><%= adm.admissionreason %></b></div><div class='col-md-3 no_padding text-right'><span style='font-size:12px;'><% if adm.bed_id.nil? %>Ward/Room/Bed: Daycare<% else %>Ward/Room/Bed: <%= Room.find(adm.room_id).ward.code %>/<%= Room.find(adm.room_id).code %>/<%= Room.find(adm.room_id).beds.find(adm.bed_id).code %><% end %></span></div></div></div>")
+      <% discharge_current_date_count = discharge_current_date_count + 1 %>
+    <% end %>
+    <% if !(adm.isdischarged?) && adm.admissiondate == @current_date %>
+      <% unless adm.patient_arrived %>
+        $("#admission_current_date").append("<div class='row no_margin summary_admission summary_admission_clickable' data-admission-id='<%= adm.id %>'><div class='col-sm-5 no_padding text-left'><span><%= adm.patient.fullname %></span></div><div class='col-sm-3 no_padding text-left'><span style='font-size: 12px;'><%= adm.admissiontime.strftime('%I:%M %p') %></span></div><div class='col-sm-2 no_padding text-center'><b style='font-size:12px;'><%= @docname %></b></div><div class='col-sm-2 no_padding text-right'><% if adm.insurance_status == "Not Insured" %><span class='badge'>Not Insured</span><% elsif adm.insurance_status == 'Waiting' %><span class='badge badge-info'>Status: Waiting</span><% elsif adm.insurance_status == 'Approved' %><span class='badge badge-success'>Status: Approved</span><% else %><span class='badge badge-danger'>Status: Rejected</span><% end %></div><div class='col-md-3 no_padding text-left'><span style='font-size:12px;'><%= PatientIdentifier.find_by(patient_id: adm.patient_id).try(:patient_org_id) %></span></div><div class='col-sm-6 no_padding text-left'>Reason : <b style='font-size:12px;'><%= adm.admissionreason %></b></div><div class='col-md-3 no_padding text-right'><span style='font-size:12px;'><% if adm.bed_id.nil? %>Ward/Room/Bed: Daycare<% else %>Ward/Room/Bed: <%= Room.find(adm.room_id).ward.code %>/<%= Room.find(adm.room_id).code %>/<%= Room.find(adm.room_id).beds.find(adm.bed_id).code %><% end %></span></div></div></div>")
+        <% admission_current_date_count = admission_current_date_count + 1 %>
+      <% end %>
+    <% end %>
+  <% end %>
+
+  $(".admission_all_count").text("<%= admission_all_count %>")
+  $(".admission_current_date_count").text("<%= admission_current_date_count %>")
+  $(".discharge_current_date_count").text("<%= discharge_current_date_count %>")
+  
+  <% if discharge_current_date_count == 0  %>
+    $("#discharge_current_date").append("<div class='row no_margin summary_admission' style='opacity:0.5;'><div class='col-sm-12 no_padding text-center'><span>No Discharge <% if @current_date == Date.current %> Today <% else %>on <%= @current_date.strftime("%d %b'%y") %><% end %></span></div></div>")
+  <% end %>
+  <% if admission_current_date_count == 0  %>
+    $("#admission_current_date").append("<div class='row no_margin summary_admission' style='opacity:0.5;'><div class='col-sm-12 no_padding text-center'><span>No Admission Scheduled <% if @current_date == Date.current %> Today <% else %>on <%= @current_date.strftime("%d %b'%y") %><% end %></span></div></div>")
+  <% end %>
+  <% if admission_all_count == 0 %>
+    $("#admission_all").append("<div class='row no_margin summary_admission' style='opacity:0.5;'><div class='col-sm-12 no_padding text-center'><span>No Admissions</span></div></div>")
+  <% end %>
+
+  $(".summary_admission_clickable").on('click', function(){
+    _this = this
+    $(_this).siblings().css('background-color','#fff')
+    $(_this).css('background-color','#fff9e6')
+    $("#admission_summary").css('background-color','#fff')
+    $("#admission_summary").html("")
+    $("#admission_summary").html('<div class="loading_dots"> <span> </span>&nbsp;&nbsp;<span> </span>&nbsp;&nbsp;<span> </span> </div><div class="text-center">CONTENT LOADING PLEASE WAIT</div>')
+    var admission_id = $(this).attr("data-admission-id")
+    var current_date = "<%= @current_date %>"
+    var doctor = $(this).closest(".coverpanel").find(".current_doctor").find('a').attr("data-doctor-id")
+    $.ajax({
+      url: "/ipd_patients/admission_details",
+      data: {
+        admission_id: admission_id,
+        current_date: current_date,
+        doctor: doctor
+      },
+      dataType: 'html',
+      success: function(res){
+        $("#admission_summary").css('height','calc(100% - 50px)')
+        $("#admission_summary").css('background-color','#fff')
+        $("#admission_summary").html(res);
+      },
+      error: function(err){
+      }
+    })
+  })
+
+  // For Initial Trigger
+  <% if Date.current == @current_date %>
+    if($("#admission_summary").find(".row").length <= 0) {
+      $("#admission_current_date").find(".summary_admission_clickable").first().trigger('click')
+    }
+  <% else %>
+    if($("#admission_summary").find(".row").length <= 0) {
+      if($("#admission_current_date").find(".summary_admission_clickable").length > 0) {
+        $("#admission_current_date").find(".summary_admission_clickable").first().trigger('click')
+      } else if($("#discharge_current_date").find(".summary_admission_clickable").length > 0) {
+        $(".tab_active").find(".full-width").last().addClass('active')
+        $(".tab_active").find(".full-width").last().siblings().removeClass('active')
+        $(".admission_today").find('.admission_type_content').last().addClass("active")
+        $(".admission_today").find('.admission_type_content').last().siblings().removeClass("active")
+        $(".admission_today").find('.admission_type_content').last().find(".summary_admission_clickable").first().trigger('click')
+      }
+    }
+  <% end %>
+
+  // For Internal Tab Triggering Initial
+  $('.tab_active').find('a').on('click', function(){
+    var triggered_href = $(this).attr('href')
+    if($(triggered_href).find(".summary_admission_clickable").length > 0) {
+      $(triggered_href).find(".summary_admission_clickable").first().trigger('click')
+      $("#admission_summary").css('background-color','#fff')
+    } else {
+      $("#admission_summary").html("")
+      $("#admission_summary").css('background-color','grey')
+    }
+  })
+</script>

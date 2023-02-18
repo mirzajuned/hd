@@ -1,0 +1,500 @@
+$('.camp_facility_select').select2();
+$('.camp-datepicker').datepicker({
+  dateFormat: "dd/mm/yy"
+});
+
+var country_id = '<%= current_facility.country_id %>'
+
+function validate_camp_form() {
+  $('#camp_form').validate({
+    rules: {
+      "camp[email]": {
+        mymail: true
+      },
+      "camp[contact_no]": {
+        required: true,
+        number: true,
+      },
+      "camp[camp_name]": {
+        required: true,
+      },
+      "camp[city]": {
+        required: true,
+        minlength: 3,
+        remote: "/locations/check_city?country_id=" + country_id
+      },
+      "camp[state]": {
+        required: true,
+        minlength: 3,
+        remote: "/locations/check_state?country_id=" + country_id
+      },
+      "camp[pincode]": {
+        required: true,
+        minlength: 3,
+        remote: "/locations/check_pincode?country_id=" + country_id
+      },
+      "camp[commune]": {
+        required: true,
+        minlength: 3,
+        remote: "/locations/check_commune?country_id=" + country_id
+      },
+      "camp[district]": {
+        required: true,
+        minlength: 3,
+        remote: "/locations/check_district?country_id=" + country_id
+      },
+      "camp[days]": {
+        required: true,
+      },
+      "camp[camp_date]": {
+        required: true,
+      },
+      "camp[camp_type]": {
+        required: true,
+      },
+      "camp[facility_id]": {
+        required: true,
+      },
+      "camp[venue]": {
+        required: true,
+      },
+    },
+    messages: {
+      "camp[contact_no]": "Number is required",
+      "camp[email]": {required: "Email can't be blank", email: "You must enter a valid email address"},
+    },
+
+    errorPlacement: function (error, element) {
+      var id = $(element).attr("id");
+      var parent = $("#"+id).parents(".input-group").length
+      if(parent == 0){
+        error.insertAfter(element);
+      } else {
+        error.insertAfter($("#"+id).parents(".input-group"));
+      }
+    }
+    }
+  );
+}
+
+validate_camp_form()
+
+$.validator.addMethod("mymail", function(value, element) {
+  return this.optional( element ) || /^([a-zA-Z0-9_\.\-])+\@(([a-zA-Z0-9\-])+\.)+([a-zA-Z0-9]{2,4})+$/.test( value );
+}, "Enter valid email!");
+
+
+if (country_id == 'IN_108'){
+  //Search State
+  jQuery('#search_state').autocomplete({
+    minLength: 3,
+    source: function(request, response) {
+      jQuery.ajax({
+        dataType: "json",
+        type : 'get',
+        url: '/locations/search_state',
+        data: {q: request.term, country_id: country_id, remote: "true" },
+        success: function(data) {
+          response(data);
+        },
+        error: function(data) {
+        }
+      });
+    },
+    select: function( event, ui ) {
+      var name = ui.item["state"]
+      setTimeout(function() {
+        jQuery("#search_state").val(name)
+        jQuery('#search_state').blur()
+      }, 20);
+    },
+    create: function () {
+      $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+        return $('<li>')
+            .append('<a style=\"color:#000;text-shadow: 2px\">' + item.state  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+            .appendTo(ul);
+      };
+    }
+  });
+
+  //Search City
+  jQuery('#search_city').autocomplete({
+    minLength: 3,
+    source: function(request,response){
+      var state = jQuery('#search_state').val();
+      jQuery.ajax({
+        dataType: "json",
+        type : 'get',
+        url: '/locations/search_city',
+        data: {q: request.term, state: state, remote: "true"},
+        success: function(data){
+          response(data);
+        },
+        error: function(data){
+
+        }
+      });
+    },
+    select: function( event, ui ) {
+      city  = ui.item["city"]
+      state = ui.item["state"]
+      setTimeout(function() {
+        jQuery("#search_city").val(city)
+        jQuery("#search_state").val(state)
+        jQuery('#search_city').blur()
+      }, 20);
+    },
+    create: function () {
+      $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+        return $('<li>')
+            .append('<a style=\"color:#000;text-shadow: 2px\">' + item.city  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+            .appendTo(ul);
+      };
+    }
+  });
+
+  //Search Pincode
+  jQuery('#search_pincode').autocomplete({
+    minLength: 3,
+    source: function(request,response){
+      var state = jQuery('#search_state').val();
+      var city = jQuery('#search_city').val();
+      jQuery.ajax({
+        dataType: "json",
+        type : 'get',
+        url: '/locations/search_pincode',
+        data: {q: request.term, state: state, city: city, remote: "true"},
+        success: function(data){
+          response(data);
+        },
+        error: function(data){
+
+        }
+      });
+    },
+    select: function( event, ui ) {
+      pincode = ui.item["pincode"]
+      city  = ui.item["city"]
+      state = ui.item["state"]
+      setTimeout(function() {
+        jQuery("#search_pincode").prop('readonly',true).val(pincode)
+        jQuery("#search_state").prop('readonly', true).val(state)
+        jQuery("#search_city").prop('readonly', true).val(city)
+        jQuery(".clear-pincode").show()
+        jQuery('#search_pincode').blur()
+        $("#search_state").removeClass('error');
+        $("#search_city").removeClass('error');
+      }, 20);
+    },
+    create: function () {
+      $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+        return $('<li>')
+            .append('<a style=\"color:#000;text-shadow: 2px; text-align: center;\">' + item.pincode  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+            .appendTo(ul);
+      };
+    }
+  });
+
+  // Clear pincode
+  $(".clear-pincode").on('click', function(e){
+    e.preventDefault()
+    $("#search_pincode").prop('readonly',false).val("")
+    $("#search_state").prop('readonly', false).val("")
+    $("#search_city").prop('readonly', false).val("")
+    $(".clear-pincode").hide()
+  });
+} else if (country_id == 'VN_254') {
+  //Search City
+  jQuery('#search_city').autocomplete({
+    minLength: 2,
+    source: function(request,response){
+      jQuery.ajax({
+        dataType: "json",
+        type : 'get',
+        url: '/locations/search_city',
+        data: {q: request.term, remote: "true"},
+        success: function(data){
+          response(data);
+        },
+        error: function(data){
+
+        }
+      });
+    },
+    select: function( event, ui ) {
+      city  = ui.item["city"]
+      state = ui.item["state"]
+      setTimeout(function() {
+        jQuery("#search_city").val(city)
+        jQuery("#search_state").val(state)
+        jQuery('#search_city').blur()
+        $("#search_state").removeClass('error');
+        $("#search_city").removeClass('error');
+      }, 20);
+    },
+    create: function () {
+      $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+        return $('<li>')
+            .append('<a style=\"color:#000;text-shadow: 2px\">' + item.city  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+            .appendTo(ul);
+      };
+    }
+  });
+
+  //Search City
+  jQuery('#search_district').autocomplete({
+    minLength: 2,
+    source: function(request,response){
+      var city = jQuery('#search_city').val();
+      jQuery.ajax({
+        dataType: "json",
+        type : 'get',
+        url: '/locations/search_district',
+        data: {q: request.term, city: city, remote: "true"},
+        success: function(data){
+          response(data);
+        },
+        error: function(data){
+
+        }
+      });
+    },
+    select: function( event, ui ) {
+      district = ui.item["district"]
+      city  = ui.item["city"]
+      setTimeout(function() {
+        jQuery("#search_district").val(district)
+        jQuery("#search_city").val(city)
+        jQuery('#search_district').blur()
+      }, 20);
+    },
+    create: function () {
+      $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+        return $('<li>')
+            .append('<a style=\"color:#000;text-shadow: 2px\">' + item.district  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+            .appendTo(ul);
+      };
+    }
+  });
+
+  //Search Commune
+  jQuery('#search_commune').autocomplete({
+    minLength: 2,
+    source: function(request,response){
+      var city = jQuery('#search_city').val();
+      var district = jQuery('#search_district').val();
+      jQuery.ajax({
+        dataType: "json",
+        type : 'get',
+        url: '/locations/search_commune',
+        data: {q: request.term, city: city, district: district, remote: "true"},
+        success: function(data){
+          response(data);
+        },
+        error: function(data){
+
+        }
+      });
+    },
+    select: function( event, ui ) {
+      commune = ui.item["commune"]
+      district  = ui.item["district"]
+      city = ui.item["city"]
+      setTimeout(function() {
+        jQuery("#search_commune").prop('readonly',true).val(commune)
+        jQuery("#search_city").prop('readonly', true).val(city)
+        jQuery("#search_district").prop('readonly', true).val(district)
+        jQuery(".clear-commune").show()
+        jQuery('#search_commune').blur()
+      }, 20);
+    },
+    create: function () {
+      $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+        return $('<li>')
+            .append('<a style=\"color:#000;text-shadow: 2px; text-align: center;\">' + item.commune + ' (' + item.district + ')' + '&nbsp; &nbsp; &nbsp;' + '</a>')
+            .appendTo(ul);
+      };
+    }
+  });
+
+  // Clear pincode
+  $(".clear-commune").on('click', function(e){
+    e.preventDefault()
+    $("#search_commune").prop('readonly',false).val("")
+    $("#search_district").prop('readonly', false).val("")
+    $("#search_city").prop('readonly', false).val("")
+    $(".clear-commune").hide()
+  });
+
+} else if (country_id == 'KH_039') {
+  $('#search_pincode_cambodia').autocomplete({
+    minLength: 3,
+    source: function(request,response){
+      //var country_id = $("#facility_country_id").val()
+      var state = $('#search_state_cambodia').val();
+      var district = $('#search_district_cambodia').val();
+      var commune = $('#search_commune_cambodia').val();
+      $.ajax({
+        dataType: "json",
+        type : 'get',
+        url: '/locations/search_pincode',
+        data: {q: request.term, country_id: country_id, state: state, district: district, commune: commune, remote: "true"},
+        success: function(data){
+          response(data);
+        },
+        error: function(data){
+        }
+      });
+    },
+    select: function( event, ui ) {
+      pincode = ui.item["pincode"]
+      state = ui.item["state"]
+      district = ui.item["district"]
+      commune = ui.item["commune"]
+      setTimeout(function() {
+        $(".camp-pincode").prop('readonly',true).val(pincode)
+        $(".camp-state").prop('readonly', true).val(state)
+        $(".camp-district").prop('readonly', true).val(district)
+        $(".camp-commune").prop('readonly', true).val(commune)
+        $(".clear-pincode").show()
+        $('.camp-pincode').blur()
+      }, 20);
+    },
+    create: function () {
+      $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+        return $('<li>')
+            .append('<a style=\"color:#000;text-shadow: 2px; text-align: center;\">' + item.pincode  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+            .appendTo(ul);
+      };
+    }
+  });
+
+  $('#search_state_cambodia').autocomplete({
+    minLength: 3,
+    source: function(request, response) {
+      //var country_id = $("#facility_country_id").val()
+      $.ajax({
+        dataType: "json",
+        type : 'get',
+        url: '/locations/search_state',
+        data: {q: request.term, country_id: country_id, remote: "true" },
+        success: function(data) {
+          response(data);
+        },
+        error: function(data) {
+        }
+      });
+    },
+    select: function( event, ui ) {
+      state = ui.item["state"]
+      setTimeout(function() {
+        $(".camp-state").val(state)
+        $('.camp-state').blur()
+      }, 20);
+    },
+    create: function () {
+      $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+        return $('<li>')
+            .append('<a style=\"color:#000;text-shadow: 2px\">' + item.state  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+            .appendTo(ul);
+      };
+    }
+  });
+
+  $('#search_district_cambodia').autocomplete({
+    minLength: 2,
+    source: function(request,response) {
+      //var country_id = jQuery('#facility_country_id').val()
+      var state = jQuery('#search_state_cambodia').val();
+      jQuery.ajax({
+        dataType: "json",
+        type : 'get',
+        url: '/locations/search_district',
+        data: {q: request.term, state: state, country_id: country_id, remote: "true"},
+        success: function(data){
+          response(data);
+        },
+        error: function(data){
+        }
+      });
+    },
+    select: function( event, ui ) {
+      district = ui.item["district"]
+      state  = ui.item["state"]
+      setTimeout(function() {
+        jQuery(".camp-district").val(district)
+        jQuery(".camp-state").val(state)
+        jQuery('.camp-district').blur()
+      }, 20);
+    },
+    create: function () {
+      $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+        return $('<li>')
+            .append('<a style=\"color:#000;text-shadow: 2px\">' + item.district  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+            .appendTo(ul);
+      };
+    }
+  });
+
+  $('#search_commune_cambodia').autocomplete({
+    minLength: 2,
+    source: function(request,response) {
+      //var country_id = jQuery('#facility_country_id').val()
+      var state = jQuery('#search_state_cambodia').val();
+      var district = jQuery('#search_district_cambodia').val();
+      jQuery.ajax({
+        dataType: "json",
+        type : 'get',
+        url: '/locations/search_commune',
+        data: {q: request.term, state: state, district: district, country_id: country_id, remote: "true"},
+        success: function(data){
+          response(data);
+        },
+        error: function(data){
+
+        }
+      });
+    },
+    select: function( event, ui ) {
+      commune = ui.item["commune"]
+      district  = ui.item["district"]
+      state = ui.item["state"]
+      setTimeout(function() {
+        jQuery(".camp-commune").prop('readonly',true).val(commune)
+        jQuery(".camp-state").prop('readonly', true).val(state)
+        jQuery(".camp-district").prop('readonly', true).val(district)
+        jQuery(".clear-commune").show()
+        jQuery('.camp-commune').blur()
+      }, 20);
+    },
+    create: function () {
+      $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+        return $('<li>')
+            .append('<a style=\"color:#000;text-shadow: 2px; text-align: center;\">' + item.commune + ' (' + item.district + ')' + '&nbsp; &nbsp; &nbsp;' + '</a>')
+            .appendTo(ul);
+      };
+    }
+  });
+
+  // Clear pincode
+  $(".clear-pincode").on('click', function(e){
+    e.preventDefault()
+    $(".camp-pincode").prop('readonly',false).val("")
+    $(".camp-state").prop('readonly', false).val("")
+    $(".camp-city").prop('readonly', false).val("")
+    $(".camp-district").prop('readonly',false).val("")
+    $(".camp-commune").prop('readonly', false).val("")
+    $(".clear-pincode").hide()
+  });
+
+  // Clear pincode
+  $(".clear-commune").on('click', function(e){
+    e.preventDefault()
+    $(".camp-commune").prop('readonly',false).val("")
+    $(".camp-district").prop('readonly', false).val("")
+    $(".camp-city").prop('readonly', false).val("")
+    $(".camp-state").prop('readonly', false).val("")
+    $(".camp-pincode").prop('readonly',false).val("")
+    $(".clear-commune").hide()
+  });
+}

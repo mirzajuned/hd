@@ -1,0 +1,59 @@
+<% if @stations_array.count > 0 %>
+  <% investigations = [] %>
+  <% @patient_id = @appointment.patient_id %>
+  <% patient_investigation = Investigation::InvestigationDetail.where(patient_id: @patient_id, is_deleted: false, '$or' => [{ :state.nin => ['removed', 'performed', 'template_created']}]) %>
+  <% inv_ophthal = patient_investigation.where(patient_id: @patient_id, _type: 'Investigation::Ophthal') %>
+  <% inv_laboratory = patient_investigation.where(patient_id: @patient_id, _type: 'Investigation::Laboratory') %>
+  <% inv_radiology = patient_investigation.where(patient_id: @patient_id, _type: 'Investigation::Radiology') %>
+  <% investigations << 'laboratory' if inv_laboratory.present? %>
+  <% investigations << 'radiology' if inv_radiology.present? %>
+  <% investigations << 'ophthal' if inv_ophthal.present? %>
+  <% optical_prescription = PatientOpticalPrescription.find_by(appointment_id: @appointment.id.to_s) %>
+  <% pharmacy_prescription = PatientPrescription.find_by(appointment_id: @appointment.id.to_s) %>
+  <% investigations << 'optician' if optical_prescription.present? %>
+  <% investigations << 'pharmacist' if pharmacy_prescription.present? %>
+  <div class="station dropdown" style="display: inline;margin-right:15px;">
+    <button class="btn btn-xs btn-primary dropdown-toggle station-button" type="button" data-toggle="dropdown" style="padding: 0 0 0 5px;margin-bottom:5px;">
+      Stations&nbsp;&nbsp;<span class="caret"></span>&nbsp;&nbsp;
+    </button>
+    <!-- do not change any logic -->
+    <ul class="dropdown-menu" style="margin-top: 7px;max-height: 300px;overflow-y: auto; margin-left: -10px;">
+      <% @stations_array.each do |station| %>
+        <% if station[3].present? %>
+          <% if current_user.id.to_s != station[4] %>
+            <li>
+              <% user_ids = station[5].split(',').map(&:lstrip) %>
+              <% role_ids = { 159282002 => 'laboratory', 41904004 => 'radiology', 2822900478 => 'ophthal', 46255001 => 'pharmacist', 387619007 => 'optician' } %>
+              <% user_name = [] %>
+              <% selected_user_ids = [] %>
+              <% department_ids = [] %>
+              <% user_ids.each do |user_id| %>
+                <% user = User.find_by(id: user_id) %>
+                <% user_role_ids = user.role_ids %>
+                <% if role_ids.keys.include? user_role_ids[0] %>
+                  <% if investigations.include? role_ids[user_role_ids[0]] %>
+                    <% user_name << user.fullname %>
+                    <% department_ids << user.department_ids %>
+                    <% selected_user_ids << user.id %>
+                  <% end %>
+                <% else %>
+                  <% user_name << user.fullname %>
+                <% end %>
+                <% primary_department_id = user.department_ids[0] %>
+                <% if ['50121007', '284748001', '261904005', '309935007', '309964003'].include? primary_department_id %>
+                  <% department_ids << primary_department_id %>
+                  <% selected_user_ids << user.id %>
+                <% end %>
+              <% end %>
+              <% if user_name.present? %>
+                <%= link_to opd_clinical_workflow_checkout_path(to: 'station', to_station: station[0], workflow_id: @clinical_workflow.id, department_ids: department_ids&.flatten&.uniq, user_ids: selected_user_ids&.flatten&.uniq), data: { remote: true, 'attr-station': station[0] } do %>
+                  <%= station[1] %> <span style="font-size:10px;"><%= "(#{user_name&.join(', ')})" if station[3].present? %>&nbsp;</span><label class="label label-primary" style="border-radius:100%;font-size:12px;"><%= station[4] %></label>
+                <% end %>
+              <% end %>
+            </li>
+          <% end %>
+        <% end %>
+      <% end %>
+    </ul>
+  </div>
+<% end %>

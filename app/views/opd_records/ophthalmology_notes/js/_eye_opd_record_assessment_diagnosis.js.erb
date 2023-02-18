@@ -1,0 +1,387 @@
+if("<%= @organisations_setting.mandatory_opd_templates %>" == "true" && $('#opdrecord_templatetype').val()
+ != 'postop'){
+  $(document).ready(() => {
+    check_diagnosis_status()
+  });
+
+  //toggle no diagnosis advised checkbox
+  // $('#opdrecord_no_diagnosis_advised').on('click',() => {
+  //   if($('#opdrecord_no_diagnosis_advised').is(':checked')){
+  //     $('.diagnosis_tab_row').hide()
+  //     $('.diagnosis_comment_row').css("margin-top", "199px");
+  //     $('#div_provisional_diagnosis').hide()
+  //   } else{
+  //     $('.diagnosis_comment_row').css("margin-top", "0px");
+  //     $('.diagnosis_tab_row').show()
+  //     $('#div_provisional_diagnosis').show()
+  //   }
+  //   check_diagnosis_status()
+  // });
+}
+
+jQuery('#search_diagnosis_keyword').autocomplete({
+
+  minLength: 3,
+
+  source: function(request, response) {
+    var template_id = 244486005
+    var speciality_id = $("#opdrecord_specalityid").val()
+    var search_type = $('#search_diagnosis_keyword').data('attr')
+
+    jQuery.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/icdtree/searchdiagnosis',
+      data: {q: request.term, template_id: template_id, speciality_id: speciality_id, search_type: search_type, remote: "true" },
+      success: function(data) {
+        response(data);
+      },
+      error: function(data) {
+      }
+    });
+  },
+  select: function( event, ui ) {
+    params = ui.item["code"]
+    name = ui.item["code"]
+    icd_type = ui.item["icd_type"]
+    modal_diagnosis_icd();
+    setTimeout(function() {
+      jQuery("#search_diagnosis_keyword").val("")
+    }, 50);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+      return $('<li>').append('<a>' + item.label  + '&nbsp; &nbsp; &nbsp;' + "<span class=\"badge pull-right\">" + item.icd_type_label + "</span>" + '</a>').appendTo(ul);
+    };
+  },
+  close: function() {
+  }
+});
+
+jQuery('#recent_diagnosis_icd').on('click', function() {
+  if (jQuery("#recent_diagnosis_icd option:selected").val() == undefined) {
+    return
+  }
+  else{
+    params = jQuery("#recent_diagnosis_icd option:selected").val()
+    icd_type = jQuery("#recent_diagnosis_icd option:selected").attr('data-id');
+    modal_diagnosis_icd();
+  }
+});
+
+//manu
+jQuery('#recent_diagnosis_icd_tab').on('change', function() {
+  if (jQuery("#recent_diagnosis_icd_tab option:selected").val() == undefined) {
+    return
+  }
+  else{
+    params = jQuery("#recent_diagnosis_icd_tab option:selected").val()
+    icd_type = jQuery("#recent_diagnosis_icd_tab option:selected").attr('data-id');
+    modal_diagnosis_icd();
+    jQuery("#recent_diagnosis_icd_tab").val("")
+  }
+});
+
+//end
+jQuery('#opdrecord_topicd_list').on('click', function() {
+  if (jQuery("#opdrecord_topicd_list option:selected").val() == undefined) {
+    return
+  }
+  else{
+    params = jQuery("#opdrecord_topicd_list option:selected").val()
+    icd_type = 'IcdDiagnosis'
+    modal_diagnosis_icd();
+  }
+});
+
+jQuery('#custom_icd_diagnosis_web').on('change', function() {
+  var selected_custom_icd = jQuery("#custom_icd_diagnosis_web option:selected").val()
+
+  if (selected_custom_icd != undefined) {
+    params = jQuery("#custom_icd_diagnosis_web option:selected").val()
+    icd_type = jQuery("#custom_icd_diagnosis_web option:selected").attr('data-id');
+    modal_diagnosis_icd();
+    $('#custom_icd_diagnosis_web').val('')
+  }
+});
+
+jQuery('#translated_icd_diagnosis_web').on('change', function() {
+  var selected_custom_icd = jQuery("#translated_icd_diagnosis_web option:selected").val()
+
+  if (selected_custom_icd != undefined) {
+    params = jQuery("#translated_icd_diagnosis_web option:selected").val()
+    icd_type = jQuery("#translated_icd_diagnosis_web option:selected").attr('data-id');
+    modal_diagnosis_icd();
+    $('#translated_icd_diagnosis_web').val('')
+  }
+});
+
+function modal_diagnosis_icd(){
+  event.preventDefault();
+  jQuery.ajax({
+    type: "GET",
+    url: "/icdtree/modal_diagnosis_icd",
+    data: {ajax: params, icd_type: icd_type, remote: "true" },
+
+  })
+}
+
+jQuery('.diagnoses-added').on('click', "a[name*='removediagnosisbutton']", function() {
+  event.preventDefault();
+  var diagnosislist_removed_tr_html;
+  var fieldcounter;
+  fieldcounter = jQuery(this).attr('id').slice(-1);
+  var diagnosislist_tr_array = jQuery(this).parents('.diagnosislist').find(".id");
+  if (diagnosislist_tr_array.length > 0) {
+    jQuery(this).parents('.diagnosislist').find("input[name*='_destroy']").val("1");
+    diagnosislist_removed_tr_html = jQuery(this).parents('.diagnosislist').wrap('<p/>').parent().html();
+    jQuery(this).parents('.diagnosislist').unwrap();
+    jQuery('.diagnoses-removed').append(diagnosislist_removed_tr_html);
+    jQuery(this).parents('.diagnosislist').remove();
+    _renumber_id_after_remove("tbody.diagnoses-added", "div.diagnoses-removed");
+  } else {
+    jQuery(this).parents('.diagnosislist').remove();
+    _renumber_id_after_remove("tbody.diagnoses-added", "div.diagnoses-removed");
+  }
+  check_validation_status(
+    $('#opdrecord_diagnosislist'),
+    'diagnosis_is_valid', 'diagnosis_step', true,
+    'opdrecord_provisional_diagnosis'
+  );
+});
+
+function build_topicd_list_from_array_and_populate(array, fieldname) {
+  var topicd_list = [];
+  jQuery("#"+fieldname).empty();
+  $("#opdrecord_topicd_list_tab").prepend("<option>Please Select</option>")
+  jQuery.each(array, function(index, object) {
+    var topicd_listoption;
+
+    topicd_listoption = jQuery("<option value=" + "\"" + object.code + "\"" + ">" + object.name + "</option>");
+    topicd_list[index + 1] = topicd_listoption;
+  });
+
+  jQuery("#"+fieldname).append(topicd_list);
+
+}
+
+function populate_topicd_list (array, config) {
+  if(config['data'] == "Tablet"){
+    var topicd_listfieldname = config['opdrecord_topicd_list_tab'];
+  }else{
+    var topicd_listfieldname = config['opdrecord_topicd_list'];
+  }
+
+  build_topicd_list_from_array_and_populate(array, topicd_listfieldname);
+}
+
+
+jQuery(".opdrecord_topicd_list_select").hide();
+
+jQuery('#opdrecord_topicd_name').on('change', function() {
+  event.preventDefault();
+  var topicd_name_selected_option_text = jQuery("#opdrecord_topicd_name option:selected").text();
+  var topicd_name_selected_option_value = jQuery("#opdrecord_topicd_name option:selected").val();
+
+  if(topicd_name_selected_option_value){
+    var params = { topicd_name: topicd_name_selected_option_value };
+    var topicd_list_config = { opdrecord_topicd_list: "opdrecord_topicd_list", data: "Web" };
+    _jquery_ajax_get_params_config("/opd_records/populate_topicd_list.json", params, "populate_topicd_list", topicd_list_config);
+
+    jQuery(".opdrecord_topicd_list_select").show();
+  }
+
+  return false;
+});
+
+
+jQuery('#custom_icd_diagnosis_tab').on('change', function() {
+  if (jQuery("#custom_icd_diagnosis_tab option:selected").val() == undefined) {
+    return
+  }
+  else{
+    params = jQuery("#custom_icd_diagnosis_tab option:selected").val()
+    icd_type = jQuery("#custom_icd_diagnosis_tab option:selected").attr('data-id');
+    modal_diagnosis_icd();
+    $('#custom_icd_diagnosis_tab').val('')
+  }
+});
+
+
+jQuery('#opdrecord_topicd_list_tab').on('change', function() {
+  if (jQuery("#opdrecord_topicd_list_tab option:selected").val() == undefined) {
+    return
+  }
+  else{
+    params = jQuery("#opdrecord_topicd_list_tab option:selected").val();
+    icd_type = 'IcdDiagnosis'
+    modal_diagnosis_icd();
+    $("#opdrecord_topicd_list_tab").val("Please Select");
+  }
+});
+
+
+jQuery('#opdrecord_topicd_name_tab').on('change', function() {
+  event.preventDefault();
+  var topicd_name_selected_option_text = jQuery("#opdrecord_topicd_name_tab option:selected").text();
+  var topicd_name_selected_option_value = jQuery("#opdrecord_topicd_name_tab option:selected").val();
+
+  if(topicd_name_selected_option_value){
+    var params = { topicd_name: topicd_name_selected_option_value };
+    var topicd_list_config = { opdrecord_topicd_list_tab: "opdrecord_topicd_list_tab", data: "Tablet" };
+    _jquery_ajax_get_params_config("/opd_records/populate_topicd_list.json", params, "populate_topicd_list", topicd_list_config);
+
+    jQuery(".opdrecord_topicd_list_select").show();
+  }
+
+  return false;
+});
+
+
+//$('#opdrecord_is_provisional_diagnosis').on('click', op_provisional_diagnosis);
+$('#opdrecord_provisional_diagnosis').on('blur', provisional_diagnosis_comment);
+$('#saveopdrecord').on('blur', provisional_diagnosis_comment);
+
+$('#opdrecord_is_provisional_diagnosis').on('click', () => {
+  pd_text = $('#opdrecord_provisional_diagnosis');
+  pd_check = $('#opdrecord_is_provisional_diagnosis');
+  if(pd_check.is(':checked') == false) {
+    pd_text.removeAttr('value');
+    pd_text.hide();
+    check_validation_status(
+      pd_text, 'diagnosis_is_valid',
+      'diagnosis_step', true,
+      'opdrecord_diagnosislist'
+    );
+  } else if(pd_check.is(':checked') == true) {
+    pd_text.show();
+  }
+});
+
+function op_provisional_diagnosis() {
+  pd_text = $('#opdrecord_provisional_diagnosis');
+  pd_check = $('#opdrecord_is_provisional_diagnosis');
+  if(pd_check.is(':checked') == false) {
+    pd_text.removeAttr('value');
+    pd_text.hide();
+  } else if(pd_check.is(':checked') == true) {
+    pd_text.show();
+  }
+ }
+
+function provisional_diagnosis_comment(){
+  pd_text = $('#opdrecord_provisional_diagnosis');
+  pd_check = $('#opdrecord_is_provisional_diagnosis');
+  if(pd_text.val() == ''){
+    pd_check.prop('checked', false);
+  }
+}
+
+op_provisional_diagnosis(); // manage provisional diagnosis checkbox and textbox
+//manage_diagnosis_comments(); // manage comment box for diagnosis
+manage_provisional_diagnosis_history(); // manage provisional diagnosis history
+
+$("#provisional-dialog").dialog({
+  title: "Provisional Diagnosis History",
+  width: 600,
+  modal: true,
+  autoOpen: false,
+  show: {
+    effect: "blind",
+    duration: 1000
+  },
+  hide: {
+    effect: "explode",
+    duration: 1000
+  }
+});
+
+$('.ui-dialog-titlebar-close').addClass("fa fa-close");
+
+$( "#tooltip_history" ).on( "click", function() {
+  $("#provisional-dialog").dialog("open");
+});
+
+function manage_provisional_diagnosis_history() {
+  opdrecord_id = $('#opdrecord_opdrecordid').val();
+  casesheet_id = $('#opdrecord_case_sheet_id').val();
+  $.ajax({
+    dataType: "script",
+    type : 'GET',
+    url: '/opd_records/show_provisional_diagnosis_history',
+    data: {casesheet_id: casesheet_id},
+    success: function(res) {},
+    error: function(err) {
+      console.log('error ---- ', JSON.stringify(err));
+    }
+  });
+}
+
+<% search_type = current_facility.try(:assessment_search_type) || 'all' %>
+
+<% if search_type == 'all' %>
+  $("#search_diagnosis_icd").show();
+  $("#custom_icd_diagnosis").hide();
+<% else %>
+  $("#search_diagnosis_icd").hide();
+  $("#custom_icd_diagnosis").show();
+  select_diagnosis_icd_type()
+<% end %>
+$("#recent_diagnosis_icd").hide();
+$("#test_div").css("display", "none");
+
+$("input[name='diagnosis_icd_type']").on('click', function () {
+  select_diagnosis_icd_type()
+});
+
+function select_diagnosis_icd_type(){
+  var diagnosis_icd_type = $("input[name='diagnosis_icd_type']:checked").val();
+  if (diagnosis_icd_type == 'search_diagnosis_icd') {
+    $("#search_diagnosis_icd").show();
+    $("#recent_diagnosis_icd").hide();
+    $("#test_div").css("display", "none");
+    $("#custom_icd_diagnosis").hide();
+    $("#translated_icd_diagnosis").hide();
+    set_diagnosis_search('I + C')
+  }
+  else if (diagnosis_icd_type == 'recent_diagnosis_icd') {
+    $("#test_div").css("display", "block");
+    $("#recent_diagnosis_icd").show();
+    $("#search_diagnosis_icd").hide();
+    $("#custom_icd_diagnosis").hide();
+    $("#translated_icd_diagnosis").hide();
+    set_diagnosis_search('I + C')
+  }
+  else if (diagnosis_icd_type == 'custom_icd_diagnosis') {
+    $("#test_div").hide();
+    $("#search_diagnosis_icd").hide();
+    $("#custom_icd_diagnosis").show();
+    $("#translated_icd_diagnosis").hide();
+    $("#test_div").css("display", "none");
+    set_diagnosis_search('C')
+  }
+  else if (diagnosis_icd_type == 'translated_icd_diagnosis') {
+    $("#test_div").hide();
+    $("#search_diagnosis_icd").hide();
+    $("#custom_icd_diagnosis").hide();
+    $("#translated_icd_diagnosis").show();
+    $("#test_div").css("display", "none");
+    set_diagnosis_search('T')
+  }
+}
+
+function set_diagnosis_search(diagnosis_type) {
+    if (diagnosis_type == 'C') {
+        var html = '<span class="label label-primary">C</span>'
+        var placeholder = 'Search by Custom Diagnosis Name / Code'
+        var type = 'custom'
+    } else{
+        var html = '<span class="label label-primary">I + C + T</span>'
+        var placeholder = 'Search by any Diagnosis Name / Code'
+        var type = 'all'
+    }
+
+    $('.search_diagnosis_label').html(html)
+    $('#search_diagnosis_keyword').attr('placeholder', placeholder)
+    $('#search_diagnosis_keyword').data('attr', type)
+}

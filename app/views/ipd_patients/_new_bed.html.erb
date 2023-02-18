@@ -1,0 +1,84 @@
+<div class="modal-dialog modal-hg-patientreg">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h4 class="nomargin" style="text-align:center">Select Bed For Patient</h4>
+    </div>
+    <div class="modal-body">
+      <%= form_for @admission,:format => :js,:method => :post,remote: true,:multipart => true,:url => ipd_patients_add_bed_path,html: { :class => "patient-bed-form", :id => "patient-bed-form" } do |admission|%>
+        <div class="row">
+          <%= hidden_field_tag "admission_id", @admission.id %>
+          <%= admission.hidden_field :daycare, :value => false %>
+          <% if @admission.bed_id.nil? %>
+            <div class="col-md-4">
+              <strong>Select Ward</strong>
+              <%= admission.select :ward_id, options_for_select(Ward.where(:facility_id => @admission.facility_id).map { |ward| [ward.name, ward.id] }), {}, {:class => "form-control"} %>
+            </div>
+            <div class="col-md-4">
+              <strong>Select Room</strong>
+              <%= admission.select :room_id, options_for_select(Room.where(:facility_id => @admission.facility_id).map { |room| [room.name, room.id] }), {}, {:class => "form-control"} %>
+            </div>
+            <div class="col-md-4 bed_available">
+              <strong>Select Bed</strong>
+              <%= admission.select :bed_id, options_for_select(""), {}, {:class => "form-control"} %>
+            </div>
+            <div class="col-md-4 no_bed_available" style="display:none;">
+              <strong>Select Bed</strong>
+              <p>No Beds Available</p>
+            </div>
+          <% else %>
+            <div class="col-md-4">
+              <strong>In Ward :</strong> <%= Ward.find_by(:id => @admission.ward_id).name %>
+              <%= admission.select :ward_id, options_for_select(Ward.where(:facility_id => @admission.facility_id).map { |ward| [ward.name, ward.id] }), {}, {:class => "form-control"} %>
+            </div>
+            <div class="col-md-4">
+              <strong>In Room :</strong> <%= Room.find_by(:id => @admission.room_id).name %> (<%= Room.find_by(:id => @admission.room_id).code %>)
+              <%= admission.select :room_id, options_for_select(Room.where(:facility_id => @admission.facility_id).map { |room| [room.name, room.id] }), {}, {:class => "form-control"} %>
+            </div>
+            <div class="col-md-4 bed_available">
+              <strong>On Bed :</strong> <%= Room.find_by(:id => @admission.room_id).beds.find_by(:id => @admission.bed_id).name %> (<%= Room.find_by(:id => @admission.room_id).beds.find_by(:id => @admission.bed_id).code %>)
+              <%= admission.select :bed_id, options_for_select(""), {}, {:class => "form-control"} %>
+            </div>
+            <div class="col-md-4 no_bed_available" style="display:none;">
+              <strong>On Bed :</strong> <%= Room.find_by(:id => @admission.room_id).beds.find_by(:id => @admission.bed_id).name %> (<%= Room.find_by(:id => @admission.room_id).beds.find_by(:id => @admission.bed_id).code %>)
+              <p>No Beds Available</p>
+            </div>
+          <% end %>
+        </div>
+        <br>
+        <div class="row">
+          <div class="btn-group">
+            <%= admission.submit "Save Bed", class: "btn btn-success",id: "save_bed", remote: true, 'data-disable-with' => "Please wait.." %>
+            <button aria-hidden="true" class="btn btn-info signup-patient-form-close" data-dismiss="modal">Close</button>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<script type="text/javascript">
+  jQuery(document).ready(function(){
+    jQuery("#admission_room_id").on('change',function(){
+      var room_id = jQuery("#admission_room_id").val();
+      jQuery.ajax({
+        type: "GET",
+        dataType: "json",
+        url: "/ipd_patients/get_bed_count",
+        data: {room_id: room_id},
+        success: function(response){
+          if (response.length > 0) {
+            jQuery('#admission_bed_id').children().remove();
+            jQuery.each(response, function(key, value) {
+              jQuery('#admission_bed_id').append(jQuery("<option></option>").attr("value",value[1]).text(value[0]));
+            });
+          } else {
+            jQuery(".bed_available").hide();
+            jQuery(".no_bed_available").css("display","block");
+            jQuery("#save_bed").attr("disabled","disabled")
+          };
+        }
+      });
+    })
+    jQuery('#admission_room_id').trigger("change");
+  });
+</script>

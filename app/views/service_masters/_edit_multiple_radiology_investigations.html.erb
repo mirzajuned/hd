@@ -1,0 +1,155 @@
+<%= javascript_include_tag 'application-loggedin', 'data-turbolinks-track' => true %>
+<div class="modal-dialog modal-md" style="width:98%;">
+  <!-- Modal content-->
+  <div class="modal-content">
+    <%= form_tag '/service_masters/update_multiple', method: 'patch', remote: true, id: 'new-services-form', class: 'new-services-form' do %>
+      <div class="modal-header">
+        <div class="row">
+          <div class="col-md-4 col-md-offset-4">
+            <h4 class="modal-title">Add Radiology Investigation Service</h4>
+          </div>
+          <div class="col-md-4 text-right">
+            <% if (@radiology_investigations.count > 0 || @custom_radiology_investigations.count > 0) && @selected_sub_specialty %>
+              <%= submit_tag 'Save', class: 'btn btn-success', id: 'save-multiple-radiology-investigations', data: { 'disable-with': 'Please Wait...' }, onclick: 'service_master_form()' %>
+            <% end %>
+            <button type="button" class="btn btn-default" data-dismiss="modal" style="margin-left:5px;">Close</button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-body radiology_investigation-service-body">
+        <div class="row mb10">
+          <div class="col-md-12 text-center">
+            <b style="color:#000;">COMMON/CUSTOM RADIOLOGY INVESTIGATIONS LIST</b>
+            <p style="color:#f00;">Create/Update Service Master in Bulk for different Service Type your Organisation provide for each Investigation.</p>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-md-1 col-md-3-shared text-right">
+            <b class="form-control" style="border: 0;">SPECIALTY : </b>
+          </div>
+          <div class="col-md-2">
+            <% prompt = @available_specialties.count > 1 ? 'Please Select' : false %>
+            <%= select_tag 'specialty_id', options_for_select(@available_specialties, params[:specialty_id]), prompt: prompt, class: 'form-control radiology_specialty_dropdown' %>
+          </div>
+          <div class="col-md-1 col-md-3-shared text-right">
+            <b class="form-control" style="border: 0;">SUB SPECIALTY : </b>
+          </div>
+          <div class="col-md-2">
+            <% pre_collection  = if params[:specialty_id].blank?
+                                    [['Please Select', nil]]
+                                 else
+                                    [['Please Select', nil], ['No Sub Speciality Applicable', '']]
+                                 end
+                collection =  pre_collection+@sub_specialties    
+                               %>
+            <%= select_tag 'sub_specialty_id', options_for_select(collection, @selected_sub_specialty), class: 'form-control radiology_sub_specialty_dropdown', disabled: params[:specialty_id].blank?  %>
+          </div>
+          <% if (@radiology_investigations.count > 0 || @custom_radiology_investigations.count > 0) && @selected_sub_specialty %>
+            <div class="col-md-2">
+              <b class="form-control" style="border: 0;">SEARCH RADIOLOGY INVESTIGATION : </b>
+            </div>
+            <div class="col-md-3">
+              <input type="text" name="search-radiology_investigation" id="search-radiology_investigation" class="form-control" placeholder="Search Radiology Investigations">
+            </div>
+          <% end %>
+        </div>
+        <hr style="margin:5px;">
+        <div class="row mb5">
+          <div class="col-md-2">
+            Investigation Name
+          </div>
+          <div class="col-md-10">
+            <div class="col-md-2">
+              Service Group
+            </div>
+            <div class="col-md-2">
+              Service Sub Group
+            </div>
+            <div class="col-md-2">
+              Service Name
+            </div>
+            <div class="col-md-2 col-md-3-shared">
+              Service Code
+            </div>
+            <div class="col-md-2 col-md-3-shared">
+              Service Amount
+            </div>
+            <div class="col-md-2">
+              Department
+            </div>
+            <div class="col-md-1"></div>
+          </div>
+        </div>
+        <div class="investigations">
+          <% unless @selected_sub_specialty.nil? %>
+            <% @counter = 0 %>
+            <%= render partial: 'service_masters/forms/radiology_investigation_fields.html.erb', locals: { radiology_investigations: @radiology_investigations, radiology_investigation_type: 'RadiologyInvestigationData' } %>
+            <%= render partial: 'service_masters/forms/radiology_investigation_fields.html.erb', locals: { radiology_investigations: @custom_radiology_investigations, radiology_investigation_type: 'CustomRadiologyInvestigation' } %>
+          <% end %>
+        </div>
+      </div>
+      <div class="modal-footer">
+      </div>
+    <% end %>
+  </div>
+</div>
+<script type="text/javascript">
+
+  function radiology_specialty() {
+    var specialty_id = $('.radiology_specialty_dropdown').val();
+    $.ajax({
+      dataType: "json",
+      type: 'get',
+      url: '/sub_specialties',
+      data: { specialty_id: specialty_id },
+      success: function(response) {
+        $('.radiology_sub_specialty_dropdown').html(`<option value="">Please Select</option>
+        <option value="">Sub Speciality Not Applicable</option>`)
+        $.each(response, function(key, value) {
+          $('.radiology_sub_specialty_dropdown').append($("<option></option>").attr("value", value[0]).text(value[1]));
+        });
+        radiology_sub_specialty()
+      }
+    });
+  }
+
+  function radiology_sub_specialty() {
+    var specialty_id = $('.radiology_specialty_dropdown').val();
+    if ($('.radiology_sub_specialty_dropdown option:selected').text() == 'Please Select')
+    {
+      $('.investigations').html('')
+      var data = { specialty_id: specialty_id, flag: "<%= params[:flag] %>",  remote: "true" }
+    }else{
+      var data = { specialty_id: specialty_id, sub_specialty_id: $('.radiology_sub_specialty_dropdown').val(),
+              flag: "<%= params[:flag] %>",  remote: "true" }
+      $('.investigations').html('<div class="loader"></div>')
+    }
+    $.ajax({
+      type: "GET",
+      url: '/service_masters/edit_multiple',
+      data: data
+    })
+  }
+
+  $('.radiology_specialty_dropdown').on('change', function() {
+    if ($('.main-radiology_investigation-list').length > 0){
+      $('#confirm-filter')
+        .html(confirmationModal('radiology_specialty', '<%= params[:specialty_id] %>'))
+        .modal('show')
+        .css('background-color', 'rgba(0,0,0,0.5)')
+    } else{
+      radiology_specialty()
+    }
+  })
+
+  $('.radiology_sub_specialty_dropdown').on('change', function() {
+    if ($('.main-radiology_investigation-list').length > 0){
+      $('#confirm-filter')
+        .html(confirmationModal('radiology_sub_specialty', '<%= @selected_sub_specialty.blank? && !@selected_sub_specialty.nil? ? '-1' : @selected_sub_specialty %>'))
+        .modal('show')
+        .css('background-color', 'rgba(0,0,0,0.5)')
+    } else{
+          radiology_sub_specialty()
+    }
+  })
+</script>

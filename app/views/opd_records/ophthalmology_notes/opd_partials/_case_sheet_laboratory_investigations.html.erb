@@ -1,0 +1,151 @@
+<div class="col-md-12 other-laboratory-list">
+  <strong style="color:#428bca;text-decoration:underline;font-size:15px;">Other Investigation within this Case</strong>
+  <table class="table table-bordered">
+    <tbody id='laboratory_investigation-present' class='laboratory_investigation-present'>
+      <input type="hidden" name="opdrecord[disabled_laboratory_codes]" class="disabled_laboratory_codes" value="<%= @opdrecord.try(:disabled_laboratory_codes).to_s %>">
+      <% counter = 0 %>
+      <% @case_sheet.laboratory_investigations.where(:record_id.nin => [@opdrecord.id], is_performed: false, is_disabled: false).group_by{ |li| [li.loinc_code] }.each do |investigation_args, laboratory_investigations| %>
+        <tr class="case-laboratory">
+          <input type="hidden" class="loinc_code" value="<%= laboratory_investigations[0].loinc_code %>">
+          <input type="hidden" class="investigation_type" value="<%= laboratory_investigations[0].investigation_type %>">
+          <td style="line-height: 1;">
+            <b><span id="laboratory_investigation_stage_<%= counter %>_p" style='color: #c9302c'><%= laboratory_investigations[0].investigationstage.to_s + " - " %></span> <%= laboratory_investigations[0].investigationname %></b><br/>
+            <span style="font-size: 10px;"><%= laboratory_investigations[0].advised_by %> on <%= laboratory_investigations[0].advised_datetime.try(:strftime, "%d/%m/%Y") %> </span>
+          </td>
+          <td style="width:30%;">
+            <button class="btn btn-primary btn-re-advice-laboratory btn-xs">Re-Advice</button>
+            <!-- <button class="btn btn-danger btn-disable-laboratory btn-xs">Disable</button> -->
+          </td>
+        </tr>
+        <% counter += 1 %>
+      <% end %>
+      <% @case_sheet.laboratory_investigations.where(:record_id.nin => [@opdrecord.id], is_performed: true).each_with_index do |laboratory_investigation, j| %>
+        <tr class="case-laboratory performed-laboratory">
+          <input type="hidden" class="loinc_code" value="<%= laboratory_investigation.loinc_code %>">
+          <input type="hidden" class="order_item_advised_id" value="<%= laboratory_investigation.order_item_advised_id.to_s %>">
+          <input type="hidden" class="investigation_type" value="<%= laboratory_investigation.investigation_type %>">
+          <td style="line-height: 1;">
+            <b><span id="laboratory_investigation_stage_<%= j %>_p" style='color: #1caf9a'><%= laboratory_investigation.investigationstage.to_s + " - " %></span> <%= laboratory_investigation.investigationname %></b><br/>
+            <span style="font-size: 10px;">A: <%= laboratory_investigation.advised_by %> on <%= laboratory_investigation.advised_datetime.try(:strftime, "%d/%m/%Y") %> </span><br/>
+            <span style="font-size: 10px;">P: <%= laboratory_investigation.performed_by %> on <%= laboratory_investigation.performed_datetime.try(:strftime, "%d/%m/%Y") %> </span>
+          </td>
+          <td style="width:30%;">
+            <button class="btn btn-primary btn-re-advice-laboratory btn-xs">Re-Advice</button>
+          </td>
+        </tr>
+        <% if laboratory_investigation.template_created %>
+          <tr class="performed-readings">
+            <td colspan="3" style="padding:5px;">
+              <table class="table table-bordered" style="margin:0px;">
+                <% if laboratory_investigation.laboratory_panel_records.count > 0 %>
+                  <thead>
+                    <tr>
+                      <th style="width:33.33%;padding:0px;text-align:center;font-size:12px;">Name</th>
+                      <th style="width:33.33%;padding:0px;text-align:center;font-size:12px;">Findings</th>
+                      <th style="width:33.33%;padding:0px;text-align:center;font-size:12px;">Normal Range</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td style="padding:0px;text-align:center;font-size:12px;"><%= laboratory_investigation.investigation_val %></td>
+                    </tr>
+                    <% laboratory_investigation.laboratory_panel_records.each do |lpr| %>
+                      <tr>
+                        <td style="padding:0px;text-align:center;font-size:12px;"><%= lpr.investigation_name %></td>
+                        <td style="padding:0px;text-align:center;font-size:12px;"><%= lpr.investigation_val %></td>
+                        <td style="padding:0px;text-align:center;font-size:12px;"><%= lpr.normal_range %></td>
+                      </tr>
+                    <% end %>
+                  </tbody>
+                <% else %>
+                  <thead>
+                    <tr>
+                      <th style="padding:0px;text-align:center;font-size:12px;">Findings</th>
+                      <th style="padding:0px;text-align:center;font-size:12px;">Normal Range</th>
+                      <th style="padding:0px;text-align:center;font-size:12px;">Remark</th>
+                      <th style="padding:0px;text-align:center;font-size:12px;">Doctor's Remark</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td style="padding:0px;text-align:center;font-size:12px;"><%= laboratory_investigation.investigation_val %></td>
+                      <td style="padding:0px;text-align:center;font-size:12px;"><%= laboratory_investigation.normal_range %></td>
+                      <td style="padding:0px;text-align:center;font-size:12px;"><%= laboratory_investigation.investigation_comment %></td>
+                      <td style="padding:0px;text-align:center;font-size:12px;"><%= laboratory_investigation.doctors_remark %></td>
+                    </tr>
+                  </tbody>
+                <% end %>
+              </table>
+            </td>
+          </tr>
+        <% elsif laboratory_investigation.performed_comment.present? %>
+          <tr class="performed-readings">
+            <td colspan="3" style="padding:5px;">
+              <table class="table table-bordered" style="margin:0px;">
+                <thead>
+                  <tr>
+                    <th style="padding:0px;text-align:center;font-size:12px;">Findings</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style="padding:0px;text-align:center;font-size:12px;"><%= laboratory_investigation.performed_comment %></td>
+                  </tr>
+                </tbody>
+              </table>
+            </td>
+          </tr>
+        <% end %>
+      <% end %>
+    </tbody>
+  </table>
+</div>
+
+<script type="text/javascript">
+  $(".btn-re-advice-laboratory").on('click', function(e){
+    e.preventDefault()
+    var case_laboratory = $(this).closest(".case-laboratory")
+    var row_count = jQuery(".laboratoryinvestigations-added").find('.addedlaboratoryinvestigationlist').length
+    var loinc_code = $(case_laboratory).find('.loinc_code').val()
+    var investigation_type = $(case_laboratory).find('.investigation_type').val()
+    var order_item_advised_id = $(case_laboratory).find('.order_item_advised_id').val()
+    var consultant_id = $("#opdrecord_view_owner_id").val()
+    $.ajax({
+      dataType: "script",
+      type: "GET",
+      url: "/opd_records/append_laboratory_investigation",
+      data: { order_item_advised_id: order_item_advised_id, loinc_code: loinc_code, consultant_id: consultant_id, row_count: row_count},
+      success: function(response){
+        jQuery("#opdrecord_custom_toplaboratoryinvestigation option:selected").prop("selected", false);
+        if($(case_laboratory).hasClass("performed-laboratory")){
+
+        } else {
+          $(case_laboratory).hide()
+          if($(".case-laboratory:visible").length <= 0){
+            $(".other-laboratory-list").hide()
+          }
+        }
+      }
+    })
+  })
+
+  $(".btn-disable-laboratory").on('click', function(e){
+    e.preventDefault()
+    var case_laboratory = $(this).closest(".case-laboratory")
+    var code = $(case_laboratory).find('.loinc_code').val()
+    var disabled_laboratory_codes = $(".disabled_laboratory_codes").val()
+    if(disabled_laboratory_codes == ""){
+      final_disabled_laboratory_codes = code
+    } else {
+      final_disabled_laboratory_codes = disabled_laboratory_codes + "," + code
+    }
+
+    $(".disabled_laboratory_codes").val(final_disabled_laboratory_codes)
+
+    $(case_laboratory).hide()
+
+    if($(".case-laboratory:visible").length <= 0){
+      $(".other-laboratory-list").hide()
+    }
+  })
+</script>

@@ -1,0 +1,166 @@
+<%= javascript_include_tag 'application-loggedin', 'data-turbolinks-track' => true %>
+
+<% if @last_appointment %>
+  <% last_visit_day =  Time.now.day - @last_appointment.created_at.day %>
+  <% last_visit_month =  Time.now.month - @last_appointment.created_at.month %>
+  <% last_visit_year =  Time.now.year - @last_appointment.created_at.year %>
+  <% if last_visit_day < 0 %>
+    <% last_visit_day = @last_appointment.created_at.end_of_month.day + last_visit_day %>
+    <% last_visit_month = last_visit_month - 1 %>
+  <% end %>
+  <% if last_visit_month < 0 %>
+    <% last_visit_month = 12 + last_visit_month %>
+    <% last_visit_year = last_visit_year - 1 %>
+  <% end %>
+<% end %>
+
+<% day = Time.now.day - @opdrecord.created_at.day %>
+<% month =  Time.now.month - @opdrecord.created_at.month %>
+<% year =  Time.now.year - @opdrecord.created_at.year %>
+<% if day < 0 %>
+  <% day = @opdrecord.created_at.end_of_month.day + day %>
+  <% month = month - 1 %>
+<% end %>
+<% if month < 0 %>
+  <% month = 12 + month %>
+  <% year = year - 1 %>
+<% end %>
+
+<% folder_name = TemplatesHelper.get_speciality_folder_name(@opdrecord.specalityid) %>
+<% cloneable_rules_file = YAML.load_file("#{Rails.root}/app/views/#{@cloneable_rules_file}") %>
+<% @clone_link = "new_opd_records_"+folder_name+"_note_path(patientid: @opdrecord.patientid, :appointmentid => @current_appointment.id, :templatetype => '#{@templatetype}',:flag=>'clone',:opd_record_id=> @opdrecord.id)" %>
+
+<%= form_with url: eval(@clone_link), :data => {:remote => true} , method: :get do |f| %>
+
+<div class="cloning-tab">
+  <div class="clone-modal-header">
+    <%= f.submit "Clone", class: "btn btn-success clone-btn-view", data: { "disable-with": "Please Wait..." } %>
+    <span class="text-danger"> OR </span>
+    <% @department_link = "new_opd_records_"+folder_name+"_note_path(:patientid => @opdrecord.patientid, :appointmentid => @current_appointment.id, :templatetype => '#{@templatetype}', case_sheet_id: @current_appointment.case_sheet_id)"%>
+    <%= link_to eval(@department_link), :data_templatetype =>"#{@templatetype}",:data => {:remote => true, 'toggle' =>  "modal", 'target' => '#templates-modal'}, class: "btn btn-primary add-new-template" do %> New Template <% end %>
+  </div>
+
+  <div class="appointment-detail">
+    <% if @last_appointment %>
+      <h5 class="clone-detail-heading">
+        <strong>Last Visit:</strong>
+        <span class="<%= 'text-red font-weight-bold' if params[:old].to_i == 1 %>">
+          <% if last_visit_year < 1 %>
+            <%if last_visit_month < 1%>
+              <%= last_visit_day %> <%if last_visit_day > 1%>days<%else%>day<%end%> ago (<%= @last_appointment.created_at.strftime("%b %d %y") %>)
+            <%else%>
+              <%= last_visit_month %> <%= "month".pluralize(last_visit_month)%> and <%= day %> <%= "day".pluralize(last_visit_day)%> ago (<%= @last_appointment.created_at.strftime("%b %d %y") %>)
+            <% end %>
+          <% else %>
+            <%= last_visit_year %> <%= "year".pluralize(last_visit_year)%> and <%= month %> <%= "month".pluralize(last_visit_month)%> ago (<%= @last_appointment.created_at.strftime("%b %d %y") %>)
+          <% end %>
+        </span>
+        <span class="text-primary"> <%= "- "+@last_appointment.appointment_type.to_s %> </span>
+      </h5>
+    <% end %>
+    <h5>
+      <strong>Template:</strong>
+      <span class="<%= 'text-red font-weight-bold' if params[:old].to_i == 1 %>">
+        <%= "#{@opdrecord.templatetype.titleize} | Dr.#{@opdrecord.consultant_name.to_s.titleize} | " %>
+        <% if year < 1 %>
+          <%if month < 1%>
+            <%= day %> <%if day > 1 %>days<% else %>day<%end%> ago (<%= @opdrecord.created_at.strftime("%b %d %y") %>)
+          <%else%>
+            <%= month %> <%= "month".pluralize(month)%> and <%= day %> <%= "day".pluralize(day)%> ago (<%= @opdrecord.created_at.strftime("%b %d %y") %>)
+          <% end %>
+        <% else %>
+          <%= year %> <%= "year".pluralize(year)%> and <%= month %> <%= "month".pluralize(month)%> ago (<%= @opdrecord.created_at.strftime("%b %d %y") %>)
+        <% end %>
+      </span>
+    </h5>
+  </div>
+
+  <div class="row">
+    <% unless @templatetype.eql?("nursing") || @templatetype.eql?("ar_nct") || @templatetype.eql?("vision") %>
+        <div class="col-md-2 col-sm-2">
+          <%= f.check_box :select_all, { id: "checkbox_select_all" } %>
+          <%= f.label :checkbox_select_all, "Select All" %>
+        </div>
+    <% end %>
+    <div class="col-md-10 col-sm-10">
+      <% if cloneable_rules_file.present? && cloneable_rules_file["#{@templatetype}template"].present? %>
+        <% cloneable_rules_file["#{@templatetype}template"].each do |field_title| %>
+          <% if field_title[1]['is_cloneable'] %>
+            <div class="col-md-3 col-sm-4" style="width: fit-content;">
+              <% if @templatetype == "refraction" %>
+                <%= f.check_box "opdrecord_#{field_title[1]['display_name'].parameterize.underscore}", { id: "opdrecord_#{field_title[1]['display_name'].parameterize.underscore }", checked: ['Glasses Prescription','Refraction'].include?(field_title[1]['display_name']), class: "clone-checkbox" } %>
+                <label for=<%="opdrecord_#{field_title[1]['display_name'].parameterize.underscore}"%>> <%= field_title[1]['display_name'] %></label>
+              <% else %>
+                <%= f.check_box "opdrecord_#{field_title[1]['display_name'].parameterize.underscore}", { id: "opdrecord_#{field_title[1]['display_name'].parameterize.underscore }", checked: ['Examination','Diagnosis','Medications'].include?(field_title[1]['display_name']), class: "clone-checkbox" } %>
+                <label for=<%="opdrecord_#{field_title[1]['display_name'].parameterize.underscore}"%>> <%= field_title[1]['display_name'] %></label>
+              <% end %>
+            </div>
+          <% end %>
+        <% end %>  
+      <% end %>
+    </div>
+  </div>
+  <% end %>
+</div>
+
+<style type="text/css">
+
+  .cloning-tab {
+    padding: 2%;
+  }
+
+  .appointment-detail{
+    margin-top: 3%;
+  }
+
+  .clone-modal-header span {
+    font-size: 2.5rem;
+    position: relative;
+    top: 6px;
+    padding: 0 8px;
+  }
+</style>
+
+<script>
+
+  $(document).ready(function(){
+    <% unless @templatetype.eql?("nursing") || @templatetype.eql?("ar_nct") || @templatetype.eql?("vision") %>
+      if($('.clone-checkbox:checked').length == 0){
+        $('.clone-btn-view').addClass('disabled')
+      }
+    <% end %>
+    if($('.clone-checkbox:checked').length == $('.clone-checkbox').length){
+      $('#checkbox_select_all').prop('checked', true);
+    }
+  })
+
+  $('#checkbox_select_all').click(function(){
+    $('.clone-checkbox').prop('checked', $(this).prop('checked'));
+    if(!$(this).prop('checked')){
+      $('.clone-btn-view').addClass('disabled')
+    }else{
+      $('.clone-btn-view').removeClass('disabled')
+    }
+  })
+
+  $(".clone-btn-view").click(function(){
+    $('.add-new-template').addClass('disabled')
+    $('.pull-right .btn-info').addClass('disabled')
+  })
+
+  $('.clone-checkbox').click(function(){
+    if($(this).prop('checked') == false){
+      $('#checkbox_select_all').prop('checked',false);
+      if($('.clone-checkbox:checked').length == 0){
+        $('.clone-btn-view').addClass('disabled')
+      }
+    }
+    if($(this).prop('checked') == true){
+      if($('.clone-checkbox:checked').length == $('.clone-checkbox').length){
+        $('#checkbox_select_all').prop('checked', true);
+      }
+      $('.clone-btn-view').removeClass('disabled')
+    }
+  })
+
+</script>

@@ -1,0 +1,47 @@
+<div class="col-sm-5">
+  <div class="row no_margin">
+  </div>
+</div>
+<!-- Workflow -->
+<div class="col-sm-7 text-right">
+  <%@current_user = current_user%>
+  <% if @clinical_workflow.state != "complete" && ['tpa_department', 'check_out'].include?(@clinical_workflow.state) %>
+    <% if @clinical_workflow.try(:department_id) == @current_user.department_ids[0] %>
+      <% if @clinical_workflow.state == "check_out" %>
+        <%= link_to opd_clinical_workflow_change_state_path(patient_id: @patient.id, type: '', to: 'tpa_department', department_model: '', to_department: '450368792' , workflow_id: @clinical_workflow.id , send_to_department: true, department_name: 'Tpa Department'), data: { remote: 'true', 'disable-with': 'Please Wait...' }, title: 'Check-In', class: 'btn btn-xs btn-info' do %>Check-In<% end %>
+      <% end %>
+      <% unless @clinical_workflow_timeline.count == 1 %>
+        <a href="/opd_clinical_workflow/mark_as_away?appointment_id=<%= @appointment.id.to_s%>" data-remote="true" data-disable-with="Please Wait..." class="btn btn-xs btn-primary mark-away" >Mark as Away</a>
+      <% end %>
+      <a href="/opd_clinical_workflow/patient_complete?appointment_id=<%= @appointment.id.to_s%>" data-remote="true" data-disable-with="Please Wait..." class="btn btn-xs btn-success mark-completed">Mark as Completed</a>
+    <% end %>
+  <% end %>
+
+  <% if @clinical_workflow.state == "complete" %>
+    <% if @clinical_workflow_timeline_second_last.try(:department_id).to_s == @current_user.department_ids[0] %>
+      <a href='#' class="btn btn-xs btn-primary undo-state" data-disable-with="Please Wait...">Undo</a>
+    <% end %>
+  <% else %>
+    <% if @clinical_workflow_timeline_second_last.try(:department_id).to_s == @current_user.department_ids[0] && @clinical_workflow_timeline_second_last.try(:event) != 'check_out' %>
+      <a href='#' class="btn btn-xs btn-primary undo-state" data-disable-with="Please Wait...">Undo</a>
+    <% end %>
+  <% end %>
+
+  <% if @current_user.department_ids[0] == '450368792' %>
+    <% unless @clinical_workflow.state == "complete" || @clinical_workflow.state == "not_arrived" || @clinical_workflow.state == "check_out" || @clinical_workflow.try(:department_id) == @current_user.department_ids[0] %>
+      <a href="/opd_clinical_workflow/get_patient?&to_department=<%= @current_user.department_ids[0] %>&workflow_id=<%= @clinical_workflow.id %>" data-remote="true" class="btn btn-xs  btn-primary get-patient" data-disable-with="Please Wait...">Get Patient</a>
+    <% end %>
+  <% end %>
+</div>
+
+<script type="text/javascript">
+  $(".undo-state").on('click',function(e){
+    e.preventDefault()
+    $(this).attr('disabled','disabled').html("Please Wait...")
+    $.ajax({
+      data: {appointment_id: '<%= @appointment.id.to_s%>'},
+      url:  "/opd_clinical_workflow/undo_state"
+    })
+  })
+
+</script>

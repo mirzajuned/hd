@@ -1,0 +1,109 @@
+<% precision = @invoice.currency_id == 'VND001' ? 0 : 2 %>
+<% @invoice.services.each.with_index do |service, i| %>
+  <div class="row service_item_list">
+    <div class="row item_list">
+      <div class="item print_text_font_size" style="<%= text_font_size %>">
+        <% if service.entry_type == "service" %>
+          <% @pricing_master = PricingMaster.find_by(id: service.description) %>
+          <% if @pricing_master.present? %>
+            <div class="col-md-12">
+              <div class="col-md-1"><span><%= i + 1 %>.</span></div>
+              <div class="col-md-4"><span><%= @pricing_master.service_sub_group.name %> - <%= @pricing_master.service_name %><% if service.try(:service_code) && current_user.try(:print_bill_service_code?) %> - <%= service.try(:service_code) %>  <% end %></span></div>
+              <div class="col-md-1 text-right"><span><%= service.quantity %></span></div>
+              <% unit_price_with_precision = number_with_precision(service.unit_price, precision: precision) %>
+              <% unit_price = Common::Finance::NumberFormatService.call(@number_format, unit_price_with_precision) %>
+              <div class="col-md-2 text-right"><span><%= unit_price %></span></div>
+              <% price_with_precision = number_with_precision(service.price, precision: precision) %>
+              <% price = Common::Finance::NumberFormatService.call(@number_format, price_with_precision) %>
+              <% final_offer_discount = 0 %>
+              <% if service.discount_amount.present? && service.discount_amount > 0 %>
+                <% final_offer_discount += service.discount_amount %>
+              <% end %>
+              <% if service.offer_amount.present? && service.offer_amount > 0 %>
+                <% final_offer_discount += service.offer_amount %>
+              <% end %>
+              <% if final_offer_discount > 0 %>
+                <% final_offer_discount_with_precision = number_with_precision(final_offer_discount, precision: precision) %>
+                <% final_offer_discount_amount = Common::Finance::NumberFormatService.call(@number_format, final_offer_discount_with_precision) %>
+                <% show_price = "#{price_with_precision}(-#{final_offer_discount_amount})" %>
+                <div class="col-md-2 text-right"><span><%= show_price %></span></div>
+              <% else %>
+                <div class="col-md-2 text-right"><span><%= price %></span></div>
+              <% end %>
+              <% net_item_price_with_precision = number_with_precision(service.net_item_price, precision: precision) %>
+              <% net_item_price = Common::Finance::NumberFormatService.call(@number_format, net_item_price_with_precision) %>
+              <div class="col-md-2 text-right"><span><%= net_item_price %></span></div>
+            </div>
+          <% end %>
+        <% elsif service.entry_type == "surgery_package" %>
+          <% @surgery_package = SurgeryPackage.find_by(id: service.description) %>
+          <% if @surgery_package.present? %>
+            <div class="col-md-12">
+              <div class="col-md-1"><span><%= i + 1 %>.</span></div>
+              <div class="col-md-4"><span><%= @surgery_package.display_name %></span></div>
+              <div class="col-md-1 text-right"><span><%= service.quantity %></span></div>
+              <% unit_price_with_precision = number_with_precision(service.unit_price, precision: precision) %>
+              <% unit_price = Common::Finance::NumberFormatService.call(@number_format, unit_price_with_precision) %>
+              <div class="col-md-2 text-right"><span><%= unit_price %></span></div>
+              <% price_with_precision = number_with_precision(service.price, precision: precision) %>
+              <% price = Common::Finance::NumberFormatService.call(@number_format, price_with_precision) %>
+              <% final_offer_discount = 0 %>
+              <% if service.discount_amount.present? && service.discount_amount > 0 %>
+                <% final_offer_discount += service.discount_amount %>
+              <% end %>
+              <% if service.offer_amount.present? && service.offer_amount > 0 %>
+                <% final_offer_discount += service.offer_amount %>
+              <% end %>
+              <% if final_offer_discount > 0 %>
+                <% final_offer_discount_with_precision = number_with_precision(final_offer_discount, precision: precision) %>
+                <% final_offer_discount_amount = Common::Finance::NumberFormatService.call(@number_format, final_offer_discount_with_precision) %>
+                <% show_price = "#{price_with_precision}(-#{final_offer_discount_amount})" %>
+                <div class="col-md-2 text-right"><span><%= show_price %></span></div>
+              <% else %>
+                <div class="col-md-2 text-right"><span><%= price %></span></div>
+              <% end %>
+              <% net_item_price_with_precision = number_with_precision(service.net_item_price, precision: precision) %>
+              <% net_item_price = Common::Finance::NumberFormatService.call(@number_format, net_item_price_with_precision) %>
+              <div class="col-md-2 text-right"><span><%= net_item_price %></span></div>
+            </div>
+            <% if service.show_breakup_in_print.present? && service.show_breakup_in_print == true && @surgery_package.present? && @surgery_package.services.count > 0 %>
+              <div class="col-md-12">
+                <div class="row" style="margin-bottom: 5px;font-size: 8px;">
+                  <div class="col-md-11 col-md-offset-1" style="padding:0px;">
+                    <b>Package Breakup :</b>
+                  </div>
+                  <div class="col-md-11 col-md-offset-1" style="padding: 0px 5px;">
+                    <table class="table table-bordered" style="margin-bottom: 0px;">
+                        <thead>
+                          <tr>
+                            <th style="padding:2px 10px;">S.No</th>
+                            <th style="padding:2px 10px;">Description</th>
+                            <th style="padding:2px 10px;" class="text-right">Unit Cost</th>
+                            <th style="padding:2px 10px;" class="text-right">Total Cost</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <% @surgery_package.services.where(is_active: true).each_with_index do |service, i| %>
+                            <tr>
+                              <td style="padding:2px 10px;"><%= i + 1 %>.</td>
+                              <td style="padding:2px 10px;"><%= service.item_name %><%= "(#{service.item_code})" if service.item_code.present? %></td>
+                              <% unit_price_with_precision = number_with_precision(service.try(:unit_price), precision: precision) %>
+                              <% unit_price_display = Common::Finance::NumberFormatService.call(@number_format, unit_price_with_precision) %>
+                              <td style="padding:2px 10px;" class="text-right"><%= unit_price_display %> <%= "(#{service.try(:unit)} #{service.try(:item_type) == 'Room Rent' ? 'Days' : 'Units' })" %></td>
+                              <% total_price_with_precision = number_with_precision(service.try(:total_price), precision: precision) %>
+                              <% total_price_display = Common::Finance::NumberFormatService.call(@number_format, total_price_with_precision) %>
+                              <td style="padding:2px 10px;" class="text-right"><%= total_price_display %></td>
+                            </tr>
+                          <% end %>
+                        </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+          <% end %>
+        <% end %>
+      </div><!-- .item -->
+    </div><!-- .item_list -->
+  </div>
+<% end %>

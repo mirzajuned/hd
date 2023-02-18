@@ -1,0 +1,76 @@
+<tr class="table-row-procedure">
+  <% @procedure_performed = (@procedure[:stage] == 'P') %>
+  <%= hidden_field_tag "inpatient_ipdrecord[procedure_attributes][" + @counter + "][procedurestage]", @procedure[:stage] %>
+  <%= hidden_field_tag "inpatient_ipdrecord[procedure_attributes][" + @counter + "][procedurename]", @procedure[:name] %>
+  <%= hidden_field_tag "inpatient_ipdrecord[procedure_attributes][" + @counter + "][procedure_id]", @procedure[:code] %>
+  <%= hidden_field_tag "inpatient_ipdrecord[procedure_attributes][" + @counter + "][procedure_performed]", @procedure[:procedure_comment] %>
+  <%= hidden_field_tag "inpatient_ipdrecord[procedure_attributes][" + @counter + "][procedureside]", @procedure[:side] %>
+  <%= hidden_field_tag "inpatient_ipdrecord[procedure_attributes][" + @counter + "][procedurefullcode]", @procedure[:code] %>
+  <%= hidden_field_tag "inpatient_ipdrecord[procedure_attributes][" + @counter + "][entered_by]", @procedure[:entered_by] %>
+  <%= hidden_field_tag "inpatient_ipdrecord[procedure_attributes][" + @counter + "][entered_by_id]", @procedure[:entered_by_id] %>
+  <%= hidden_field_tag "inpatient_ipdrecord[procedure_attributes][" + @counter + "][entered_at_facility]", @procedure[:entered_at_facility] %>
+  <%= hidden_field_tag "inpatient_ipdrecord[procedure_attributes][" + @counter + "][entered_at_facility_id]", @procedure[:entered_at_facility_id] %>
+  <%= hidden_field_tag "inpatient_ipdrecord[procedure_attributes][" + @counter + "][updated_by]", @procedure[:updated_by] %>
+  <%= hidden_field_tag "inpatient_ipdrecord[procedure_attributes][" + @counter + "][updated_by_id]", @procedure[:updated_by_id] %>
+  <%= hidden_field_tag "inpatient_ipdrecord[procedure_attributes][" + @counter + "][updated_at_facility]", @procedure[:updated_at_facility] %>
+  <%= hidden_field_tag "inpatient_ipdrecord[procedure_attributes][" + @counter + "][updated_at_facility_id]", @procedure[:updated_at_facility_id] %>
+  <%= hidden_field_tag "inpatient_ipdrecord[procedure_attributes][" + @counter + "][procedure_comment]", @procedure[:procedure_comment] %>
+  <%= hidden_field_tag "inpatient_ipdrecord[procedure_attributes][" + @counter + "][users_comment]", @procedure[:users_comment] %>
+  <%= hidden_field_tag "inpatient_ipdrecord[procedure_attributes][" + @counter + "][entered_datetime]", @procedure[:entered_datetime] %>
+  <%= hidden_field_tag "inpatient_ipdrecord[procedure_attributes][" + @counter + "][updated_datetime]", @procedure[:updated_datetime] %>
+  <%= hidden_field_tag "inpatient_ipdrecord[procedure_attributes][" + @counter + "][performed_by]", (current_user.try(:fullname) if @procedure_performed) || "" %>
+  <%= hidden_field_tag "inpatient_ipdrecord[procedure_attributes][" + @counter + "][performed_by_id]", (current_user.try(:id) if @procedure_performed) || "" %>
+  <%= hidden_field_tag "inpatient_ipdrecord[procedure_attributes][" + @counter + "][performed_at_facility]", (current_facility.try(:name) if @procedure_performed) || "" %>
+  <%= hidden_field_tag "inpatient_ipdrecord[procedure_attributes][" + @counter + "][performed_at_facility_id]", (current_facility.try(:id) if @procedure_performed) || "" %>
+  <%= hidden_field_tag "inpatient_ipdrecord[procedure_attributes][" + @counter + "][performed_datetime]", (Time.current if @procedure_performed) || "" %>
+  <%# stage = ("Advised - " if @procedure[:stage] == "A") || "Performed - " %>
+  <% stage_color = ("#c9302c" if @procedure[:stage] == "A") || "#1CAF9A" %>
+  <% if @procedure[:side].to_s == '18944008' %>
+      <% side_name = 'Right Eye' %>
+  <% elsif @procedure[:side].to_s == '8966001' %>
+      <% side_name = 'Left Eye' %>
+  <% else %>
+      <% side_name = 'B/E' %>
+  <% end %>
+  <td style="line-height: 1;">
+    <b><span id="procedure_stage_<%= @counter %>_p" style='color:<%= stage_color %>'><%= @procedure[:stage] + " - " %></span> <%= @procedure[:name] %> - <span id="procedure_side_<%= @counter %>_p"><%= side_name %></span></b><br>
+    <ul id="procedure_comments_<%= @counter %>_p" style="margin-bottom:0px;padding-left:15px;">
+      <% if @procedure[:procedure_comment].present? %>
+          <li id="procedure_comment_<%= @counter %>_p"><span style="font-size:12px;"><%= @procedure[:procedure_comment] %></span></li>
+      <% end %>
+      <% if @procedure[:users_comment].present? %>
+          <li id="users_comment_<%= @counter %>_p"><span style="font-size:12px;"><%= @procedure[:users_comment] %></span></li>
+      <% end %>
+    </ul>
+    <hr style="margin:4px;" />
+    <span id="procedure_added_updated_<%= @counter %>_p">
+      <b style="font-size:12px;">Added by <%= @procedure[:entered_by] %> <%= Time.zone.parse(@procedure[:entered_datetime]).strftime('on %d/%m/%Y at %I:%M %p') %></b>
+    </span>
+  </td>
+  <td style="width:15%;">
+    <a class="btn btn-xs btn-info edit-procedure-btn" id="editprocedurebutton<%=@counter%>"><i class="fa fa-edit"></i></a>
+    <a id="removeprocedurebutton<%=@counter%>" class="btn btn-xs btn-danger" name="removeprocedurebutton"><i class="fa fa-times"></i></a>
+  </td>
+</tr>
+
+
+<script type="text/javascript">
+    // Edit Button Individual Procedure
+    $(".edit-procedure-btn").off('click')
+    $(".edit-procedure-btn").on('click', function(e){
+        e.preventDefault();
+        var table_row = $(this).closest('.table-row-procedure')
+        var counter = $(this).attr('id').slice(-1)
+        $(this).attr('disabled', 'disabled');
+
+        // Params
+        var code = $(table_row).find('#inpatient_ipdrecord_procedure_attributes_' + counter + '_procedurefullcode').val()
+        var status = $(table_row).find('#inpatient_ipdrecord_procedure_attributes_' + counter + '_procedurestage').val()
+        var side_id = $(table_row).find('#inpatient_ipdrecord_procedure_attributes_' + counter + '_procedureside').val()
+        var procedure_comment = $(table_row).find('#inpatient_ipdrecord_procedure_attributes_' + counter + '_procedure_comment').val()
+        var users_comment = $(table_row).find('#inpatient_ipdrecord_procedure_attributes_' + counter + '_users_comment').val()
+
+        var data = {code: code, procedure_code: code, counter: counter, status: status, side_id: side_id, procedure_comment: procedure_comment, users_comment: users_comment, flag: 'edit', remote: true}
+        get_procedure_details('edit', data, $(this))
+    })
+</script>

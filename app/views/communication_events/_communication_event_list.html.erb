@@ -1,0 +1,223 @@
+  <div class="col-md-12">
+    <table width="100%">
+      <tr><td colspan="4"><h4><%= CommunicationEvent::module_name.values[@module_type.to_i].upcase %> COMMUNICATION EVENTS</h4></td>
+      <td colspan="4" style="text-align:right;"><%= link_to new_communication_event_path(module_type: @module_type.to_i), class: 'btn btn-primary', data: { remote: true, 'toggle': 'modal', 'target': '#communication-event-modal' } do %><i class="fa fa-plus"></i> Add <%= CommunicationEvent::module_name.values[@module_type.to_i].upcase %> Communication Event<% end %></td>
+      </tr>
+    </table>
+    <% if @communication_events.count > 0 %>
+      <table class="table table-primary table-bordered">
+        <thead>
+          <th>Sr No</th>
+          <th>Event Name</th>
+          <th>Event Feature</th>
+          <th>Message Preview</th>
+          <th>Event Type</th>
+          <th>Event Trigger Timing</th>
+          <th class="text-center">Actions</th>
+        </thead>
+        <% @communication_events.each_with_index do |event, index| %>
+          <% @class= event.try(:communication_template).try(:is_disable?) ? "strikethrough" : nil %>
+          <% @style= event.try(:communication_template).try(:is_disable?) ? "background-color:#808080;" : nil %>
+          <tbody id="communication_event_master-list">
+            <% visibility = event.is_disable ? 'visibility: hidden;' : 'visibility: visible' %>
+            <tr class="each-contact-table-row communication_event_tr <%= @class %>" style="<%= @style%>" title="<%= 'Template Associated with this event is disbaled from approved template section, Please enable associated approved template' if @class.present?%>">
+              <td>
+                <b class="sno" style="color:#000;"><%= index+1 %></b>
+              </td>
+              <td>
+                <b class="event_name" style="color:#000;"><%= event.try(:name).try(:titleize) %></b>
+              </td>
+              <% feature_type =  event.try(:feature_type) == "patient_arrived" ? "Walk-In/Patient Arrived" : event.try(:feature_type) %>
+              <td><b class="event_feature_type" style="color:#000;"><%= feature_type.try(:titleize) %></b></td>
+              <td style="width: 45% !important; max-width: 45em !important; white-space: normal !important;    overflow-wrap: break-word !important;">
+                <b class="event_module_name" style="color:#000;"><%= event.try(:message_format).try(:titleize) %></b>
+              </td>
+              <!-- <td>
+                <b class="event_feature_type" style="color:#000;"><%#= event.try(:feature_type).try(:titleize) %></b>
+              </td> -->
+              <td>
+                <b class="event_status" style="color:#000;"><%= event.try(:event_type).try(:titleize) %></b>
+              </td>
+              <td>
+                <b class="event_timing" style="color:#000;">
+                  <%= get_event_type_details(event) %></b>
+              </td>
+              <td>
+                <table style="width: 100%;">
+                  <tr>
+                    <td style="<%=visibility%>">
+                      <%= link_to edit_communication_event_path(id: event.id.to_s, module_type: @module_type.to_i), method: :get, data: { remote: true, toggle: 'modal', target: '#communication-event-modal' }, class: '', style: 'display: inline;' do %><i class="fa fa-pencil-square-o"></i><% end %>
+                    </td>
+                    <td style="<%=visibility%>">
+                      <%= link_to communication_event_path(id: event.id.to_s), method: :get, data: { remote: true, toggle: 'modal', target: '#communication-event-view-modal' }, class: '', style: 'display: inline;' do %><i class="fa fa-eye"></i><% end %>
+                    </td>
+
+                    <td id='category_disable_button_<%= event.id %>' style= "<%= @class.present? ? "pointer-events: none;" : nil %>">
+                      <% if event.try(:is_disable) == true %>
+                        <%= link_to toggle_disable_communication_event_path(id: event.id, is_disable: false), remote: true, class:"off_link" do %>
+                        <span class="off_active"> Off</span>
+                        <% end %>
+                      <% else %>
+                        <div class="btn-disable-category" style="cursor: pointer;" data-toggle="modal" data-target="#confirmation-modal" data-category='<%= event.name %>'>
+                          <span class="on_active">On</span></div>
+                        <%= link_to 'Confirm', toggle_disable_communication_event_path(id: event.id, is_disable: true), class: 'btn btn-danger', remote: true, style: 'display: none;', data: { dismiss: 'modal' } %>
+                      <% end %>
+                    </td>
+                    <!-- <td>
+                      <%#= link_to "Delete", communication_event_path(event), method: :delete, data: {confirm: "Are you sure?"} , class: 'btn btn-danger', :remote => true %>
+                    </td> -->
+                  </tr>
+                </table>
+              </td>
+            </tr>
+        </tbody>
+      <% end %>
+    </table>
+  <% else %>
+    <div class="col-md-12 text-center mt10">
+      No Communication Event.
+    </div>
+  <% end %>
+</div>
+
+<style type="text/css">
+  .on_active{
+    min-width: 50px;
+    background-color: #29c2e5;
+    height: 25px;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    padding: 0 5px;
+    color: #fff;
+    position: relative;
+    margin-left: 5px;
+  }
+  .on_active::after{
+    content: "";
+    width: 15px;
+    height: 15px;
+    position: absolute;
+    right: 5px;
+    border-radius: 2px;
+    background-color: #fff;
+  }
+  .off_active{
+    min-width: 50px;
+    background-color: #ddd;
+    height: 25px;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    padding: 0 5px;
+    color: #333;
+    position: relative;
+    margin-left: 5px;
+    justify-content: flex-start;
+  }
+  .off_active:hover{
+    text-decoration: none;
+  }
+  .off_link:hover{
+    text-decoration: none;
+  }
+  .off_active::after{
+    content: "";
+    width: 15px;
+    height: 15px;
+    position: absolute;
+    right: 5px;
+    border-radius: 2px;
+    background-color: #333;
+  }
+  .toggle {
+    --width: 80px;
+    --height: calc(var(--width) / 3);
+
+    position: relative;
+    display: inline-block;
+    width: var(--width);
+    height: var(--height);
+    box-shadow: 0px 1px 3px rgba(0, 0, 0, 0.3);
+    border-radius: var(--height);
+    cursor: pointer;
+  }
+
+  .toggle input {
+    display: none;
+  }
+
+  .toggle .slider {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: var(--height);
+    background-color: #ccc;
+    transition: all 0.4s ease-in-out;
+  }
+
+  .toggle .slider::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: calc(var(--height));
+    height: calc(var(--height));
+    border-radius: calc(var(--height) / 2);
+    background-color: #fff;
+    box-shadow: 0px 1px 3px rgba(0, 0, 0, 0.3);
+    transition: all 0.4s ease-in-out;
+  }
+
+  .toggle input:checked+.slider {
+    background-color: #2196F3;
+  }
+
+  .toggle input:checked+.slider::before {
+    transform: translateX(calc(var(--width) - var(--height)));
+  }
+
+  .toggle .labels {
+    position: absolute;
+    top: 8px;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    font-size: 12px;
+    font-family: sans-serif;
+    transition: all 0.4s ease-in-out;
+  }
+
+  .toggle .labels::after {
+    content: attr(data-off);
+    position: absolute;
+    right: 5px;
+    color: #4d4d4d;
+    opacity: 1;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.4);
+    transition: all 0.4s ease-in-out;
+  }
+
+  .toggle .labels::before {
+    content: attr(data-on);
+    position: absolute;
+    left: 5px;
+    color: #ffffff;
+    opacity: 0;
+    text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.4);
+    transition: all 0.4s ease-in-out;
+  }
+
+  .toggle input:checked~.labels::after {
+    opacity: 0;
+  }
+
+  .toggle input:checked~.labels::before {
+    opacity: 1;
+  }
+  .strikethrough {
+    text-decoration: line-through;
+  }
+</style>

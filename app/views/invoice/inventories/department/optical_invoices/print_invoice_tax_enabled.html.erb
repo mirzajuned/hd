@@ -1,0 +1,370 @@
+<% if mail_job == true %>
+  <% @department = department %>
+  <% @optical_log = optical_log %>
+  <% @invoice_setting = invoice_setting %>
+<% end %>
+
+<% template_fields = OrganisationsSetting.find_by(organisation_id: current_user.organisation_id).custom_template_header_options[:optical_settings][:invoices][0].select{ |key, value| value == true } %>
+<% fields_names = OrganisationSettingsHelper.get_data('pharmacy_invoices', template_fields).keys %>
+
+<div style="border:1px solid #ccc;">
+  <div class="row" style="border-bottom:1px solid #ccc;">
+    <div class="col-md-3 text-left">
+      <% if @department.asset_path.url %>
+        <% unless @department.asset_path.url.split('/').last == '_old_' %>
+          <img width="80" height="80" src="<%= @department.asset_path.url %>" >
+        <% end %>
+      <% end %>
+    </div>
+
+    <div class="col-sm-6 text-center">
+      <% if @department.name ==nil || @department.name == "" || @department.shop_name == 'org-name'%>
+        <h3 style="margin:0px"><%= current_facility.name %></h3>
+      <% else %>
+        <h3 style="margin:0px"><%= @department.shop_name %></h3>
+      <% end %>
+    </div>
+
+    <div class="col-sm-3 text-right">
+      <% unless @department.shop_address == 'org-address' %>
+        <h5 style="margin: 0px"><%= @department.shop_address %></h5>
+      <% end %>
+
+      <% if @department.email.present? %>
+        <p><h5 style="margin: 0px"><%= @department.email %></h5></p>
+      <% end %>
+
+      <% if @department.contact.present? %>
+        <p><h5 style="margin: 0px"><%= @department.contact %></h5></p>
+      <% end %>
+    </div>
+
+    <div class="row">
+      <div class="col-sm-12 text-center">
+        <% if @optical_log.advance_taken == true && @optical_log.payment_completed == false %>
+          <b>OPTICAL ADVANCE BILL</b>
+        <% elsif @optical_log.payment_completed == true %>
+          <b>OPTICAL BILL</b>
+        <% else %>
+          <b>OPTICAL BILL</b>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <div class="row mb5">
+    <% template_fields.each_with_index do |(key, value), i| %>
+      <% field_name = fields_names[i] %>
+
+      <% if key == 'recipient' %>
+        <% field_value = @optical_log.recipient.upcase %>
+
+      <% elsif key == 'doctor_name' %>
+        <% field_value = @optical_log.doctor_name.upcase %>
+
+      <% elsif key == 'bill_number' %>
+        <% field_value = @optical_log.bill_number.present? ? @optical_log.bill_number : '-' %>
+
+      <% elsif key == 'mr_no' %>
+        <% field_value = @mr_no.present? ? @mr_no : 'N/A' %>
+
+      <% elsif key == 'date_time' %>
+        <% field_value = Time.current.strftime("%d %b'%y, %I:%M %p") %>
+
+      <% elsif key == 'patient_identifier' %>
+        <% field_value = @optical_log.patient_identifier %>
+      <% end %>
+
+      <% if field_name.present? %>
+        <div class="col-sm-2 font_size">
+          <b><%= field_name %></b>
+        </div>
+        <div class="col-sm-4 font_size">
+          : &nbsp; <%= field_value.try(:html_safe) %>
+        </div>
+      <% end %>
+    <% end %>
+  </div><!-- row -->
+
+  <div class="row" style="border-bottom:1px solid #ccc;border-top:1px solid #ccc;">
+    <div class="col-sm-12">
+      <div class="col-sm-1 font_size">
+        <b>S.No</b>
+      </div>
+      <div class="col-sm-2 font_size">
+        <b>Code</b>
+      </div>
+      <div class="col-sm-5 font_size">
+        <b>Particulars</b>
+      </div>
+      <!--<div class="col-sm-3 font_size">-->
+      <!--<b>Description</b>-->
+      <!--</div>-->
+      <!--<div class="col-sm-3 font_size">-->
+      <!--<b>Brand</b>-->
+      <!--</div>-->
+      <!--<div class="col-sm-1 font_size">-->
+      <!--<b>Color</b>-->
+      <!--</div>-->
+      <!--</div>-->
+      <!--<div class="col-sm-4">-->
+      <div class="col-sm-1 font_size text-center">
+        <b>Quantity</b>
+      </div>
+      <div class="col-sm-1 font_size text-right">
+        <b>U.Price</b>
+      </div>
+      <div class="col-sm-1 font_size text-right">
+        <% if @invoice_setting.show_tax_in_print %><b>Tax</b><% end %>
+      </div>
+      <div class="col-sm-1 font_size text-right">
+        <b>Total(&#8377;)</b>
+      </div>
+    </div>
+  </div>
+  <!--row-->
+
+  <div id="optical_items">
+    <% grand_total_price = 0 %>
+    <% grand_total_tax = 0 %>
+    <% if @optical_log.discount %>
+      <% discount = @optical_log.discount %>
+    <% else %>
+      <% discount = 0 %>
+    <% end %>
+    <% if @optical_log.advance_payment %>
+      <% advance_payment = @optical_log.advance_payment %>
+    <% else %>
+      <% advance_payment = 0 %>
+    <% end %>
+    <% @optical_log.items.each.with_index do |item, i| %>
+      <% unless item.service %>
+        <div class="row">
+          <div class="col-sm-12">
+            <div class="col-sm-1 font_size">
+              <%= i+1 %>
+            </div>
+            <div class="col-sm-2 font_size">
+              <%= item.item_code %>
+            </div>
+            <div class="col-sm-5 font_size">
+              <%= item.description %><% unless item.brand.nil? %>-<%= item.brand %><% end %><% unless item.color.nil? %>(<%= item.color %>)<% end %>
+            </div>
+            <!-- <div class="col-sm-3 font_size">
+            </div>
+            <div class="col-sm-3 font_size">
+            </div>
+            <div class="col-sm-1 font_size">
+            </div>
+            </div>
+            <div class="col-sm-4"> -->
+            <div class="col-sm-1 font_size text-center">
+              <%= item.quantity %>
+            </div>
+            <div class="col-sm-1 font_size text-right">
+              <%= item.list_price.to_f %>
+            </div>
+            <div class="col-sm-1 font_size text-right">
+              <% if @invoice_setting.show_tax_in_print %><%= number_with_precision(item.taxable_amount, precision: 2) %><% end %>
+            </div>
+            <!--<div class="col-sm-2 font_size text-right">-->
+            <%# total_tax = ((item.list_price.to_f * item.quantity.to_i * item.vat)/100).round(2) %>
+            <!-- For Total Tax -->
+            <%# grand_total_tax = grand_total_tax + total_tax %>
+            <!--</div>-->
+            <div class="col-sm-1 font_size text-right">
+              <%if item.tax_group_id.present? %>
+                <%= total_with_tx = (item.taxable_amount.to_f + item.non_taxable_amount.to_f).round(2)%>
+                <% grand_total_price = grand_total_price + total_with_tx%>
+              <%else%>
+                <%= total_with_tx= (item.list_price.to_f * item.quantity.to_i).round(2)%>
+                <% grand_total_price = grand_total_price + total_with_tx%>
+              <%end%>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+
+  <div class="row mb5" style="border-bottom:1px solid #ccc;">
+  </div>
+
+  <% if @invoice_setting.show_tax_in_print %>
+    <div class="row">
+      <% if @optical_log.try(:tax_breakup).count > 0 %>
+        <div class="col-sm-6 col-sm-offset-6 text-right">
+          <div class="col-sm-6 font_size">
+            <b>Non-Taxable Amount</b>
+          </div>
+          <div class="col-sm-3 text-center font_size">
+            :
+          </div>
+          <div class="col-sm-3 font_size">
+            <%= number_with_precision(@optical_log.non_taxable_amount, precision: 2) %>
+          </div>
+        </div>
+        <div class="col-sm-6 col-sm-offset-6 text-right">
+          <% @optical_log.tax_breakup.try(:each) do |tax_breakup| %>
+            <div class="col-sm-6 font_size">
+              <b><%= tax_breakup[:name] %></b>
+            </div>
+            <div class="col-sm-3 text-center font_size">
+              :
+            </div>
+            <div class="col-sm-3 font_size">
+              <%= number_with_precision(tax_breakup[:amount], precision: 2) %>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+    <hr style="padding: 0px;margin: 0px;">
+  <% end %>
+
+  <div class="row mb5">
+    <div class="col-sm-offset-6 col-sm-6 text-right">
+      <div class="col-sm-6 font_size">
+        <b>Total Amt Including Tax</b>
+      </div>
+      <div class="col-sm-3 text-center font_size">
+        :
+      </div>
+      <div class="col-sm-3 font_size">
+        <%= (grand_total_price).round(2) %>
+      </div>
+      <% if @optical_log.discount.present? %>
+      <div class="col-sm-6 font_size">
+        <b>Discount</b>
+      </div>
+      <div class="col-sm-3 text-center font_size">
+        :
+      </div>
+      <div class="col-sm-3 font_size">
+        <%= discount.round(2) %>
+      </div>
+      <% end %>
+      <% @optical_log.items.each do |item| %>
+        <% if item.service %>
+          <% grand_total_price = grand_total_price + (item.list_price).to_f %>
+          <div class="col-sm-6 font_size">
+            <b><%= item.description %></b>
+          </div>
+          <div class="col-sm-3 text-center font_size">
+            :
+          </div>
+          <div class="col-sm-3 font_size">
+            <%= item.list_price.round(2) %>
+          </div>
+        <% end %>
+      <% end %>
+      <% if @optical_log.advance_payment.present? %>
+        <div class="col-sm-6 font_size" style="border-bottom: 1px solid #ccc">
+          <b>Advance Paid</b>
+        </div>
+        <div class="col-sm-3 text-center font_size" style="border-bottom: 1px solid #ccc">
+          :
+        </div>
+        <div class="col-sm-3 font_size" style="border-bottom: 1px solid #ccc">
+          <%= advance_payment.round(2) %>
+        </div>
+        <div class="col-sm-6 font_size" style="border-bottom: 1px solid #ccc">
+          <b>Amount Remaining</b>
+        </div>
+        <div class="col-sm-3 text-center font_size" style="border-bottom: 1px solid #ccc">
+          :
+        </div>
+        <div class="col-sm-3 font_size" style="border-bottom: 1px solid #ccc">
+          <%= (grand_total_price - discount - advance_payment).round(2) %>
+        </div>
+      <% else %>
+        <div class="col-sm-6 font_size">
+          <b>Net Amount</b>
+        </div>
+        <div class="col-sm-3 text-center font_size">
+          :
+        </div>
+        <div class="col-sm-3 font_size">
+          <%= (grand_total_price - discount).round(2) %>
+        </div>
+      <% end %>
+      <% if @print_advance == 'yes' %>
+        <!-- <div class="col-sm-6 font_size">
+          <b>Advance Amount</b>
+        </div>
+        <div class="col-sm-3 text-center font_size">
+          :
+        </div>
+        <div class="col-sm-3 font_size">
+        <%#= advance_payment.round(2) %>
+        </div>
+
+
+        <div class="col-sm-6 font_size">
+          <b>Remaining Amount</b>
+        </div>
+        <div class="col-sm-3 text-center font_size">
+          :
+        </div>
+        <div class="col-sm-3 font_size">
+          <%#= ((wo_grand_total_price + grand_total_tax  - discount) - advance_payment).round(2) %>
+        </div> -->
+      <% end %>
+    </div>
+    <% unless @optical_log.delivery_date.nil?  %>
+      <div class="col-md-12 text-center mt10" style="background-color:#eee;padding:0 auto">
+        <span style="font-size:11px;"><b>Delivery Date:</b> <%= @optical_log.delivery_date.strftime("%d %b %Y") %></span>
+      </div>
+    <% end %>
+    <% unless @optical_log.note.nil? or @optical_log.note.empty? %>
+      <div class="col-md-12 text-center mt10" style="background-color:#eee;padding:0 auto">
+        <span style="font-size:11px;"><b>Additional Note:</b> <%= @optical_log.note %></span>
+      </div>
+    <% end %>
+  </div>
+
+  <!--row-->
+  <div class="row" style="">
+    <div class="col-sm-offset col-sm-2 font_size text-center">
+      <b>Optical Shop</b>
+    </div>
+  </div>
+</div>
+
+<div>
+  <div class="row" style="border-bottom:1px solid #ccc;">
+    <div class="col-md-4 font_size">
+      <p>OPTICIAN : <b><% if @department.username %><%= @department.try(:username) %><% else %> <%= current_user.name %><% end %></b></p>
+    </div>
+    <div class="col-md-4 font_size text-center" >
+    </div>
+    <div class="col-md-4 font_size text-center">
+      <%if @department.gst.present? %>
+      <p>GST NO : <b><%= @department.gst %></b></p>
+      <% end %>
+    </div>
+  </div>
+  <div clas="row">
+    <div class="col-md-12">
+      <ul class="med_rules">
+        <!-- <li>MEDICINES SHOULD BE RETURNED IN PROPER CONDITION AND FULL STRIP WITHIN 15 DAYS FROM THE DATE OF BILL</li>
+        <li>ORIGINAL COPY OF THE BILL SHOULD BE PROVIDED AT THE TIME OF RETURN</li>
+        <li>CONTROLLED TEMPERATURE ITEMS WILL NOT BE TAKEN BACK*SURGICAL AND CONSUMABLE ITEMS WILL NOT BE TAKEN BACK</li>
+        <li>THE SALE COVERS FROM OPTICAL IS SUBJECT TO INDIA JURSIDICTION ONLY</li>
+        <li>ANY EXCESS COLLECTION BY OVERSIGHT WILL BE REFUNDED,AS PER DRUGS(PRICE CONTROL ORDER 1970)</li> -->
+      </ul>
+    </div>
+  </div>
+</div>
+<div class="page_breaker"></div>
+<style type="text/css">
+  .font_size {
+  font-size: 12px;
+  }
+  .med_rules {
+  font-size: 7px;
+  }
+  .page_breaker {
+  page-break-after: always;
+  }
+</style>

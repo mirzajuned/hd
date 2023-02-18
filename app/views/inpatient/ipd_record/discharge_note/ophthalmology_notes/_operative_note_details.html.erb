@@ -1,0 +1,96 @@
+<!-- Surgeon -->
+<% if operative_note.surgeon.to_i == 1 %>
+    <% surgeon = operative_note.surgeon1 %>
+<% elsif operative_note.surgeon.to_i == 2 %>
+    <% surgeon = operative_note.surgeon1 + ', ' + operative_note.surgeon2 %>
+<% elsif operative_note.surgeon.to_i == 3 %>
+    <% surgeon = operative_note.surgeon1 + ', ' + operative_note.surgeon2 + ', ' + operative_note.surgeon3 %>
+<% end %>
+<!-- Anaesthetist -->
+<% anaesthetist = "" %>
+<% if operative_note.anaesthetist.to_i == 1 %>
+    <% anaesthetist = operative_note.anaesthetist1 %>
+<% elsif operative_note.anaesthetist.to_i == 2 %>
+    <% anaesthetist = operative_note.anaesthetist1 + ', ' + operative_note.anaesthetist2 %>
+<% elsif operative_note.anaesthetist.to_i == 3 %>
+    <% anaesthetist = operative_note.anaesthetist1 + ', ' + operative_note.anaesthetist2 + ', ' + operative_note.anaesthetist3 %>
+<% end %>
+
+<div class="row mb10">
+  <div class="col-md-12">
+    <% if operative_note.post_op_plan.present? %>
+      <div class="col-md-12">
+        <b>Post-Op Plan :</b> <%= operative_note.post_op_plan %>
+      </div>
+    <% end %>
+    <% if @discharge_note.treatment_type.present? %>
+      <div class="col-md-4">
+        <b>Treatment Type :</b> <%= @discharge_note.treatment_type %>
+      </div>
+    <% end %>
+    <% if operative_note.anesthesia.present? %>
+      <div class="col-md-4">
+        <b>Anesthesia Used:</b> <%= operative_note.anesthesia %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<div class="row mb10">
+  <%if operative_note.advice.present? %>
+    <div class="advice mb5 replace_advice_set" id="advice">
+      <% advice_content = operative_note.advice.advice_content %>
+        <% if advice_content.present? && advice_content.to_s != "<br>" %>
+            <div class="row">
+              <div class="col-md-12">
+                <strong>Advice & Precautions : </strong>
+                <%@id = operative_note.advice.advice_set_id%>
+                <%if @language_flag == "true"%>
+                  <%if @id.length > 2 && @id.present?%>
+                    <%AdviceSet.find_by(id: @id ).language_advice_subset.each do |lang| %>
+                      <%if lang[:language] == @advice_language%>
+                        <%=lang[:content].to_s.html_safe.to_s%>
+                      <%end%>
+                    <%end%>
+                  <%elsif @id.length == 2 && @id.present? %>
+                    <%@advice_set_arr = Global.send("ophthal_advice_option").send('sets')%>
+                    <%@set = @advice_set_arr.select{|advice| advice["id"] == @id}%>
+                    <%= advice_content = @set[0]["#{@advice_language}"].to_s.html_safe.to_s%>
+                  <%else%>
+                    <%= advice_content = operative_note.advice.advice_content.to_s.html_safe.to_s %>
+                  <%end%>
+                <%else%>
+                  <%= advice_content = operative_note.advice.advice_content.to_s.html_safe.to_s %>
+                <%end%>
+              </div>
+            </div>
+        <% end %>
+    </div>
+  <%end%>
+</div>
+
+<div class="row mb10">
+  <div class="col-md-12">
+    <div class="col-md-12">
+      <% unless operative_note.surgeon.to_i == 0 %>
+        <b>Surgeon :</b> <%= surgeon %>
+      <% end %>
+    </div>
+    <div class="col-md-12">
+      <% unless operative_note.anaesthetist.to_i == 0 %>
+        <b>Anaesthetist :</b> <%= anaesthetist %>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<% if operative_note.procedure_note.present? && operative_note.procedure_note != "<br>" %>
+  <% @procedure_notes = operative_note.procedure_note.html_safe %>
+  <% unless @procedure_notes.to_s == "" %>
+    <% if @discharge_note.print_procedure == true || params[:action] != 'print' %>
+        <!-- Procedure Details -->
+        <%= render partial: 'inpatient/ipd_record/discharge_note/orthopedics_notes/procedure_details.html.erb' %>
+        <!-- Procedure Details Ends -->
+    <% end %>
+  <% end %>
+<% end %>

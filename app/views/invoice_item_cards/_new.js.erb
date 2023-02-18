@@ -1,0 +1,43 @@
+<%= 10.times do |i| %>
+  $(".item-type_<%=i%>").on('change',function(){
+    if($(this).val() == "User"){
+      $(".doctor-text-here").html("Users")
+      $(this).closest('.invoice-item-card_<%=i%>').find(".list-of-doctors").html("<select class='form-control' name='invoice_item_card[<%=i%>][item_id]'><% @users.each do |user| %><option value='<%= user.id.to_s %>'><%= user.fullname %></option><% end %></select>")
+    } else {
+      $(this).closest('.invoice-item-card_<%=i%>').find(".list-of-doctors").html("<input type='hidden' name='invoice_item_card[<%=i%>][item_id]' class='form-control' value='<%= BSON::ObjectId.new() %>'>")
+    }
+  })
+<% end %>
+
+$(".invoice_item_card_tax_group").on('change', function(){
+  calculate_tax_values(this)
+})
+
+$(".invoice_item_card_amount").on('keyup', function(){
+  calculate_tax_values(this)
+})
+
+$(".invoice_item_card_tax_inclusive").on('click', function(){
+  calculate_tax_values(this)
+})
+
+function calculate_tax_values(_this){
+  var this_parent = $(_this).closest('.invoice-item-card-row')
+  var quantity = parseFloat($(this_parent).find('.invoice_item_card_quantity').val())
+  var amount = parseFloat($(this_parent).find('.invoice_item_card_amount').val())
+  var tax_rate = parseFloat($(this_parent).find(".invoice_item_card_tax_group").find(":selected").attr('data-tax-rate'))
+  var inclusive = $(this_parent).find('.invoice_item_card_tax_inclusive').is(':checked')
+
+  if(inclusive){
+    var taxable_amount = (amount * tax_rate)/(100 + tax_rate)
+    var non_taxable_amount = amount - taxable_amount
+    var total_amount = amount
+  } else {
+    var taxable_amount = (amount * tax_rate)/100
+    var non_taxable_amount = amount
+    var total_amount = amount + taxable_amount
+  }
+  $(this_parent).find('.invoice_item_card_taxable_amount').val(taxable_amount.toFixed(2))
+  $(this_parent).find('.invoice_item_card_non_taxable_amount').val(non_taxable_amount.toFixed(2))
+  $(this_parent).find('.invoice_item_card_item_price').val(total_amount.toFixed(2))
+}

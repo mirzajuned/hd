@@ -1,0 +1,64 @@
+<div class="panel panel-info">
+  <div class="panel-heading" style="border-bottom:1px solid #fff;border-color: rgba(255, 255, 255, 0.2) !important;padding-top:8px;padding-bottom:8px;">
+    <div class="row">
+      <div class="col-sm-2" style="display:inline;">
+      <h4 class="panel-title" style="display:inline;">Other</h4>
+      </div>
+      <div class="col-sm-10" style="text-align:right;display:inline;">
+          <%= hidden_field_tag "facilitylistother", current_facility.id %>
+        <% if current_user.has_role?(:nurse) || current_user.has_role?(:receptionist) %>
+          <span style="font-size:10px;">U:</span>
+          <%= select_tag "userlistother", options_for_select(""), { :class=> "userlistother form-control" } %>
+        <% end %>
+      </div>
+    </div>
+  </div><!-- panel-heading -->
+
+  <div class="panel-body panel-stat" id="other_data_dashboard_counter" style="background:#5BC0DE; padding:15px;min-height:92px;">  
+    <%= render partial: "main/dashboard_content/other_data_dashboard_counter/other_data_counter"%>
+  </div>
+
+  <% if current_user.role_ids[0] != 6868009 %>
+    <div class="panel-footer" style="padding: 5px 10px;">
+        <div class="pull-right">
+          <%= link_to opd_appointments_showcalendar_path, :data => {:remote => true}, :class => "btn btn-sm btn-darkblue show-calendar hg-tooltip-east ps", :title => "Show Calender", :id => "show_calender_link" do %><i class="fa fa-calendar"></i><% end %>
+        </div>
+    </div>
+  <% end %>
+
+</div><!-- panel -->
+
+<style type="text/css">
+#facilitylistother, #userlistother {
+  width:37%;
+  display: inline-block;
+}
+</style>
+
+<script>
+jQuery(document).ready(function(){
+  jQuery('#facilitylistother').on("change",function(){
+    var fac_id = jQuery("#facilitylistother").val();
+    //load users
+    jQuery.ajax({
+      type: "GET",
+      dataType: "json",
+      url: "/main/get_user_id_other_count",
+      data: {facility_id: fac_id},
+      success: function(response){
+        jQuery('#userlistother').children().remove();
+        jQuery('#userlistother').append(jQuery("<option></option>").attr("value",0).text("All User"));
+        jQuery.each(response, function(key, value) {  
+          jQuery('#userlistother').append(jQuery("<option></option>").attr("value",value[1]).text(value[0]));
+        });
+        loadFacilityCount(fac_id, jQuery("#userlistother").val(),"/main/get_other_data_count");
+      }
+    });
+  });
+
+  jQuery('#userlistother').on("change",function(){
+    loadFacilityCount(jQuery("#facilitylistother").val(), jQuery("#userlistother").val(),"/main/get_other_data_count");
+  });
+  jQuery('#facilitylistother').trigger("change");
+});
+</script>

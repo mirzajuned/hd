@@ -1,0 +1,311 @@
+$('.role_ids_list').off('change').on('change', function(e, triggered) {
+  e.preventDefault();
+  var role_ids = $("input[name='user[role_ids]']:checked").val();
+
+  if(['158965000,6868009','158965000','158965000,160943002','405277009','28229004','28221005', '158965000,158966000'].indexOf(role_ids) > -1){          // for doctor roles
+    $('.no_specialty_selection').hide();
+    $('.specialty_restriction_label').fadeIn()
+    $('.specialty_list').attr('disabled', false)
+    if(triggered != true){ $('.specialty_list:first').trigger('click') }
+
+    arr = []
+    $('input[class="specialty_list"]:checked').each(function(){ arr.push(this.value) })
+
+    if (arr.length > 1){
+      for (var i = 0; i < arr.length; i++) {
+        if (i > 0) {
+          var value = arr[i]
+          // console.log(typeof value.toString());
+          $('#checkbox_'+ value).attr('checked', false)
+        }
+      }
+    } else if(arr.length == 0){
+      $('.specialty_list:first').attr('checked', true)
+    }
+  }else if(['6868009','573021946','686800945','46255001','387619007','160943002','159282002','2822900478','41904004'].indexOf(role_ids) > -1){            // for center head, tpa and admin role
+    $('.specialty_list').attr('checked', false).attr('disabled', true)
+    $('.specialty_restriction_label').hide();
+    $('.no_specialty_selection').fadeIn();
+    $('.sub_specialty_list_panel').html('')
+    $('.sub_specialty_section').hide()
+  }else{
+    $('.specialty_list').attr('disabled', false)                                                                      // provide all specialties
+    if(triggered != true){ $('.specialty_list:first').trigger('click') }
+    $('.specialty_restriction_label').fadeOut()                                                                       // for remaining roles
+    $('.no_specialty_selection').fadeOut();
+    // arr = []
+    // $('input[class="specialty_list"]:checked').each(function(){arr.push(this.value)})
+    // if (arr.length == 0){
+    //   $('.specialty_list:first').attr('checked', true)
+    // }
+  }
+
+  if (['158965000,6868009','158965000,160943002', '6868009', '160943002'].indexOf(role_ids) > -1) {
+    $('#user_is_open_access_enabled_false').prop('disabled', true)
+    $('#user_is_open_access_enabled_true').attr('checked', 'checked')
+  } else {
+    $('#user_is_open_access_enabled_false').prop('disabled', false)
+  }
+
+  user_department_selection(role_ids)
+  default_department_selection()
+
+}).trigger('change', true)
+
+function user_department_selection(role_ids) {
+  // $('.departments_availablility_label').fadeIn()
+  all_departments = <%= raw Department.all.pluck(:id) %>;
+  $('.internal_user_section').hide()
+  // dep_arr = []
+  // $('input[class="department_list"]:checked').each(function(){dep_arr.push(this.value)})
+  // if (dep_arr.length == 0){  $('.department_list:first').attr('checked', true)}
+
+  if(['686800945','160943002','6868009'].indexOf(role_ids) > -1){                                           // admin role, center head, owner
+    to_reject = ['224608005','550368792']
+    $('.departments_availablility_label').fadeIn()
+    disable_extra_departments(all_departments, to_reject)
+
+  }else if(['159282002','41904004','2822900478'].indexOf(role_ids) > -1){                                   // ophthal, laboratory and radiology user
+    if (role_ids == '159282002') { to_reject = ['261904005'] }
+    else if(role_ids == '41904004') { to_reject = ['309964003'] }
+    else { to_reject = ['309935007'] }
+
+    $('.departments_availablility_label').fadeIn()
+    disable_extra_departments(all_departments, to_reject)
+
+  }else if(['28229004','28221005'].indexOf(role_ids) > -1){                                                            // optometrist
+    to_reject = ['309935007','485396012','486546481','225738002']
+    $('.departments_availablility_label').fadeIn()
+    disable_extra_departments(all_departments, to_reject)
+
+  }else if (['158965000'].indexOf(role_ids) > -1){                                                          // doctor
+    $('.department_list').attr('disabled', false)
+    $('.internal_user_section').show()
+    enable_disable_opthal_departments(role_ids)
+    $('.departments_availablility_label').fadeOut()
+
+  }else if (['158965000,160943002','158965000,6868009', '158965000,158966000'].indexOf(role_ids) > -1){                            // doctor-owner, doctor-admin, doctor_clinical_auditor
+    to_reject = ['485396012','486546481','225738002','224608005','225746001','116154003']
+    $('.internal_user_section').show()
+    $('.departments_availablility_label').fadeIn()
+    disable_extra_departments(all_departments, to_reject)
+
+  }else if (['106292003'].indexOf(role_ids) > -1){                                                          // nurse
+    to_reject = ['485396012','486546481','225738002','225746001','225728007','116154003']
+    $('.departments_availablility_label').fadeIn()
+    disable_extra_departments(all_departments, to_reject)
+
+  }else if (['159561009','59561000','159562000','499992366','405277009'].indexOf(role_ids) > -1){                                  // receptionist, counsellor, resident, cashier, floormanager
+    to_reject = ['485396012','486546481','225738002','224608005','116154003']
+    $('.departments_availablility_label').fadeIn()
+    disable_extra_departments(all_departments, to_reject)
+
+  }else if (['46255001'].indexOf(role_ids) > -1){                                                           // pharmacy
+    to_reject = ['284748001']
+    $('.departments_availablility_label').fadeIn()
+    disable_extra_departments(all_departments, to_reject)
+    enable_disable_opthal_departments(role_ids)
+
+  }else if (['387619007'].indexOf(role_ids) > -1){                                                           // optician
+    to_reject = ['50121007']
+    $('.departments_availablility_label').fadeIn()
+    disable_extra_departments(all_departments, to_reject)
+
+  }else if (['573021946'].indexOf(role_ids) > -1){                                                           // tpa
+    to_reject = ['450368792']
+    $('.departments_availablility_label').fadeIn()
+    disable_extra_departments(all_departments, to_reject)
+  }
+
+}
+
+function disable_extra_departments(all_departments, to_reject) {
+  $('.department_list').attr('checked', false).attr('disabled', false)
+
+  for (var i = 0; i < to_reject.length; i++) {
+    var index = all_departments.indexOf(to_reject[i])
+    if (index > -1){ all_departments.splice(index, 1) }
+  }
+
+  for (var i = 0; i < all_departments.length; i++) {
+    if(['50121007','309935007'].indexOf(all_departments[i]) > -1){                           // case for opthal and optical department in case of ophtalmology specialty selected
+      if($('#checkbox_309988001').is(":checked")){
+        $('#checkbox_'+ all_departments[i]).attr('disabled', false)
+      }else {
+        $('#checkbox_'+ all_departments[i]).attr('disabled', true)
+      }
+
+    }else{
+      $('#checkbox_'+ all_departments[i]).attr('checked', false).attr('disabled', true)
+    }
+  }
+
+  // logic for checking true for saved department ids
+  var saved_department_ids = <%= raw @user.department_ids %>;
+  if (saved_department_ids.length > 0){
+    for (var i = 0; i < saved_department_ids.length; i++) {
+      if ($('#checkbox_'+ saved_department_ids[i]).is(":disabled") == false){
+        $('#checkbox_'+ saved_department_ids[i]).attr('checked', true)
+      }
+    }
+  }
+}
+
+function enable_disable_opthal_departments(role_ids) {
+  if($('#checkbox_309988001').is(":checked")){
+    $('#checkbox_309935007').attr('disabled', false)
+    $('#checkbox_50121007').attr('disabled', false)
+  }else {
+    $('#checkbox_309935007').attr('checked', false).attr('disabled', true)
+    $('#checkbox_50121007').attr('checked', false).attr('disabled', true)
+  }
+}
+
+$('.specialty_list').on('click', function(e){
+  var role_ids = $("input[name='user[role_ids]']:checked").val();
+  var value = $(this).val()
+
+  if(['158965000,6868009','158965000','158965000,160943002','405277009','28229004','28221005', '158965000,158966000'].indexOf(role_ids) > -1){                            // for doctor role only single specialty available
+    $('.specialty_list').attr('checked', false)
+    $('#checkbox_'+ value).attr('checked', true)
+  }
+  enable_disable_opthal_departments(role_ids)
+  default_department_selection()
+
+  if(role_ids.indexOf(158965000) == 0){
+    fetch(`/sub_specialties?specialty_id=${value}`)
+      .then(response => response.json())
+      .then(function(sub_specialties){
+        let default_sub_specialty_id = ''
+        $('.sub_specialty_list_panel').html('')
+        if(sub_specialties.length > 0){
+          $('.sub_specialty_section').show()
+          $.each(sub_specialties, function(key, value) {
+            $('.sub_specialty_list_panel').append(`
+              <div class="col-md-4" style="padding: 1px;">
+                <span class="ckbox ckbox-primary" style="padding-top: 5px;">
+                  <input type="hidden" name="user[sub_specialty_ids][${key}][id]" value='${value[0]}'>
+                  <input type="hidden" name="user[sub_specialty_ids][${key}][name]" value='${value[1]}'>
+                  <input type="hidden" name="user[sub_specialty_ids][${key}][flag]" value='false'>
+                  <input type="checkbox" name="user[sub_specialty_ids][${key}][flag]" id="sub_checkbox_${value[0]}" value="${value[0]}" class="sub_specialty_list">
+                  <label for="sub_checkbox_${value[0]}"><b>${value[1]}</b></label>
+                </span>
+              </div>
+            `)
+            if(value[2]){ default_sub_specialty_id = value[0] }
+          });
+
+          var saved_department_ids = <%= raw @user.sub_specialty_ids %>;
+          let counter = 0
+          if (saved_department_ids.length > 0){
+            for (var i = 0; i < saved_department_ids.length; i++) {
+              if($(`#sub_checkbox_${saved_department_ids[i]}`).length > 0){
+                $(`#sub_checkbox_${saved_department_ids[i]}`).attr('checked', 'checked')
+                counter++;
+              }
+            }
+          }
+          if(counter === 0){
+            $(`#sub_checkbox_${default_sub_specialty_id}`).attr('checked', 'checked')
+          }
+
+          $(`#sub_checkbox_${default_sub_specialty_id}`).on('click', function(){
+            if(!$(this).is(':checked')){
+              $(`#sub_checkbox_${default_sub_specialty_id}`).attr('checked', 'checked')
+            }
+          })
+        } else {
+          $('.sub_specialty_section').hide()
+        }
+      })
+  } else {
+    $('.sub_specialty_list_panel').html('')
+    $('.sub_specialty_section').hide()
+  }
+})
+
+// validations for multi - specialty
+$('#user_form').submit(function(){
+  var role_ids = $("input[name='user[role_ids]']:checked").val();
+  var to_skip_roles = ['573021946','6868009','686800945','46255001','387619007','160943002','159282002','41904004','2822900478']        // tpa, admin, center head, ophthal, lab and rad user
+
+  // validation for specialty selection
+  if(to_skip_roles.indexOf(role_ids) == -1){
+    if ($('input[class="specialty_list"]:checked').length == 0){
+      $('#employee_information').trigger('click')
+      $('.specialty_needed_label').show().effect('highlight', 4000).delay(400).fadeOut();
+
+      return false;
+    }
+  }
+
+  // validation for department selection
+  if ($('input[class="department_list"]:checked').length == 0){
+    $('#employee_information').trigger('click')
+    $('.department_needed_label').show().effect('highlight', 4000).delay(400).fadeOut();
+
+    return false;
+  }
+
+  $('#personal_information').trigger('click')
+});
+
+function default_department_selection() {
+  arr = []
+  $('input[class="department_list"]:checked').each(function(){ arr.push($(this)) })
+  $('.department_selection_div').remove();
+
+  $.each(arr, function(key, value) {
+    field = create_department_checkbox(value.attr('value'), value.attr('data-name'))
+    $('.department_selection_list').append("<div class='col-md-3 department_selection_div' style='padding:1px;'>" + field + "</div>")
+  })
+
+  // making first selected department as default is not any selected
+  arr = []
+  $('input[class="selected_department_list"]:checked').each(function(){ arr.push($(this)) })
+  if (arr.length == 0){ $('input[class="selected_department_list"]:first').attr('checked', true) }
+}
+
+function create_department_checkbox(department_id, department_name){
+  var selected_department = "<%= @user.department_ids[0] %>"
+  if (selected_department == department_id){ is_default = 'checked' } else {  is_default = '' }
+
+  var input_field = "<input type='radio' name='user[selected_department]' id='default_checkbox_"+department_id+"' value='"+ department_id +"' class='selected_department_list' "+ is_default +" />"
+  var label = "<label for='default_checkbox_"+department_id+"'><b>" + department_name + "</b></label>"
+  var final_field = "<span class='rdio rdio-primary' style='padding-top: 5px;'>"  + input_field + label + "</span>"
+
+  return final_field
+}
+
+default_department_selection()
+
+$('.department_list').on('click', function() {
+  default_department_selection()
+})
+
+$('#checkbox_422234006').on('click', function(){
+  if(!$(this).is(':checked')){
+    $('#checkbox_422234006').attr('checked', 'checked')
+  }
+})
+
+const setEmail = () => {
+  let emailLocal = $('.email_local');
+  let emailDomain = $('.email_domain');
+  let email = $('#user_email');
+
+  if (emailLocal.val() != '' && emailDomain.val() != '') {
+    email.val(`${emailLocal.val()}@${emailDomain.val()}`)
+  } else {
+    email.val('')
+  }
+}
+
+$('.email_local').on('keyup', function() {
+  setEmail()
+});
+
+$('.email_domain').on('change', function() {
+  setEmail()
+}).trigger('change');
+

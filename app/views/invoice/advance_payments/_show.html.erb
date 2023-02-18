@@ -1,0 +1,196 @@
+<div class="modal-dialog modal-lg" style="width:45%;">
+  <!-- Modal content-->
+  <div class="modal-content">
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal">&times;</button>
+      <h4 class="modal-title">Advance Receipt</h4>
+    </div>
+    <div class="modal-body">
+      <div class="row advance-info mb20">
+        <div class="col-md-12">
+            <% amount_with_precision = number_with_precision(@advance_payment.amount, precision: 2) %>
+            <% amount_display  = Common::Finance::NumberFormatService.call(@number_format, amount_with_precision) %>
+            <p>Received with thanks a sum of <b><%= @advance_payment.currency_symbol %> <%= amount_display %></b> from <b><%= @patient.fullname.to_s.upcase %></b> towards <b><%= @advance_payment.reason %></b> by <b><%= @advance_payment.mode_of_payment.titleize %></b> dated <b><%= @advance_payment.payment_date.strftime("%d/%m/%Y") %></b>.</p>
+        </div>
+      </div>
+
+      <% if @advance_payment.advance_history.count > 0 %>
+        <hr/>
+        <div class="row advance-breakup">
+          <div class="col-md-6">
+            <b>Advance History <span style="font-size: 10px;">(Note: This will not be printed)</span></b>
+          </div>
+          <div class="col-md-6 text-right">
+            <% unless @advance_payment.is_refunded %>
+              <b>Amount Remaining : <%= @advance_payment.amount_remaining %></b>
+            <% end %>
+          </div>
+          <div class="col-md-12">
+            <table class="table table-bordered" style="font-size: 12px;">
+              <thead>
+                <tr>
+                  <th style="padding: 5px;">Bill Number</th>
+                  <th style="padding: 5px;">Department</th>
+                  <th style="padding: 5px;">Type</th>
+                  <th style="padding: 5px;">Created By</th>
+                  <th style="padding: 5px;">Time</th>
+                  <th style="padding: 5px;">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @advance_payment.advance_history.each do |ah| %>
+                  <tr>
+                    <td style="padding: 5px;"><%= ah[:bill_number] %></td>
+                    <td style="padding: 5px;"><%= ah[:invoice_type] %></td>
+                    <td style="padding: 5px;"><%= ah[:type] %></td>
+                    <td style="padding: 5px;"><%= ah[:user_name] %></td>
+                    <td style="padding: 5px;"><%= ah[:event_time] %></td>
+                    <% amount_with_precision = number_with_precision(ah[:amount], precision: 2) %>
+                    <% amount_display = Common::Finance::NumberFormatService.call(@number_format, amount_with_precision) %>
+                    <td style="padding: 5px;"><%= amount_display %></td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      <% end %>
+
+      <!--show payment cancellation/refund details -->
+      <div class="row toggle-cancellation" style="display: none">
+        <div class="col-md-12">
+          <div class="col-md-12 well">
+            <% if @advance_payment.is_canceled %>
+              <div class="" style="color: #d43f3a">
+                <strong class="text-center">Advance Payment Cancelled</strong>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-md-12">
+          <% if @advance_payment.is_refunded %>
+            <div class="col-md-12 well">
+              <div class="" style="color: #d43f3a">
+                <strong class="text-center">Bill Refunded</strong>
+              </div>
+              <div class="">
+                <% refund_amount_with_precision = number_with_precision(@advance_payment.try(:refund_amount).to_f, precision: 2) %>
+                <% refund_amount_display = Common::Finance::NumberFormatService.call(@number_format, refund_amount_with_precision) %>
+                <strong>Payment Refunded <b style="color: #0b670b"><%= refund_amount_display %></b></strong>
+              </div>
+              <% if @advance_payment.try(:refund_reason).present? %>
+                <div class="">
+                  <strong>Refund Remarks: <b style=""><%= @advance_payment.try(:refund_reason) %></b></strong>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+      <!--show payment cancellation/refund details Ends-->
+
+    </div>
+    <div class="modal-footer">
+      <div class="col-md-5 text-left">
+        <div class="btn-group print-receipt-buttons" style="margin-bottom: 0px;">
+          <% advance_payment_print_policy_identifier, advance_payment_email_policy_identifier = nil,nil %>
+          <% advance_payment_print_policy_identifier = "HGP-101-105-100" if @advance_payment.department_name == "OPD" || @advance_payment.department_name == "IPD" %>
+          <% advance_payment_email_policy_identifier = "HGP-101-105-101" if @advance_payment.department_name == "OPD" || @advance_payment.department_name == "IPD" %>
+          <% authorized_to_print_advance_receipt = advance_payment_print_policy_identifier.present? ? Authorization::PolicyHelper.verification(current_user.id ,advance_payment_print_policy_identifier) : true %>
+          <% authorized_to_email_advance_receipt = advance_payment_email_policy_identifier.present? ? Authorization::PolicyHelper.verification(current_user.id ,advance_payment_email_policy_identifier) : true %>
+
+          <% if authorized_to_print_advance_receipt %>
+            <% if @print_settings.count > 1 %>
+                <button type="button" class="btn btn-info btn-sm full_print dropdown-toggle" data-toggle="dropdown"><i class="fa fa-print mr5"></i> Print <i class="fa fa-caret-down"></i></button>
+                <ul class="dropdown-menu dropdown-left-manual" role="menu" aria-labelledby="summary-print-dropdown" style="">
+                  <% @print_settings.each do |print_setting| %>
+                    <li class="multi-print">
+                      <%= link_to print_invoice_advance_payments_path(id: @advance_payment.id, print_setting_id: print_setting.id, format: 'pdf'), data: { method: :get }, class: "advance_payment_print", target: "_blank", style: "color: #d9534f;" do %> <i class="fa fa-print mr5"></i> <%= print_setting.name %> <% end %>
+                    </li>
+                  <% end %>
+                </ul>
+            <% else %>
+              <%= link_to print_invoice_advance_payments_path(id: @advance_payment.id, print_setting_id: @print_settings[0].id, format: 'pdf'), class: "btn btn-info btn-sm advance_payment_print", target: "_blank", data: { method: :get } do %> <i class="fa fa-print mr5"></i> Print <% end %>
+            <% end %>
+          <% end %>
+          <% if authorized_to_email_advance_receipt %>
+            <%= link_to new_mail_record_tracker_path(record_name: 'AdvancePayment', record_id: @advance_payment.id, record_model: 'AdvancePayment', patient_id: @advance_payment.patient_id, speciality_id: @advance_payment.specialty_id, :mode => @mode),  class: "btn btn-sm btn-primary", :id => "record-mail-html", :data => {:remote => true, 'disable-with' =>  "Please Wait..."} do %><i class="glyphicon glyphicon-envelope"></i> Email<% end %>
+          <% end %>
+        </div>
+      </div>
+
+      <div class="col-md-7">
+        <!-- params[:reports] == Link clicked from reports -->
+
+        <% unless @advance_payment.is_refunded %>    
+          <% if @advance_payment.advance_history.present? %>
+            <% authorized_to_access_advance_refund = true %>
+            <% authorized_to_access_advance_refund = Authorization::PolicyHelper.verification(current_user.id,"HGP-102-113-102") if @advance_payment.type == "OPD" %>
+            <% if @advance_payment.amount_remaining != 0.0 %>
+              <% if authorized_to_access_advance_refund  %>
+                <%= link_to new_invoice_refund_payment_path(type: @advance_payment.try(:type), patient_id: @advance_payment.patient_id.to_s, specialty_id: @advance_payment.specialty_id, advance_payment_id: @advance_payment.id, refund_type: 'Partial'), class: 'btn btn-warning', id: 'refund_ins_advance_path', data: { :remote => true, 'toggle' => 'modal', 'target' => '#invoice-detail-modal' } do %> Refund<% end %>
+              <% else %>
+                <a class="btn btn-warning disabled" style="pointer-events: all" title="Not Authorized"> Refund</a>
+              <% end %>
+            <% end %>
+          <% else %>
+            <% authorized_to_cancel_advance_receipt = false %>
+            <% if @advance_payment.type == "OPD" %>
+              <% authorized_to_cancel_advance_receipt = true if Authorization::PolicyHelper.verification(current_user.id,"HGP-102-113-101") %>
+            <% elsif @advance_payment.type == "Optical" || @advance_payment.type == "Pharmacy" %>
+              <% authorized_to_cancel_advance_receipt = true if Authorization::PolicyHelper.verification(current_user.id,"HGP-100-117-102") %>
+            <% else %>
+              <% authorized_to_cancel_advance_receipt = true %>
+            <% end %>
+            <% if authorized_to_cancel_advance_receipt %>
+              <%= link_to new_invoice_refund_payment_path(type: @advance_payment.try(:type), patient_id: @advance_payment.patient_id.to_s, specialty_id: @advance_payment.specialty_id, advance_payment_id: @advance_payment.id, refund_type: 'Cancellation'), data: { remote: true, 'toggle': 'modal', 'target': '#invoice-detail-modal' }, class: 'btn btn-danger', id: 'cancel_ins_advance_path' do %> Cancellation<% end %>
+            <% else %>
+              <a class="btn btn-danger disabled" style="pointer-events: all" title="Not Authorized">Cancellation</a>
+            <% end %>
+          <% end %>
+        <% end %>
+        <% if @advance_payment.amount_remaining.to_f == @advance_payment.amount.to_f && params[:reports] != 'true' %>
+
+<!--          <%#= link_to invoice_advance_payment_path(id: @advance_payment.id), method: :delete, data: { remote: true }, class: "btn btn-danger" do %>Delete<%# end %>-->
+<!--          <%#= link_to edit_invoice_advance_payment_path(id: @advance_payment.id), class: "btn btn-primary", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#invoice-modal'} do %>Edit<%# end %>-->
+        <% else %>
+          <%#= link_to refund_invoice_advance_payment_path(id: @advance_payment.id, refunded_amount: @advance_payment.amount_remaining), data: { remote: true }, class: "btn btn-warning" do %><!-- Refund (<%= @advance_payment.currency_symbol %> <%= @advance_payment.amount_remaining %>) --><%# end %>
+        <% end %>
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style type="text/css">
+  /*input {
+    border: none !important;
+    border-bottom: 1px solid #aaa !important;
+  }*/
+
+  .service_row_count {
+    border: 1px solid #aaa;
+    padding: 21px;
+    margin-bottom: 10px;
+  }
+
+  .patient_info_box {
+    border-bottom: 1px solid #aaa;
+    border-right: 1px solid #aaa;
+    border-left: 1px solid #aaa;
+    padding: 10px 0;
+    margin-bottom: 10px;
+  }
+
+  input.error, select.error {
+    border-color: #b94a48;
+    background-image: none;
+  }
+  input.valid, select.valid {
+    border-color: #468847;
+    background-image: none;
+  }
+</style>

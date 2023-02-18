@@ -1,0 +1,72 @@
+<% @invoice.services.each.with_index do |service, i| %>
+  <div class="row service_item_list">
+    <div class="row item_list">
+      <div class="item">
+        <% if service.entry_type == "service" %>
+          <% @pricing_master = PricingMaster.find_by(id: service.description) %>
+          <% if @pricing_master.present? %>
+            <div class="col-md-12">
+              <div class="col-md-1"><span><%= i + 1 %>.</span></div>
+              <div class="col-md-3"><span><%= @pricing_master.service_sub_group.name %> - <%= @pricing_master.service_name %></span></div>
+              <div class="col-md-1"><span><%= service.quantity %></span></div>
+              <% unit_price_with_precision = number_with_precision(service.unit_price, precision: 2) %>
+              <% unit_price_display = Common::Finance::NumberFormatService.call(@number_format, unit_price_with_precision) %>
+              <div class="col-md-2 text-right"><%= unit_price_display %></div>
+              <% taxable_amount_with_precision = number_with_precision(service.taxable_amount, precision: 2) %>
+              <% taxable_amount_display = Common::Finance::NumberFormatService.call(@number_format, taxable_amount_with_precision) %>
+              <div class="col-md-2 text-right"><%= taxable_amount_display %></div>
+              <% price_with_precision = number_with_precision(service.price, precision: 2) %>
+              <% price_display = Common::Finance::NumberFormatService.call(@number_format, price_with_precision) %>
+              <div class="col-md-2 text-right"><%= price_display %></div>
+            </div>
+          <% end %>
+        <% elsif service.entry_type == "surgery_package" %>
+          <% @surgery_package = SurgeryPackage.find_by(id: service.description) %>
+          <% if @surgery_package.present? %>
+            <div class="col-md-12">
+              <div class="col-md-1"><span><%= i + 1 %>.</span></div>
+              <div class="col-md-3"><span><%= @surgery_package.display_name %></span></div>
+              <div class="col-md-1"><span><%= service.quantity %></span></div>
+              <div class="col-md-2 text-right"><%= number_with_precision(service.unit_price, precision: 2) %></div>
+              <div class="col-md-2 text-right">-</div>
+              <div class="col-md-2 text-right"><%= number_with_precision(service.price, precision: 2) %></div>
+            </div>
+            <% if @facility_setting.invoice_show_package_breakup %>
+              <div class="col-md-12">
+                <div class="row" style="margin-bottom: 5px;font-size: 10px;">
+                  <div class="col-md-11 col-md-offset-1" style="padding:0px;">
+                    <b>Package Breakup :</b>
+                  </div>
+                  <div class="col-md-10 col-md-offset-1" style="padding: 0px 5px;">
+                    <table class="table table-bordered" style="margin-bottom: 0px;">
+                      <% if @surgery_package.present? && @surgery_package.services.count > 0 %>
+                        <thead>
+                          <tr>
+                            <th style="padding:2px 10px;">S.No</th>
+                            <th style="padding:2px 10px;">Description</th>
+                            <th style="padding:2px 10px;" class="text-right">Unit Cost</th>
+                            <th style="padding:2px 10px;" class="text-right">Total Cost</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <% @surgery_package.services.where(is_active: true).each_with_index do |service, i| %>
+                            <tr>
+                              <td style="padding:2px 10px;"><%= i + 1 %>.</td>
+                              <td style="padding:2px 10px;"><%= service.item_name %><%= "(#{service.item_code})" if service.item_code.present? %></td>
+                              <td style="padding:2px 10px;" class="text-right"><%= service.try(:unit_price) %> <%= "(#{service.try(:unit)} #{service.try(:item_type) == 'Room Rent' ? 'Days' : 'Units' })" %></td>
+                              <td style="padding:2px 10px;" class="text-right"><%= service.try(:total_price) %></td>
+                            </tr>
+                          <% end %>
+                        </tbody>
+                      <% end %>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+          <% end %>
+        <% end %>
+      </div><!-- .item -->
+    </div><!-- .item_list -->
+  </div>
+<% end %>

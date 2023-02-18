@@ -1,0 +1,143 @@
+<div class="step-pane <%= stepcount == 1 ? "active" : "" %>" data-step="<%=stepcount%>" style="min-height: 290px">
+  <div class="row" style="margin:25px;">
+    <b>Trusted IP Address:</b>&emsp;&emsp;&emsp;&emsp;<button class="btn btn-xs btn-primary disabled"><i class="fa fa-download mr5"></i>&nbsp;Change History</button><br><br>
+
+    <% unless @organisation.is_ip_whitelisted %>
+      <span style="color: red;">Note: IP Whitelisting not enabled on organisation level. Irrespective of any change you make below the user will continue to have open access.</span>
+    <% end %>
+  </div>
+  <div class="row">
+    <div class="col-md-10">
+      <div class="row ip-whitelisting-section">
+        <% @facility.ip_address.each_with_index do |ip_address, index| %>
+          <div class="row ip-whitelisting-row" style="margin-bottom: 10px;">
+            <div class="col-md-2" style="padding-left: 30px;">
+              <b>IP Address:</b>
+            </div>
+            <div class="col-md-2">
+              <%= text_field_tag "", ip_address.remote_ip.split('/')[0], class: 'remote-ip-address-text form-control p5_10', onkeypress: 'return event.charCode >= 46 && event.charCode <= 57', readonly: true %>
+              <%= hidden_field_tag "facility[ip_address_attributes]#{index}[remote_ip]", ip_address.remote_ip, class: 'remote-ip-address form-control p5_10', id: "remote_ip_address_#{index}", readonly: true %>
+            </div>
+            <div class="col-md-1">
+              <b>CIDR:</b>
+            </div>
+            <div class="col-md-2">
+              <%= text_field_tag "", ip_address.remote_ip.split('/')[1], class: 'form-control p5_10', readonly: true %>
+            </div>
+            <div class="col-md-1">
+              <b>Name:</b>
+            </div>
+            <div class="col-md-2">
+              <%= text_field_tag "facility[ip_address_attributes]#{index}[remote_ip_name]", ip_address.remote_ip_name, class: 'remote_ip_name form-control p5_10', readonly: true %>
+            </div>
+              <div class="generic-btn-container col-md-1">
+                <a id="btn_remove_item" class="btn btn-xs btn-primary btn-danger btn-remove-item" href="javascript:;"><span class="glyphicon glyphicon-remove"></span></a>
+              </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <a id="btn_add_item" class="btn btn-xs btn-primary btn-square btn-add-item" href="javascript:;"><span class="glyphicon glyphicon-plus-sign"><strong>Trusted IP</strong></span></a>
+    </div>
+  </div>
+</div>
+
+
+<script type="text/javascript">
+
+  $('.btn-add-item').on('click', function(e) {
+    e.preventDefault()
+    let counter = $('.ip-whitelisting-row').length
+    if (counter == 19) {
+      $('.btn-add-item').attr('disabled', true)
+    }
+    $('.ip-whitelisting-section').append(`
+      <div class="row ip-whitelisting-row" style="margin-bottom: 10px;">
+        <div class="col-md-2" style="padding-left: 30px;">
+          <b>IP Address:</b>
+        </div>
+        <div class="col-md-2">
+          <input type="text" name="" id="remote_ip_address_text_${counter}" class='remote-ip-address-text form-control p5_10' onkeypress='return event.charCode >= 46 && event.charCode <= 57'>
+          <input type="hidden" name="facility[ip_address_attributes][${counter}][remote_ip]" id="remote_ip_address_${counter}" class='remote-ip-address form-control  p5_10'>
+        </div>
+        <div class="col-md-1">
+          <b>CIDR:</b>
+        </div>
+        <div class="col-md-2">
+          <select name="facility[ip_address_attributes][${counter}][cidr_notation]" id="facility_cidr_${counter}" class="form-control ip-address-cidr p5_10"><option value="" required='true'>Select</option></select>
+        </div>
+        <div class="col-md-1">
+          <b>Name:</b>
+        </div>
+        <div class="col-md-2">
+          <input type="text" name="facility[ip_address_attributes][${counter}][remote_ip_name]" class='remote_ip_name' id="remote_ip_name_${counter}" form-control p5_10'>
+        </div>
+        <div class="generic-btn-container col-md-1">
+          <a id="btn_remove_item" class="btn btn-xs btn-primary btn-danger btn-remove-item" href="javascript:;"><span class="glyphicon glyphicon-remove"></span></a>
+        </div>
+      </div>
+    `)
+  })
+
+  function check_add_button() {
+    let counter = $('.ip-whitelisting-row').length
+    if (counter >= 20) {
+      $('.btn-add-item').attr('disabled', true)
+    } else {
+      $('.btn-add-item').attr('disabled', false)
+    }
+  }
+
+  $('.ip-whitelisting-section').on('click', '.btn-remove-item', function(e) {
+    e.preventDefault()
+    var facility_ips = $('.remote-ip-address-text').map((i, e) => e.value).get();
+    var current_ip = $(this).closest('.ip-whitelisting-row').find('.remote-ip-address-text').val()
+    var facility_ips = facility_ips.splice(facility_ips.indexOf(current_ip),1);
+    $(this).closest('.ip-whitelisting-row').remove()
+    renumberIndex($('.ip-whitelisting-row'), ['input', 'select'])
+    check_add_button()
+  })
+
+  check_add_button()
+
+  // Do not change any logic here
+  $('.ip-whitelisting-section').on('change paste keyup click', '.remote-ip-address-text', function(e) {
+    value = $(this).val()
+    var id = $(this).closest('.ip-whitelisting-row').find('.ip-address-cidr')[0].id
+    var remote_id = $(this).closest('.ip-whitelisting-row').find('.remote-ip-address')[0].id
+    var ipaddress = /^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$/;
+    $(".remote-ip-address-text").autocomplete({
+      source: function(request, response) {
+        if (ipaddress.test(value)) {
+          $.ajax({
+            dataType: "json",
+            type: 'get',
+            url: '/facilities/convert_into_cidr',
+            data: {
+              q: request.term,
+              remote: "true"
+            },
+            success: function(data) {
+              response(data);
+              $('.ui-autocomplete').css('display', 'none')
+              $('#'+id).empty();
+              $.each(data, function (i, item) {
+                $('#'+id).append($('<option>', {
+                  value: item.remote_ip,
+                  text : item.remote_ip
+                }));
+              });
+              $('#'+remote_id).val(value +'/'+$('.ip-address-cidr').val())
+              $('#'+id).on('change', function(){
+                remote_ip = value +'/'+ $(this).val()
+                $('#'+remote_id).val(remote_ip)
+              })
+            },
+            error: function(data) {}
+          });
+        }
+      }
+    });
+  })
+</script>

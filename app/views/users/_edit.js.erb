@@ -1,0 +1,725 @@
+var datepicker_options = {
+  maxDate: -((18*365) + 5), // For Age >= 18
+  dateFormat: "dd/mm/yy",
+  changeMonth: true,
+  changeYear: true,
+  yearRange: "-100:+0",
+}
+
+$("#user_dob").datepicker(datepicker_options)
+
+// Set Age on DOB Change
+$("#user_dob").on('change', function(){
+  var patientdobday, patientdobmonth, patientdobyear
+  if ($("#user_dob").val().length > 9) {
+    patientdobday = "0" + moment($("#user_dob").val(), "DD/MM/YYYY").date()
+    patientdobmonth = "0" + moment($("#user_dob").val(), "DD/MM/YYYY").month()
+    patientdobyear = moment($("#user_dob").val(), "DD/MM/YYYY").year()
+    var todaydate = new Date()
+    var birthdate = new Date(patientdobyear, patientdobmonth, patientdobday)
+    var age = (todaydate - birthdate) / (365.25 * 24 * 60 * 60 * 1000)
+    var computed_age = Math.floor(age)
+    $("#user_age").val(computed_age)
+  }
+})
+
+// $("#user_email").attr('readonly', 'readonly')
+
+$("#user_department_id").on('change', function(){
+  var department_id = $(this).val()
+
+  $.ajax({
+    type: "GET",
+    dataType: "JSON",
+    url: '/users/department_facilities',
+    data: {
+      department_id: department_id,
+      organisation_id: "<%= @organisation.id %>"
+    },
+    success: function(response){
+      $('#user_facility_ids').html("")
+      $.each(response.facilities, function(key, value) {
+        $('#user_facility_ids').append($("<option></option>").attr("value",value[1]).text(value[0]));
+      });
+      create_roles_dropdown(department_id);
+    }
+  });
+})
+
+function validate_ip_address(event) {
+  $('.remote-ip-address-text').each(function() {
+    value = $(this).val()
+    var remote_ip_name_id = $(this).closest('.ip-whitelisting-row').find('.remote_ip_name')[0].id
+    var remote_ip_name = $('#'+remote_ip_name_id).val() || ''
+    var ipaddress = /^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$/;
+    var facility_ips = $('.facility-remote-ip-address-text').map((i, e) => e.value).get();
+    var user_ips = $('.remote-ip-address-text').map((i, e) => e.value).get();
+    var total_ip_address = $.merge( $.merge( [], facility_ips ), user_ips );
+    if (total_ip_address.filter(x => x == value).length > 1) {
+      notice = new PNotify({ text: 'Same IP Address Found multiple times', type: 'error' }); notice.get().click(function(){ notice.remove() });
+      event.preventDefault();
+      return false
+    }
+    else if (ipaddress.test(value) && remote_ip_name.length >= 3) {
+      return true
+    } else {
+      notice = new PNotify({ text: 'Please Check IP Address / Name. You have entered wrong IP Address / Name', type: 'error' }); notice.get().click(function(){ notice.remove() });
+      event.preventDefault();
+      return false
+    }
+  })
+}
+
+function edit_user() {
+  validate_ip_address(event)
+  $('#user_form').validate({
+    rules: {
+      "user[salutation]": {
+        required: true,
+      },
+      "user[fullname]": {
+        required: true,
+      },
+      "user[email]": {
+        required: true,
+        remote:  {
+          url: '/users/validate_user',
+          type: "get",
+          data: {
+            user_id: function(){ return '<%= @user.id.to_s %>' }
+          }
+        }
+      },
+      "email_local": {
+        required: true,
+        remote:  {
+          url: '/users/validate_user',
+          type: "get",
+          data: {
+            email_domain: function(){ return $('#email_domain').val() },
+            user_id: function(){ return '<%= @user.id.to_s %>' }
+          }
+        }
+      },
+      "email_domain": {
+        required: true
+      },
+      "user[gender]": {
+        required: true,
+      },
+      "user[dob]": {
+        required: true,
+      },
+      "user[department_id]": {
+        required: true,
+      },
+      "user[role_ids]": {
+        required: true,
+      },
+      "user[facility_ids][]": {
+        required: true,
+      },
+      "user[designation]": {
+        required: true,
+      },
+      "user[employee_id]": {
+        remote:  {
+          url: '/users/validate_user',
+          type: "get",
+          data: {
+            user_id: function(){ return '<%= @user.id.to_s %>' }
+          }
+        }
+      },
+      "user[mobilenumber]": {
+        required: true,
+      },
+      "user[country_id]": {
+        required: true,
+      },
+      "user[address]": {
+        required: true,
+      },
+      "user[city]": {
+        required: true,
+        minlength: 3,
+        "remote":  {
+          url: '/locations/check_city',
+          type: "get",
+          data: { country_id: function(){ return $('#user_country_id option:selected').attr('value') } }
+        }
+      },
+      "user[state]": {
+        required: true,
+        minlength: 3,
+        "remote":  {
+          url: '/locations/check_state',
+          type: "get",
+          data: { country_id: function(){ return $('#user_country_id option:selected').attr('value') } }
+        }
+      },
+     "user[pincode]": {
+        required: true,
+        minlength: 3,
+        "remote":  {
+          url: '/locations/check_pincode',
+          type: "get",
+          data: { country_id: function(){ return $('#user_country_id option:selected').attr('value') } }
+        }
+      }
+    },
+    messages: {
+      "user[salutation]": {
+        required: "Required."
+      },
+      "user[fullname]": {
+        required: "Name Required."
+      },
+      "user[email]": {
+        required: "Email Required",
+        remote: "Email already taken"
+      },
+      "email_local": {
+        required: "Email Required",
+        remote: "Email already taken"
+      },
+      "email_domain": {
+        required: "Email Domain Required",
+      },
+      "user[gender]": {
+        required: "Gender Required."
+      },
+      "user[dob]": {
+        required: "DOB Required."
+      },
+      "user[department_id]": {
+        required: "Department Required",
+      },
+      "user[role_ids]": {
+        required: "Role Required",
+      },
+      "user[facility_ids][]": {
+        required: "Select atleast one Facility",
+      },
+      "user[designation]": {
+        required: "Designation Required",
+      },
+      "user[employee_id]": {
+        remote: "Employee ID already taken",
+      },
+      "user[mobilenumber]": {
+        required: "Mobile Required",
+      },
+      "user[country_id]": {
+        required: "Country Required",
+      },
+      "user[address]": {
+        required: "Address Required",
+      },
+      "user[state]": {
+        required: "State Required",
+        remote: "Search and Select"
+      },
+      "user[city]": {
+        required: "City Required",
+        remote: "Search and Select"
+      },
+      "user[pincode]": {
+        required: "Pincode Required",
+        remote: "Search and Select"
+      }
+    },
+    errorPlacement: function (error, element) {
+      error.insertAfter(element);
+    }
+  });
+}
+edit_user()
+
+$.validator.addMethod('isLocalName', function(value, element) {
+  return !(value.indexOf('@') > 0)
+}, 'Please provide local name only')
+
+$.validator.addClassRules("email_local", { isLocalName: true });
+
+$("#user_country_id").select2();
+//Search For India and others starts//
+$('#search_state_other').autocomplete({
+  minLength: 3,
+  source: function(request, response) {
+    var country_id = $("#user_country_id").val()
+    $.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/locations/search_state',
+      data: {q: request.term, country_id: country_id, remote: "true" },
+      success: function(data) {
+        response(data);
+      },
+      error: function(data) {
+      }
+    });
+  },
+  select: function( event, ui ) {
+    state = ui.item["state"]
+    setTimeout(function() {
+      $(".state").val(state)
+      $('.state').blur()
+    }, 20);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+      return $('<li>')
+        .append('<a style=\"color:#000;text-shadow: 2px\">' + item.state  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+        .appendTo(ul);
+    };
+  }
+});
+
+$('#search_city_other').autocomplete({
+  minLength: 3,
+  source: function(request,response){
+    var country_id = $("#user_country_id").val()
+    var state = $('#search_state_other').val();
+    $.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/locations/search_city',
+      data: {q: request.term, country_id: country_id, state: state, remote: "true"},
+      success: function(data){
+        response(data);
+      },
+      error: function(data){
+      }
+    });
+  },
+  select: function( event, ui ) {
+    city  = ui.item["city"]
+    state = ui.item["state"]
+    setTimeout(function() {
+      $(".city").val(city)
+      $(".state").val(state)
+      $('.city').blur()
+    }, 20);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+      return $('<li>')
+        .append('<a style=\"color:#000;text-shadow: 2px\">' + item.city  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+        .appendTo(ul);
+    };
+  }
+});
+
+$('#search_pincode_other').autocomplete({
+  minLength: 3,
+  source: function(request,response){
+    var country_id = $("#user_country_id").val()
+    var state = $('#search_state_other').val();
+    var city = $('#search_city_other').val();
+    $.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/locations/search_pincode',
+      data: {q: request.term, country_id: country_id, state: state, city: city, remote: "true"},
+      success: function(data){
+        response(data);
+      },
+      error: function(data){
+      }
+    });
+  },
+  select: function( event, ui ) {
+    pincode = ui.item["pincode"]
+    city  = ui.item["city"]
+    state = ui.item["state"]
+    setTimeout(function() {
+      $(".pincode").prop('readonly',true).val(pincode)
+      $(".state").prop('readonly', true).val(state)
+      $(".city").prop('readonly', true).val(city)
+      $(".clear-pincode").show()
+      $('.pincode').blur()
+    }, 20);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+    return $('<li>')
+      .append('<a style=\"color:#000;text-shadow: 2px; text-align: center;\">' + item.pincode  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+      .appendTo(ul);
+    };
+  }
+});
+//Search For India and others ends//
+
+//Search For Vietnam starts//
+$('#search_district_vietnam').autocomplete({
+  minLength: 2,
+  source: function(request,response) {
+    var country_id = jQuery('#user_country_id').val()
+    var city = jQuery('#search_city_vietnam').val();
+    jQuery.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/locations/search_district',
+      data: {q: request.term, city: city, country_id: country_id, remote: "true"},
+      success: function(data){
+        response(data);
+      },
+      error: function(data){
+      }
+    });
+  },
+  select: function( event, ui ) {
+    district = ui.item["district"]
+    city  = ui.item["city"]
+    setTimeout(function() {
+      jQuery(".district").val(district)
+      jQuery(".city").val(city)
+      jQuery('.district').blur()
+    }, 20);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+      return $('<li>')
+        .append('<a style=\"color:#000;text-shadow: 2px\">' + item.district  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+        .appendTo(ul);
+    };
+  }
+});
+
+$('#search_city_vietnam').autocomplete({
+  minLength: 3,
+  source: function(request,response){
+    var country_id = $("#user_country_id").val()
+    $.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/locations/search_city',
+      data: {q: request.term, country_id: country_id, remote: "true"},
+      success: function(data){
+        response(data);
+      },
+      error: function(data){
+      }
+    });
+  },
+  select: function( event, ui ) {
+    city  = ui.item["city"]
+    setTimeout(function() {
+      $(".city").val(city)
+      $('.city').blur()
+    }, 20);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+      return $('<li>')
+        .append('<a style=\"color:#000;text-shadow: 2px\">' + item.city  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+        .appendTo(ul);
+    };
+  }
+});
+
+$('#search_commune_vietnam').autocomplete({
+  minLength: 2,
+  source: function(request,response) {
+    var country_id = jQuery('#user_country_id').val()
+    var city = jQuery('#search_city_vietnam').val();
+    var district = jQuery('#search_district_vietnam').val();
+    jQuery.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/locations/search_commune',
+      data: {q: request.term, city: city, district: district, country_id: country_id, remote: "true"},
+      success: function(data){
+        response(data);
+      },
+      error: function(data){
+
+      }
+    });
+  },
+  select: function( event, ui ) {
+    commune = ui.item["commune"]
+    district  = ui.item["district"]
+    city = ui.item["city"]
+    setTimeout(function() {
+      jQuery(".commune").prop('readonly',true).val(commune)
+      jQuery(".city").prop('readonly', true).val(city)
+      jQuery(".district").prop('readonly', true).val(district)
+      jQuery(".clear-commune").show()
+      jQuery('.commune').blur()
+    }, 20);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+      return $('<li>')
+        .append('<a style=\"color:#000;text-shadow: 2px; text-align: center;\">' + item.commune + ' (' + item.district + ')' + '&nbsp; &nbsp; &nbsp;' + '</a>')
+        .appendTo(ul);
+    };
+  }
+});
+//Search For Vietnam ends//
+
+//Search For Cambodia starts//
+$('#search_pincode_cambodia').autocomplete({
+  minLength: 3,
+  source: function(request,response){
+    var country_id = $("#user_country_id").val()
+    var state = $('#search_state_cambodia').val();
+    var district = $('#search_district_cambodia').val();
+    var commune = $('#search_commune_cambodia').val();
+    $.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/locations/search_pincode',
+      data: {q: request.term, country_id: country_id, state: state, district: district, commune: commune, remote: "true"},
+      success: function(data){
+        response(data);
+      },
+      error: function(data){
+      }
+    });
+  },
+  select: function( event, ui ) {
+    pincode = ui.item["pincode"]
+    state = ui.item["state"]
+    district = ui.item["district"]
+    commune = ui.item["commune"]
+    setTimeout(function() {
+      $(".pincode").prop('readonly',true).val(pincode)
+      $(".state").prop('readonly', true).val(state)
+      $(".district").prop('readonly', true).val(district)
+      $(".commune").prop('readonly', true).val(commune)
+      $(".clear-pincode").show()
+      $('.pincode').blur()
+    }, 20);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+    return $('<li>')
+      .append('<a style=\"color:#000;text-shadow: 2px; text-align: center;\">' + item.pincode  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+      .appendTo(ul);
+    };
+  }
+});
+
+$('#search_state_cambodia').autocomplete({
+  minLength: 3,
+  source: function(request, response) {
+    var country_id = $("#user_country_id").val()
+    $.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/locations/search_state',
+      data: {q: request.term, country_id: country_id, remote: "true" },
+      success: function(data) {
+        response(data);
+      },
+      error: function(data) {
+      }
+    });
+  },
+  select: function( event, ui ) {
+    state = ui.item["state"]
+    setTimeout(function() {
+      $(".state").val(state)
+      $('.state').blur()
+    }, 20);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+      return $('<li>')
+        .append('<a style=\"color:#000;text-shadow: 2px\">' + item.state  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+        .appendTo(ul);
+    };
+  }
+});
+
+$('#search_district_cambodia').autocomplete({
+  minLength: 2,
+  source: function(request,response) {
+    var country_id = jQuery('#user_country_id').val()
+    var state = jQuery('#search_state_cambodia').val();
+    jQuery.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/locations/search_district',
+      data: {q: request.term, state: state, country_id: country_id, remote: "true"},
+      success: function(data){
+        response(data);
+      },
+      error: function(data){
+      }
+    });
+  },
+  select: function( event, ui ) {
+    district = ui.item["district"]
+    state  = ui.item["state"]
+    setTimeout(function() {
+      jQuery(".district").val(district)
+      jQuery(".state").val(state)
+      jQuery('.district').blur()
+    }, 20);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+      return $('<li>')
+        .append('<a style=\"color:#000;text-shadow: 2px\">' + item.district  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+        .appendTo(ul);
+    };
+  }
+});
+
+$('#search_commune_cambodia').autocomplete({
+  minLength: 2,
+  source: function(request,response) {
+    var country_id = jQuery('#user_country_id').val()
+    var state = jQuery('#search_state_cambodia').val();
+    var district = jQuery('#search_district_cambodia').val();
+    jQuery.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/locations/search_commune',
+      data: {q: request.term, state: state, district: district, country_id: country_id, remote: "true"},
+      success: function(data){
+        response(data);
+      },
+      error: function(data){
+
+      }
+    });
+  },
+  select: function( event, ui ) {
+    commune = ui.item["commune"]
+    district  = ui.item["district"]
+    state = ui.item["state"]
+    setTimeout(function() {
+      jQuery(".commune").prop('readonly',true).val(commune)
+      jQuery(".state").prop('readonly', true).val(state)
+      jQuery(".district").prop('readonly', true).val(district)
+      jQuery(".clear-commune").show()
+      jQuery('.commune').blur()
+    }, 20);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+      return $('<li>')
+        .append('<a style=\"color:#000;text-shadow: 2px; text-align: center;\">' + item.commune + ' (' + item.district + ')' + '&nbsp; &nbsp; &nbsp;' + '</a>')
+        .appendTo(ul);
+    };
+  }
+});
+//Search For Cambodia ends//
+
+// Clear pincode
+$(".clear-pincode").on('click', function(e){
+  e.preventDefault()
+  $(".pincode").prop('readonly',false).val("")
+  $(".state").prop('readonly', false).val("")
+  $(".city").prop('readonly', false).val("")
+  $(".district").prop('readonly',false).val("")
+  $(".commune").prop('readonly', false).val("")
+  $(".clear-pincode").hide()
+});
+
+// Clear Commune
+$(".clear-commune").on('click', function(e){
+  e.preventDefault()
+  $(".commune").prop('readonly',false).val("")
+  $(".district").prop('readonly', false).val("")
+  $(".city").prop('readonly', false).val("")
+  $(".state").prop('readonly', false).val("")
+  $(".pincode").prop('readonly',false).val("")
+  $(".clear-commune").hide()
+});
+
+//user country id check_
+function autocomplete_check(country_id) {
+  if (country_id == 'IN_108') {
+    $('#search_state_other').autocomplete("enable");
+    $('#search_city_other').autocomplete("enable");
+    $('#search_pincode_other').autocomplete("enable");
+  } else if (country_id == 'VN_254') {
+    $('#search_district_vietnam').autocomplete("enable");
+    $('#search_city_vietnam').autocomplete("enable");
+    $('#search_commune_vietnam').autocomplete("enable");
+  } else if (country_id == 'KH_039') {
+    $('#search_pincode_cambodia').autocomplete("enable");
+    $('#search_state_cambodia').autocomplete("enable");
+    $('#search_district_cambodia').autocomplete("enable");
+    $('#search_commune_cambodia').autocomplete("enable");
+  } else {
+    $('#search_state_other').autocomplete("disable");
+    $('#search_city_other').autocomplete("disable");
+    $('#search_pincode_other').autocomplete("disable");
+    $('#search_district_vietnam').autocomplete("disable");
+    $('#search_city_vietnam').autocomplete("disable");
+    $('#search_commune_vietnam').autocomplete("disable");
+    $('#search_pincode_cambodia').autocomplete("disable");
+    $('#search_state_cambodia').autocomplete("disable");
+    $('#search_district_cambodia').autocomplete("disable");
+    $('#search_commune_cambodia').autocomplete("disable");
+  }
+}
+
+// Get autocomplete status
+$("#user_country_id").on('change', function() {
+  var country_id = $('option:selected', this).attr('value');
+  if (country_id == 'VN_254') {
+    $('.other_facility').hide();
+    $('.vietnam_facility').show();
+    $('.cambodia_facility').hide();
+  } else if(country_id == 'KH_039') {
+    $('.cambodia_facility').show();
+    $('.vietnam_facility').hide();
+    $('.other_facility').hide();
+  } else {
+    $('.vietnam_facility').hide();
+    $('.other_facility').show();
+    $('.cambodia_facility').hide();
+  }
+  $(".commune").prop('readonly',false).val("")
+  $(".district").prop('readonly', false).val("")
+  $(".city").prop('readonly', false).val("")
+  $(".state").prop('readonly', false).val("")
+  $(".pincode").prop('readonly',false).val("")
+  autocomplete_check(country_id)
+});
+
+var country_id = $('#user_country_id').attr('value');
+if (country_id == 'VN_254') {
+  $('.vietnam_facility').show();
+  $('.other_facility').hide();
+  $('.cambodia_facility').hide();
+} else if(country_id == 'KH_039') {
+  $('.cambodia_facility').show();
+  $('.vietnam_facility').hide();
+  $('.other_facility').hide();
+} else {
+  $('.vietnam_facility').hide();
+  $('.cambodia_facility').hide();
+  $('.other_facility').show();
+}
+autocomplete_check(country_id)
+
+$.validator.addMethod('checkIpAddress', function(value, element) {
+  var id = $(element).attr("id")
+  var ipaddress = /^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$/;
+  if (ipaddress.test(value)) {
+    return true
+  } else {
+    return false
+  }
+}, 'Invalid IP Address')
+
+$.validator.addMethod('checkIpName', function(value, element) {
+  if (value.length >=3) {
+    return true
+  } else {
+    return false
+  }
+}, 'Name is not valid')
+
+$.validator.addClassRules("remote-ip-address-text", { checkIpAddress: true, required: true });
+$.validator.addClassRules("remote_ip_name", { checkIpName: true, required: true });
+$.validator.addClassRules("ip-address-cidr", { required: true });

@@ -1,0 +1,142 @@
+<%#= render partial: '/inventory/order/requisition_received/show_body.html.erb' %>
+<div style="border:1px solid #ccc;">
+	<div class="row" style="border-bottom:1px solid #ccc;">
+		<div class="col-md-12" style="border-bottom:1px solid #ccc;">
+      <% entity_name = @entity&.name.present? ? @entity&.name : @inventory_store.name %>
+      <h5 style="text-align: center;"><%= entity_name %></h5>
+    </div>
+    <div class="row" style="border-bottom:1px solid #ccc;">
+      <div class="col-md-3 text-left">
+        <% if @inventory_store.asset_path.url %>
+          <% unless @inventory_store.asset_path.url.split('/').last == '_old_' %>
+            <img class="img-fluid" width="80" height="60" src="<%= @inventory_store.asset_path.url %>">
+          <% end %>
+        <%end%>
+      </div>
+      <div class="col-sm-6 text-center">
+        <% unless @inventory_store.address == 'org-address' %>
+          <% if @entity&.address.present?%>
+            <% address = [] %>
+            <% address << @entity&.city << @entity&.state&.capitalize << @entity&.pincode %>
+            <h5  class="check_font" style="margin: 0px;"><%= @entity.address %><%= ', ' +  address.reject(&:blank?)&.join(', ') %></h5>
+          <% else %>
+            <% address = [] %>
+            <% address << @inventory_store&.city << @inventory_store&.state&.capitalize << @inventory_store&.pincode %>
+            <h5  class="check_font" style="margin: 0px;"><%= @inventory_store.address %><%= ', ' +  address.reject(&:blank?)&.join(', ') %></h5>
+          <% end %>
+        <%end%>
+        <% if @inventory_store.mobilenumber.present? %>
+          <p> <h5 style="margin: 0px"><%= @inventory_store.mobilenumber %></h5> </p>
+        <%end%>
+        <% if @inventory_store.email.present? %>
+          <p> <h5 style="margin: 0px"><%= @inventory_store.email %></h5> </p>
+        <%end%>
+      </div>
+    </div>
+    <div class="row" style="border-bottom:1px solid #ccc;display: flex;height: 100%;">
+      <div class="col-md-12 text-center">
+        <b style="color: #00BFFF;">REQUISITION REQUEST</b>
+      </div>
+  	</div>
+  	<div class="row" style="border-bottom:1px solid #ccc;">
+      <div class="col-md-6" style="border-right:1px solid #ccc;">
+        <div class="col-md-12 check_font"><span><b>Requisition No:</b>&emsp;<%= @requisition_received.requisition_received_display_id %></span></div>
+        <% requisition_recieved = Inventory::Store.find_by(id:  @requisition_received.requisition_order_store_id) %>
+        <div class="col-md-12 check_font"><span><b>Requisition From:</b>&emsp;<%= requisition_recieved&.name %> - <%= requisition_recieved&.department_name %></span></div>
+        <div class="col-md-12 check_font"><span><b>Status:</b>&emsp;<%= @requisition_received.status&.titleize %></span></div>
+      </div>
+      <div class="col-md-6" style="padding: 0">
+      	<!-- <div class="col-md-12 check_font"><span><b>Requisition Approved On:</b>&emsp;<%#= @requisition_received.requisition_approved_date.try(:strftime, '%Y-%m-%d') %>&nbsp;&nbsp;|&nbsp;&nbsp;<%#= @requisition_received.requisition_approved_time&.strftime("%I:%M %p")%></span></div> -->
+      	<% requisition_to = Inventory::Store.find_by(id: @requisition_received.store_id) %>
+      	<div class="col-md-12 check_font"><span><b>Requisition To:</b>&emsp;<%=@requisition_received.store_name %> - <%= requisition_to.try(:department_name) %></span></div>
+        <div class="col-md-12 check_font"><span><b>Requisition Type:</b>&emsp;<%= @requisition_received.requisition_type %>&emsp;|&emsp;<%= @requisition_received.created_from %></span></div>
+      </div>
+    </div>
+    <div class="col-lg-12 col-md-12 col-sm-12" style="padding: 0">
+      <div class="row check_font">
+        <table class="table table-striped table-bordered">
+          <thead>
+            <tr>
+              <th>S No.</th>
+              <th>Description</th>
+              <th>Category</th>
+              <th>Sub Category</th>
+              <th>Requisition Oty.</th>
+              <th>UOM</th>
+              <th>Remark</th>
+            </tr>
+          </thead>
+          <tbody>
+          	<%  total_stock = 0 %>
+            <% @requisition_received.items.each_with_index do |item, index| %>
+              <tr>
+                <td><%= index + 1 %></td>
+                <td><%= "#{item.description}" %></td>
+                <td><%= item.category %></td>
+                <td><%= Inventory::SubCategory.find_by(category_id: item.category_id ).try(:name) %></td>
+                <td><%= item.stock %></td>
+                <td><%= item.dispensing_unit %></td>
+                <td><%= item.remarks %></td>
+              </tr>
+              <% total_stock += item&.stock %>
+            <% end %>
+          </tbody>
+          <tfoot>
+				    <tr class="no-footer-border">
+				      <td colspan="4"></td>
+				      <td ><b><%= total_stock %></b></td>
+				      <td colspan="2"></td>
+				    </tr>
+				  </tfoot>
+        </table>
+      </div>
+    </div>
+    <div class="row check_font">
+      <div class="col-sm-6" style="text-align: center;">
+        <span style>CREATED BY</span>
+        <div style="font-weight: bold;"><%= @requisition_received.requisition_order_created_by_name %></div>
+        <span><%= @requisition_received.try(:requisition_created_at)&.strftime("%d %b %Y %I:%M %p")%></span>
+      </div>
+      <div class="col-sm-6" style="text-align: center;">
+      	<% if @requisition_received.requisition_order_approved_by_id.present? %>
+	        <span>APPROVED BY</span>
+	        <div style="font-weight: bold;"><%= @requisition_received.requisition_order_approved_by_name%></div>
+	        <span><%= @requisition_received.requisition_approved_date&.strftime("%d %b %Y") %> &nbsp;&nbsp;|&nbsp;&nbsp;<%= @requisition_received.requisition_approved_time&.strftime("%I:%M%p")%></span>
+	     
+	      <% else %>
+	      <% end %>
+      </div>
+    </div>
+	</div>
+</div>
+<style type="text/css">
+  .table-add-item td{
+    padding: 5px 5px 0;
+  }
+
+  .check_font table tr th {
+    padding: 1px 2px;
+    background-color: #4CAF50;
+    color: white;
+    text-align: center;
+  }
+
+  .check_font table tr td {
+    padding: 5px 8px;
+    text-align: center;
+  }
+
+  .check_font {
+    font-size: 11px;
+  }
+  .table-borderless tr td {
+    border: none !important;
+    padding:  1px 1px 0 !important;
+  }
+  tr.no-footer-border td {
+  border: none !important;
+}
+  /*.table-bordered.no-footer-border tfoo td{
+      border: border: none;
+	}*/
+</style>

@@ -1,0 +1,173 @@
+<%= javascript_include_tag "application-loggedin", "data-turbolinks-track" => true %>
+<div class="modal-dialog" style="width: 60%">
+  <div class="modal-content">
+    <%= form_for(@store, html: { id: 'inventory_store_information', class: 'store-information' }, remote: true) do |f| %>
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+          <h4 class="modal-title">Store Information</h4>
+      </div>
+      <div class="modal-body window-body">
+        <div class="row mb10">
+          <div class="col-md-2">
+            <label>Shop Name:</label>
+          </div>
+          <div class="col-md-4">
+            <%= text_field_tag "inventory_store[shop_name]", @store.shop_name, { class: 'form-control', id: 'shop_name' } %>
+          </div>
+          <% if @store.department_id == '284748001' %>
+            <div class="col-md-2">
+              <label>DL NO:</label>
+            </div>
+            <div class="col-md-4">
+              <%= text_field_tag "inventory_store[dl_number]", @store.dl_number, { class: 'form-control', id: 'dl_number' } %>
+            </div>
+          <% end %>
+        </div>
+        <div class="row mb10">
+          <div class="col-md-2">
+            <label>User Name:</label>
+          </div>
+          <div class="col-md-4">
+            <%= text_field_tag "inventory_store[username]", @store.username, { class: 'form-control', id: 'username' } %>
+          </div>
+          <div class="col-md-2">
+            <label>Address:</label>
+          </div>
+          <div class="col-md-4">
+            <%= text_field_tag "inventory_store[address]", @store.address, { class: 'form-control', id: 'shop_address' } %>
+          </div>
+        </div>
+        <div class="row mb10">
+          <div class="col-md-2">
+            <label>Contact:</label>
+          </div>
+          <div class="col-md-4">
+            <%= text_field_tag "inventory_store[mobilenumber]", @store.mobilenumber, { class: 'form-control', id: 'mobilenumber', maxlength: '10' } %>
+          </div>
+          <div class="col-md-2">
+            <label>Email:</label>
+          </div>
+          <div class="col-md-4">
+            <% if @trusted_domains.count > 0 %>
+              <%= hidden_field_tag 'inventory_store[email]', @store.email %>
+              <% email_local, email_domain = @store.email&.split('@') %>
+              <div class="row">
+                <div class="col-sm-6 pr-0">
+                  <%= text_field_tag :email_local, email_local, class: 'form-control p7_10 email_local', placeholder: 'Email' %>
+                </div>
+                <div class="col-sm-6 pl-0">
+                  <% email_domain = @trusted_domains.first&.name if @trusted_domains.count == 1 && params[:action] == 'new' %>
+                  <%= select_tag :email_domain, options_for_select(@trusted_domains.map { |td| ["@#{td.name}", td.name] }, email_domain), include_blank: 'Select', class: 'form-control p9_10 email_domain' %>
+                </div>
+              </div>
+            <% else %>
+              <%= text_field_tag 'inventory_store[email]', @store.email, { class: 'form-control', id: 'email' } %>
+            <% end %>
+          </div>
+        </div>
+        <div class="row mb10">
+          <div class="col-md-2">
+            <label>Days Before Expired:</label>
+          </div>
+          <div class="col-md-4">
+            <%= number_field_tag "inventory_store[days_before_expired]", @store.days_before_expired, { class: 'form-control', id: 'days_before_expired', min: 10, step: 1 } %>
+          </div>
+          <div class="col-sm-2">
+            <label>Upload Logo:</label>
+          </div>
+          <div class="col-md-4">
+            <span class="btn btn-default btn-store-asset" id="results" style="padding:2px;">
+              <% store_asset = (@store.asset_path_url if @store.asset_path_url.present?) || 'set_organisation_logo.png' %>
+              <% patient_asset = "set_organisation_logo.png" %>
+              <%= image_tag(store_asset, class: "thumb", id: "store-picture", style: 'max-width: 250px; min-height: 100px; max-height: 100px; line-height: 20px;', onclick: "$('#upload-store-picture').click();")%>
+            </span>
+            <% if @store.asset_path.present? %>
+              <%= file_field_tag "inventory_store[asset_path]", { value: "~/#{@store.asset_path.try(:file).try(:filename)}",style: "visibility:hidden", id: 'upload-store-picture', onchange: "readURL(this)" } %>
+            <% else %>
+              <%= file_field_tag "inventory_store[asset_path]", { style: "visibility:hidden", id: 'upload-store-picture', onchange: "readURL(this)" } %>
+            <% end %>
+          </div>
+        </div>
+      <div class="modal-footer window-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+        <%= f.submit "Save", { class: 'btn btn-success btn-sm save-store-information', onclick: 'validate_inventory_store_form()', disabled: !Authorization::PolicyHelper.verification(current_user.id ,"HGP-100-120-100") } %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<script type="text/javascript">
+  function readURL(input) {
+    $(".clear-organisation-asset").show()
+    if (input.files && input.files[0]) {
+      var reader = new FileReader();
+      reader.onload = function (e) {
+        $(input).parent().find(".thumb").attr('src', e.target.result);
+      }
+      reader.readAsDataURL(input.files[0]);
+    }
+  }
+
+  function validate_inventory_store_form() {
+    $('#inventory_store_information').validate({
+      rules: {
+        "inventory_store[shop_name]": {
+          required: true,
+        },
+        "inventory_store[address]": {
+          required: true,
+        },
+        "inventory_store[mobilenumber]": {
+          required: true,
+        },
+        "inventory_store[days_before_expired]": {
+          required: true,
+        },
+      },
+      messages: {
+        "inventory_store[shop_name]": {
+          required: 'Required.',
+        },
+        "inventory_store[address]": {
+          required: 'Required.',
+        },
+        "inventory_store[mobilenumber]": {
+          required: 'Required.',
+        },
+        "inventory_store[days_before_expired]": {
+          required: 'Required.',
+        },
+      },
+      errorPlacement: function (error, element) {
+        error.insertAfter(element);
+      }
+    });
+  }
+  validate_inventory_store_form();
+
+  $.validator.addMethod('isLocalName', function(value, element) {
+    return !(value.indexOf('@') > 0)
+  }, 'Please provide local name only')
+
+  $.validator.addClassRules("email_local", { isLocalName: true });
+
+  const setEmail = () => {
+    let emailLocal = $('.email_local');
+    let emailDomain = $('.email_domain');
+    let email = $('#inventory_store_email');
+
+    if (emailLocal.val() != '' && emailDomain.val() != '') {
+      email.val(`${emailLocal.val()}@${emailDomain.val()}`)
+    } else {
+      email.val('')
+    }
+  }
+
+  $('.email_local').on('keyup', function() {
+    setEmail()
+  });
+
+  $('.email_domain').on('change', function() {
+    setEmail()
+  }).trigger('change');
+</script>

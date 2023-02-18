@@ -1,0 +1,173 @@
+<div class="row">
+  <div class="col-md-12 text-center">
+    <button class="btn btn-primary btn-xs pull-left statistics_parent_link all" data-filter="All"><i class="fa fa-arrow-left"></i> Back to Dashboard</button>
+    <% if @daily_reports.count > 0 && @daily_reports.pluck(:ipd_cash_reg_transaction).map(&:to_f).sum + @daily_reports.pluck(:ipd_invoice_transaction).map(&:to_f).sum > 0 %>
+      <%= link_to statistics_print_setting_path(flag: 'ipd_multidate_view', start_date: @start_date, end_date: @end_date), data: { remote: true, 'toggle': 'modal', 'target': '#invoice-modal' }, class: 'btn btn-primary btn-xs pull-right' do %><i class="fa fa-print"></i> Print<% end %>
+    <% end %>
+    <h3 style="color:#000;">IPD RECEIPT <small>(<%= Date.parse(@start_date).strftime('%d/%m/%Y') %> - <%= Date.parse(@end_date).strftime('%d/%m/%Y') %>)</small></h3>
+  </div>
+</div>
+
+<table class="table">
+  <thead style="border-top:1px solid #000;border-bottom:1px solid #000;">
+    <tr>
+      <th><b>S No.</b></th>
+      <th><b>Date</b><span style="font-size:8px;">&nbsp;(Click For Details)</span></th>
+      <th class="text-right"><b>Cash Register</b></th>
+      <th class="text-right"><b>Receipt</b></th>
+      <th class="text-right"><b>Tax</b></th>
+      <th class="text-right"><b>Received</b></th>
+      <th class="text-right"><b>Pending</b></th>
+      <th class="text-right"><b>Total</b></th>
+    </tr>
+  </thead>
+  <tbody style="border-top:1px solid #000;border-bottom:1px solid #000;">
+    <% if @daily_reports.count > 0 && @daily_reports.pluck(:ipd_cash_reg_transaction).map(&:to_f).sum + @daily_reports.pluck(:ipd_invoice_transaction).map(&:to_f).sum > 0 %>
+      <tr>
+        <td class="main-display-row" colspan="2">Total :</td>
+        <td class="text-right main-display-row"><%= @currency.symbol %><%= (@daily_reports.pluck(:ipd_cash_reg_transaction).map(&:to_f).sum).round(2) %></td>
+        <td class="text-right main-display-row"><%= @currency.symbol %><%= (@daily_reports.pluck(:ipd_invoice_transaction).map(&:to_f).sum - @daily_reports.pluck(:non_taxable_amount).map(&:to_f).sum).round(2) %></td>
+        <td class="text-right main-display-row"><%= @currency.symbol %><%= @daily_reports.pluck(:ipd_tax_collected).map(&:to_f).sum %></td>
+        <td class="text-right main-display-row"><%= @currency.symbol %><%= @daily_reports.pluck(:ipd_cr_payment_received).map(&:to_f).sum + @daily_reports.pluck(:ipd_invoice_payment_received).map(&:to_f).sum %></td>
+        <td class="text-right main-display-row"><%= @currency.symbol %><%= @daily_reports.pluck(:ipd_invoice_payment_pending).map(&:to_f).sum %></td>
+        <td class="text-right main-display-row"><%= @currency.symbol %><%= @daily_reports.pluck(:ipd_cash_reg_transaction).map(&:to_f).sum + @daily_reports.pluck(:ipd_invoice_transaction).map(&:to_f).sum %></td>
+      </tr>
+      <% counter = 1 %>
+      <% @daily_reports.order(date: :desc).each do |daily_reports| %>
+        <% if daily_reports.ipd_cash_reg_transaction + daily_reports.ipd_invoice_transaction != 0.0 %>
+          <tr>
+            <td><%= counter %></td>
+            <td><button class="btn btn-link btn-xs btn-awesome" data-date-form = "<%= daily_reports.date %>" style="color: #354670;font-size: 14px;font-weight: bolder;text-decoration: underline;"><%= daily_reports.date.strftime("%d/%m/%Y") %></button></td>
+            <td class="text-right"><%= @currency.symbol %> <%= daily_reports.ipd_cash_reg_transaction %></td>
+            <td class="text-right"><%= @currency.symbol %> <%= daily_reports.ipd_invoice_transaction %></td>
+            <td class="text-right"><%= @currency.symbol %> <%= daily_reports.ipd_tax_collected %></td>
+            <td class="text-right"><%= @currency.symbol %> <%= daily_reports.ipd_cr_payment_received + daily_reports.ipd_invoice_payment_received %></td>
+            <td class="text-right"><%= @currency.symbol %> <%= daily_reports.ipd_invoice_payment_pending %></td>
+            <td class="text-right"><%= @currency.symbol %> <%= daily_reports.ipd_cash_reg_transaction + daily_reports.ipd_invoice_transaction %></td>
+          </tr>
+          <% counter += 1 %>
+        <% end %>
+      <% end %>
+    <% else %>
+      <tr>
+        <td colspan="11" class="text-center">No Data to Display</td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<style type="text/css">
+  .main-display-row {
+    color:#000;
+    font-size: 16px; 
+  }
+</style>
+
+
+<!-- Code For Graph if Required -->
+<% if false %>
+  <script type="text/javascript">
+      content_height = $("#ipd_invoices").closest(".contentpanel").height()
+      $("#ipd_invoices").css('max-height', content_height*(1/2))
+      $("#ipd_invoices").css('overflow-y', 'scroll')
+      // $(".data_tbody").css('height', content_height*(1/4))
+
+      $(".btn-tabular").hide()
+      $(".view_graphical").hide()
+      $(".btn-graphical").on('click', function(){
+          $(this).hide()
+          $(this).closest(".title_ipd").find(".btn-tabular").show()
+          $(this).closest(".daily_reports").find(".view_tabular").hide()
+          $(this).closest(".daily_reports").find(".view_graphical").show()
+      })
+      $(".btn-tabular").on('click', function(){
+          $(this).hide()
+          $(this).closest(".title_ipd").find(".btn-graphical").show()
+          $(this).closest(".daily_reports").find(".view_tabular").show()
+          $(this).closest(".daily_reports").find(".view_graphical").hide()
+      })
+
+      var ctx = document.getElementById("ipdFinance").getContext('2d')
+      var ipdfinanceLineChart = new Chart(ctx,{
+          type: 'bar',
+          data: {
+              labels: $("#ipdFinance").data('dates'),
+              datasets: [
+                {
+                    label: '#Invoice',
+                    data: $("#ipdFinance").data('invoice-total'),
+                    backgroundColor: "rgba(30,144,255,1)",
+                    borderColor: "rgb(30,144,255,1)",
+                    borderCapStyle: 'butt',
+                    borderDash: [],
+                    borderDashOffset: 0.0,
+                    borderJoinStyle: 'miter',
+                    pointBorderColor: "rgba(75,192,192,1)",
+                    pointBackgroundColor: "#fff",
+                    pointBorderWidth: 1,
+                    pointHoverRadius: 10,
+                    pointHoverBackgroundColor: "rgba(75,192,192,1)",
+                    pointHoverBorderColor: "rgba(220,220,220,1)",
+                    pointHoverBorderWidth: 2,
+                    pointRadius: 5,
+                    pointHitRadius: 10,
+                    lineTension: 0.1
+                },
+                {
+                    label: '# Cash Register',
+                    data: $("#ipdFinance").data('cash-reg-total'),
+                    backgroundColor: "rgba(220,20,60,1)",
+                    borderColor: "rgba(220,20,60,1)",
+                    borderCapStyle: 'butt',
+                    borderDash: [],
+                    borderDashOffset: 0.0,
+                    borderJoinStyle: 'miter',
+                    pointBorderColor: "rgba(75,192,192,1)",
+                    pointBackgroundColor: "#fff",
+                    pointBorderWidth: 1,
+                    pointHoverRadius: 10,
+                    pointHoverBackgroundColor: "rgba(75,192,192,1)",
+                    pointHoverBorderColor: "rgba(220,220,220,1)",
+                    pointHoverBorderWidth: 2,
+                    pointRadius: 5,
+                    pointHitRadius: 10,
+                    lineTension: 0.1
+                },
+                {
+                    label: '# Insurance',
+                    data: $("#ipdFinance").data('ins-invoice-total'),
+                    backgroundColor: "#fed136",
+                    borderColor: "#fed136",
+                    borderCapStyle: 'butt',
+                    borderDash: [],
+                    borderDashOffset: 0.0,
+                    borderJoinStyle: 'miter',
+                    pointBorderColor: "rgba(75,192,192,1)",
+                    pointBackgroundColor: "#fff",
+                    pointBorderWidth: 1,
+                    pointHoverRadius: 10,
+                    pointHoverBackgroundColor: "rgba(75,192,192,1)",
+                    pointHoverBorderColor: "rgba(220,220,220,1)",
+                    pointHoverBorderWidth: 2,
+                    pointRadius: 5,
+                    pointHitRadius: 10,
+                    lineTension: 0.1
+                }
+              ],
+
+          },
+          options: {
+              categoryPercentage: 0.5,
+              barPercentage: 0.5,
+              scales: {
+                  xAxes: [{
+                      stacked: true
+                  }],
+                  yAxes: [{
+                      stacked: true
+                  }]
+              }
+          }
+      });
+  </script>
+<% end %>

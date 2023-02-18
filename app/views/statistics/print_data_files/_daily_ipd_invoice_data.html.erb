@@ -1,0 +1,85 @@
+<% colspan = 2 # As SNo. and PatientName has no checks %>
+<% colspan += 1 if (@patient_id || @mr_no) %>
+<% colspan += 1 if @invoice_id %>
+
+<div class="row">
+  <div class="col-md-12 text-center">
+    <h3 style="color:#000;">IPD INVOICES <small>(<%= Date.parse(@start_date).strftime('%d/%m/%Y') %>)</small></h3>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-md-12">
+    <table class="table table_for_printing">
+    <thead style="border-top:1px solid #000;border-bottom:1px solid #000;">
+      <tr>
+        <th>SNo.</th>
+        <% if @patient_id || @mr_no %><th>Patient ID</th><% end %>
+        <th>Patient Name</th>
+        <% if @invoice_id %><th class="text-center">Receipt ID</th><% end %>
+        <!-- <th class="text-right">Non-Taxable Amount</th> -->
+        <% if @total %><th class="text-right">Total</th><% end %>
+        <% if @tax %><th class="text-right">Tax</th><% end %>
+        <% if @discount %><th class="text-right">Discount</th><% end %>
+        <% if @advance %><th class="text-right">Advance</th><% end %>
+        <% if @amount %><th class="text-right">Amount</th><% end %>
+        <% if @received %><th class="text-right">Received</th><% end %>
+        <% if @pending %><th class="text-right">Pending</th><% end %>
+      </tr>
+    </thead>
+    <tbody style="border-top:1px solid #000;border-bottom:1px solid #000;">
+      <% if @invoice_ipd.count > 0 %>
+        <tr>
+          <td class="main-display-row" colspan="<%= colspan %>">Total <%= @invoice_ipd.count %> Receipts :</td>
+          <!-- <td class="text-right main-display-row">&#8377;<%#= @invoice_ipd.pluck(:non_taxable_amount).map(&:to_f).sum.round(2) %></td> -->
+          <% if @total %><td class="text-right main-display-row">&#8377;<%= (@invoice_ipd.pluck(:total).map(&:to_f).sum).round(2) %></td><% end %>
+          <% if @tax %><td class="text-right main-display-row"><span style="color:#1CAF9A">&#8377;<%= (@invoice_ipd.pluck(:total).map(&:to_f).sum - @invoice_ipd.pluck(:non_taxable_amount).map(&:to_f).sum).round(2) %></span></td><% end %>
+          <% if @discount %><td class="text-right main-display-row"><span style="color:#f00">&#8377;<%= @invoice_ipd.pluck(:discount).map(&:to_f).sum %></span></td><% end %>
+          <% if @advance %><td class="text-right main-display-row"><span style="color:#f00">&#8377;<%= @invoice_ipd.pluck(:advance_payment).map(&:to_f).sum %></span></td><% end %>
+          <% if @amount %><td class="text-right main-display-row">&#8377;<%= @invoice_ipd.pluck(:net_amount).map(&:to_f).sum - @invoice_ipd.pluck(:advance_payment).map(&:to_f).sum %></td><% end %>
+          <% if @received %><td class="text-right main-display-row">&#8377;<%= @invoice_ipd.pluck(:payment_received).map(&:to_f).sum %></td><% end %>
+          <% if @pending %><td class="text-right main-display-row">&#8377;<%= @invoice_ipd.pluck(:payment_pending).map(&:to_f).sum %></td><% end %>
+        </tr>
+        <% @invoice_ipd.each.with_index do |invoice_ipd, i| %>
+        <tr>
+          <td style="width:5%;"><%= i+1 %></td>
+          <% if @patient_id || @mr_no %>
+            <td class="text-center">
+              <% if @patient_id %><%= invoice_ipd.patient.patient_identifier_id %><% end %>
+              <% if @patient_id && @mr_no %><br><% end %>
+              <% if @mr_no %><%= (invoice_ipd.patient.patient_mrn if invoice_ipd.patient.patient_mrn.present?) %><% end %>
+            </td>
+          <% end %>
+          <td><%= invoice_ipd.patient.fullname %></td>
+          <% if @invoice_id %><td><%= invoice_ipd.bill_number %></td><% end %>
+          <!-- <td class="text-right">&#8377;<%#= (invoice_ipd.non_taxable_amount).round(2) %></td> -->
+          <% if @total %><td class="text-right">&#8377;<%= (invoice_ipd.total).round(2) %></td><% end %>
+          <% if @tax %><td class="text-right"><span style="color:#1CAF9A">&#8377;<%= (invoice_ipd.tax_breakup.inject(0){|amount,x| amount += x[:amount].to_f}).round(2) %></span></td><% end %>
+          <% if @discount %>
+            <td class="text-right">
+              <span style="color:#f00">&#8377;<%= invoice_ipd.try(:discount).to_f %></span>
+            </td>
+          <% end %>
+          <% if @advance %>
+            <td class="text-right">
+              <span style="color:#f00">&#8377;<%= invoice_ipd.try(:advance_payment).to_f %></span>
+            </td>
+          <% end %>
+          <% if @amount %>
+            <td class="text-right">
+              &#8377;<%= invoice_ipd.net_amount - invoice_ipd.try(:advance_payment).to_f %>
+            </td>
+          <% end %>
+          <% if @received %><td class="text-right">&#8377;<%= invoice_ipd.try(:payment_received).to_f %></td><% end %>
+          <% if @pending %><td class="text-right">&#8377;<%= invoice_ipd.try(:payment_pending).to_f %></td><% end %>
+        </tr>
+        <% end %>
+      <% else %>
+        <tr>
+          <td colspan="11" class="text-center">No Data to Display</td>
+        </tr>
+      <% end %>
+    </tbody>
+    </table>
+  </div>
+</div>

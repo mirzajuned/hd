@@ -1,0 +1,112 @@
+<div class="ot-list-print row">
+  <div class="col-md-3">
+    <span style="font-size:12px;">Date: <b style="font-size:12px;"><%= @current_date.strftime("%b %d, %Y") %></b></span>
+  </div>
+  <div class="col-md-6 text-center">
+    <span style="font-weight:bold;font-size:16px;margin:0px;">All OT List</span>
+  </div>
+  <div class="col-md-3 text-right">
+    <span style="font-size:12px;">Location: <b style="font-size:12px;"><%= current_facility.name %></b></span>
+  </div>
+  <div class="col-md-12">
+    <table class="table table-bordered">
+      <thead>
+      <tr class="table-header-row">
+        <th>S.No</th>
+        <th>Patient</th>
+        <th>Patient ID</th>
+        <% if current_facility.specialty_ids.count > 1 %>
+          <th>Specialty</th>
+        <% end %>
+        <% if @ward.count > 0 %>
+            <th>Room | Bed</th>
+        <% end %>
+        <% unless current_user.has_role?(:doctor) %>
+          <th>Surgeon Name</th>
+        <% end %>
+        <th>Diagnosis</th>
+        <th>Procedure</th>
+        <% if @ot_list.pluck(:specialty_name).include?("Ophthalmology") %>
+            <th>IOL Power</th>
+        <% end %>
+        <th>OT Number</th>
+      </tr>
+      </thead>
+      <tbody>
+        <% @ot_list.try(:each_with_index) do |list,i| %>
+          <tr>
+            <td><%= i + 1 %></td>
+            <td>
+              <b><%= list.patient_name %></b><br>
+              <%= list.patient_age.to_s %>
+              <% if list.patient_age && list.patient_gender %>/<% end %>
+              <%= list.patient_gender %>
+            </td>
+            <td>
+              <% if list.patient_mr_no.present? %><%= list.patient_mr_no %><% else %><%= list.patient_display_id %><% end %>
+            </td>
+            <% if current_facility.specialty_ids.count > 1 %>
+              <td><%= list.specialty_name %></td>
+            <% end %>
+            <% if @ward.count > 0 %>
+              <% unless list.daycare || list.daycare == nil  %>
+                <td><%= list.room_code %> | <%= list.bed_code %></td>
+              <% else %>
+                <td>Daycare</td>
+              <% end %>
+            <% end %>
+            <% unless current_user.has_role?(:doctor) %>
+              <td>Dr.<%= list.operating_doctor %></td>
+            <% end %>
+            <td>
+              <% all_diagnoses = @diagnoses.find { |cs| cs[:ot_schedule_ids].include?(list.ot_id.to_s) }[:diagnoses] %>
+                <% if all_diagnoses != [] %>
+                  <% all_diagnoses.each do |diagnosis| %>
+                    <% if diagnosis.icd_type == 'TranslatedIcdDiagnosis' %>
+                      <%= diagnosis.diagnosisname.to_s %> - <%= diagnosis.consultant_name %>
+                    <% else %>
+                      <%= diagnosis.diagnosisoriginalname.to_s %> - <%= diagnosis.consultant_name %>
+                    <% end %>
+                  <% end %>
+                <% end %>
+            </td>
+            <td>
+              <% case_sheet = @case_sheets.find { |cs| cs[:ot_schedule_ids].include?(list.ot_id.to_s) } %>
+                <% all_procedures = case_sheet[:procedures] %>
+                <% if all_procedures != [] %>
+                  <% all_procedures.each do |procedure| %>
+                    <span class="text-center"><%= "#{procedure.procedurename}, #{procedure.get_label_for_procedure_side(procedure.procedureside)}" %></span>
+                  <% end %>
+                <% end %>
+            </td>
+            <% if list.specialty_name == "Ophthalmology" %>
+              <td>
+                  <% ipd_record_ids = Inpatient::IpdRecord.where(admission_id: list.admission_id.to_s) %>
+                  <% ipd_record_ids.each do |ipd_record_id| %>
+                    <% if ipd_record_id.operative_notes.present? %>
+                      <span class="text-center"><%= ipd_record_id.operative_notes[0].power_inventory %></span>
+                    <% end %>
+                  <% end %>
+              </td>
+            <% end %>
+            <td>
+              <% if list.theatre_number %>
+                <%= list.theatre_name %>
+              <%end%>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>
+<style type="text/css">
+    .ot-list-print * {
+        font-size: 9px;
+    }
+    .table-header-row th {
+        font-weight: bold;
+    }
+    thead { display: table-header-group }
+    tr { page-break-inside: avoid }
+</style>

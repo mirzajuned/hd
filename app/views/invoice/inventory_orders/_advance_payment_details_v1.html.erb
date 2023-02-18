@@ -1,0 +1,181 @@
+<% currency_symbol = (@inventory_order.try(:currency_symbol) || current_facility.try(:currency_symbol)) %>
+<% if @advance_payments.where(currency_symbol: currency_symbol).count > 0 %>
+  <div class="row advance-payment-details">
+    <div class="col-md-10 mb5">
+      <b style="text-decoration: underline; color: red;">ADVANCE DETAILS</b>
+    </div>
+    <div class="col-md-2 mb5 text-right">
+      <div class="input-group">
+        <span class="input-group-addon" style="padding: 5px 10px;font-size:10px;"><%= currency_symbol %></span>
+        <input type="text" name="invoice_inventory_order[advance_payment]" class="form-control invoice_advance_payment p3_10" id="invoice_advance_payment_total" value="0" readonly="readonly">
+      </div>
+    </div>
+    <div class="col-md-12">
+      <div class="row advance-description">
+        <div class="col-md-1">
+          <b>S.No.</b>
+        </div>
+        <div class="col-md-2">
+          <b>Reason</b>
+        </div>
+        <div class="col-md-2">
+          <b>Mode of Payment</b>
+        </div>
+        <div class="col-md-2">
+          <b>Payment Date/Time</b>
+        </div>
+        <div class="col-md-2">
+          <b>Advance Amount</b>
+        </div>
+        <div class="col-md-2">
+          <b>Settle Amount</b>
+        </div>
+      </div>
+      <div id="advance_payment_details">
+        <% @advance_payments.where(currency_symbol: currency_symbol, advance_state: 'None').each_with_index do |advance_payment, i| %>
+          <% advance_payment_breakup = @inventory_order.advance_payment_breakups.find_by(advance_payment_id: advance_payment.id.to_s) %>
+          <div class="row advance_payment_row mb10">
+            <% if advance_payment_breakup.present? %>
+              <input type="hidden" name="invoice_inventory_order[advance_payment_breakups_attributes][<%= i %>][id]" value="<%= advance_payment_breakup.id.to_s %>">
+              <input type="hidden" name="invoice_inventory_order[advance_payment_breakups_attributes][<%= i %>][_destroy]" value="0">
+            <% end %>
+            <input type="hidden" name="invoice_inventory_order[advance_payment_breakups_attributes][<%= i %>][advance_payment_id]" value="<%= advance_payment.id.to_s %>">
+            <input type="hidden" name="invoice_inventory_order[advance_payment_breakups_attributes][<%= i %>][advance_display_id]" value="<%= advance_payment.advance_display_id.to_s %>">
+            <input type="hidden" name="invoice_inventory_order[advance_payment_breakups_attributes][<%= i %>][currency_symbol]" class="form-control advance_payment_breakups_currency_symbol p3_10" value="<%= advance_payment.currency_symbol %>">
+            <input type="hidden" name="invoice_inventory_order[advance_payment_breakups_attributes][<%= i %>][currency_id]" class="form-control advance_payment_breakups_currency_id p3_10" value="<%= advance_payment.currency_id.to_s %>">
+            <div class="col-md-1">
+              <span class="advance_payment_breakups_sno"><%= i + 1 %>.</span>
+            </div>
+            <div class="col-md-2">
+              <input type="text" name="invoice_inventory_order[advance_payment_breakups_attributes][<%= i %>][reason]" class="form-control advance_payment_breakups_reason p3_10" value="<%= advance_payment.reason %>" readonly="readonly">
+            </div>
+            <div class="col-md-2">
+              <input type="text" name="invoice_inventory_order[advance_payment_breakups_attributes][<%= i %>][mode_of_payment]" class="form-control advance_payment_breakups_mode_of_payment p3_10" value="<%= advance_payment.mode_of_payment %>" readonly="readonly">
+            </div>
+            <div class="col-md-2">
+              <input type="hidden" name="invoice_inventory_order[advance_payment_breakups_attributes][<%= i %>][advance_date]" value="<%= advance_payment.payment_date %>">
+              <input type="hidden" name="invoice_inventory_order[advance_payment_breakups_attributes][<%= i %>][advance_time]" value="<%= advance_payment.payment_time %>">
+              <input type="hidden" name="invoice_inventory_order[advance_payment_breakups_attributes][<%= i %>][date]" value="<%= advance_payment_breakup.try(:date) || Date.current %>">
+              <input type="hidden" name="invoice_inventory_order[advance_payment_breakups_attributes][<%= i %>][time]" value="<%= advance_payment_breakup.try(:time) || Time.current %>">
+              <input type="text" name="invoice_inventory_order[advance_payment_breakups_attributes][<%= i %>][display_date]" class="form-control advance_payment_breakups_display_date p3_10" value="<%= "#{advance_payment.payment_date.strftime('%d/%m/%Y')}, #{advance_payment.payment_time.strftime('%I:%M %p')}" %>" readonly="readonly">
+            </div>
+            <div class="col-md-2">
+              <div class="input-group">
+                <span class="input-group-addon" style="padding: 5px 10px;font-size:10px;"><%= currency_symbol %></span>
+                <input type="text" name="invoice_inventory_order[advance_payment_breakups_attributes][<%= i %>][advance_amount]" class="form-control advance_payment_breakups_advance_amount p3_10" value="<%= advance_payment.try(:amount_remaining).to_f + advance_payment_breakup.try(:amount).to_f %>" readonly="readonly">
+              </div>
+            </div>
+            <div class="col-md-2">
+              <div class="input-group">
+                <span class="input-group-addon" style="padding: 5px 10px;font-size:10px;"><%= currency_symbol %></span>
+                <input type="number" name="invoice_inventory_order[advance_payment_breakups_attributes][<%= i %>][amount]" class="form-control advance_payment_breakups_amount p3_10" min="0" value="<%= advance_payment_breakup.try(:amount).to_f %>">
+              </div>
+            </div>
+            <div class="col-md-1"></div>
+            <% style = ('display:none;border: 1px solid #ccc;padding: 5px;' if ['Cash'].include?(advance_payment.mode_of_payment)) || 'border: 1px solid #ccc;padding: 5px;' %>
+            <div class="col-md-4 col-md-offset-3 mt10 mop_details" style='<%= style %>'>
+              <% if advance_payment.mode_of_payment == "Cash" %>
+                <input type="hidden" name="invoice_inventory_order[advance_payment_breakups_attributes][<%= i %>][cash]" class="form-control advance_payment_breakups_cash" value="<%= advance_payment.amount %>">
+              <% elsif advance_payment.mode_of_payment == "Card" %>
+                <div class="row">
+                  <div class="card_details">
+                    <div class="col-md-6">
+                      <b style="font-size:12px;">Card Number</b>
+                      <input type="hidden" name="invoice_inventory_order[advance_payment_breakups_attributes][<%= i %>][card]" class="form-control advance_payment_breakups_card" value="<% advance_payment.amount %>">
+                      <input type="text" name="invoice_inventory_order[advance_payment_breakups_attributes][<%= i %>][card_number]" class="form-control advance_payment_breakups_card_number p3_10" minlength="4" maxlength="4" onKeyPress="return event.charCode >= 48 && event.charCode <= 57" placeholder="Card Number" readonly="readonly" value=<% if advance_payment.try(:card_number).present? %>"<%= advance_payment.try(:card_number).to_s.rjust(4, "0") %>"<% end %>>
+                    </div>
+                    <div class="col-md-6">
+                      <b style="font-size:12px;">Transaction Note</b>
+                      <input type="text" name="invoice_inventory_order[advance_payment_breakups_attributes][<%= i %>][card_transaction_note]" class="form-control advance_payment_breakups_card_transaction_note p3_10" placeholder="Transaction Note" readonly="readonly" value="<%= advance_payment.card_transaction_note %>">
+                    </div>
+                  </div>
+                </div>
+              <% elsif advance_payment.mode_of_payment == "Paytm" %>
+                <div class="row">
+                  <div class="other_details">
+                    <div class="col-md-6">
+                      <b style="font-size:12px;">Transaction Id</b>
+                      <input type="text" name="invoice_inventory_order[advance_payment_breakups_attributes][<%= i %>][paytm_transaction_id]" class="form-control advance_payment_breakups_paytm_transaction_id p3_10" placeholder="Transaction Id" readonly="readonly" value="<%= advance_payment.paytm_transaction_id %>">
+                    </div>
+                    <div class="col-md-6">
+                      <b style="font-size:12px;">Transaction Note</b>
+                      <input type="text" name="invoice_inventory_order[advance_payment_breakups_attributes][<%= i %>][paytm_transaction_note]" class="form-control advance_payment_breakups_paytm_transaction_note p3_10" placeholder="Transaction Note" readonly="readonly" value="<%= advance_payment.paytm_transaction_note %>">
+                    </div>
+                  </div>
+                </div>
+              <% elsif advance_payment.mode_of_payment == "Google Pay" %>
+                <div class="row">
+                  <div class="other_details">
+                    <div class="col-md-6">
+                      <b style="font-size:12px;">Transaction Id</b>
+                      <input type="text" name="invoice_inventory_order[advance_payment_breakups_attributes][<%= i %>][gpay_transaction_id]" class="form-control advance_payment_breakups_gpay_transaction_id p3_10" placeholder="Transaction Id" readonly="readonly" value="<%= advance_payment.gpay_transaction_id %>">
+                    </div>
+                    <div class="col-md-6">
+                      <b style="font-size:12px;">Transaction Note</b>
+                      <input type="text" name="invoice_inventory_order[advance_payment_breakups_attributes][<%= i %>][gpay_transaction_note]" class="form-control advance_payment_breakups_gpay_transaction_note p3_10" placeholder="Transaction Note" readonly="readonly" value="<%= advance_payment.gpay_transaction_note %>">
+                    </div>
+                  </div>
+                </div>
+              <% elsif advance_payment.mode_of_payment == "PhonePe" %>
+                <div class="row">
+                  <div class="other_details">
+                    <div class="col-md-6">
+                      <b style="font-size:12px;">Transaction Id</b>
+                      <input type="text" name="invoice_inventory_order[advance_payment_breakups_attributes][<%= i %>][phonepe_transaction_id]" class="form-control advance_payment_breakups_phonepe_transaction_id p3_10" placeholder="Transaction Id" readonly="readonly" value="<%= advance_payment.phonepe_transaction_id %>">
+                    </div>
+                    <div class="col-md-6">
+                      <b style="font-size:12px;">Transaction Note</b>
+                      <input type="text" name="invoice_inventory_order[advance_payment_breakups_attributes][<%= i %>][phonepe_transaction_note]" class="form-control advance_payment_breakups_phonepe_transaction_note p3_10" placeholder="Transaction Note" readonly="readonly" value="<%= advance_payment.phonepe_transaction_note %>">
+                    </div>
+                  </div>
+                </div>
+              <% elsif advance_payment.mode_of_payment == "Online Transfer" %>
+                <div class="row">
+                  <div class="transfer_details">
+                    <div class="col-md-6">
+                      <b style="font-size:12px;">Transfer Date</b>
+                      <input type="text" name="invoice_inventory_order[advance_payment_breakups_attributes][<%= i %>][transfer_date]" class="form-control advance_payment_breakups_transfer_date p3_10" placeholder="Transfer Date" readonly="readonly" value="<%= advance_payment.transfer_date %>">
+                    </div>
+                    <div class="col-md-6">
+                      <b style="font-size:12px;">Transfer Note</b>
+                      <input type="text" name="invoice_inventory_order[advance_payment_breakups_attributes][<%= i %>][transfer_note]" class="form-control advance_payment_breakups_transfer_note p3_10" placeholder="Transfer Note" readonly="readonly" value="<%= advance_payment.transfer_note %>">
+                    </div>
+                  </div>
+                </div>
+              <% elsif advance_payment.mode_of_payment == "Cheque" %>
+                <div class="row">
+                  <div class="cheque_details">
+                    <div class="col-md-6">
+                      <b style="font-size:12px;">Cheque Date</b>
+                      <input type="text" name="invoice_inventory_order[advance_payment_breakups_attributes][<%= i %>][cheque_date]" class="form-control advance_payment_breakups_cheque_date p3_10" placeholder="Cheque Date" readonly="readonly" value="<%= advance_payment.cheque_date %>">
+                    </div>
+                    <div class="col-md-6">
+                      <b style="font-size:12px;">Cheque Note</b>
+                      <input type="text" name="invoice_inventory_order[advance_payment_breakups_attributes][<%= i %>][cheque_note]" class="form-control advance_payment_breakups_cheque_note p3_10" placeholder="Cheque Note" readonly="readonly" value="<%= advance_payment.cheque_note %>">
+                    </div>
+                  </div>
+                </div>
+              <% elsif advance_payment.mode_of_payment == "Others" %>
+                <div class="row">
+                  <div class="other_details">
+                    <div class="col-md-6">
+                      <b style="font-size:12px;">Transaction Id</b>
+                      <input type="text" name="invoice_inventory_order[advance_payment_breakups_attributes][<%= i %>][other_transaction_id]" class="form-control advance_payment_breakups_other_transaction_id p3_10" placeholder="Transaction Id" readonly="readonly" value="<%= advance_payment.other_transaction_id %>">
+                    </div>
+                    <div class="col-md-6">
+                      <b style="font-size:12px;">Transaction Note</b>
+                      <input type="text" name="invoice_inventory_order[advance_payment_breakups_attributes][<%= i %>][other_note]" class="form-control advance_payment_breakups_other_note p3_10" placeholder="Transaction Note" readonly="readonly" value="<%= advance_payment.other_note %>">
+                    </div>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+  <hr>
+<% else %>
+  <input type="hidden" name="invoice_inventory_order[advance_payment]" class="form-control invoice_advance_payment p3_10" id="invoice_advance_payment_total" value="<%= @inventory_order.advance_payment %>" readonly="readonly">
+<% end %>

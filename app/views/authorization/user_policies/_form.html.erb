@@ -1,0 +1,64 @@
+<div class="row user_policy_details">
+  <div class="col-sm-6">
+    <div class="user_policy_name">
+      <strong style="color:#354670;"> User: </strong>
+      <%= f.hidden_field :user_id, { class: 'form-control p7_10 fullname', placeholder: 'Fullname' } %>
+      <%= @user.fullname %>
+    </div>
+    <% if @user_policy.try(:last_edited_by) %>
+      <div style="font-size:12px;margin-top:4px;">
+        <strong style="color:#354670;"><i> Last Edited By: </i></strong>
+        <%= @user_policy.last_edited_by %>
+      </div>
+    <% end %>
+  </div>
+  <div class="col-sm-6">
+    <strong>Policy Template: </strong>
+    <%= f.select :policy_template, @policy_templates.pluck(:name, :id), { include_blank: true }, { class: 'form-control p7_10 policy_template_id', style: 'width: 100%' } %>
+  </div>
+</div>
+
+<% filter_parameters = @policies.keys %>
+<div id="UserPolicyWizard" class="basic-wizard">
+  <ul class="filter-tabs">
+    <% filter_parameters.each do |filter_parameter| %>
+      <li role="presentation" class="filter-tab <%= 'active' if filter_parameter == 'INVENTORY' %>"><a href="#<%= "user_policy_#{filter_parameter.parameterize.underscore}" %>" data-link-id="<%= "user_policy_#{filter_parameter.parameterize.underscore}" %>" data-toggle="tab"><%= filter_parameter %></a></li>
+    <% end %>
+  </ul>
+  <div class="tab-content">
+    <div class="search-area">
+      <input class="search-policies" type="text" placeholder="Search Policies by feature & component"></input>
+    </div>
+    <%= render partial: "authorization/user_policies/policy_selection.html.erb", locals: { f: f } %>
+  </div>
+</div>
+
+<script>
+  $("#UserPolicyWizard").wizard();
+  $(".search-policies").on('keyup', function(){
+    policy_list = $("#UserPolicyWizard").find(".tab-pane.active").find(".policy");
+    search = $(this).val().trim().toUpperCase();
+
+    if(search.trim() === "" ){
+      $(".header").show()
+    }else{
+      $(".header").hide()
+    }
+    
+    for (var i = policy_list.length - 1; i >= 0; i--) {
+      policy_header = policy_list[i].firstElementChild.firstElementChild
+      policy_feature_text = policy_header.textContent.split("(")[0].trim()
+      policy_component_text = policy_header.textContent.split("(")[1].trim()
+
+      if((policy_feature_text.indexOf(search) > -1) || (policy_component_text.indexOf(search) > -1)) {
+        $(policy_list[i]).show();
+      } else {
+        $(policy_list[i]).hide();
+      }
+    }
+  })
+</script>
+
+<style>
+  <%= render partial: 'authorization/authorization_styles.css' %>
+</style>

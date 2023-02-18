@@ -1,0 +1,105 @@
+<%= javascript_include_tag "application-loggedin", "data-turbolinks-track" => true %>
+<% @current_user = current_user %>
+<% @current_facility = current_facility %>
+
+<div class="modal-dialog modal-lg" style="width: 70%">
+  <%= form_for(@advice_set, html: {id: 'advice_set_form'}, remote: true) do |f| %>
+    <%= f.hidden_field :user_id, value: current_user.id %>
+    <%= f.hidden_field :facility_id, value: current_facility.id %>
+    <%= f.hidden_field :organisation_id, value: current_user.organisation_id %>
+    <%= f.hidden_field :level, value: @level %>
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="row">
+          <div class="col-md-7 col-lg-7 col-sm-12 col-xs-12">
+            <h4 class="modal-title pull-right">Advice Set</h4>
+          </div>
+          <div class="col-md-5 col-lg-5 col-sm-12 col-xs-12">
+            <div class="pull-right">
+              <% if params[:action] == "new" %>
+                <%= f.submit "Create Advice Set",{ class: 'btn btn-success', id: 'create-advice-set', onclick: 'advice_set_page()'} %>
+              <% else %>
+                <%= f.submit "Update Advice Set",{ class: 'btn btn-success', id: 'update-advice-set', onclick: 'advice_set_page()'} %>
+              <% end %>
+              <button type="button" class="btn btn-default" data-dismiss="modal" id="close_advice_set_btn">Close</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-body">
+        <div class="row mb20">
+          <div class="col-md-5">
+            <b>Name</b><br>
+            <%= f.text_field :name, { class: 'form-control Certificate-name-validation' } %>
+          </div>
+          <div class="col-md-5 col-md-offset-1">
+            <b>Specialty</b><br>
+            <%= f.select :specialty_id, options_for_select(@available_specialties.pluck(:name, :id), selected: @advice_set.try(:specialty_id)), { include_blank: 'Select any Specialty' }, { class: 'form-control specialty_dropdown' } %>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-md-3">
+            <b>Language</b><br/>
+            <%= select_tag("advice_set[lcid_code]", options_for_select(@languages.pluck(:name, :lcid_code)), { class: 'form-control select2 selected_language', multiple: true, style: 'height: 250px; width: 80%'}) %>
+          </div>
+          <div class="col-md-9">
+            <% @languages.each_with_index do |language, i| %>
+              <% language_consent = @advice_set.language_advice_subset.find_by(language: language.name) %>
+              <div class="row advice-set-content" id="<%= language.lcid_code %>-language">
+                <b>Content</b>&emsp;
+                <button class="btn btn-link btn-xs button-clear">Remove</button>
+                <button class="btn btn-link btn-xs button-undo" style="display: none;">Undo</button>
+                <% if language_consent.try(:id).present? %>
+                  <%= hidden_field_tag "advice_set[language_advice_subset_attributes][#{i}][id]", language_consent.id, { class: 'form-control consent_id' } %>
+                  <%= hidden_field_tag "advice_set[language_advice_subset_attributes][#{i}][_destroy]", "0", { class: 'form-control consent_destroy' } %>
+                <% end %>
+                <%= hidden_field_tag "advice_set[language_advice_subset_attributes][#{i}][language]", language.name, { class: 'form-control lcid_code' } %>
+                <%= hidden_field_tag "advice_set[language_advice_subset_attributes][#{i}][lcid_code]", language.lcid_code, { class: 'form-control lcid_code' } %>
+                <%= text_area_tag "advice_set[language_advice_subset_attributes][#{i}]content", language_consent.try(:content), { class: 'form-control note-editable text_note_down', rows: "7", onBlur: "lasttext=this", style: "overflow-y: auto"} %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<style type="text/css">
+  .both_margin{
+    margin-top: 2%; 
+    margin-left: 5%; 
+    margin-right: 5%;
+  }
+
+  input.error, select.error {
+    border-color: #b94a48;
+    background-image: none;
+  }
+  input.valid, select.valid {
+    border-color: #468847;
+    background-image: none;
+  }
+  .panel-default > .panel-heading {
+    background-color: #1CAF9A;
+  }
+  .advice-set-content .note-editable {
+    overflow-y: auto;
+  }
+  .textcomplete-dropdown {
+    z-index: 1500 !important;
+  }
+  .note-editable.panel-body{
+    line-height: 1.42857143;
+    color: #555;
+    background-color: #fff;
+    background-image: none;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    -webkit-box-shadow: inset 0 1px 1px rgba(0,0,0,.075);
+    box-shadow: inset 0 1px 1px rgba(0,0,0,.075);
+    -webkit-transition: border-color ease-in-out .15s,-webkit-box-shadow ease-in-out .15s;
+    -o-transition: border-color ease-in-out .15s,box-shadow ease-in-out .15s;
+    transition: border-color ease-in-out .15s,box-shadow ease-in-out .15s;
+  }
+</style>

@@ -1,0 +1,317 @@
+<% user = User.find_by(id: current_user.id.to_s) %>
+<div class="col-md-12 text-center foss-h1">
+  <b><%= current_facility.name.upcase %></b>
+</div>
+<br>
+<br>
+<div class="col-md-12">
+  <% if params[:location] == "My Collection" %>
+    <% if user.present? %>
+      <span class="col-md-4 text-left foss-f13">
+        <b>Collection By:</b> <%= user.try(:fullname).titleize %>
+      </span>
+    <% end %>
+  <% else %>
+    <span class="col-md-4 text-left foss-f13">
+      <b>Collection By:</b> All Users
+    </span>
+  <% end %>
+  <span class="col-md-4 text-center foss-f13">
+    <strong><%= @title %></strong>
+  </span>
+  <span class="col-md-4 text-right foss-f13">
+    <b>Date:</b> <%= @datepicker_date.strftime("%b %d, %Y") %>
+  </span>
+</div>
+<br/>
+<div class="row">
+  <table class="table">
+    <tr class="collection_head">
+      <th>S No.</th>
+      <th>Created At</th>
+      <th>Type</th>
+      <th>Patient Name/ID</th>
+      <th>Collected/Created By</th>
+      <th>Receipt ID</th>
+      <th>Mode of Payment</th>
+      <th>Remarks</th>
+      <th>Department</th>
+      <th class="text-right">Amount</th>
+    </tr>
+    <% total_collection_amount = 0 %>
+    <% total_refund_amount = 0 %>
+    <% total_advance_amount = 0 %>
+    <% total_bill_amount = 0 %>
+
+    <% total_collection_amount_mop = Hash.new(0.0) %>
+    <% total_refund_amount_mop = Hash.new(0.0) %>
+    <% total_advance_amount_mop = Hash.new(0.0) %>
+    <% total_bill_amount_mop = Hash.new(0.0) %>
+
+    <% user_summary_collection_amount_mop = Hash.new(0.0) %>
+    <% user_summary_refund_amount_mop = Hash.new(0.0) %>
+    <% user_summary_bill_amount_mop = Hash.new(0.0) %>
+    <% user_summary_advance_amount_mop = Hash.new(0.0) %>
+
+    <% user_wise_summary_collection_amount_mop = Hash.new(0.0) %>
+    <% user_wise_summary_refund_amount_mop = Hash.new(0.0) %>
+    <% user_wise_summary_bill_amount_mop = Hash.new(0.0) %>
+    <% user_wise_summary_advance_amount_mop = Hash.new(0.0) %>
+
+    <% list_of_mops = [] %>
+    <% @total_list.keys.each do |key| %>
+      <% user_collection_data = @total_list[key] %>
+      <% if params[:location] != "My Collection" %>
+        <tr class="collection_user_data">
+          <th colspan="10" class="text-center foss-f13 bg-gray">
+            <strong><%= user_collection_data[0].try(:user_fullname) %> Collection and MOP Summary</strong>
+          </th>
+        </tr>
+      <% end %>
+
+      <% user_collection_amount = 0 %>
+      <% user_bill_amount = 0 %>
+      <% user_advance_amount = 0 %>
+      <% user_refund_amount = 0 %>
+
+      <% user_refund_amount_mop = Hash.new(0.0) %>
+      <% user_bill_amount_mop = Hash.new(0.0) %>
+      <% user_advance_amount_mop = Hash.new(0.0) %>
+      <% collection_amount_mop_hash = Hash.new(0.0) %>
+      <% user_collection_amount_mop = Hash.new(0.0) %>
+      <% user_list_of_mops = [] %>
+
+      <% user_collection_data.each_with_index do |receipt, i| %>
+        <tr class="collection_data">
+          <td><%= i + 1 %></td>
+          <td><%= receipt.try(:receipt_time).try(:strftime, "%I:%M %P") %></td>
+          <td><%= receipt[:receipt_type] %></td>
+          <td>
+            <% patient_info = receipt[:patient_display_fields] %>
+            <div><% if patient_info["patient_name"].present? %><%= patient_info["patient_name"].try(:titleize) %><% else %>-<% end %></div>
+            <div><% if patient_info["patient_identifier_id"].present? %><%= patient_info["patient_identifier_id"] %><% else %>-<% end %></div>
+          </td>
+          <td>
+            <% user_info = receipt[:user_display_fields] %>
+            <% if user_info["name"].present? %>
+              <%= user_info["name"].try(:titleize) %>
+            <% else %>
+              -
+            <% end %>
+          </td>
+          <% receipt_info = receipt[:receipt_display_fields] %>
+          <td><%= receipt_info[:receipt_no] %></td>
+          <td>
+            <div>
+              <%= receipt_info[:mode_of_payment] %>
+            </div>
+            <div>
+              Note: <% if receipt_info[:mop_note].present? %><%= receipt_info[:mop_note] %><% else %>-<% end %>
+            </div>
+          </td>
+          <td>
+            <% if receipt_info[:comments].present? %>
+              <%= receipt_info[:comments].try(:titleize) %>
+            <% else %>
+              -
+            <% end %>
+          </td>
+          <td class="text-right"><%= receipt_info[:department_name] %></td>
+          <% receipt_amount_with_precision = number_with_precision(receipt_info[:receipt_amount].to_f, precision: 2) %>
+          <% receipt_amount_display = Common::Finance::NumberFormatService.call(@number_format, receipt_amount_with_precision) %>
+          <td class="text-right"><%= receipt_info[:currency_symbol] %><%= receipt_amount_display %></td>
+          <% if receipt[:is_refund] %>
+            <% user_refund_amount = user_refund_amount + receipt_info[:receipt_amount].to_f %>
+            <% user_refund_amount_mop[receipt_info[:mode_of_payment]] = user_refund_amount_mop[receipt_info[:mode_of_payment]].to_f + receipt_info[:receipt_amount].to_f %>
+            <% user_summary_refund_amount_mop[receipt_info[:mode_of_payment]] = user_summary_refund_amount_mop[receipt_info[:mode_of_payment]].to_f + receipt_info[:receipt_amount].to_f %>
+            <%user_wise_summary_refund_amount_mop[user_info["name"].try(:titleize)] = user_refund_amount_mop%>
+            <% user_collection_amount = user_collection_amount - receipt_info[:receipt_amount].to_f %>
+            <% user_collection_amount_mop[receipt_info[:mode_of_payment]] = user_collection_amount_mop[receipt_info[:mode_of_payment]].to_f - receipt_info[:receipt_amount].to_f %>
+            <% user_summary_collection_amount_mop[receipt_info[:mode_of_payment]] = user_summary_collection_amount_mop[receipt_info[:mode_of_payment]].to_f - receipt_info[:receipt_amount].to_f %>
+          <% else  %>
+            <% if receipt[:is_advance] %>
+              <% user_advance_amount = user_advance_amount + receipt_info[:receipt_amount].to_f %>
+              <% user_advance_amount_mop[receipt_info[:mode_of_payment]] = user_advance_amount_mop[receipt_info[:mode_of_payment]].to_f + receipt_info[:receipt_amount].to_f %>
+              <% user_summary_advance_amount_mop[receipt_info[:mode_of_payment]] = user_summary_advance_amount_mop[receipt_info[:mode_of_payment]].to_f + receipt_info[:receipt_amount].to_f %>
+              <%user_wise_summary_advance_amount_mop[user_info["name"].try(:titleize)] = user_advance_amount_mop%>
+            <% elsif receipt[:is_bill] %>
+              <% user_bill_amount = user_bill_amount + receipt_info[:receipt_amount].to_f %>
+              <% user_bill_amount_mop[receipt_info[:mode_of_payment]] = user_bill_amount_mop[receipt_info[:mode_of_payment]].to_f + receipt_info[:receipt_amount].to_f %>
+              <% user_summary_bill_amount_mop[receipt_info[:mode_of_payment]] = user_summary_bill_amount_mop[receipt_info[:mode_of_payment]].to_f + receipt_info[:receipt_amount].to_f %>
+              <%user_wise_summary_bill_amount_mop[user_info["name"].try(:titleize)] = user_bill_amount_mop%>
+            <% end %>
+            <% user_collection_amount = user_collection_amount + receipt_info[:receipt_amount].to_f %>
+            <% user_collection_amount_mop[receipt_info[:mode_of_payment]] = user_collection_amount_mop[receipt_info[:mode_of_payment]].to_f + receipt_info[:receipt_amount].to_f %>
+            <% user_summary_collection_amount_mop[receipt_info[:mode_of_payment]] = user_summary_collection_amount_mop[receipt_info[:mode_of_payment]].to_f + receipt_info[:receipt_amount].to_f %>
+          <% end %>
+          <%collection_amount_mop_hash[receipt_info[:mode_of_payment]] = ((user_bill_amount_mop[receipt_info[:mode_of_payment]] + user_advance_amount_mop[receipt_info[:mode_of_payment]]) - user_refund_amount_mop[receipt_info[:mode_of_payment]])%>
+
+          <%user_wise_summary_collection_amount_mop[user_info["name"].try(:titleize)] = collection_amount_mop_hash%>
+        </tr>
+      <% end %>
+
+      <% user_collection_amount_mop.each do |key, value| %>
+        <% total_collection_amount_mop[key] = total_collection_amount_mop[key] + value %>
+      <% end %>
+      <%user_list_of_mops << user_collection_amount_mop.keys.sort.flatten.uniq%>
+      
+      <% user_bill_amount_mop.each do |key, value| %>
+        <% total_bill_amount_mop[key] = user_bill_amount_mop[key] + value %>
+      <% end %>
+      <%user_list_of_mops << user_bill_amount_mop.keys.sort.flatten.uniq%>
+
+      <% user_advance_amount_mop.each do |key, value| %>
+        <% total_advance_amount_mop[key] = user_advance_amount_mop[key] + value %>
+      <% end %>
+      <%user_list_of_mops << user_advance_amount_mop.keys.sort.flatten.uniq%>
+
+      <% user_refund_amount_mop.each do |key, value| %>
+        <% total_refund_amount_mop[key] = total_refund_amount_mop[key] + value %>
+      <% end %>
+      <%user_list_of_mops << user_refund_amount_mop.keys.sort.flatten.uniq%>
+      <%list_of_mops << user_list_of_mops%>
+
+      <% total_collection_amount = total_collection_amount + user_collection_amount %>
+      <% total_refund_amount = total_refund_amount + user_refund_amount %>
+      <% total_bill_amount = total_bill_amount + user_bill_amount %>
+      <% total_advance_amount = total_advance_amount + user_advance_amount %>
+      <% if params[:location] == "All Collection" %>
+        <tr class="foss-f10 foss-pb15">
+          <th colspan="10" class="text-right">
+            <% user_advance_amount_with_precision = number_with_precision(user_advance_amount.try(:round, 3), precision: 2) %>
+            <% user_advance_amount_display = Common::Finance::NumberFormatService.call(@number_format, user_advance_amount_with_precision) %>
+            <% user_bill_amount_with_precision = number_with_precision(user_bill_amount.try(:round, 3), precision: 2) %>
+            <% user_bill_amount_display = Common::Finance::NumberFormatService.call(@number_format, user_bill_amount_with_precision) %>
+            <% user_refund_amount_with_precision = number_with_precision(user_refund_amount.try(:round, 3), precision: 2) %>
+            <% user_refund_amount_display = Common::Finance::NumberFormatService.call(@number_format, user_refund_amount_with_precision) %>
+            <% user_collection_refund_amount_with_precision = number_with_precision((user_collection_amount.to_f).try(:round, 3), precision: 2) %>
+            <% user_collection_refund_amount_display = Common::Finance::NumberFormatService.call(@number_format, user_collection_refund_amount_with_precision) %>
+            <% all_mops = {} %>
+            <% ['advance', 'bill', 'refund', 'collection'].each do |type| %>
+              <% 
+                all_mops[type] =  if type == 'collection' 
+                                    collection_amount_mop_hash
+                                  else
+                                    eval("user_#{type}_amount_mop")
+                                  end
+              %>
+              <% 
+                all_mops[type]['Net'] = if type == 'collection'
+                                          user_collection_refund_amount_display
+                                        else
+                                          eval("user_#{type}_amount_display") 
+                                        end
+              %>
+            <% end %>
+            <%= render partial: 'user_mop_collection.html', locals: { all_mops: all_mops, mop: user_list_of_mops.flatten.uniq }  %>
+          </th>
+        </tr>
+      <% end %>
+    <% end %>
+  </table>
+</div>
+<div class="row alwaysbreak">
+  <table class="table">
+    <tr>
+      <th colspan="10" class="text-center foss-f13 bg-gray">
+        <strong>
+          <% if params[:location] == "My Collection" %>
+            <%= "#{user.try(:fullname).titleize}'s  user Summary" %>
+          <% else %>
+            <%= "#{current_facility.name.titleize}'s facility Summary" %>
+          <% end %>
+        </strong>
+      </th>
+    </tr>
+    <tr class="foss-f10 foss-pb15">
+      <th colspan="10" class="text-right">
+        <% total_advance_amount_with_precision = number_with_precision(total_advance_amount.try(:round, 3), precision: 2) %>
+        <% total_advance_amount_display = Common::Finance::NumberFormatService.call(@number_format, total_advance_amount_with_precision) %>
+        <% total_bill_amount_with_precision = number_with_precision(total_bill_amount.try(:round, 3), precision: 2) %>
+        <% total_bill_amount_display = Common::Finance::NumberFormatService.call(@number_format, total_bill_amount_with_precision) %>
+        <% total_refund_amount_with_precision = number_with_precision(total_refund_amount.try(:round, 3), precision: 2) %>
+        <% total_refund_amount_display = Common::Finance::NumberFormatService.call(@number_format, total_refund_amount_with_precision) %>
+        <% total_collection_refund_amount_with_precision = number_with_precision((total_collection_amount.to_f).try(:round, 3), precision: 2) %>
+        <% total_collection_refund_amount_display = Common::Finance::NumberFormatService.call(@number_format, total_collection_refund_amount_with_precision) %>
+        <% all_mops = {} %>
+        <% ['advance', 'bill', 'refund', 'collection'].each do |type| %>
+          <% all_mops[type] = eval("user_summary_#{type}_amount_mop") %>
+          <% 
+              all_mops[type]['Net'] = if type == 'collection'
+                                        total_collection_refund_amount_display
+                                      else
+                                        eval("total_#{type}_amount_display") 
+                                      end
+          %>
+        <% end %>
+        <%= render partial: 'user_mop_collection.html', locals: { all_mops: all_mops, mop: list_of_mops.flatten.uniq }  %>
+      </th>
+    </tr>
+  </table>
+</div>
+<div class="row alwaysbreak">
+  <table class="table">
+    <% if params[:location] == "All Collection" %>
+      <tr>
+        <th colspan="10" class="text-center foss-f13 bg-gray">
+          <strong>User wise Collection Summary</strong>
+        </th>
+      </tr>
+      <tr  class="foss-f10 foss-pb15">
+        <th colspan="10">
+          <%= render partial: 'user_mop_collection.html', locals: { all_mops: user_wise_summary_bill_amount_mop, mop: list_of_mops.flatten.uniq, all_user: true, table_title: 'Bill' }  %>
+          <hr>
+          <%= render partial: 'user_mop_collection.html', locals: { all_mops: user_wise_summary_advance_amount_mop, mop: list_of_mops.flatten.uniq, all_user: true, table_title: 'Advance' }  %>
+          <hr>
+          <%= render partial: 'user_mop_collection.html', locals: { all_mops: user_wise_summary_refund_amount_mop, mop: list_of_mops.flatten.uniq, all_user: true, table_title: 'Refund' }  %>
+          <hr>
+          <%= render partial: 'user_mop_collection.html', locals: { all_mops: user_wise_summary_collection_amount_mop, mop: list_of_mops.flatten.uniq, all_user: true, table_title: 'All User Net' }  %>
+        </th>
+      </tr>
+    <% end %>
+  </table>
+</div>
+
+<style type="text/css">
+  .collection_data * {
+    font-size: 9px;
+  }
+
+  .collection_head * {
+    font-size: 10px;
+    color: #000;
+  }
+  .collection_user_data * {
+    font-size: 10px;
+    color: #000;
+  }
+
+  .bg-gray {
+    background-color: #EEEEEE;
+  }
+
+  /** added by Gauthamm on 29 Aug 2022 /**/ 
+  .foss-h1 {
+    font-size:16px;
+    font-weight: 700;
+    border-bottom: 1px solid #333;
+    padding-bottom:7px;
+    margin-bottom: 15px;
+  }
+
+  .foss-f13 {
+    font-size:13px;
+  }
+  .foss-f11 {
+    font-size:11px;
+  }
+  .foss-f10 {
+    font-size:10px;
+  }
+  .foss-pb15 {
+    padding-bottom:15px;
+  }
+  .alwaysbreak { 
+    page-break-before: always; 
+  }
+</style>

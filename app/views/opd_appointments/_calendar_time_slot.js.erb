@@ -1,0 +1,101 @@
+let calendar = $("#user_time_slot").fullCalendar({
+  contentHeight: $(window).height() * 0.70,
+  header: {
+    left: 'today',
+    center: 'prev title next',
+    right: ''
+  },
+  firstDay: '<%= Date.current.strftime('%w').to_i %>',
+  scrollTime: $.fullCalendar.moment().format('HH:MM:SS'),
+  slotDuration: '00:<%= @user_time_slot.present? ? @user_time_slot.try(:calendar_duration) : 10 %>:00',
+  // Workaround to disable entire Calendar
+  businessHours: {
+    dow: [0, 1, 2, 3, 4, 5, 6],
+    start: $.fullCalendar.moment(),
+    end: $.fullCalendar.moment()
+  },
+  selectConstraint: 'businessHours',
+  defaultView: "agendaWeek",
+  allDaySlot: false,
+  selectable: true,
+  select: function(start, end, view) {
+    alert(`
+      Date: ${$.fullCalendar.moment(start).format('DD/MM/YYYY')}
+      Time: ${$.fullCalendar.moment(start).format('hh:mm A')}
+    `);
+  },
+  events: {
+    type: 'get',
+    data: function(){
+      return {
+        facility_id: '<%=@facility_id%>',
+        user_id: '<%=@consultant_id%>',
+        department_id: '<%=@department_id%>'
+      }
+    },
+    url: '/user_time_slots/0/show_calendar_data',
+    error: function() {
+      alert('Error Fetching Data!')
+    }
+  },
+  eventClick: function(calEvent) {
+
+    $('.fc-time-grid-event').css('border-color', 'rgb(255, 255, 255)');
+    $(this).css('border-color', 'black');
+
+    if (Date.parse(calEvent.start) < $.now() ){
+      notice = new PNotify({ title: 'Information', text: 'Please select valid time slot', icon: 'fa fa-stop', type: 'error' });
+      notice.get().click(function() { return notice.remove(); });
+    } else if (['Planned Leave', 'Meeting', 'Sick Leave', 'Emergency Leave', 'Personal Leave', 'Break'].includes(calEvent.title)) {
+        notice = new PNotify({ title: 'Information', text: `Doctor not available on selected slot, Please select available time slot.`, icon: 'fa fa-stop', type: 'error' });
+        notice.get().click(function() { return notice.remove(); });
+    } else if (calEvent.full) {
+      notice = new PNotify({ title: 'Information', text: 'The slot is fully booked.', icon: 'fa fa-stop', type: 'error' });
+      notice.get().click(function() { return notice.remove(); });
+    } else {
+      let date = $.fullCalendar.moment(calEvent.start).format('DD/MM/YYYY');
+      let time = $.fullCalendar.moment(calEvent.start).format('hh:mm A');
+      // $('.opdfollowuptime-timepicker').val($.fullCalendar.moment(calEvent.start).format('hh:mm A'))
+      // $('.hidden_followup_timepicker').val($.fullCalendar.moment(calEvent.start).format('DD/MM/YYYY hh:mm A'))
+      // $('#opdfollowupdate-datepicker').val($.fullCalendar.moment(calEvent.start).format('DD/MM/YYYY'));
+      $('.opdfollowuptime-timepicker').val(time)
+      $('.hidden_followup_timepicker').val(`${date} ${time}`)
+      $('#opdfollowupdate-datepicker').val(date);
+
+      // code below to update available slots 
+      doctor_id = $('#opdrecord_advice_attributes_appointment_doctor').val()
+      facility_id = $('#opdrecord_advice_attributes_appointment_facility').val()
+      specialty_id = $('.advice_appointment_specialty_id').val()
+      get_booked_appointments(doctor_id, facility_id, specialty_id, date, "dateselect")
+
+      $('#calendar-modal').modal('hide');
+      $('#bookappointment').prop('checked','true')
+      check_validation_status(
+        $("#opdfollowupdate-datepicker"), 'followup_is_valid',
+        'advice_step_advice', true,
+        'opdrecord_opdfollowuptimeframe'
+      );
+    }
+  },
+  eventRender : function(event, element) {
+      element[0].title = event.title;
+      // element[0].title = element.childNodes[0].firstChild.innerText;
+    }
+});
+
+
+function get_booked_appointments(doctor_id, facility_id, specialty_id, date, flag) {
+  $.ajax({
+    url: '/opd_appointments/get_booked_appointments',
+    type: 'get',
+    data: {
+      doctor_id: doctor_id,
+      date: date,
+      facility_id: facility_id,
+      specialty_id: specialty_id,
+      flag: flag
+    },
+    success: function(res) {
+    },
+  });
+}

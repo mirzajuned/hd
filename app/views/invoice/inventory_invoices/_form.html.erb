@@ -1,0 +1,90 @@
+
+<%= f.hidden_field :tax_enabled, value: @invoice_setting.tax_enabled_pharmacy %>
+<%= f.hidden_field :currency_symbol, value: @currency.symbol %>
+<%= f.hidden_field :currency_id, value: @currency.id %>
+<% if @patient_prescription.present? %>
+  <% specialty_id = @patient_prescription.try(:specalityid) %>
+  <% fresh_booking = @patient_prescription.prescription_date == Date.current ? true : false %>
+  <%= f.hidden_field :fresh_booking, value: fresh_booking  %>
+<% else %>
+  <% if @inventory_store.department_id == '50121007' %>
+    <% specialty_id = '309988001' %>
+    <% else %>
+    <% specialty_id = 'all' %>
+  <% end %>
+<% end %>
+<%= f.hidden_field :specialty_id, value: specialty_id %>
+<%= f.hidden_field :facility_id, value: @current_facility_id %>
+<%= f.hidden_field :store_id, value: @inventory_store.id %>
+<%= f.hidden_field :department_id, value: @inventory_store.department_id %>
+<%= f.hidden_field :department_name, value: @inventory_store.department_name %>
+<%= f.hidden_field :organisation_id, value: @current_organisation_id %>
+<%= f.hidden_field :prescription_id, value: @patient_prescription.try(:id) %>
+<%= f.hidden_field :patient_id, value: @patient.id %>
+<%= f.hidden_field :entered_by, { value: current_user.fullname } %>
+<%= f.hidden_field :user_id, { value: current_user.id } %>
+<%= f.hidden_field :from, { value: params[:from] } %>
+<%= f.hidden_field :patient_mrn, { value: @patient_o_idn.try(:mr_no) } %>
+<%= f.hidden_field :not_converted_to_converted, { value: params[:not_converted_to_converted] } %>
+
+<div class="row mb5" style="border-bottom:1px solid #eee;border-top:1px solid #eee;">
+
+  <div class="invoice-lots-list" style="">
+    <table class="table invoice-lots-table" style="">
+      <thead class="invoice-table-head">
+      <tr class='thead-fixable'>
+        <td class='thead-fix col-md-1 col-sm-1 col-xs-1'>Description</td>
+        <td class='thead-fix col-md-1 col-sm-1 col-xs-1'>Batch</td>
+        <td class='thead-fix col-md-1 col-sm-1 col-xs-1'>Model No.</td>
+        <td class='thead-fix col-md-1 col-sm-1 col-xs-1'>Quantity</td>
+        <td class='thead-fix col-md-1 col-sm-1 col-xs-1'>Expiry</td>
+        <td class='thead-fix col-md-1 col-sm-1 col-xs-1'>MRP</td>
+        <td class='thead-fix col-md-1 col-sm-1 col-xs-1'>GST %</td>
+        <td class='thead-fix col-md-1 col-sm-1 col-xs-1'>Tax Incl.</td>
+        <td class='thead-fix col-md-1 col-sm-1 col-xs-1'>Taxable Amt.</td>
+        <td class='thead-fix col-md-1 col-sm-1 col-xs-1'>Tax Amt.</td>
+        <td class='thead-fix col-md-1 col-sm-1 col-xs-1'>Total(&#8377;)</td>
+        <td class='thead-fix col-md-1 col-sm-1 col-xs-1'>Action</td>
+      </tr>
+      </thead>
+    </table>
+  </div>
+  <div class="invoice-table-body" style="overflow-y: auto; min-height: 100px; font-size: 11px">
+
+    <% if @inventory_store.department_id == '284748001' && @patient_prescription.present? %>
+
+      <% @patient_prescription.medications.delete_if { |set| set['status'] == 'D' || set['status'] == 'C' }.each_with_index do |item, index| %>
+        <% variant = Inventory::Item::Variant.find_by(id: item['pharmacy_item_id'], store_id: @inventory_store.id) %>
+        <% lot = Inventory::Item::Lot.where(variant_id: variant&.id, 'stock' => { '$gte' => 1 }, is_deleted: false, store_id: @inventory_store.id, :expiry.gte => Date.today ).order(expiry: :asc, created_at: :asc).first
+        %>
+        <% if lot.to_a.present? %>
+          <% item = Inventory::Item.find_by(id: lot.try(:item_id)) %>
+          <%= render partial: '/invoice/inventory_invoices/add_lot_form.html.erb', locals: { f: f, variant: variant, item: item, lot: lot, index: index } %>
+          <script>
+            <% tax_group = TaxGroup.find(lot.tax_group_id) %>
+            <% tax_rate_details = tax_group.tax_rate_details.collect{|tax_rate| tax_rate.merge(type: TaxRate.find(tax_rate[:_id]).type)} %>
+            var tax_group = {}
+            tax_group['tax_rates'] = <%= raw tax_rate_details.to_json %>
+            tax_group['id'] = '<%=tax_group.id%>'
+            tax_group['group_rate'] = '<%=tax_group.rate%>'
+            tax_breakup['<%=lot.id%>'] = tax_group
+          </script>
+        <% end %>
+      <% end %>
+    <% end %>
+  </div>
+</div>
+
+<%= render partial: '/invoice/inventory_invoices/payment_details.html.erb', locals: { f: f } %>
+
+<style>
+  .invoice-order-datepicker, .order-timepicker {
+    cursor: pointer !important;
+  }
+  .invoice-delivery-datepicker {
+    cursor: pointer !important;
+  }
+  .disabled_row{
+    pointer-events: none;
+  }
+</style>

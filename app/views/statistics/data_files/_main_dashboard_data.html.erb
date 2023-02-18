@@ -1,0 +1,126 @@
+<div class="col-md-9" style="border-right: 1px solid #333;">
+  <div class="row">
+    <div class="col-md-6">
+      <h4 class="text-left">Overall Earnings &nbsp;
+        <% unless @start_date == @end_date %>
+          <%= Date.parse(@start_date).strftime("%d %b '%y") %> - <%= Date.parse(@end_date).strftime("%d %b '%y") %>
+        <% else %>
+          <%= Date.parse(@start_date).strftime("%d %b '%y") %>
+        <% end %>
+      </h4>
+    </div>
+    <div class="col-md-6 text-right mt10">
+      <% if check_cash_registers  %>
+        <%= link_to cash_register_path(current_user.id), method: :delete, data: {confirm: "This can not be undone and will delete all templates and services related to cash register (include OPD & IPD).", :remote => true}, :class => 'btn btn-danger btn-xs' do%>Delete all Cash Register Records<% end %>
+      <% end %>
+    </div>
+
+    <div class="col-sm-18 col-md-12">
+      <div class="panel panel-success panel-stat mt10">
+        <div class="panel-heading">
+
+          <div class="stat">
+            <div class="row">
+              <div class="col-xs-2">
+                <img src="/images/is-money.png" alt="">
+              </div>
+              <div class="col-xs-6">
+                <small class="stat-label">Total Earnings</small>
+                <% total =  (@daily_reports.pluck(:opd_invoice_payment_received).sum.round(2) +
+                    @daily_reports.pluck(:opd_cash_reg_transaction).sum.round(2) +
+                    @daily_reports.pluck(:ipd_invoice_payment_received).sum.round(2) +
+                    @daily_reports.pluck(:ipd_cash_reg_transaction).sum.round(2) +
+                    @pharmacy.pluck(:total).sum.round(2) +
+                    @optical.pluck(:total).sum.round(2) +
+                    @advance_payment_opd.where(advance_state: "None").pluck(:amount).sum.round(2) +
+                    @advance_payment_ipd.where(advance_state: "None").pluck(:amount).sum.round(2)) -
+                    (@advance_payment_opd.where(advance_state: "Adjust").pluck(:amount).sum.round(2) +
+                    @advance_payment_opd.where(advance_state: "Refund").pluck(:amount).sum.round(2) +
+                    @advance_payment_ipd.where(advance_state: "Adjust").pluck(:amount).sum.round(2) +
+                    @advance_payment_ipd.where(advance_state: "Refund").pluck(:amount).sum.round(2)) %>
+                <h1><%= @currency.symbol %> <%= total.round(2) %></h1>
+              </div>
+            </div><!-- row -->
+
+            <div class="mb15"></div>
+
+            <div class="row">
+              <div class="col-xs-2">
+                <small class="stat-label">OPD Earning</small>
+                <h4><%= @currency.symbol %> <%= @daily_reports.pluck(:opd_invoice_payment_received).sum.round(2) + @daily_reports.pluck(:opd_cash_reg_transaction).sum.round(2) %></h4>
+              </div>
+
+              <div class="col-xs-2">
+                <small class="stat-label">IPD Earnings</small>
+                <h4><%= @currency.symbol %> <%= @daily_reports.pluck(:ipd_invoice_payment_received).sum.round(2) + @daily_reports.pluck(:ipd_cash_reg_transaction).sum.round(2) %></h4>
+              </div>
+
+              <div class="col-xs-2">
+                <small class="stat-label">Pharmacy</small>
+                <h4><%= @currency.symbol %> <%= @pharmacy.pluck(:total).sum.round(2) %></h4>
+              </div>
+
+              <div class="col-xs-2">
+                <small class="stat-label">Optical</small>
+                <h4><%= @currency.symbol %> <%= @optical.pluck(:total).sum.round(2) %></h4>
+              </div>
+
+              <div class="col-xs-2">
+                <small class="stat-label">Advance(In Hand)</small>
+                <h4><%= @currency.symbol %> <%= @advance_payment_opd.where(advance_state: "None").pluck(:amount).sum.round(2) + @advance_payment_ipd.where(advance_state: "None").pluck(:amount).sum.round(2) %></h4>
+              </div>
+
+              <div class="col-xs-2">
+                <small class="stat-label">Advance(Adjusted)</small>
+                <h4>- <%= @currency.symbol %> <%= (@advance_payment_opd.where(advance_state: "Adjust").pluck(:amount).sum.round(2) + @advance_payment_opd.where(advance_state: "Refund").pluck(:amount).sum.round(2) + @advance_payment_ipd.where(advance_state: "Adjust").pluck(:amount).sum.round(2) + @advance_payment_ipd.where(advance_state: "Refund").pluck(:amount).sum.round(2)) %></h4>
+              </div>
+            </div><!-- row -->
+
+          </div><!-- stat -->
+
+        </div><!-- panel-heading -->
+      </div><!-- panel -->
+    </div>
+  </div>
+</div>
+
+<div class="col-md-3">
+  <div class="row">
+    <div class="col-md-12">
+      <h4 class="text-left"><a href="javascript:;" data-filter='Credit' class="statistics_parent_link credit">Credit</a></h4>
+    </div>
+    <div class="col-sm-18 col-md-12">
+      <div class="panel panel-success panel-stat mt10">
+        <div class="panel-heading">
+
+          <div class="stat">
+            <div class="row">
+              <div class="col-xs-4">
+                <img src="/images/is-money.png" alt="">
+              </div>
+              <div class="col-xs-8">
+                <small class="stat-label">Total Credit</small>
+                <h1><%= @currency.symbol %> <%= @daily_reports.pluck(:opd_invoice_payment_pending).sum.round(2) + @daily_reports.pluck(:ipd_invoice_payment_pending).sum.round(2) %></h1>
+              </div>
+            </div><!-- row -->
+
+            <div class="mb15"></div>
+
+            <div class="row">
+              <div class="col-xs-6">
+                <small class="stat-label">OPD Receipt Credit</small>
+                <h4><%= @currency.symbol %> <%= @daily_reports.pluck(:opd_invoice_payment_pending).sum.round(2) %></h4>
+              </div>
+              <div class="col-xs-6">
+                <small class="stat-label">IPD Receipt Credit</small>
+                <h4><%= @currency.symbol %> <%= @daily_reports.pluck(:ipd_invoice_payment_pending).sum.round(2) %></h4>
+              </div>
+            </div><!-- row -->
+
+          </div><!-- stat -->
+
+        </div><!-- panel-heading -->
+      </div><!-- panel -->
+    </div>
+  </div>
+</div>

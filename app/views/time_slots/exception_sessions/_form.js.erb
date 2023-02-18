@@ -1,0 +1,256 @@
+const datepickerSetup = () => {
+  let datepicker_options = {
+    minDate: 1, // Tomorrow
+    maxDate: 30, // +30 Days
+    dateFormat: 'dd/mm/yy'
+  }
+
+  let exceptionSessionRows = $('.exception-sessions-row')
+  for (var i = exceptionSessionRows.length - 1; i >= 0; i--) {
+    $(exceptionSessionRows[i]).find(".exception_sessions_start_date").datepicker('destroy');
+    $(exceptionSessionRows[i]).find(`.exception_sessions_start_date`).datepicker(datepicker_options);
+
+    $(exceptionSessionRows[i]).find(".exception_sessions_end_date").datepicker('destroy');
+    $(exceptionSessionRows[i]).find(`.exception_sessions_end_date`).datepicker(datepicker_options);
+  }
+}
+
+const renumberExceptionSessionRows = () => {
+  let exceptionSessionRows = $('#exception-session-rows').find(".exception-sessions-row")
+  renumberIndex(exceptionSessionRows, ["input", "select", "button", "label"], 1)
+
+  let eachCkbox = $('#exception-session-rows').find(".each-ckbox")
+  renumberIndex(eachCkbox, ["input", "select", "button", "label"], 1)
+
+  let eachSession = $('#exception-session-rows').find(".each-exception-session")
+  renumberIndex(eachSession, ["input", "select"], 1)
+
+  datepickerSetup();
+}
+renumberExceptionSessionRows();
+
+// Disable days which are checked in other sessions
+const exceptionDisableDays = () => {
+  let exceptionSessionRows = $('.exception-sessions-row')
+  for (var i = exceptionSessionRows.length - 1; i >= 0; i--) {
+    let ckboxDays = $(exceptionSessionRows[i]).find(`.exception_sessions_ckbox_days`)
+    for (var j = ckboxDays.length - 1; j >= 0; j--) {
+      if(ckboxDays[j].checked) {
+        let value = $(ckboxDays[j]).val();
+        let exceptionSessionRows = $(ckboxDays[j]).closest('.exception-sessions-row')
+        $(exceptionSessionRows).find(`.exception_sessions_ckbox_days[data-day='${value}']`).not(ckboxDays[j]).attr('disabled', true)
+      }
+    }
+  }
+}
+exceptionDisableDays();
+
+// Validations for TimeSlot::Session
+$.validator.addMethod("GreaterThanExceptionStartTime", function(value, element) {
+  let end_time = $(element).val()
+  let start_time = $(element).closest(".each-exception-session").find(".exception_sessions_start_time").val()
+
+  if (end_time == '' || start_time == '') {
+    return true
+  } else if (moment(start_time, 'hh:mm A') < moment(end_time, 'hh:mm A')) {
+    return true
+  } else {
+    return false
+  }
+}, "End Time cannot be less than Start Time");
+
+$.validator.addMethod("GreaterThanStartDate", function(value, element) {
+  let end_date = $(element).val()
+  let start_date = $(element).closest(".exception-sessions-row").find(".exception_sessions_start_date").val()
+
+  if (end_date == '' || start_date == '') {
+    return true
+  } else if (moment(start_date, 'DD/MM/YYYY') <= moment(end_date, 'DD/MM/YYYY')) {
+    return true
+  } else {
+    return false
+  }
+}, "End Date cannot be less than Start Date");
+
+$.validator.addMethod("lessThanExceptionTimeDuration", function (value, element) {
+  let slot_duration = $(element).val();
+  let time_duration = $(element).closest(".each-exception-session").find(".exception_sessions_time_duration").val()
+
+  if (slot_duration == '' || time_duration == '') {
+    return true
+  } else if (parseInt(slot_duration) <= parseInt(time_duration)) {
+    return true
+  } else {
+    return false
+  }
+}, "Slot Duration should be less than Time Duration");
+
+$.validator.addClassRules("exception_sessions_ckbox_days", { required: true });
+$.validator.addClassRules("section-exception-session-0-facility_id", { required: true });
+$.validator.addClassRules("section-exception-session-0-department_id", { required: true });
+$.validator.addClassRules("section-exception-session-0-start_time", { required: true });
+$.validator.addClassRules("section-exception-session-0-end_time", { required: true });
+$.validator.addClassRules("section-session-0-slot_duration", { required: true });
+$.validator.addClassRules("section-session-0-time_duration", { required: true });
+$.validator.addClassRules("exception_sessions_start_date", { required: true });
+$.validator.addClassRules("exception_sessions_end_date", { required: true, GreaterThanStartDate: true });
+$.validator.addClassRules("exception_sessions_end_time", { GreaterThanExceptionStartTime: true });
+$.validator.addClassRules("exception_sessions_slot_duration", { lessThanExceptionTimeDuration: true });
+
+// Mark Checked Days in each exception session (Hidden Field)
+$('#exception-session-rows').on('click', '.exception_sessions_ckbox_days', function() {
+  let value = $(this).val();
+  let day = $(this).attr('data-day');
+  let exceptionSessionRows = $(this).closest('.exception-sessions-row');
+  let subSectionRows = $(this).closest('.sub-section-rows')
+
+  $(subSectionRows).find(`.exception_sessions_days_${value}`).prop('checked', this.checked)
+  $(exceptionSessionRows).find(`.exception_sessions_ckbox_days[data-day='${day}']`).not($(this)).attr('disabled', this.checked)
+});
+
+// Fill Start Date in each exception session (Hidden Field)
+$('#exception-session-rows').on('change', '.exception_sessions_start_date', function() {
+  let value = $(this).val();
+  $(this).closest('.exception-sessions-row').find(`.exception_session_start_date`).val(value)
+});
+
+// Fill End Date in each exception session (Hidden Field)
+$('#exception-session-rows').on('change', '.exception_sessions_end_date', function() {
+  let value = $(this).val();
+  $(this).closest('.exception-sessions-row').find(`.exception_session_end_date`).val(value)
+});
+
+// Add Sessions
+$('#add-more-exception-sessions').on('click', function() {
+  $('#exception-session-rows').append("<%= j render partial: 'time_slots/exception_sessions/new.html.erb' %>");
+
+  // New Shared ID
+  $('.sub-section-rows:last').find('.exception_session_shared_id').val(ObjectId())
+
+  // Hide the first 'Remove Button'
+  $('.exception-remove-section-row:last').addClass('hidden');
+
+  renumberExceptionSessionRows();
+})
+
+// Add Sub Section
+$('#exception-session-rows').on('click', '.add-more-sub-exception', function() {
+  let subSection = $(this).closest('.exception-sessions-row').find('.sub-section')
+  let exceptionSessionRows = $(this).closest('.exception-sessions-row')
+
+  $(subSection).append("<%= j render partial: 'time_slots/exception_sessions/sub_section.html.erb' %>")
+
+  // Append Section Shared Id (Create new if nil)
+  let sectionSharedId = $(subSection).find('.exception_session_shared_id:first').val() || ObjectId();
+  $(subSection).find('.exception_session_shared_id').val(sectionSharedId)
+
+  renumberExceptionSessionRows();
+  exceptionDisableDays();
+
+  $(this).closest('.exception-sessions-row').find('.exception_sessions_start_date').trigger('change');
+  $(this).closest('.exception-sessions-row').find('.exception_sessions_end_date').trigger('change');
+
+  if ($('.sub-section-rows').not('.hidden').length === 7) {
+    $(exceptionSessionRows).find('.add-more-sub-exception').attr('disabled', true)
+  }
+
+  if ($('.sub-section-rows').not('.hidden').length > 1) {
+    $(subSection).find('.exception-remove-section-row').removeClass('hidden')
+  }
+});
+
+// Remove Sessions
+$('#exception-session-rows').on('click', '.exception-remove-slot-row', function() {
+  let exceptionSessionRows = $(this).closest('.exception-sessions-row')
+
+  $(this).closest('hr').remove();
+
+  if($(this).hasClass('soft-delete')) {
+    $(exceptionSessionRows).find('.exception_sessions_destroy').val(1);
+    $(exceptionSessionRows).addClass('hidden');
+  } else {
+    $(exceptionSessionRows).remove();
+  }
+
+  renumberExceptionSessionRows();
+})
+
+// Remove Sub Sessions
+$('#exception-session-rows').on('click', '.exception-remove-section-row', function() {
+  let subSection = $(this).closest('.sub-section')
+  let subSectionRows = $(this).closest('.sub-section-rows')
+  let exceptionSessionRows = $(this).closest('.exception-sessions-row')
+
+  // Uncheck checked boxes to enable other similiar checkboxes
+  $(subSectionRows).find('.exception_sessions_ckbox_days:checked').click();
+
+  $(this).closest('hr').remove();
+
+  if($(this).hasClass('soft-delete')) {
+    $(subSectionRows).find('.exception_sessions_destroy').val(1);
+    $(subSectionRows).addClass('hidden');
+
+    // To avoid validating this (not required in form submission)
+    $(subSectionRows).find('.each-ckbox').remove();
+  } else {
+    $(subSectionRows).remove();
+  }
+
+  if ($(subSection).find('.sub-section-rows').not('.hidden').length < 7) {
+    $(exceptionSessionRows).find('.add-more-sub-exception').removeAttr('disabled')
+  }
+
+  if ($(subSection).find('.sub-section-rows').not('.hidden').length == 1) {
+    $(subSection).find('.exception-remove-section-row').addClass('hidden')
+  }
+
+  renumberExceptionSessionRows();
+})
+
+// Clear Selection
+$('#exception-session-rows').on('click', '.clear-selection', function() {
+  let eachExceptionSession = $(this).closest('.each-exception-session')
+
+  $(eachExceptionSession).find('.exception_sessions_facility_id').val('');
+  $(eachExceptionSession).find('.exception_sessions_department_id').val('');
+  $(eachExceptionSession).find('.exception_sessions_start_time').timepicker('setTime', '');
+  $(eachExceptionSession).find('.exception_sessions_end_time').timepicker('setTime', '');
+  $(eachExceptionSession).find('.exception_sessions_slot_duration').val('');
+  $(eachExceptionSession).find('.exception_sessions_time_duration').val('');
+
+  if($(eachExceptionSession).find('.exception_sessions_destroy').length > 0) {
+    $(eachExceptionSession).find('.exception_sessions_destroy').val(1)
+  }
+})
+
+$('#exception-session-rows').on('change', '.exception_sessions_facility_id', function() {
+  let eachExceptionSession = $(this).closest('.each-exception-session')
+
+  if($(eachExceptionSession).find('.exception_sessions_destroy').length > 0) {
+    $(eachExceptionSession).find('.exception_sessions_destroy').val(0)
+  }
+})
+
+$('#exception-session-rows').on('change', '.exception_sessions_department_id', function() {
+  let eachExceptionSession = $(this).closest('.each-exception-session')
+
+  if($(eachExceptionSession).find('.exception_sessions_destroy').length > 0) {
+    $(eachExceptionSession).find('.exception_sessions_destroy').val(0)
+  }
+})
+
+$('#exception-session-rows').on('change', '.exception_sessions_start_time', function() {
+  let eachExceptionSession = $(this).closest('.each-exception-session')
+
+  if($(eachExceptionSession).find('.exception_sessions_destroy').length > 0) {
+    $(eachExceptionSession).find('.exception_sessions_destroy').val(0)
+  }
+})
+
+$('#exception-session-rows').on('change', '.exception_sessions_end_time', function() {
+  let eachExceptionSession = $(this).closest('.each-exception-session')
+
+  if($(eachExceptionSession).find('.exception_sessions_destroy').length > 0) {
+    $(eachExceptionSession).find('.exception_sessions_destroy').val(0)
+  }
+})

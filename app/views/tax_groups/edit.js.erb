@@ -1,0 +1,123 @@
+$("#invoice-modal").html('<%= escape_javascript(render "edit.html.erb") %>')
+
+// Validation Function
+function edit_tax_group(){
+  $("#edit_tax_group_<%= @tax_group.id.to_s %>").validate({
+    rules: {
+      "tax_group[name]": {
+        required: true,
+      },
+      "gst1": {
+        required: true,
+      },
+      "cgst2": {
+        required: true,
+      },
+      "sgst2": {
+        required: true,
+      },
+      "csgst1": {
+        required: true,
+      },
+      "igst": {
+        required: true,
+      }
+    },
+    messages: {
+      "tax_group[name]": {
+        required: "Name is Required."
+      },
+      "gst1": {
+        required: "Select atleast one Tax Rate",
+      },
+      "cgst2": {
+        required: "More than 1 CGST cant be clubbed",
+      },
+      "sgst2": {
+        required: "More than 1 SGST cant be clubbed",
+      },
+      "csgst1": {
+        required: "Need atleast one CGST and one SGST",
+      },
+      "igst": {
+        required: "IGST cannot be clubbed with CGST/SGST",
+      }
+    },
+    errorPlacement: function (error, element) {
+      error.insertAfter(element);
+    }
+  });
+}
+edit_tax_group()
+
+$('.btn-save-tax-group').on('click', function(){
+  group_conditions();
+})
+
+$('.tax_rate').on('click', function(){
+  group_conditions();
+})
+
+function group_conditions(){
+  // Variables
+  var cgst = []
+  var sgst = []
+  var igst = []
+  var tax_rate_ids = []
+  var tax_group_rate = 0.0
+
+  // Reset Values to 'true'
+  $(".gst1").attr('value', 'true')
+  $(".cgst2").attr('value', 'true')
+  $(".sgst2").attr('value', 'true')
+  $(".csgst1").attr('value', 'true')
+  $(".igst").attr('value', 'true')
+  
+  // Loop through all checkbox
+  var tax_rate = $(".tax_rate")
+  for (var i = tax_rate.length - 1; i >= 0; i--) {
+    var _this = $(tax_rate[i])
+    if($(_this).is(':checked')){
+      tax_rate_ids.push($(_this).val())
+      tax_group_rate = tax_group_rate + parseFloat($(_this).attr('data-rate'))
+      if($(_this).attr('data-type') == "CGST"){
+        cgst.push($(_this).val())
+      } else if($(_this).attr('data-type') == "SGST") {
+        sgst.push($(_this).val())
+      } else if($(_this).attr('data-type') == "IGST") {
+        igst.push($(_this).val())
+      }
+    }
+  }
+
+
+  // If no taxrate Checked
+  if(tax_rate_ids.length <= 0){
+    $(".gst1").attr('value', '')
+  }
+
+  // If more than one taxrate with type CGST is Checked
+  if(cgst.length > 1){
+    $(".cgst2").attr('value', '')
+  }
+
+  // If more than one taxrate with type SGST is Checked
+  if(sgst.length > 1){
+    $(".sgst2").attr('value', '')
+  }
+
+  // If one CGST or SGST is Checked
+  if((sgst.length > 0 && cgst.length <= 0) || (cgst.length > 0 && sgst.length <= 0)){
+    $(".csgst1").attr('value', '')
+  }
+
+  // If one IGST is checked with CGST/SGST
+  if((cgst.length > 0 || sgst.length > 0) && igst.length > 0){
+    $(".igst").attr('value', '')
+  }
+
+
+  // Assign Values to the form_field
+  $("#tax_group_tax_rate_ids").val(tax_rate_ids)
+  $("#tax_group_rate").val(tax_group_rate)
+}

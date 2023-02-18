@@ -1,0 +1,784 @@
+if("<%= @organisations_setting.mandatory_opd_templates %>" == "true" && $('#opdrecord_templatetype').val()
+ != 'postop'){
+  $(document).ready(() => {
+    check_investigation_status()
+  });
+
+  //toggle no investigation advised checkbox
+  $('#opdrecord_no_investigation_advised').on('click',() => {
+    if($('#opdrecord_no_investigation_advised').is(':checked')){
+      $('.investigation_comment_row').css("margin-top", "100px");
+      $('.opthal_tab_row').hide()
+      $('.radio_tab_row').hide()
+      $('.lab_tab_row').hide()
+    } else{
+      $('.investigation_comment_row').css("margin-top", "0px");
+      $('.opthal_tab_row').show()
+      $('.radio_tab_row').show()
+      $('.lab_tab_row').show()
+    }
+    check_investigation_status()
+  });
+}
+
+if (<%= @disable_default_investigation %>) {
+  jQuery(".standard-ophthal-investigations").hide();
+  jQuery(".custom-ophthal-investigations").show();
+
+} else {
+  jQuery(".custom-ophthal-investigations").hide();
+  jQuery("input[name='ophthal_inv_type']").on('click', function () {
+    var ophthal_inv_type = jQuery("input[name='ophthal_inv_type']:checked").val();
+    if (ophthal_inv_type == 'standard_opthal_investigation') {
+      jQuery(".standard-ophthal-investigations").show();
+      jQuery(".custom-ophthal-investigations").hide();
+    }
+    else if (ophthal_inv_type == 'custom_opthal_investigation') {
+      jQuery(".standard-ophthal-investigations").hide();
+      jQuery(".custom-ophthal-investigations").show();
+    }
+  });
+}
+
+if (<%= @disable_default_investigation %>) {
+  jQuery(".standard-laboratory-investigations").hide();
+  jQuery(".custom-laboratory-investigations").show();
+} else {
+  jQuery(".custom-laboratory-investigations").hide();
+  jQuery("input[name='laboratory_investigation_type']").on('click', function () {
+    var laboratory_investigation_type = jQuery("input[name='laboratory_investigation_type']:checked").val();
+    if (laboratory_investigation_type == 'standard_laboratory_investigation') {
+      jQuery(".standard-laboratory-investigations").show();
+      jQuery(".custom-laboratory-investigations").hide();
+    }
+    else if (laboratory_investigation_type == 'custom_laboratory_investigation') {
+      jQuery(".standard-laboratory-investigations").hide();
+      jQuery(".custom-laboratory-investigations").show();
+    }
+  });
+}
+
+if (<%= @disable_default_investigation %>) {
+  jQuery(".standard-radiology-investigations").hide();
+  jQuery(".custom-radiology-investigations").show();
+
+} else {
+  jQuery(".custom-radiology-investigations").hide();
+  jQuery("input[name='radiology_inv_type']").on('click', function () {
+    var radiology_inv_type = jQuery("input[name='radiology_inv_type']:checked").val();
+    if (radiology_inv_type == 'standard_radiology_investigation') {
+      jQuery(".standard-radiology-investigations").show();
+      jQuery(".custom-radiology-investigations").hide();
+    } else if (radiology_inv_type == 'custom_radiology_investigation') {
+      jQuery(".standard-radiology-investigations").hide();
+      jQuery(".custom-radiology-investigations").show();
+    }
+  });
+}
+
+$("#opdrecord_toplaboratoryset").on('click',function(){
+  var id =  $("#opdrecord_toplaboratoryset option:selected").val()
+  var row_count = jQuery(".laboratoryinvestigations-added").find('.addedlaboratoryinvestigationlist').length
+  var consultant_id = $("#opdrecord_view_owner_id").val()
+  $.ajax({
+    dataType: "script",
+    type: "GET",
+    url: "/opd_records/append_laboratory_set",
+    data: {id: id, consultant_id: consultant_id, row_count: row_count},
+    success: function(response){
+      // jQuery("#opdrecord_toplaboratoryset option:selected").prop("selected", false);
+    },
+    complete: function(data){
+      _renumber_id_after_remove("tbody.laboratoryinvestigations-added", "div.laboratoryinvestigations-removed");
+    }
+  });
+  jQuery("#opdrecord_toplaboratoryset option:selected").prop("selected", false);
+  $("#opdrecord_toplaboratoryset_tab").val("")
+});
+
+//manu
+$("#opdrecord_toplaboratoryset_tab").on('change',function(){
+  var id =  $("#opdrecord_toplaboratoryset_tab option:selected").val()
+  var row_count = jQuery(".laboratoryinvestigations-added").find('.addedlaboratoryinvestigationlist').length
+  var consultant_id = $("#opdrecord_view_owner_id").val()
+  $.ajax({
+    dataType: "script",
+    type: "GET",
+    url: "/opd_records/append_laboratory_set",
+    data: {id: id, consultant_id: consultant_id, row_count: row_count},
+    success: function(response){
+      // jQuery('#opdrecord_toplaboratoryset_tab option:selected').removeAttr('selected');
+    },
+    complete: function(data){
+      _renumber_id_after_remove("tbody.laboratoryinvestigations-added", "div.laboratoryinvestigations-removed");
+    }
+  });
+  jQuery('#opdrecord_toplaboratoryset_tab option:selected').removeAttr('selected');
+});
+
+
+jQuery(".opdrecord_ophthal_investigations_label_select").hide();
+jQuery(".opdrecord_custom_ophthal_investigations_label_select").hide();
+
+jQuery("#ophthal_set").on('change', function(){
+  var row_count = jQuery(".opthalinvestigations-added").find('.ophthalinvestigation').length
+  var ophthal_set_id = jQuery("#ophthal_set option:selected").val();
+  var consultant_id = $("#opdrecord_view_owner_id").val()
+  $.ajax({
+    dataType: "script",
+    type: "GET",
+    url: "/opd_records/append_ophthal_set",
+    data: {id: ophthal_set_id, consultant_id: consultant_id, row_count: row_count},
+    success: function(response){
+      jQuery('#ophthal_set option:selected').removeAttr('selected');
+    }
+  })
+})
+
+
+jQuery("#ophthal_set_tab").on('change', function(){
+  var row_count = jQuery(".opthalinvestigations-added").find('.ophthalinvestigation').length
+  var consultant_id = $("#opdrecord_view_owner_id").val()
+  var ophthal_set_id = jQuery("#ophthal_set_tab option:selected").val();
+  $.ajax({
+    dataType: "script",
+    type: "GET",
+    url: "/opd_records/append_ophthal_set",
+    data: {id: ophthal_set_id, consultant_id: consultant_id, row_count: row_count},
+    success: function(response){
+      jQuery('#ophthal_set_tab option:selected').removeAttr('selected');
+    }
+  })
+})
+
+$('#opdrecord_eyearea_tab').on('change', function(event) {
+  event.preventDefault();
+  var eyearea_selected_option_text = jQuery("#opdrecord_eyearea_tab option:selected").text();
+  var eyearea_selected_option_value = jQuery("#opdrecord_eyearea_tab option:selected").val();
+
+  var clicked_eyearea_array = eyearea_selected_option_value.split("###");
+  var selected_eyearea_region = clicked_eyearea_array[0];
+  var selected_eyearea_region_snomedid = clicked_eyearea_array[1];
+
+  var params = { eyearea: selected_eyearea_region, selected_eyearea_region_snomedid: selected_eyearea_region_snomedid };
+  var eyearea_config = { opdrecord_eyeinvestigations_tab: "opdrecord_eyeinvestigations_tab" };
+
+  $.ajax({
+    dataType: "JSON",
+    type: "GET",
+    url: "/opd_records/populate_ophthal_investigations",
+    data: {ajax: params, ophthal_model: 'OphthalmologyInvestigationData'},
+    success: function(response){
+      $(".opdrecord_eyeinvestigations_tab").html("")
+      $(".opdrecord_eyeinvestigations_tab").append('<option value="  ">Please select</option>')
+      $.each(response, function(key, value) {
+        $(".opdrecord_eyeinvestigations_tab").append("<option value=" + value[1] + ">" + value[0] + "</option>")
+      });
+    }
+  })
+
+  jQuery(".opdrecord_ophthal_investigations_label_select").show();
+});
+
+jQuery('.opdrecord_eyeinvestigations_tab').on('change', function() {
+  event.preventDefault();
+  var row_count = jQuery(".opthalinvestigations-added").find('.ophthalinvestigation').length
+  var investigation_id = jQuery(".opdrecord_eyeinvestigations_tab option:selected").val();
+  var consultant_id = $("#opdrecord_view_owner_id").val()
+  $.ajax({
+    dataType: "script",
+    type: "GET",
+    url: "/opd_records/append_ophthal_investigation",
+    data: {investigation_id: investigation_id, consultant_id: consultant_id, row_count: row_count},
+    success: function(response){
+      jQuery('.opdrecord_eyeinvestigations_tab option:selected').removeAttr('selected');
+    },
+    complete: function(data){
+      _renumber_id_after_remove("tbody.opthalinvestigations-added", "div.opthalinvestigations-removed");
+    }
+  })
+});
+// end
+
+$('#opdrecord_eyearea').on('change', function(event) {
+  event.preventDefault();
+  var eyearea_selected_option_text = jQuery("#opdrecord_eyearea option:selected").text();
+  var eyearea_selected_option_value = jQuery("#opdrecord_eyearea option:selected").val();
+
+  var clicked_eyearea_array = eyearea_selected_option_value.split("###");
+  var selected_eyearea_region = clicked_eyearea_array[0];
+  var selected_eyearea_region_snomedid = clicked_eyearea_array[1];
+
+  var params = { eyearea: selected_eyearea_region, selected_eyearea_region_snomedid: selected_eyearea_region_snomedid };
+  var eyearea_config = { opdrecord_eyeinvestigations: "opdrecord_eyeinvestigations" };
+
+  $.ajax({
+    dataType: "JSON",
+    type: "GET",
+    url: "/opd_records/populate_ophthal_investigations",
+    data: {ajax: params, ophthal_model: 'OphthalmologyInvestigationData'},
+    success: function(response){
+      $(".opdrecord_eyeinvestigations").html("")
+
+      $.each(response, function(key, value) {
+        $(".opdrecord_eyeinvestigations").append("<option value=" + value[1] + ">" + value[0] + "</option>")
+      });
+    }
+  })
+
+  jQuery(".opdrecord_ophthal_investigations_label_select").show();
+});
+
+jQuery('#opdrecord_custom_eyearea').on('change', function(event) {
+  event.preventDefault();
+  var eyearea_selected_option_value = jQuery("#opdrecord_custom_eyearea option:selected").val();
+  var params = { eyearea: eyearea_selected_option_value };
+
+  if (eyearea_selected_option_value.length == 1) {
+  }
+
+  $.ajax({
+    dataType: "JSON",
+    type: "GET",
+    url: "/opd_records/populate_ophthal_investigations",
+    data: {ajax: params,ophthal_model: 'CustomOphthalInvestigation', remote: "true"},
+    success: function(response){
+      $(".opdrecord_custom_eyeinvestigations").html("")
+      $.each(response, function(key, value) {
+        $(".opdrecord_custom_eyeinvestigations").append("<option value=" + value[1] + ">" + value[0] + "</option>")
+      });
+    }
+  })
+  jQuery(".opdrecord_custom_ophthal_investigations_label_select").show();
+});
+
+//manu
+jQuery('#opdrecord_custom_eyearea_tab').on('change', function(event) {
+  event.preventDefault();
+  var eyearea_selected_option_value = jQuery("#opdrecord_custom_eyearea_tab option:selected").val();
+  var params = { eyearea: eyearea_selected_option_value };
+
+  if (eyearea_selected_option_value.length == 1) {
+  }
+
+  $.ajax({
+    dataType: "JSON",
+    type: "GET",
+    url: "/opd_records/populate_ophthal_investigations",
+    data: {ajax: params,ophthal_model: 'CustomOphthalInvestigation', remote: "true"},
+    success: function(response){
+      $(".opdrecord_custom_eyeinvestigations_tab").html("")
+      $(".opdrecord_custom_eyeinvestigations_tab").append('<option value="  ">Please select</option>')
+      $.each(response, function(key, value) {
+        $(".opdrecord_custom_eyeinvestigations_tab").append("<option value=" + value[1] + ">" + value[0] + "</option>")
+      });
+    }
+  })
+  jQuery(".opdrecord_custom_ophthal_investigations_label_select").show();
+});
+
+jQuery('.opdrecord_custom_eyeinvestigations_tab').on('change', function(){
+  var row_count = jQuery(".opthalinvestigations-added").find('.ophthalinvestigation').length
+  var consultant_id = $("#opdrecord_view_owner_id").val()
+  var investigation_id = jQuery(".opdrecord_custom_eyeinvestigations_tab option:selected").val();
+  var vals = $('.ophthalinvestigation_id').map(function(){
+    return $(this).val()
+  }).get();
+  if(vals.indexOf(investigation_id) == -1) {
+    $.ajax({
+      dataType: "script",
+      type: "GET",
+      url: "/opd_records/append_custom_ophthal_investigation",
+      data: {investigation_id: investigation_id, consultant_id: consultant_id, row_count: row_count},
+      success: function(response){
+        // jQuery('.opdrecord_custom_eyeinvestigations_tab option:selected').removeAttr('selected');
+      },
+      complete: function(data){
+        _renumber_id_after_remove("tbody.opthalinvestigations-added", "div.opthalinvestigations-removed");
+      }
+    });
+  }
+  jQuery('.opdrecord_custom_eyeinvestigations_tab option:selected').removeAttr('selected');
+});
+//end
+
+$('.opdrecord_custom_eyeinvestigations').on('change', function(){
+  var row_count = $(".opthalinvestigations-added").find('.ophthalinvestigation').length
+  var investigation_id = $(".opdrecord_custom_eyeinvestigations option:selected").val();
+  var consultant_id = $("#opdrecord_view_owner_id").val()
+  var vals = $('.ophthalinvestigation_id').map(function(){
+    return $(this).val()
+  }).get();
+  if(vals.indexOf(investigation_id) == -1) {
+    $.ajax({
+      dataType: "script",
+      type: "GET",
+      url: "/opd_records/append_custom_ophthal_investigation",
+      data: {investigation_id: investigation_id, consultant_id: consultant_id, row_count: row_count},
+      success: function(response){
+        // $('.opdrecord_custom_eyeinvestigations option:selected').removeAttr('selected');
+      },
+      complete: function(data){
+        _renumber_id_after_remove("tbody.opthalinvestigations-added", "div.opthalinvestigations-removed");
+      }
+    });
+  }
+  $('.opdrecord_custom_eyeinvestigations option:selected').removeAttr('selected');
+});
+
+$('.opdrecord_eyeinvestigations').on('change', function() {
+  var row_count = $(".opthalinvestigations-added").find('.ophthalinvestigation').length
+  var investigation_id = $(".opdrecord_eyeinvestigations option:selected").val();
+  var consultant_id = $("#opdrecord_view_owner_id").val();
+
+  var vals = $('.ophthalinvestigation_id').map(function(){
+    return $(this).val()
+  }).get();
+
+  if(vals.indexOf(investigation_id) == -1) {
+    $.ajax({
+      dataType: "script",
+      type: "GET",
+      url: "/opd_records/append_ophthal_investigation",
+      data: {investigation_id: investigation_id, consultant_id: consultant_id, row_count: row_count},
+      success: function(response){
+        // $('.opdrecord_eyeinvestigations option:selected').removeAttr('selected');
+      },
+      complete: function(data){
+        _renumber_id_after_remove("tbody.opthalinvestigations-added", "div.opthalinvestigations-removed");
+      }
+    });
+  }
+  $('.opdrecord_eyeinvestigations option:selected').removeAttr('selected');
+});
+
+jQuery("#radiology_set").on('change', function(){
+  var row_count = jQuery(".investigations-added").find('.investigationlist').length
+  var radiology_set_id = jQuery("#radiology_set option:selected").val();
+  var consultant_id = $("#opdrecord_view_owner_id").val()
+  $.ajax({
+    dataType: "script",
+    type: "GET",
+    url: "/opd_records/append_radiology_set",
+    data: {id: radiology_set_id, consultant_id: consultant_id, row_count: row_count},
+    success: function(response){
+      jQuery('#radiology_set option:selected').removeAttr('selected');
+    }
+  })
+})
+
+//manu
+
+jQuery("#radiology_set_tab").on('change', function(){
+  var row_count = jQuery(".investigations-added").find('.investigationlist').length
+  var radiology_set_id = jQuery("#radiology_set_tab option:selected").val();
+  var consultant_id = $("#opdrecord_view_owner_id").val()
+  $.ajax({
+    dataType: "script",
+    type: "GET",
+    url: "/opd_records/append_radiology_set",
+    data: {id: radiology_set_id, consultant_id: consultant_id, row_count: row_count},
+    success: function(response){
+      jQuery('#radiology_set_tab option:selected').removeAttr('selected');
+    }
+  })
+})
+
+jQuery('#opdrecord_custom_xraysmrictothersinvestigations_label_select_tab').on('change', function() {
+  event.preventDefault();
+  var fieldcounter = jQuery(".investigations-added > .investigationlist").length;
+  var investigation_name = jQuery("#opdrecord_custom_xraysmrictothersinvestigations_label_select_tab option:selected").text();
+  var investigation_id = jQuery("#opdrecord_custom_xraysmrictothersinvestigations_label_select_tab option:selected").val();
+
+  var vals = $('.radiologyinvestigation_id').map(function(){
+    return $(this).val()
+  }).get();
+
+  if(vals.indexOf(investigation_id) == -1) {
+    $.ajax({
+      dataType: "script",
+      type: "GET",
+      url: "/opd_records/append_custom_radiology_investigation",
+      data: {investigation_id: investigation_id, row_count: fieldcounter},
+      success: function(response){
+        // jQuery('#opdrecord_custom_xraysmrictothersinvestigations_label_select_tab option:selected').removeAttr('selected');
+      },
+      complete: function (data) {
+        _renumber_id_after_remove("tbody.investigations-added", "div.investigations-removed");
+      }
+    });
+  }
+  jQuery('#opdrecord_custom_xraysmrictothersinvestigations_label_select_tab option:selected').removeAttr('selected');
+});
+
+//end
+
+$('#opdrecord_custom_xraysmrictothersinvestigations_label_select').on('change', function() {
+  event.preventDefault();
+
+  var fieldcounter = $(".investigations-added > .investigationlist").length;
+  var investigation_name = $("#opdrecord_custom_xraysmrictothersinvestigations_label_select option:selected").text();
+  var investigation_id = $("#opdrecord_custom_xraysmrictothersinvestigations_label_select option:selected").val();
+  var inv_id = $("#opdrecord_custom_xraysmrictothersinvestigations_label_select option:selected").val();
+
+  var vals = $('.radiologyinvestigation_id').map(function(){
+    return $(this).val()
+  }).get();
+
+  if(vals.indexOf(investigation_id) == -1) {
+    $.ajax({
+      dataType: "script",
+      type: "GET",
+      url: "/opd_records/append_custom_radiology_investigation",
+      data: {investigation_id: investigation_id, row_count: fieldcounter},
+      success: function(response){
+        // $('#opdrecord_custom_xraysmrictothersinvestigations_label_select option:selected').removeAttr('selected');
+      },
+      complete: function (data) {
+        _renumber_id_after_remove("tbody.investigations-added", "div.investigations-removed");
+      }
+    });
+  }
+  $('#opdrecord_custom_xraysmrictothersinvestigations_label_select option:selected').removeAttr('selected');
+});
+
+jQuery('#opdrecord_xraysmrictothersinvestigations').on('change', function() {
+  event.preventDefault();
+  var fieldcounter = jQuery(".investigations-added > .investigationlist").length;
+  var investigation_name = jQuery("#opdrecord_xraysmrictothersinvestigations option:selected").text();
+  var investigation_id = jQuery("#opdrecord_xraysmrictothersinvestigations option:selected").val();
+  var radiology_type = investigation_name.split(",")[0]
+  if (investigation_name.length > 0) {
+    // Some Hack to create loinc fullcode
+    if (RADIOLOGYARRAY.length > 0) {
+      RADIOLOGYARRAY = [];
+    }
+    RADIOLOGYARRAY.push(jQuery("#opdrecord_xraysmrictothersinvestigations option:selected").val());
+
+    var vals = $('.radiologyinvestigation_id').map(function(){
+      return $(this).val()
+    }).get();
+
+    if(vals.indexOf(investigation_id) == -1) {
+      $.ajax({
+        dataType: "script",
+        type: "GET",
+        url: "/opd_records/append_radiology_investigation",
+        data: {investigation_id: investigation_id, radiology_type: radiology_type, row_count: fieldcounter},
+        success: function(response){
+          jQuery('#opdrecord_xraysmrictothersinvestigations option:selected').removeAttr('selected');
+        },
+        complete: function(data){
+          _renumber_id_after_remove("tbody.investigations-added", "div.investigations-removed");
+        }
+      });
+    }
+  }
+  jQuery('#opdrecord_xraysmrictothersinvestigations option:selected').removeAttr('selected');
+  return false;
+});
+
+//manu
+jQuery('#opdrecord_xraysmrictothersinvestigations_tab').on('change', function() {
+  event.preventDefault();
+  var fieldcounter = jQuery(".investigations-added > .investigationlist").length;
+  var investigation_name = jQuery("#opdrecord_xraysmrictothersinvestigations_tab option:selected").text();
+  var investigation_id = jQuery("#opdrecord_xraysmrictothersinvestigations_tab option:selected").val();
+  var radiology_type = investigation_name.split(",")[0]
+  if (investigation_name.length > 0) {
+    // Some Hack to create loinc fullcode
+    if (RADIOLOGYARRAY.length > 0) {
+      RADIOLOGYARRAY = [];
+    }
+    RADIOLOGYARRAY.push(jQuery("#opdrecord_xraysmrictothersinvestigations_tab option:selected").val());
+
+    var vals = $('.radiologyinvestigation_id').map(function(){
+      return $(this).val()
+    }).get();
+
+    if(vals.indexOf(investigation_id) == -1) {
+      $.ajax({
+        dataType: "script",
+        type: "GET",
+        url: "/opd_records/append_radiology_investigation",
+        data: {investigation_id: investigation_id, radiology_type: radiology_type, row_count: fieldcounter},
+        success: function(response){
+          jQuery('#opdrecord_xraysmrictothersinvestigations_tab option:selected').removeAttr('selected');
+        },
+        complete: function(data){
+          _renumber_id_after_remove("tbody.investigations-added", "div.investigations-removed");
+        }
+      });
+    }
+  }
+  jQuery('#opdrecord_xraysmrictothersinvestigations_tab option:selected').removeAttr('selected');
+  return false;
+});
+
+jQuery('#opthalinvestigations').on('click', "a[name*='ophthalinvestigationdeletebutton']", function() {
+  event.preventDefault();
+  var opthalinvestigations_removed_tr_html;
+  var fieldcounter;
+  fieldcounter = jQuery(this).attr('id').slice(-1);
+  var opthalinvestigations_tr_array = jQuery(this).parents('.ophthalinvestigation').find(".id");
+  jQuery(this).parents('.ophthalinvestigation').find("input[class*='ophthalinvestigation_id']").removeClass('ophthalinvestigation_id');
+  if (opthalinvestigations_tr_array.length > 0) {
+    jQuery(this).parents('.ophthalinvestigation').find("input[name*='_destroy']").val("1");
+    opthalinvestigations_removed_tr_html = jQuery(this).parents('.ophthalinvestigation').wrap('<p/>').parent().html();
+    jQuery(this).parents('.ophthalinvestigation').unwrap();
+    jQuery('.opthalinvestigations-removed').append(opthalinvestigations_removed_tr_html);
+    jQuery(this).parents('.ophthalinvestigation').remove();
+    _renumber_id_after_remove("tbody.opthalinvestigations-added", "div.opthalinvestigations-removed");
+  } else {
+    jQuery(this).parents('.ophthalinvestigation').remove();
+    _renumber_id_after_remove("tbody.opthalinvestigations-added", "div.opthalinvestigations-removed");
+  }
+
+  check_validation_status(
+    $('#opthalinvestigations-added'),
+    'investigation_is_valid', step_name,
+    true, 'laboratoryinvestigations-added,investigations-added'
+  );
+});
+
+jQuery('.opthalinvestigations-added').on('click', ".investigationstage", function() {
+  if(jQuery(this).val() == 'P') {
+    jQuery(this).parent().parent().find('.label-findings').remove()
+    jQuery(this).parent().parent().append("<div class='label-findings' style='font-weight: bold; text-align: center'>Findings</div>");
+    jQuery(this).closest('.ophthalinvestigation').find('.opdrecord_investigation_performed').attr('type', 'text').css('margin-top', '5px');
+
+    // Update Performed Fields
+    var ophthal_investigation = jQuery(this).closest('.ophthalinvestigation')
+    advised_by_id = $(ophthal_investigation).find('.advised_by_id').val()
+    advised_by = $(ophthal_investigation).find('.advised_by').val()
+    advised_at_facility_id = $(ophthal_investigation).find('.advised_at_facility_id').val()
+    advised_at_facility = $(ophthal_investigation).find('.advised_at_facility').val()
+    advised_datetime = $(ophthal_investigation).find('.advised_datetime').val()
+
+    $(ophthal_investigation).find('.is_performed').val(true)
+    $(ophthal_investigation).find('.performed_by_id').val(advised_by_id)
+    $(ophthal_investigation).find('.performed_by').val(advised_by)
+    $(ophthal_investigation).find('.performed_at_facility_id').val(advised_at_facility_id)
+    $(ophthal_investigation).find('.performed_at_facility').val(advised_at_facility)
+    $(ophthal_investigation).find('.performed_datetime').val(advised_datetime)
+  } else {
+    jQuery(this).parent().parent().children('.label-findings').remove();
+    jQuery(this).parents('.ophthalinvestigation').find('.opdrecord_investigation_performed').attr('type', 'hidden').css('margin-top', '0%').val('');
+
+    // Update Performed Fields
+    var ophthal_investigation = jQuery(this).closest('.ophthalinvestigation')
+    $(ophthal_investigation).find('.is_performed').val(false)
+    $(ophthal_investigation).find('.performed_by_id').val("")
+    $(ophthal_investigation).find('.performed_by').val("")
+    $(ophthal_investigation).find('.performed_at_facility_id').val("")
+    $(ophthal_investigation).find('.performed_at_facility').val("")
+    $(ophthal_investigation).find('.performed_datetime').val("")
+  }
+});
+
+jQuery('.investigations-added').on('click', ".investigationstage", function() {
+  if(jQuery(this).val() == 'P') {
+    jQuery(this).parent().parent().find('.label-findings').remove()
+    jQuery(this).parent().parent().append("<div class='label-findings' style='font-weight: bold; text-align: center'>Findings</div>");
+    jQuery(this).closest('.investigationlist').find('.opdrecord_investigation_performed').attr('type', 'text').css('margin-top', '5px');
+
+    // Update Performed Fields
+    var radiology_investigation = jQuery(this).closest('.investigationlist')
+    advised_by_id = $(radiology_investigation).find('.advised_by_id').val()
+    advised_by = $(radiology_investigation).find('.advised_by').val()
+    advised_at_facility_id = $(radiology_investigation).find('.advised_at_facility_id').val()
+    advised_at_facility = $(radiology_investigation).find('.advised_at_facility').val()
+    advised_datetime = $(radiology_investigation).find('.advised_datetime').val()
+
+    $(radiology_investigation).find('.is_performed').val(true)
+    $(radiology_investigation).find('.performed_by_id').val(advised_by_id)
+    $(radiology_investigation).find('.performed_by').val(advised_by)
+    $(radiology_investigation).find('.performed_at_facility_id').val(advised_at_facility_id)
+    $(radiology_investigation).find('.performed_at_facility').val(advised_at_facility)
+    $(radiology_investigation).find('.performed_datetime').val(advised_datetime)
+  } else {
+    jQuery(this).parent().parent().children('.label-findings').remove();
+    jQuery(this).parents('.investigationlist').find('.opdrecord_investigation_performed').attr('type', 'hidden').css('margin-top', '0%').val('');
+
+    // Update Performed Fields
+    var radiology_investigation = jQuery(this).closest('.investigationlist')
+    $(radiology_investigation).find('.is_performed').val(false)
+    $(radiology_investigation).find('.performed_by_id').val("")
+    $(radiology_investigation).find('.performed_by').val("")
+    $(radiology_investigation).find('.performed_at_facility_id').val("")
+    $(radiology_investigation).find('.performed_at_facility').val("")
+    $(radiology_investigation).find('.performed_datetime').val("")
+  }
+});
+
+jQuery('#search_ophthal_investigations').autocomplete({
+
+  minLength: 2,
+
+  source: function(request, response) {
+    var speciality_id = $("#opdrecord_specalityid").val()
+
+    jQuery.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/ophthalmology_investigation_data/search',
+      data: {search: request.term, speciality_id: speciality_id, remote: "true" },
+      success: function(data) {
+        response(data);
+      },
+      error: function(data) {
+      }
+    });
+  },
+  select: function( event, ui ) {
+    var row_count = jQuery(".opthalinvestigations-added").find('.ophthalinvestigation').length;
+    var investigation_id = ui.item.investigation_id;
+    var investigation_type = ui.item.investigation_type;
+    var consultant_id = $("#opdrecord_view_owner_id").val();
+
+    var vals = $('.ophthalinvestigation_id').map(function(){
+      return $(this).val()
+    }).get();
+
+    if(vals.indexOf(investigation_id) == -1) {
+      if(investigation_type == "OphthalmologyInvestigationData"){
+        var url = "/opd_records/append_ophthal_investigation"
+      } else if(investigation_type == "CustomOphthalInvestigation") {
+        var url = "/opd_records/append_custom_ophthal_investigation"
+      }
+      $.ajax({
+        dataType: "script",
+        type: "GET",
+        url: url,
+        data: { investigation_id: investigation_id, consultant_id: consultant_id, row_count: row_count },
+        complete: function(data){
+          _renumber_id_after_remove("tbody.opthalinvestigations-added", "div.opthalinvestigations-removed");
+        }
+      });
+    }
+    setTimeout(function() {
+      $("#search_ophthal_investigations").val("")
+    }, 50);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+      return $('<li>').append('<a>' + item.label  + '&nbsp; &nbsp; &nbsp;' + "<span class=\"badge pull-right\">" + item.investigation_type_label + "</span>" + '</a>').appendTo(ul);
+    };
+  },
+  close: function() {}
+});
+
+jQuery('#search_radiology_investigations').autocomplete({
+
+  minLength: 2,
+
+  source: function(request, response) {
+    var specialty_id = $("#opdrecord_specalityid").val();
+
+    jQuery.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/radiology_investigation_data/search',
+      data: {search: request.term, specialty_id: specialty_id, remote: "true" },
+      success: function(data) {
+        response(data);
+      },
+      error: function(data) {
+      }
+    });
+  },
+  select: function( event, ui ) {
+    var fieldcounter = jQuery(".investigations-added > .investigationlist").length;
+    var investigation_id = ui.item.investigation_id;
+    var investigation_name = ui.item.value;
+    var investigation_type = ui.item.investigation_type;
+    var radiology_type = investigation_name.split(",")[0];
+
+    var vals = $('.radiologyinvestigation_id').map(function(){
+      return $(this).val()
+    }).get();
+
+    if(vals.indexOf(investigation_id.toString()) == -1) {
+      if(investigation_type == "RadiologyInvestigationData"){
+        var url = "/opd_records/append_radiology_investigation"
+      } else if(investigation_type == "CustomRadiologyInvestigation") {
+        var url = "/opd_records/append_custom_radiology_investigation"
+      }
+      $.ajax({
+        dataType: "script",
+        type: "GET",
+        url: url,
+        data: { investigation_id: investigation_id, radiology_type: radiology_type, row_count: fieldcounter },
+        complete: function(data){
+          _renumber_id_after_remove("tbody.investigations-added", "div.investigations-removed");
+        }
+      });
+    }
+    setTimeout(function() {
+      $('#search_radiology_investigations').val("")
+    }, 50);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+      return $('<li>').append('<a>' + item.label  + '&nbsp; &nbsp; &nbsp;' + "<span class=\"badge pull-right\">" + item.investigation_type_label + "</span>" + '</a>').appendTo(ul);
+    };
+  },
+  close: function() {
+  }
+});
+
+
+// case sheet js
+
+$(".btn-re-advice-ophthal").on('click', function(e){
+  e.preventDefault();
+  var case_ophthal = $(this).closest(".case-ophthal")
+  var row_count = $(".opthalinvestigations-added").find('.ophthalinvestigation').length
+  var investigation_id = $(case_ophthal).find('.investigationfullcode').val()
+  var investigationside = $(case_ophthal).find('.investigationside').val()
+  var investigation_type = $(case_ophthal).find('.investigation_type').val()
+  var order_item_advised_id = $(case_ophthal).find('.order_item_advised_id').val()
+  var consultant_id = $("#opdrecord_view_owner_id").val()
+  if(investigation_type == "OphthalmologyInvestigationData"){
+    var url = "/opd_records/append_ophthal_investigation"
+  } else if(investigation_type == "CustomOphthalInvestigation") {
+    var url = "/opd_records/append_custom_ophthal_investigation"
+  }
+  $.ajax({
+    dataType: "script",
+    type: "GET",
+    url: url,
+    data: { order_item_advised_id: order_item_advised_id, investigation_id: investigation_id, investigationside: investigationside, consultant_id: consultant_id, row_count: row_count},
+    success: function(response){
+      jQuery('.opdrecord_eyeinvestigations_tab option:selected').removeAttr('selected');
+      if($(case_ophthal).hasClass("performed-ophthal")){
+
+      } else {
+        $(case_ophthal).hide()
+        if($(".case-ophthal:visible").length <= 0){
+          $(".other-ophthal-list").hide()
+        }
+      }
+    }
+  })
+})
+
+$(".btn-disable-ophthal").on('click', function(e){
+  e.preventDefault()
+  var case_ophthal = $(this).closest(".case-ophthal")
+  var code = $(case_ophthal).find('.investigationfullcode').val()
+  var disabled_ophthal_codes = $(".disabled_ophthal_codes").val()
+  if(disabled_ophthal_codes == ""){
+    final_disabled_ophthal_codes = code
+  } else {
+    final_disabled_ophthal_codes = disabled_ophthal_codes + "," + code
+  }
+
+  $(".disabled_ophthal_codes").val(final_disabled_ophthal_codes)
+
+  $(case_ophthal).hide()
+
+  if($(".case-ophthal:visible").length <= 0){
+    $(".other-ophthal-list").hide()
+  }
+})

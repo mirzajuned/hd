@@ -1,0 +1,2 @@
+module CustomRadiologyInvestigationsHelper
+end

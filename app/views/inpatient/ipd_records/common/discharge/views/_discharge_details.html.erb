@@ -1,0 +1,240 @@
+<% admission_note = Inpatient::IpdRecord.find_by(admission_id: admission.id.to_s, patient_id: patient.id.to_s, template_type: "admissionnote")%>
+<% all_procedure = Inpatient::Procedure.where(ipdrecord_id: admission_note.id)%>
+<% performed_procedures = all_procedure.where(:procedurestatus.in =>["Performed"]).order("created_at DESC")%>
+<% before_image_counter_1 = 0%>
+<% before_image_counter = 0%>
+<% before_image_counter_2 = 0%>
+<% after_image_counter_1 = 0%>
+<% after_image_counter = 0%>
+<% after_image_counter_2 = 0%>
+<% image_before_surgery_1 = PatientSummaryAssetUpload.find_by(:patient_id=> patient.id,source: "before_surgery_1",ipdrecord_id: ipdrecord.id)%>
+<% if image_before_surgery_1%>
+    <% before_image_counter_1 = before_image_counter_1+1%>
+    <% before_image_counter = before_image_counter+1%>
+<%end%>
+<% image_before_surgery_2 = PatientSummaryAssetUpload.find_by(:patient_id=> patient.id,source: "before_surgery_2",ipdrecord_id: ipdrecord.id)%>
+<% if image_before_surgery_2%>
+    <% before_image_counter_2 = before_image_counter_2+1%>
+    <% before_image_counter = before_image_counter+1%>
+<%end%>
+<% image_after_surgery_1 = PatientSummaryAssetUpload.find_by(:patient_id=> patient.id,source: "after_surgery_1",ipdrecord_id: ipdrecord.id)%>
+<% if image_after_surgery_1%>
+    <% after_image_counter_1 = after_image_counter_1+1%>
+    <% after_image_counter = after_image_counter+1%>
+<%end%>
+<% image_after_surgery_2 = PatientSummaryAssetUpload.find_by(:patient_id=> patient.id,source: "after_surgery_2",ipdrecord_id: ipdrecord.id)%>
+<% if image_after_surgery_2%>
+    <% after_image_counter_2 = after_image_counter_2+1%>
+    <% after_image_counter = after_image_counter+1%>
+<%end%>
+<% unless(Inpatient::IpdRecord.find_by(admission_id: admission.id.to_s, patient_id: patient.id.to_s, template_type: "operativenote").nil?) %>
+  <% operative_record = Inpatient::IpdRecord.find_by(admission_id: @admission.id.to_s, patient_id: @patient.id.to_s, template_type: "operativenote") %>
+  <!-- Surgeon -->
+  <% if operative_record.surgeon.to_i == 1 %>
+    <% surgeon = operative_record.surgeon1 %>
+  <% elsif operative_record.surgeon.to_i == 2 %>
+    <% surgeon = operative_record.surgeon1 + ', ' + operative_record.surgeon2 %>
+  <% elsif operative_record.surgeon.to_i == 3 %>
+    <% surgeon = operative_record.surgeon1 + ', ' + operative_record.surgeon2 + ', ' + operative_record.surgeon3 %>
+  <% end %>
+  <!-- Anaesthetist -->
+  <% anaesthetist = "" %>
+  <% if operative_record.anaesthetist.to_i == 1 %>
+    <% anaesthetist = operative_record.anaesthetist1 %>
+  <% elsif operative_record.anaesthetist.to_i == 2 %>
+    <% anaesthetist = operative_record.anaesthetist1 + ', ' + operative_record.anaesthetist2 %>
+  <% elsif operative_record.anaesthetist.to_i == 3 %>
+    <% anaesthetist = operative_record.anaesthetist1 + ', ' + operative_record.anaesthetist2 + ', ' + operative_record.anaesthetist3 %>
+  <% end %>
+<% end %>
+
+
+<% dd_counter = 0 %>
+<% if @admission.admissiondate.present? || ipdrecord.discharge_date.present? || ipdrecord.diagnosis.present? || ipdrecord.assessment_notes.present? || ipdrecord.investigation_notes.present? || ipdrecord.treatment_notes.present? %>
+  <% dd_counter =  dd_counter + 1 %>
+<% end %>
+
+<% if dd_counter > 0 %>
+  <div class="row mb10">
+    <div class="col-md-12">
+      <div class="row">
+        <strong>Discharge Details :</strong>
+        <div class="summary-line-border"></div>
+      </div>
+    </div>
+  </div>
+  <% if @admission.admissiondate.present? || ipdrecord.discharge_date.present? %>
+    <div class="row mb10">
+      <% if @admission.admissiondate.present? %>
+        <div class="col-md-6">
+          <b>Admission Date :</b> <%= @admission.admissiondate %>
+        </div>
+      <% end %>
+      <% if ipdrecord.discharge_date.present? %>
+        <div class="col-md-6">
+          <b>Discharge Date :</b> <%= ipdrecord.discharge_date %>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+  <% if ipdrecord.diagnosis.present? %>
+    <div class="row mb10">
+      <div class="col-md-12">
+        <b>Diagnosis :</b>
+        <% inv_l =  ipdrecord.diagnosis.gsub(/\n/, '|') %>
+        <% inv_l.split("|") .each do |i|%>
+            <li style="margin-left: 10px"><%= i %></li>
+        <%end%>
+      </div>
+    </div>
+  <% end %>
+  <% if ipdrecord.investigation_notes.present? %>
+    <div class="row mb10">
+      <div class="col-md-12">
+        <b>Investigation Notes :</b>
+        <% inv_l =  ipdrecord.investigation_notes.gsub(/\n/, '|') %>
+        <% inv_l.split("|") .each do |i|%>
+            <li style="margin-left: 10px"><%= i %></li>
+        <%end%>
+      </div>
+    </div>
+  <% end %>
+    <% if performed_procedures.count > 0 %>
+        <div class="row mb20">
+          <div class="col-md-3 ">
+            <b> Surgery Details:</b>
+          </div>
+          <div class="col-md-8">
+            <table class="table table-bordered">
+              <tr>
+                <th>Name Of Surgery</th>
+                <th>Eye Operated</th>
+                <th>Date of Surgery</th>
+              </tr>
+
+              <% performed_procedures.each_with_index do |i|%>
+                  <tr>
+                    <td><%= i.procedurename%></td>
+                    <% if i.procedureside == "8966001" %>
+                        <td>Left Eye</td>
+                    <% elsif i.procedureside == "18944008" %>
+                        <td>Right Eye</td>
+                    <% elsif i.procedureside == "40638003" %>
+                        <td>Both Eyes</td>
+                    <%end%>
+                    <td><%= i.surgerydate%></td>
+                  </tr>
+              <%end%>
+
+            </table>
+          </div>
+        </div>
+    <% end %>
+  <div class="row mb10">
+    <% if ipdrecord.treatment_type.present? %>
+      <div class="col-md-3">
+        <b>Treatment Type :</b> <%= ipdrecord.treatment_type %>
+      </div>
+    <% end %>
+    <div class="col-md-1"></div>
+    <div class="col-md-8">
+      <% if ipdrecord.treatment_type.present? && ipdrecord.treatment_type == "Surgical" && !(operative_record.nil?) %>
+        <div class="col-md-6">
+          <% if operative_record.surgerydate.present? %>
+            <b>Surgery Date:</b> <%= operative_record.surgerydate %>
+          <% end %>
+        </div>
+        <div class="col-md-6">
+          <b>Anesthesia Used:</b> <%= operative_record.anesthesia %>
+        </div>
+        <div class="col-md-12">
+          <% if operative_record.procedure_performed.present? %>
+            <b>Surgery Perfomed:</b> <%= operative_record.procedure_performed %>
+          <% end %>
+        </div>
+        <div class="col-md-12">
+          <% unless operative_record.surgeon.to_i == 0 %>
+            <b>Surgeon :</b> <%= surgeon %>
+          <% end %>
+        </div>
+        <div class="col-md-12">
+          <% unless operative_record.anaesthetist.to_i == 0 %>
+            <b>Anaesthetist :</b> <%= anaesthetist %>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+  <% if ipdrecord.treatment_notes.present? %>
+    <div class="row mb10">
+      <div class="col-md-12">
+        <b>Treatment Notes :</b> <%= ipdrecord.treatment_notes %>
+      </div>
+    </div>
+  <% end %>
+    <% if operative_record %>
+        <div class="row mb10">
+          <% if operative_record.post_op_plan.present? %>
+            <div class="col-md-12">
+              <b>Post-Op Plan :</b> <%= operative_record.post_op_plan %>
+            </div>
+          <% end %>
+        </div>
+    <% end %>
+  <div class="row mb10">
+  <% if before_image_counter>0 %>
+      <div class="col-md-6" style="border-right: 1px solid #ddd">
+        <div class="col-md-3">
+            <b>Before Surgery :</b>
+        </div>
+      <% if before_image_counter_1>0%>
+        <div class="col-md-4">
+            <img src="<%= image_before_surgery_1.asset_path.url%>" alt="Smiley face" width="100" height="100" class="patient_profile_pic">
+          <%= image_before_surgery_1.name%>
+        </div>
+      <%end%>
+      <% if before_image_counter_2>0%>
+            <div class="col-md-4">
+                <img src="<%= image_before_surgery_2.asset_path.url%>" alt="Smiley face" width="100" height="100" class="patient_profile_pic">
+              <%= image_before_surgery_2.name%>
+            </div>
+      <%end%>
+      </div>
+  <% end %>
+
+    <% if after_image_counter>0 %>
+      <div class="col-md-6">
+        <div class="col-md-3">
+            <b>After Surgery :</b>
+        </div>
+      <% if after_image_counter_1>0%>
+        <div class="col-md-4">
+            <img src="<%= image_after_surgery_1.asset_path.url%>" alt="Smiley face" width="100" height="100" class="patient_profile_pic">
+          <%= image_after_surgery_1.name%>
+        </div>
+      <%end%>
+      <% if after_image_counter_2>0%>
+            <div class="col-md-4">
+                <img src="<%= image_after_surgery_2.asset_path.url%>" alt="Smiley face" width="100" height="100" class="patient_profile_pic">
+              <%= image_after_surgery_2.name%>
+            </div>
+      <%end%>
+      </div>
+  <% end %>
+
+
+  </div>
+<% end %>
+<% if admission_note and type == "note"%>
+    <%= render partial: "inpatient/ipd_records/"+ @department +"/admission/views/clinical_details.html.erb",locals: {ipdrecord: admission_note} %>
+<% end %>
+
+<style>
+    .patient_profile_pic{
+        border: 3px solid white;
+        border-radius: 3px;
+        box-shadow: 0px 0px 5px rgba(0,0,0,0.4);
+        height: 100px;
+        width: 100px;
+    }
+</style>

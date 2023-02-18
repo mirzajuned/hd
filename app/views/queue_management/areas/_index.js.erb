@@ -1,0 +1,126 @@
+// Validation
+function queue_area_form() {
+  $("#new-area-form").validate({
+    rules: {
+      "area[name]": {
+        required: true
+      }
+    },
+    messages: {
+      "area[name]": {
+        required: 'Name is required.'
+      }
+    },
+    errorPlacement: function (error, element) {
+      error.insertAfter(element);
+    }
+  });
+}
+queue_area_form()
+
+// Select 2
+$('.area_facility_id').select2()
+
+// Uniqueness Validation Check
+$('#ward-modal').on('keyup', '.area-name', function(){
+  area_name = $(this).val();
+  area_names = $(".area-view-name")
+  for (var i = area_names.length - 1; i >= 0; i--) {
+    if($(area_names[i]).html().toLowerCase() == area_name.toLowerCase()){
+      $('.btn-update-area').attr('disabled', 'disabled')
+      $('.btn-create-area').attr('disabled', 'disabled')
+      $("#area_name-uniqueness-error").remove();
+      $("<label id='area_name-uniqueness-error' class='error' for='area_name'>*Not Unique.</label>").insertAfter($(this))
+      break;
+    } else {
+      $('.btn-update-area').removeAttr('disabled', 'disabled')
+      $('.btn-create-area').removeAttr('disabled', 'disabled')
+      $("#area_name-uniqueness-error").remove();
+    }
+  }
+})
+
+// Change Existing areas based on Facility Selection
+$('.area_facility_id').on('change', function(){
+  let facilityId = $(this).val();
+
+  $('.btn-create-area').hide();
+  $.ajax({
+    type: "get",
+    dataType: "script",
+    url: '/queue_management/areas/view',
+    data: {
+      facility_id: facilityId
+    },
+    success: function(response){}
+  })
+}).trigger('change')
+
+// Edit Existing Area Name
+$('#index-area-form').on('click', '.btn-edit-area', function(e){
+  e.preventDefault();
+  var area_name = $(this).attr('data-area-name')
+  var area_id = $(this).attr('data-area-id')
+  var station_present = $(this).attr('data-station')
+  $(`.area-view-${area_id}`).html(`
+    <input type="hidden" name="area[id]" value='${area_id}'>
+    <input type="text" name="area[name]" id='area_name_${area_id}' class='form-control area-name p5_10' value='${area_name}'>
+    <button class="btn btn-success btn-update-area btn-xs mt5" data-area-id='${area_id}' data-station='${station_present}'>Save</button>
+    <button class="btn btn-default btn-close-area btn-xs mt5" data-area-name='${area_name}' data-area-id='${area_id}' data-station='${station_present}'><i class="fa fa-times"></i></button>
+  `)
+  $('.btn-edit-area').hide()
+  $('.btn-create-area').hide()
+  $('.area-view-height').css('min-height', '75px');
+})
+
+// Update Existing Area Name
+$('#index-area-form').on('click', '.btn-update-area', function(e){
+  e.preventDefault();
+  var area_id = $(this).attr('data-area-id')
+  var station_present = $(this).attr('data-station')
+  var area_name = $(`#area_name_${area_id}`).val()
+  if(area_name != ''){
+    create_area_view(area_id, area_name, station_present)
+
+    $.ajax({
+      type: "patch",
+      dataType: "json",
+      url: `/queue_management/areas/${area_id}`,
+      data: {
+        'area[id]': area_id,
+        'area[name]': area_name
+      },
+      success: function(response){}
+    })
+  } else {
+    $("<label id='area_name-error' class='error' for='area_name'>*Required.</label>").insertAfter($(`#area_name_${area_id}`))
+  }
+})
+
+// Close Edit Form
+$('#index-area-form').on('click', '.btn-close-area', function(e){
+  e.preventDefault();
+  var area_name = $(this).attr('data-area-name')
+  var area_id = $(this).attr('data-area-id')
+  var station_present = $(this).attr('data-station')
+  create_area_view(area_id, area_name, station_present)
+})
+
+function create_area_view(area_id, area_name, station_present){
+  $(`.area-view-${area_id}`).html(`
+    <li>
+      <span class="area-view-name">${area_name}</span>
+      <button class="btn btn-link btn-edit-area btn-xs" data-area-name='${area_name}' data-area-id='${area_id}' data-station='${station_present}'>
+        <i class="fa fa-edit"></i>
+      </button>
+      ${station_present !== 'true' ? `
+        <a href="/queue_management/areas/${area_id}" class="btn btn-link btn-xs btn-delete-area" data-remote="true" data-method="delete">
+          <i class="fa fa-trash"></i>
+        </a>
+      ` : ''}
+    </li>
+  `)
+  $('.btn-edit-area').show()
+  $('.btn-create-area').show()
+  $('.area-view-height').css('min-height', '0px');
+}

@@ -1,0 +1,12 @@
+json.id @user.id.to_s
+json.fullname @user.fullname
+json.email @user.email
+json.alternate_email @user.alternate_email
+json.gender @user.gender
+json.dob @user.dob
+json.telephone @user.telephone
+json.alternate_telephone @user.alternate_telephone
+json.department_id @user.department_id
+json.licence_number @user.licence_number
+json.facility_ids @user.facility_ids
+json.roles @user.roles.pluck('name')

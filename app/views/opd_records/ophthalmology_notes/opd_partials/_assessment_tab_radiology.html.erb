@@ -1,0 +1,105 @@
+<div class="tab-pane" id="radiology">
+  <div class="row radio_tab_row">
+    <div class="col-md-2 col-sm-1"></div>
+    <% unless @disable_default_investigation %>
+      <div class="rdio rdio-primary col-md-4 col-sm-5 col-xs-6">
+        <div id="standard_rad_inv" class="standard_rad_inv" style="margin-bottom:15px;">
+          <%= radio_button_tag "radiology_inv_type", "standard_radiology_investigation", true, {:class => 'radiology_inv_type', :id => "RadiologyRadio1"} %>
+          <label for="RadiologyRadio1">Standard Radiology Investigations</label>
+        </div>
+      </div>
+      <div class="rdio rdio-primary col-md-4 col-sm-5 col-xs-6 custom_oph_inv" id="custom_oph_inv">
+        <%= radio_button_tag "radiology_inv_type", "custom_radiology_investigation", false, {:class => 'radiology_inv_type', :id => "RadiologyRadio2"} %>
+        <label for="RadiologyRadio2">Custom Radiology Investigations</label>
+      </div>
+    <% end %>
+    <div>
+      <div class="col-md-8"></div>
+      <div class="col-md-3">
+        <div class="input-group">
+          <input type="text" class="form-control" name="search_radiology_investigations" id="search_radiology_investigations" data-attr='all' placeholder="Search by any Radiology Investigations Name" style= "width: 180%;" />
+        </div>
+      </div>
+    </div>
+  </div><br>
+
+  <div class="row radio_tab_row">
+    <div class="col-md-6 col-sm-6 col-xs-12">
+      <div class="col-md-4 col-sm-5 col-xs-4">
+        <p>Radiology Sets</p>
+        <select id="radiology_set_tab" class="tabview tab_select_tag" style="display:none">
+          <option value="">Please Select</option>
+            <% @radiology_laboratory_set.each do |oph|%>
+              <option value="<%= oph.id%>"><%= oph.name%></option>
+            <% end %>
+        </select>
+        <%= select_tag  "radiology_set", options_for_select(@radiology_laboratory_set.pluck(:name, :id)) ,{ multiple: true, :style => 'height: 250px; width:100%', :class => 'form-control webview' } %>
+      </div>
+      <div class="col-md-5 col-sm-7 col-xs-5">
+        <div class="opdrecord_xraysmrictothersinvestigations_label_select standard-radiology-investigations" id="opdrecord_xraysmrictothersinvestigations_label_select">
+          <p>Xrays, MRI, CT & Others</p>
+          <% if @mode == 'tabview' %>
+            <%= select_tag "opdrecord[xraysmrictothersinvestigations][]", options_for_select(opdrecord.xraysmrictothers_investigations(@specalityid, 244486005)), id: "opdrecord_xraysmrictothersinvestigations_tab", input_html: {:class => 'form-control opdrecord_xraysmrictothersinvestigations_tabview tabview tab_select_tag'}, as: :select,  :label => false,  :item_wrapper_class => 'form-control', :required => false %>
+          <% else %>
+            <%= f.input :xraysmrictothersinvestigations, collection: (opdrecord.xraysmrictothers_investigations(@specalityid, 244486005)), input_html: { multiple: true, :size => '15', :style => 'height: 100%; width: 100%;', :class => 'form-control opdrecord_xraysmrictothersinvestigations webview'}, as: :select,  :label => false,  :item_wrapper_class => 'form-control', :required => false %>
+          <% end %>
+         </div>
+      </div>
+      <div class="col-md-5 col-sm-6 col-xs-5">
+        <div class="opdrecord_custom_xraysmrictothersinvestigations_label_select custom-radiology-investigations" id="">
+          <p>Investigations</p>
+           <select id="opdrecord_custom_xraysmrictothersinvestigations_label_select_tab" class="tabview tab_select_tag" style="display:none;">
+              <option value="">Please Select</option>
+              <% @custom_radiology_investigations.each do |custom_record| %>
+                <option value="<%= custom_record.investigation_id%>" data-has_laterality = "N" data-investigation_type_id="40701008"> <%=custom_record.investigation_name %></option>
+              <% end %>
+            </select>
+           <%= select_tag "ophthal_set", options_for_select(@custom_radiology_investigations.map{|inv| [ inv.investigation_name, inv.investigation_id, 'data-has_laterality' => 'N', 'data-investigation_type_id' => '40701008']}) ,{ multiple: true, :style => 'height: 250px; width:100%', :class => 'form-control opdrecord_custom_xraysmrictothersinvestigations_label_select webview', :id => 'opdrecord_custom_xraysmrictothersinvestigations_label_select' } %>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6 col-sm-6 col-xs-12">
+      <div class="row">
+        <div class="col-md-12">
+          <table class="table table-striped table-bordered">
+            <tbody class="investigations-added" id="investigations-added">
+              <%= render partial: "templates/common/soap_assessment_tab_radiology_table_list.html.erb" , locals: { f: f, investigationlist: @opdrecord.investigationlist, opdrecord: @opdrecord,  specalityfoldername: @speciality_folder_name, templatetype: @templatetype, opdspeciality: @opdspeciality } %>
+            </tbody>
+          </table>
+          <div class="investigations-removed" style="display:none;"></div>
+        </div>
+      </div>
+      <% if @case_sheet.radiology_investigations.where(:record_id.nin => [@opdrecord.id]).count > 0 %>
+        <div class="row">
+          <%= render partial: "opd_records/ophthalmology_notes/opd_partials/case_sheet_radiology_investigations.html.erb" %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="row mb30"></div>
+
+  <div class="row investigation_comment_row">
+    <div class="col-md-1 col-sm-2 col-xs-2 radio_comment_row">Comments:</div>
+    <div class="col-md-6 col-sm-6 col-xs-6 radio_comment_row">
+      <%= f.input :radiologycomments, as: :text, :label => false, :required => false, :input_html => {:class => 'form-control', :rows => 2, style: 'width:100%', :cols => 70, :name => "opdrecord[radiologycomments]", :value => @opdrecord.read_attribute(:radiologycomments) } %>
+    </div>
+    <div class="col-md-4 col-sm-4 col-xs-12 pull-left radio_tab_row" style=" display: inline-block; vertical-align: left;
+    float: none;text-align: left;">
+      <span class="badge col-md-1 col-sm-2">C</span><b style="cursor:default;color:#5bc0de;">&nbsp;Standard Radiology Investigations</b><br>
+      <span class="badge col-md-1 col-sm-2">CC</span><b style="cursor:default;color:#5bc0de;"> &nbsp;Custom Radiology Investigations</b><br>
+    </div>
+  </div>
+</div>
+
+<style>
+  #opdrecord_xraysmrictothersinvestigations_tab {
+    border: 1px solid #444;
+    height: 28px;
+    margin-top: -10px;
+    padding-left: 10px;
+    background: none;
+    color: #444;
+    display:none;
+  }
+</style>

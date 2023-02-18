@@ -1,0 +1,402 @@
+<div class="tab-pane row <%= 'print_text_font_size' if  @print_setting %>" id="advice" style="<%= text_font_size %>">
+  <div class="row">
+    <div class="col-md-9 col-sm-9 col-xs-9">
+      <div class="row mb10">
+        <div class="col-md-12 col-sm-12 col-lg-12 col-xs-12">
+          <b>Follow up</b>
+          <%= hidden_field_tag "opdrecord[advice_attributes][opdfollowuptime]", '', class: "hidden_followup_timepicker" %>
+        </div>
+      </div>
+      <p><b>**Note:</b> Please uncheck the check box if you dont want to create followup appointment automatically</p>
+      <div class="row mb10">
+        <div class="col-md-2 col-sm-2 col-xs-2">Management Plan:</div>
+        <div class="col-md-6 col-sm-6 col-xs-6">
+          <%= f.input :advicemanagementplan, as: :text,  label: false, required: false, input_html: { class: 'form-control', rows: 2, cols: 60, required: false, style: 'width:100%;', name: "opdrecord[advicemanagementplan]", value: opdrecord.read_attribute(:advicemanagementplan) } %>
+        </div>
+        <div class="ckbox ckbox-primary col-md-4 col-sm-4 col-xs-4">
+          <%= f.check_box :advicemanagementplantoreceptionist, {:class => "myclass", :id => "advicemanagementplantoreceptionist", :checked => false} , "true", "false" %>
+          <label for="advicemanagementplantoreceptionist">Show On Receptionist List View.</label>
+        </div>
+      </div>
+      <div class="row mb10">
+        <div class="col-md-2 col-sm-3 col-xs-3">Personal Comments:<br>(This will not appear in print)</div>
+        <div class="col-md-6 col-sm-5 col-xs-6">
+          <%= f.input :management_personal_cmt, as: :text, label: false, required: false, input_html: { class: 'form-control', rows: 2, style: 'min-width: 90%', required: false, name: 'opdrecord[management_personal_cmt]', value: opdrecord.read_attribute(:management_personal_cmt) } %>
+        </div>
+      </div>
+      <div class="row mb10">
+        <div class="col-md-3 col-lg-3 col-xs-12 col-sm-3">
+          <div class="col-md-12">
+            <b>Date</b>
+            <a href="" id='clear_follow_up_date' style="font-size: 10px;margin-top: -7px;">Clear</a>
+          </div>
+          <div class="col-md-12">
+            <% @followup_date =  opdrecord.advice.try(:opdfollowupdate) %>
+            <% if @followup_date.present? %>
+              <% followup_date_view = Date.parse("#{@followup_date}").strftime("%d/%m/%Y") %>
+            <% else %>
+              <% followup_date_view = '' %>
+            <% end %>
+            <%= text_field_tag "opdrecord[advice_attributes][opdfollowupdate]", followup_date_view, class: 'form-control opdfollowupdate-datepicker', style: 'width: 100%; background:#fff; cursor: pointer;', id: "opdfollowupdate-datepicker",readonly:true %>
+          </div>
+        </div>
+        <div class="col-md-3 col-lg-3 col-xs-12 col-sm-3">
+          <div class="col-md-12">
+            <b>Location</b>
+          </div>
+          <div class="col-md-12">
+            <% selected_facility = opdrecord.advice.try(:appointment_facility) ? opdrecord.advice.appointment_facility : @current_facility.id %>
+            <%= select_tag("opdrecord[advice_attributes][appointment_facility]", options_for_select(@facilities.map { |facility| [facility.name, facility.id] }, selected_facility), { :class => 'form-control fac_ddap', style: "width: 100%" }) %>
+          </div>
+        </div>
+
+        <div class="col-md-3 col-lg-3 col-xs-12 col-sm-3 specialty_dropdown_div">
+          <div class="col-md-12">
+            <b>Location's Specialty</b>
+          </div>
+          <div class="col-md-12">
+            <% selected_facility = Facility.find_by(id: selected_facility) %>
+            <% specialties = Specialty.where(:id.in => selected_facility.specialty_ids).pluck(:name, :id) %>
+            <% selected_specialty = opdrecord.advice.try(:appointment_specialty_id) || @appointment.specialty_id %>
+            <%= select_tag("opdrecord[advice_attributes][appointment_specialty_id]", options_for_select(specialties, selected_specialty), {:class => 'form-control advice_appointment_specialty_id', style: "width: 100%" }) %>
+          </div>
+        </div>
+
+        <div class="col-md-3 col-lg-3 col-sm-3 col-xs-12">
+          <div class="col-md-12">
+            <b>Consultant</b>
+          </div>
+          <div class="col-md-12">
+            <% doctors_array = { organisation_id: @current_user.organisation_id, role_ids: 158965000, is_active: true } %>
+            <% doctors_array = doctors_array.merge(specialty_ids: opdrecord.advice.try(:appointment_specialty_id) || @appointment.specialty_id) %>
+            <% doctors_array = doctors_array.merge(facility_ids: opdrecord.advice.try(:appointment_facility) || @current_facility.id) %>
+            <% selected_doctor = opdrecord.advice.try(:appointment_doctor) ? opdrecord.advice.appointment_doctor : current_user.id.to_s %>
+            <% doctors_array = User.where(doctors_array).pluck(:fullname, :id) %>
+
+            <%= select_tag("opdrecord[advice_attributes][appointment_doctor]", options_for_select(doctors_array, selected_doctor),{:class => 'form-control user_ddapt advice_appointment_doctor_id', :style => 'width: 100%'}) %>
+          </div>
+          <input type="hidden" class="doctor_id" value="<%= @user.id %>">
+        </div>
+      </div>
+
+      <div class="row mb10">
+        <div class="col-md-3 col-lg-3 col-sm-3 col-xs-12">
+          <div class="col-md-12">
+            <b>Time</b>
+          </div>
+          <div class="col-md-12 opd-followup-timepicker">
+            <div class="bootstrap-timepicker timepicker" style="position: absolute; width: 93%;">
+              <%@followup_time =  opdrecord.advice.try(:opdfollowuptime)%>
+              <%if @followup_time.present? %>
+                <% @followup_time_view = Time.zone.parse("#{opdrecord.advice.try(:opdfollowuptime)}").strftime("%I:%M %p") %>
+              <%else%>
+                <% @followup_time_view = Time.current.strftime("%I:%M %p") %>
+              <%end%>
+              <%= text_field_tag "opdfollowuptime", @followup_time_view, class: 'form-control opdfollowuptime-timepicker full_width', style: 'width: 100%', id: "opdfollowuptime-timepicker" %>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-3 col-lg-3 col-sm-3 col-xs-12">
+          <div class="col-md-12">
+              <b>Appointment Type <span class="required_field">Required</span></b>
+            </div>
+            <div class="col-md-12" id="refresh_appointment_type">
+              <% if "#{opdrecord.advice.try(:appointment_type_id)}" == nil || "#{opdrecord.advice.try(:appointment_type_id)}" == ""%>
+                <%= render partial: 'opd_records/ophthalmology_notes/appointment_type_partial', locals: {
+                  name_attr:"opdrecord[advice_attributes][appointment_type_id]", option_values: @appointment_types, selected: ""} %>
+              <% else %>
+               <!-- appointment_type_partial -->
+                <%= render partial: 'opd_records/ophthalmology_notes/appointment_type_partial', locals: {
+                  name_attr:"opdrecord[advice_attributes][appointment_type_id]", option_values: @appointment_types,selected: opdrecord.try(:advice).read_attribute(:appointment_type_id) }%>
+              <% end %>
+            </div>
+        </div>
+        <div class="col-md-3 col-lg-3 col-sm-3 col-xs-12">
+          <% if @sub_appointment_types.present? %>
+            <div class="col-md-12">
+              <b>Appointment Category</b>
+            </div>
+            <div class="col-md-12">
+              <%= select_tag("opdrecord[advice_attributes][appointment_category_id]", options_for_select(@sub_appointment_types.map {|apt_cat| [apt_cat.label, apt_cat.id ]}, opdrecord.try(:advice).try(:appointment_category_id)), prompt: 'Appointment Category', class: "form-control full_width advice_appointment_category")%>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <% if (@appointment.try(:organisation_id).to_s == '5e21ffd6cd29ba0ce0bf5a1e') && @appointment.try(:created_from) == 'Integration' %>
+        <div style="display: none">
+          <%= f.check_box :bookappointment, {:class => "myclass",:id => "bookappointment-integration", :checked => false}, "true", "false" %>
+        </div>
+      <% else %>
+        <div class="row mb10">
+          <div class="col-md-4 col-lg-4 col-xs-12 col-sm-4">
+            <div class="col-md-12">
+              &nbsp;
+            </div>
+            <div class="col-md-12">
+              <div class="ckbox ckbox-primary">
+                <% if opdrecord.bookappointment.nil? %>
+                  <%= f.check_box :bookappointment, {:class => "myclass", :id => "bookappointment", :checked => false}, "true", "false" %>
+                  <label for="bookappointment">Make Appointment**</label>
+                <% elsif opdrecord.bookappointment == 'false' %>
+                  <%= f.check_box :bookappointment, {:class => "myclass", :id => "bookappointment", :checked => false }, "true", "false" %>
+                  <label for="bookappointment">Make Appointment**</label>
+                <% elsif opdrecord.bookappointment == 'true' %>
+                  <%= f.check_box :bookappointment, {:class => "myclass", :id => "bookappointment", :checked => true} , "true", "false" %>
+                  <label for="bookappointment">Make Appointment**</label>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
+      <div class="row mb10">
+        <p class="text-center">OR</p>
+      </div>
+
+      <div class="row">
+        <div class="col-md-2 col-sm-2 col-xs-2 text-right">
+        </div>
+        <div class="col-md-10 col-sm-10 col-xs-10">
+          <%= f.input :opdfollowuptimeframe, wrapper_html: {:class=>"col-md-12 col-sm-12 col-xs-12"}, collection: (opdrecord.get_opd_followup_timeframe_list()), :as => :hg_checkbox, :label => false, :required => false, :class => 'btn btn-xs btn-white timeframe mb10', :input_html => {:name => "opdrecord[advice_attributes][opdfollowuptimeframe]" }, :checked => opdrecord.checkboxes_checked(opdrecord.advice.try(:opdfollowuptimeframe)) %>
+        </div>
+      </div>
+
+      <%=render partial: "templates/common/advice_precautions",  locals: { f: f} %>
+
+      <div class="row" style="display: none">
+        <div class="col-md-2 col-sm-2 col-xs-2">Precautions:<div style="cursor: pointer;color: rgb(66, 139, 202);display: table;border: 1px solid rgb(66, 139, 202);border-radius: 2px;" id="select_all_opdprecautions">Select all</div></div>
+        <div class="col-md-10">
+          <%= f.input :opdprecautions, wrapper_html: {:class=>"col-md-12"}, collection: ["Refrain from rubbing or touching your eye","Avoid getting dust or soap water in your eye","Use dark glasses","Avoid exerting yourself","Try not to bend over or carry heavy loads or perform strenuous exercises","Refrain from driving or riding a motorcycle till you are confident that your vision is clear","Avoid cosmetics to the eye such as mascara or eye liners etc for at least 4 weeks"], :as => :hg_checkbox, :label => false, :required => false, :class => 'btn btn-xs btn-white mb10 opdprecautions', :input_html => {:name => "opdrecord[advice_attributes][opdprecautions]" }, :checked => opdrecord.checkboxes_checked(opdrecord.advice.read_attribute(:opdprecautions)) %>
+        </div>
+      </div>
+
+      <div class="row" style="display: none">
+        <div class="col-md-2 col-sm-2 col-xs-2">Pre-operative instructions:<div style="cursor: pointer;color: rgb(66, 139, 202);display: inline-table;border: 1px solid rgb(66, 139, 202);border-radius: 2px;" id="select_all_preoperative_ins">Select all</div></div>
+        <div class="col-md-10 col-sm-10 col-xs-10">
+          <%= f.input :opdpreop_instruction, wrapper_html: {:class=>"col-md-12 col-sm-12 col-xs-12"}, collection: ["Take a head bath before the surgery as you will have restrictions for head bath after the surgery","Have an early and light breakfast as per your diet on the day of surgery","Take your systemic medications as advised before and after the surgery","Remove any kind of jewellery like hair clips or Bindis on the day of surgery","No kind of eye or face make up to be done on the day of surgery","You can have light food or milk/coffee/tea after the surgery unless specifically advised against it","Wear light fitting and comfortable clothes on the day of the surgery","All records to be carried along on the day of the surgery"], :as => :hg_checkbox, :label => false, :required => false, :class => 'btn btn-xs btn-white mb10 opdpreop_instruction', :input_html => {:name => "opdrecord[advice_attributes][opdpreop_instruction]" }, :checked => opdrecord.checkboxes_checked(opdrecord.advice.read_attribute(:opdpreop_instruction)) %>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3 col-sm-3 col-xs-6"  >
+      <div id="booked-appointment-slots" style="background: #fcfcfc;border-left:1px solid #eee;">
+        <%= render partial: '/opd_appointments/available_slot.html.erb' %>
+      </div>
+
+      <div class="clinical-abbreviations" style="background: #fcfcfc;border-left:1px solid #eee;">
+        <%= render partial: '/opd_records/abbreviations.html.erb' %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="text/javascript">
+  datepicker_options = {
+    dateFormat: "dd/mm/yy",
+    minDate: 0
+  };
+
+  $('.opdfollowuptime-timepicker').timepicker();
+  $('.opdfollowupdate-datepicker').datepicker(datepicker_options);
+
+  $('#opdfollowupdate-datepicker').on('change', function(){
+    var getdate = $("#opdfollowupdate-datepicker").datepicker("getDate");
+    timepicker_changed()
+    check_validation_status(
+      this, 'followup_is_valid',
+      'advice_step_advice', true,
+      'opdrecord_opdfollowuptimeframe'
+    );
+  });
+
+  $('.opdfollowupdate-datepicker').on('change', function(){
+    $('#bookappointment').prop('checked','true')
+  })
+
+  $(".opdfollowuptime-timepicker").on('change', function(){
+    // var timestamp = $(".opdfollowupdate-datepicker").val() + " " + $(this).val()
+    // $(".hidden_followup_timepicker").attr("value", timestamp)
+    timepicker_changed()
+  }).trigger('change')
+
+  function get_booked_appointments(doctor_id, facility_id, specialty_id, date, flag) {
+    $.ajax({
+      url: '/opd_appointments/get_booked_appointments',
+      type: 'get',
+      data: {
+        doctor_id: doctor_id,
+        date: date,
+        facility_id: facility_id,
+        specialty_id: specialty_id,
+        flag: flag
+      },
+      success: function(res) {
+      },
+    });
+  }
+
+  function toggle_specialty_dropdown(){
+    if($('.advice_appointment_specialty_id').find('option').length === 1){
+     $(".specialty_dropdown_div").hide();
+    } else {
+      $(".specialty_dropdown_div").show();
+    }
+  }
+  toggle_specialty_dropdown();
+
+  function get_facility_specialties(facility_id) {
+    $.ajax({
+      type: "GET",
+      dataType: "json",
+      url: "/main/get_facility_specialties",
+      data: { facility_id: facility_id },
+
+      success: function (response) {
+        jQuery('.advice_appointment_specialty_id').children().remove();
+
+        jQuery.each(response, function (key, value) {
+          jQuery('.advice_appointment_specialty_id').append($("<option></option>").attr("value", value["_id"]).text(value["name"]));
+        });
+
+        $('.advice_appointment_specialty_id').css("background-color",'rgb(247, 232, 225)')
+        setTimeout(function(argument) { $('.advice_appointment_specialty_id').css("background-color",'')  }, 300)
+
+        var specialty_id = jQuery('.advice_appointment_specialty_id').val()
+        get_specialty_doctors(facility_id, specialty_id)
+
+        toggle_specialty_dropdown();
+      }
+    });
+  }
+
+  function get_specialty_doctors(facility_id, specialty_id) {
+    $.ajax({
+      type: "GET",
+      dataType: "json",
+      url: "/main/get_users_from_specialty",
+      data: { facility_id: facility_id, specialty_id: specialty_id },
+
+      success: function (response) {
+        $('.advice_appointment_doctor_id').children().remove()
+
+        if (response.length == 0){
+          $('.advice_appointment_doctor_id').append($("<option></option>").attr("value","").text("No Doctors Available for this specialty"));
+          $('.advice_appointment_doctor_id').trigger('change');
+        } else {
+          $.each(response, function(key, value) {
+            $('.advice_appointment_doctor_id').append($("<option></option>").attr("value", value[1]).text(value[0])).trigger('change');
+          });
+        }
+
+        $('.advice_appointment_doctor_id').css("background-color",'rgb(247, 232, 225)')
+        setTimeout(function(argument) {
+          $('.advice_appointment_doctor_id').css("background-color",'')
+        }, 300)
+
+        // sub_appointment_types only
+        $('.advice_appointment_category').children().remove()
+        if (response['sub_appointment_types'].length != 0){
+          var sub_appointment_types = eval(response["sub_appointment_types"])
+          $.each(sub_appointment_types, function(key, value) {
+            $('.advice_appointment_category').append($("<option></option>").attr("value", value[1]).text(value[0])).trigger('change');
+          });
+        }
+
+        var date = jQuery('.opdfollowupdate-datepicker').val()
+        var doctor_id = jQuery('#opdrecord_advice_attributes_appointment_doctor').val()
+        get_booked_appointments(doctor_id, facility_id, specialty_id, date, null)
+      }
+    });
+  }
+
+  jQuery('.opdfollowupdate-datepicker').change(function(){
+    date = this.value
+    doctor_id = jQuery('#opdrecord_advice_attributes_appointment_doctor').val()
+    facility_id = jQuery('#opdrecord_advice_attributes_appointment_facility').val()
+    specialty_id = jQuery('.advice_appointment_specialty_id').val()
+
+    get_booked_appointments(doctor_id, facility_id, specialty_id, date, "dateselect")
+
+    if (!$("input[id^='opdrecord_advice_attributes_appointment_type_id_']").is(':checked')){
+      jQuery('#opdrecord_advice_attributes_appointment_doctor').trigger("change")
+    }
+  })
+
+  jQuery('#opdrecord_advice_attributes_appointment_facility').on("change",function(){
+    var facility_id = this.value;
+    let doctor_id = $('#opdrecord_advice_attributes_appointment_doctor').val();
+    let department_id = '485396012';
+
+    get_facility_specialties(facility_id)
+    check_time_slots(doctor_id, facility_id, department_id)
+  });
+
+  jQuery('.advice_appointment_specialty_id').on("change", function(){
+    var specialty_id = this.value
+    var facility_id = jQuery("#opdrecord_advice_attributes_appointment_facility").val();
+
+    get_specialty_doctors(facility_id, specialty_id)
+  })
+
+  jQuery('#opdrecord_advice_attributes_appointment_doctor').change(function(){
+    doctor_id = this.value
+    date = jQuery('.opdfollowupdate-datepicker').val()
+    facility_id = jQuery("#opdrecord_advice_attributes_appointment_facility").val();
+    specialty_id = jQuery('.advice_appointment_specialty_id').val()
+    let department_id = '485396012'
+    get_booked_appointments(doctor_id, facility_id, specialty_id, date, null)
+    check_time_slots(doctor_id, facility_id, department_id)
+  }).trigger('change')
+
+  $("#select_all_preoperative_ins").on("click",function(){
+    if (jQuery(".opdpreop_instruction").hasClass("btn-darkblue")) {
+      jQuery(".opdpreop_instruction").removeClass("btn-darkblue");
+      jQuery("#opdrecord_opdpreop_instruction").val("");
+    }
+
+    $(".opdpreop_instruction").click()
+  });
+
+  $("#select_all_opdprecautions").on("click",function(){
+
+    if (jQuery(".opdprecautions").hasClass("btn-darkblue")) {
+      jQuery(".opdprecautions").removeClass("btn-darkblue");
+      jQuery("#opdrecord_opdprecautions").val("");
+    }
+    $(".opdprecautions").click()
+  });
+
+  $('[data-toggle="tooltip"]').tooltip();
+
+  var form_type = $('#opdrecord_templatetype').val();
+  var li_cls = 'advice_step_advice';
+  if(form_type == 'freeform')
+    li_cls = 'advicetab_advice';
+
+  $("#clear_follow_up_date").on('click', function(e){
+    e.preventDefault();
+    $("#opdfollowupdate-datepicker").val('');
+    check_validation_status(
+      $("#opdfollowupdate-datepicker"), 'followup_is_valid',
+      li_cls, true,
+      'opdrecord_opdfollowuptimeframe'
+    );
+  });
+
+  $("#opdrecord_opdfollowuptimeframe").on('change', function(e){
+    check_validation_status(
+      this, 'followup_is_valid',
+      li_cls, true,
+      'opdfollowupdate-datepicker'
+    );
+  });
+</script>
+
+<style type="text/css">
+  [data-toggle='tooltip'] + .tooltip > .tooltip-inner {
+    background: black;
+    color:#ffffff;
+    border: 1px solid #000000;
+  }
+</style>

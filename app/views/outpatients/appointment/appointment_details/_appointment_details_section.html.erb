@@ -1,0 +1,128 @@
+<% if @appointment.present? && @appointment.appointmentstatus == 416774000 %>
+  <%= hidden_field_tag :appointment_id, @appointment.id.to_s, id: 'appointment_refresher' %>
+  <%= hidden_field_tag :investigation_click_counter, 0, id: 'investigation_click_counter' %>
+  <div class="col-md-12">
+    <% if @show_user_state && @active_state.present? %>
+      <div class="row">
+        <div class="col-md-12 text-center" style="background-color:<%= @user_state_color %>;color:#fff;">
+          <h4><b>You are working in <%= @active_state %> Mode.</b></h4>
+        </div>
+      </div>
+    <% end %>
+
+    <div class="row mt10">
+      <div class="col-md-12">
+        <%= render partial: 'outpatients/appointment/appointment_details/patient_details_section.html.erb' %>
+      </div>
+    </div>
+    <hr>
+    <% if @appointment.appointment_type_id %>
+      <% if @clinical_workflow.try(:referral) %>
+        <%= render partial: 'outpatients/appointment/appointment_details/referral_detail_section', locals: { appointment: @clinical_workflow_present ? @clinical_workflow : @appointment_list_view } %>
+      <% end %>
+
+      <% if @current_user.role_ids[0] == 499992366 && @clinical_workflow_present #counsellor %>
+        <% if @followupdates.length > 0 %>
+          <div class="row">
+            <!-- Includes Followup Dates for counsellor -->
+            <%= render partial: 'outpatients/appointment/appointment_details/counsellor_followups.html.erb' %>
+          </div>
+          <hr>
+        <% end %>
+      <%end%>
+
+      <div class="row no_margin no_padding appointment-actions-file" style="padding: 5px;">
+        <!-- Includes Reminder Note for doctor -->
+        <% if @organisation.workflow_waiting_disable %>
+          <!-- This file can be removed in future. Thats why I am creating a new file rather than making any changes in existing file. -->
+          <%= render partial: 'outpatients/appointment/appointment_details/appointment_actions_waiting_disabled.html.erb' %>
+        <% else %>
+          <%= render partial: 'outpatients/appointment/appointment_details/appointment_actions.html.erb' %>
+        <% end %>
+      </div>
+      <hr>
+      <% if @clinical_workflow_present %>
+        <%= render partial: 'outpatients/appointment/appointment_details/clinical_workflow.html.erb' %>
+      <% end %>
+
+      <% if @clinical_workflow.try(:state) != 'not_arrived' %>
+        <div class="row clinical_workflow_timeline">
+          <%= render partial: 'outpatients/appointment/appointment_details/appointment_timeline.html.erb' %>
+        </div>
+        <hr>
+      <% end %>
+      <% if @show_opd_record && @patient.try(:reg_status) %>
+        <% if @old_records.size > 0 || @clinical_workflow.try(:state) != 'not_arrived' || !@clinical_workflow_present %>
+          <div class="row" id="patient-opd-templates">
+            <%= render partial: 'outpatients/appointment/appointment_details/opd_templates_details.html.erb' %>
+          </div>
+          <hr>
+        <% end %>
+      <% end %>
+      <%= render partial: 'outpatients/appointment/appointment_details/appointment_tab_details.html.erb' %>
+    <% else %>
+      <%= render partial: '/outpatients/appointment/appointment_details/appointment_type_form.html.erb' %>
+    <% end %>
+  </div>
+
+  <script type="text/javascript">
+    <%= render partial: 'outpatients/appointment/appointment_details/appointment_details_section.js.erb' %>
+
+    $('.invesitgation-details').on('click', function (event) {
+      counter = $('#investigation_click_counter').val();
+      counter = parseInt(counter)
+
+      if (counter < 1) {
+        event.preventDefault();
+        appointment_id = '<%= @appointment.id.to_s %>';
+        current_date = '<%= @current_date %>';
+        patient_id = '<%= @patient.id.to_s %>';
+
+        $('#investigation_click_counter').val(counter + 1);
+
+        $.ajax({
+          data: {patient_id: patient_id, appointment_id: appointment_id ,current_date: current_date },
+          url: '/outpatients/investigation_details'
+        })
+      }
+    })
+    let url = $(location).attr('href');
+    if (url.includes('outpatients')) {
+      department_id = '485396012'
+    } else if (url.includes('inpatients')) {
+      department_id = '486546481'
+    } else if (url.includes('309935007')) {
+      department_id = '309935007'
+    } else if (url.includes('ot_management')) {
+      department_id = '225738002'
+    } else if (url.includes('50121007')) {
+      department_id = '50121007'
+    } else if (url.includes('284748001')) {
+      department_id = '284748001'
+    } else if (url.includes('ward_management')) {
+      department_id = '225746001'
+    } else if (url.includes('309964003')) {
+      department_id = '309964003'
+    } else if (url.includes('261904005')) {
+      department_id = '261904005'
+    } else if (url.includes('dashboard')) {
+      department_id = '224608005'
+    }
+    let primary_department_id = '<%= current_user.department_ids[0] %>'
+    if (department_id != primary_department_id) {
+      $('.appointment-actions-file').hide()
+    }
+  </script>
+<% else %>
+  <script type="text/javascript">
+    if ($('.ui-pnotify').length == 0) {
+      notice = new PNotify({
+        title: 'Appointment Cancelled',
+        text: 'Seems like someone cancelled this appointment.',
+        type: 'success'
+      });
+      notice.get().click(function(){ notice.remove() });
+    }
+    $("#btn-appointment-management-refresh").trigger('click')
+  </script>
+<% end %>

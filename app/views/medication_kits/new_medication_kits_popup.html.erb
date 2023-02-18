@@ -1,0 +1,82 @@
+<table class="table table-striped" style="padding-left: 5px;padding-right: 0;padding-top: 17px;">
+  <tr><td><b> Medication Set Name :</b></td></tr>
+  <tr>
+    <td>
+      <div class="input" style="width:175px;">
+        <input class="string optional form-control medication_kits_name" name="medication_kits[name]" size="30" maxlength="30" type="text" id="medication_kits_name">
+        <input type="hidden" name="medication_kit[specialty_id]" class="medication_specialty_id" value="<%= @specialty_id %>">
+      </div>
+    </td>
+  </tr>
+</table>
+
+<button aria-hidden="true" class="btn btn-success popover-save-medication-kit-btn" style="margin-left:15px;">Save</button>
+<button aria-hidden="true" class="btn btn-info popover-procedure-note-cancel-button">Cancel</button>
+
+<script>
+
+  jQuery(".popover-procedure-note-cancel-button").on("click", function(event) {
+    event.preventDefault();
+    jQuery('.popover-save-medication-set').popover('destroy');
+    jQuery(".save-medication-kit-btn").removeClass("disabled");
+  });
+
+  jQuery(".popover-save-medication-kit-btn").on('click', function(event) {
+    event.preventDefault();
+    encountertypeid = $("#opdrecord_encountertypeid").val() || $("#nursing_record_encountertypeid").val()
+
+    if (encountertypeid == "440655000") {
+      encountertype = "opdrecord"
+      var set_type = 440655000
+    }
+    else if(encountertypeid == "444950001"){
+     encountertype = "nursing_record"
+      var set_type = 444950001
+    }
+    else {
+      encountertype = "inpatient_ipd_record_discharge_note_attributes";
+      var set_type = 440654001
+    }
+
+    var medication_kit = {}
+    var fieldcounter = 0
+    var medicine_row
+    $(".medication-table-body-added > .treatmentmedications").each(function(index){
+      var taper_id
+      var medicinename = $("#"+encountertype+"_treatmentmedication_attributes_"+index+"_medicinename").val()
+      var medicinetype = $("#"+encountertype+"_treatmentmedication_attributes_"+index+"_medicinetype").val()
+      var medicinequantity = $("#"+encountertype+"_treatmentmedication_attributes_"+index+"_medicinequantity").val()
+      var medicinefrequency = $("#"+encountertype+"_treatmentmedication_attributes_"+index+"_medicinefrequency").val()
+      var medicineduration = $("#"+encountertype+"_treatmentmedication_attributes_"+index+"_medicineduration").val()
+      var medicinedurationoption = $("#"+encountertype+"_treatmentmedication_attributes_"+index+"_medicinedurationoption").val()
+      var medicineinstructions = $("#"+encountertype+"_treatmentmedication_attributes_"+index+"_medicineinstructions").val()
+      var instruction = $("#"+encountertype+"_treatmentmedication_attributes_"+index+"_instruction").val()
+      var taperid = $("#"+encountertype+"_treatmentmedication_attributes_"+index+"_taper_id").val()
+      if(taperid == undefined){
+        taper_id = 0
+      } else{
+        taper_id = taperid
+      }
+      var eyeside = $("#"+encountertype+"_treatmentmedication_attributes_"+index+"_eyeside").val()
+      var pharmacy_item_id = $("#"+encountertype+"_treatmentmedication_attributes_"+index+"_pharmacy_item_id").val()
+      var generic_display_name = $("#"+encountertype+"_treatmentmedication_attributes_"+index+"_generic_display_name").val()
+      var generic_display_ids = $("#"+encountertype+"_treatmentmedication_attributes_"+index+"_generic_display_ids").val()
+      var medicine_from = $("#"+encountertype+"_treatmentmedication_attributes_"+index+"_medicine_from").val()
+      if (medicinename.length){
+        medicine_row = '{"medicinename":"'+medicinename+'", "medicinetype":"'+medicinetype+'", "medicinequantity":"'+medicinequantity+'", "medicinefrequency":"'+medicinefrequency+'", "medicineduration":"'+medicineduration+'", "medicinedurationoption":"'+medicinedurationoption+'", "medicineinstructions":"'+medicineinstructions+'", "instruction":"'+instruction+'", "taper_id":"'+taper_id+'", "eyeside":"'+eyeside+'", "pharmacy_item_id":"'+pharmacy_item_id+'", "generic_display_name":"'+generic_display_name+'", "generic_display_ids":"'+generic_display_ids+'", "medicine_from":"'+medicine_from+'"}'
+
+        medication_kit[fieldcounter] = JSON.parse(medicine_row)
+        fieldcounter += 1
+      }
+    })
+    var medication_kits_name = $(".popover-save-medication-set .medication_kits_name").val()
+    var specialty_id = $(".popover-save-medication-set .medication_specialty_id").val()
+    jQuery.ajax({
+      type: "POST",
+      url: '/medication_kits/save_medication_kit',
+      data: { medication_kit: medication_kit, specialty_id: specialty_id, set_type: set_type, medication_kits_name: medication_kits_name, remote: "true" },
+    });
+    jQuery('.popover-save-medication-set').popover('destroy');
+    jQuery(".save-medication-kit-btn").removeClass("disabled");
+  });
+</script>

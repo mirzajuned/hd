@@ -1,0 +1,194 @@
+function _timeoutfn() {
+
+}
+
+function _savefn() {
+    jQuery("#opdrecord_clincalevaluation").val($("#opdrecord_clincalevaluation").code())
+    jQuery("#opdrecord_diagnosis").val($("#opdrecord_diagnosis").code())
+    jQuery("#opdrecord_plan").val($("#opdrecord_plan").code())
+    jQuery("#opdrecord_diagnosiscomments").val($("#opdrecord_diagnosiscomments").code())
+    jQuery("#opdrecord_procedurecomments").val($("#opdrecord_procedurecomments").code())
+	jQuery('.soapnote').submit();
+}
+
+function toggle_save_button(){
+  if("<%= @specalityid %>" == '309988001' && "<%= @organisations_setting.mandatory_opd_templates %>" == "true"){
+    //let msg = ''
+    let is_history_present =  $('#history_is_valid').hasClass('my-success')
+    let is_vision_present =  $('#vision_is_valid').hasClass('my-success')
+    let is_iop_present =  $('#iop_is_valid').hasClass('my-success')
+    let is_inv_present =  $('#investigation_is_valid').hasClass('my-success')
+    let is_diagnosis_present =  $('#diagnosis_is_valid').hasClass('my-success')
+    let is_procedure_present =  $('#procedure_is_valid').hasClass('my-success')
+    let is_medication_present =  $('#medications_is_valid').hasClass('my-success')
+    let templatename = $('#opdrecord_templatetype').val()
+    if(templatename == "optometrist"){
+      if(is_history_present && is_iop_present && is_vision_present) {
+        //$('.saveopdrecord').prop("disabled", false);
+        check_doc_selected()
+      } else {
+        //$('.saveopdrecord').prop("disabled", true);
+        save_toaster_msg()
+      }
+    } else if(templatename == "postop"){
+      if(is_vision_present && is_iop_present) {
+        //$('.saveopdrecord').prop("disabled", false);
+        check_doc_selected()
+      } else {
+        //$('.saveopdrecord').prop("disabled", true);
+        save_toaster_msg()
+      }
+    } else if(templatename == "pmt"){
+      if(is_vision_present && is_iop_present && is_diagnosis_present && is_procedure_present && is_medication_present) {
+        //$('.saveopdrecord').prop("disabled", false);
+        check_doc_selected()
+      } else {
+        //$('.saveopdrecord').prop("disabled", true);
+        save_toaster_msg()
+      }
+    } else if(templatename == "express" || templatename == "freeform"){
+      if(is_inv_present && is_diagnosis_present && is_procedure_present && is_medication_present) {
+        //$('.saveopdrecord').prop("disabled", false);
+        check_doc_selected()
+      } else {
+        //$('.saveopdrecord').prop("disabled", true);
+        save_toaster_msg()
+      }
+    } else if(templatename == "refraction" || templatename == "ar_nct"){
+      if(is_vision_present && is_iop_present) {
+        //$('.saveopdrecord').prop("disabled", false);
+        check_doc_selected()
+      } else {
+        //$('.saveopdrecord').prop("disabled", true);
+        save_toaster_msg()
+      }
+    } else if(templatename == "nursing"){
+      if(is_iop_present && is_history_present) {
+        //$('.saveopdrecord').prop("disabled", false);
+        check_doc_selected()
+      } else {
+        //$('.saveopdrecord').prop("disabled", true);
+        save_toaster_msg()
+      }
+    } else if(templatename == "eye" || templatename == "lens" || templatename == "quickeye" || templatename == "paediatrics" || templatename == "orthoptics" || templatename == "trauma" )  {
+      if(is_history_present && is_vision_present && is_iop_present && is_inv_present && is_diagnosis_present && is_procedure_present && is_medication_present) {
+        //$('.saveopdrecord').prop("disabled", false);
+        check_doc_selected()
+      } else {
+        save_toaster_msg()
+      }
+    } else {
+      //$('.saveopdrecord').prop("disabled", false);
+      check_doc_selected()
+    }
+  }
+}
+
+jQuery(document).ready(function() {
+  jQuery(".saveopdrecord").on("click", function() {
+    if("<%= @organisations_setting.mandatory_opd_templates %>" == "true"){
+      toggle_save_button()
+    } else {
+      check_doc_selected()
+    }
+  });
+});
+
+function check_doc_selected(){
+  if ($("#opdrecord_view_owner_id").val()){
+    $(".saveopdrecord").attr('disabled','disabled')
+    $(".btn-delete-clone").attr('disabled', 'disabled')
+    $(".saveopdrecord").html("Please Wait...")
+    _savefn();
+
+    setTimeout(function() {
+      jQuery(".saveopdrecord").removeAttr('disabled','disabled')
+      jQuery(".saveopdrecord").html("Retry")
+      $(".saveopdrecord").removeClass('btn-success')
+      $(".saveopdrecord").addClass('btn-warning')
+    }, 20000);
+  } else {
+    $("#opdrecord_view_owner_id").addClass("glow-animation")
+
+    var msg = "Please select the " + $(".user_type").text().replace(":","") + " from the dropdown on top right to to save the template"
+    notice = new PNotify({
+      title: 'Error',
+      text: msg,
+      icon: 'fa fa-error',
+      type: 'error',
+      width: "300px",
+      addclass: 'stack-topleft',
+    })
+    notice.get().click(function(){ notice.remove() });
+  }
+}
+
+function save_toaster_msg(){
+  let not_filled_fields = []
+  if($('#history_is_valid').hasClass('my-danger')){
+    not_filled_fields.push('History')
+  }
+  if($('#vision_is_valid').hasClass('my-danger')){
+    not_filled_fields.push(' Vision')
+  }
+  if($('#iop_is_valid').hasClass('my-danger')){
+    not_filled_fields.push(' IOP')
+  }
+  if($('#investigation_is_valid').hasClass('my-danger')){
+    not_filled_fields.push(' Investigation')
+  }
+  if($('#diagnosis_is_valid').hasClass('my-danger')){
+    not_filled_fields.push(' Diagnosis')
+  }
+  if($('#medications_is_valid').hasClass('my-danger')){
+    not_filled_fields.push(' Medications')
+  }
+  if($('#procedure_is_valid').hasClass('my-danger')){
+    not_filled_fields.push(' Procedures')
+  }
+  let msg = not_filled_fields + ' field(s) are mandatory. Please fill them to proceed.'
+  notice = new PNotify({
+    title: 'Error',
+    text: msg,
+    icon: 'fa fa-error',
+    type: 'error',
+    width: "500px",
+    addclass: 'stack-topleft'
+  });
+  notice.get().click(function(){ notice.remove() });
+}
+
+
+
+var summernote_options = {
+    toolbar: [
+        ['style', ['bold', 'italic', 'underline', 'clear']],
+        ['fontsize', ['fontsize']],
+        ['height', ['height']],
+        ['fontname', ['fontname']],
+    ],height: 150,
+    focus: true,
+    onInit : function(){
+              if("<%= @mode%>" == "tabview") {
+                $('.note-editor [data-name="bold"]').tooltip('disable');
+                $('.note-editor [data-name="italic"]').tooltip('disable');
+                $('.note-editor [data-name="underline"]').tooltip('disable');
+                $('.note-editor [data-name="clear"]').tooltip('disable');
+                $('.note-editor [title="Font Size"]').tooltip('disable');
+                $('.note-editor [title="Font Family"]').tooltip('disable');
+                $('.note-editor [title="Line Height"]').tooltip('disable');
+              }
+            }
+};
+var summernote_options1 = {
+    toolbar: [],
+    height: 150
+};
+$('#opdrecord_clincalevaluation').summernote(summernote_options);
+$('#opdrecord_diagnosis').summernote(summernote_options);
+$('#opdrecord_plan').summernote(summernote_options);
+$('.free_procedure').summernote(summernote_options);
+$('.examination').summernote(summernote_options);
+$('#opdrecord_diagnosiscomments').summernote(summernote_options1)
+$('#opdrecord_procedurecomments').summernote(summernote_options1)
+$(".note-editor").removeClass('panel-default').addClass('panel-success')

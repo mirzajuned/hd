@@ -1,0 +1,162 @@
+<div class="modal-dialog modal-hg-view-record-template" style="width: 80%;">
+  <div class="modal-content">
+    <div class="modal-header">
+      <div class="pull-right">
+        <!-- Action Buttons starts -->
+        <a aria-hidden="true" class="" style="cursor: pointer" data-dismiss="modal"><i class="fa fa-close"></i></a>
+      </div> <!-- Action Buttons ends -->
+      <h4 class="nomargin " style="text-align: center">
+        Create Appointment For Investigation
+      </h4>
+
+    </div>
+    <div class="modal-body"> <!-- modal-body starts -->
+      <form action="/opd_appointments/addfollowupappointment" data-remote="true" method="post">
+        <div class="row mb15">
+
+          <div class=" col-md-1"> Date:</div>
+          <div class="col-md-1">
+            <input class='form-control opdfollowupdate-datepicker ', id="opdfollowupdate-datepicker", style= "width: 143%" name="followupappointmentdate">
+          </div>
+          <div class="col-md-1" style="text-align: right"> Time:</div>
+          <div class="col-md-1">
+            <div class="bootstrap-timepicker timepicker" style="position: absolute; width: 100%;">
+              <input class='form-control opdfollowuptime-timepicker', id="opdfollowuptime-timepicker", style= "width: 125%" name="followupappointmenttime">
+              <!-- <input type="text" name="name" class="timepicker"></input> -->
+            </div>
+          </div>
+          <% facilities_array = current_user.organisation.facilities.map { |facility| [facility.name, facility.id] } %>
+          <% if facilities_array.count >1 %>
+              <div class="col-md-1" style="text-align: right"> Location:</div>
+              <div class="col-md-2">
+                <select class="form-control fac_ddap" name="appointment-facility-filter" style="width: 125%">
+                  <%facilities_array.each do|fac|%>
+                      <option value="<%= fac[1].to_s%>" <%= "selected='selected'" if fac[1].to_s == current_facility.id.to_s %> ><%= fac[0]%></option>
+                  <%end%>
+                </select>
+
+              </div>
+          <%else%>
+              <input name="appointment-facility-filter" value="<%= facilities_array[0][1]%>" type="hidden">
+          <%end%>
+
+          <input name="patient_id" value="<%= @patient.id%>" type="hidden">
+          <input name="department-filter" value="485396012" type="hidden">
+          <input name="departmenttype" value="440655000" type="hidden">
+          <input name="appointment_id" value="<%= @appointment_id%>" type="hidden">
+          <div class="col-md-1"style="text-align: right;margin-left: 31px;">Doctor:</div>
+          <div class="col-md-2">
+            <% doctors_array = User.where(organisation_id: current_user.organisation_id, role_ids: 158965000).pluck(:fullname, :id) %>
+            <%= select_tag("doctors-filter", options_for_select(doctors_array,""),{:class => 'form-control user_ddapt', :style => 'width: 115%'}) %>
+          </div>
+        </div>
+        <div class="row mb15">
+            <div class="col-md-1" >
+              <label class="control-label">Visit Type <span style="font-size:12px;color:#a94442;">(Required) :</span></label>
+            </div>
+            <div class="col-md-11 counsellor_opd_appointment_types">
+              <% @appointment_types.each do |appointment_type| %>
+                  <div class="col-md-2 rdio rdio-primary">
+                  <%= radio_button_tag "appointment_type_id", appointment_type.id,"" ,id: "radio-"+appointment_type.id%>
+                    &nbsp;&nbsp;&nbsp;&nbsp;
+                    <label for="radio-<%= appointment_type.id%>" class="label" style="background: <%= appointment_type.background%>" title="<%= appointment_type.try(:comment)%>" data-toggle="tooltip"><%= appointment_type.label %></label>
+                  </div>
+
+              <% end %>
+            </div>
+        </div>
+        <div class="row">
+          <div class="col-md-1">
+            <input type="submit" class="btn btn-primary" style="" value="Create">
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <div class="pull-right">
+        <!-- Action Buttons starts -->
+
+        <!--<a class="btn btn-xs btn-primary " target="_blank" data-method="get" href="#"> <i class="fa fa-print mr5"></i> Print </a>-->
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+    jQuery('#opdfollowupdate-datepicker').datepicker({
+        dateFormat: "dd/mm/yy",
+        minDate: 0
+    })
+
+    jQuery('#opdfollowupdate-datepicker').datepicker("setDate", new Date("<%=@counselling_date%>"))
+
+    timepicker_options = {defaultTIme: false, minuteStep: 5}
+    jQuery('#opdfollowuptime-timepicker').timepicker()
+    jQuery('.user_ddapt').change(function(){
+        doctor_id = this.value
+        date = jQuery('.opdfollowupdate-datepicker').val()
+        facility_id = $(".fac_ddap").val();
+        // console.log(date, facility_id)
+        $.ajax({
+            url: '/opd_appointments/get_booked_appointments',
+            type: 'get',
+            data: {
+                doctor_id: doctor_id,
+                date: date,
+                facility_id: facility_id
+            },
+            success: function(res) {
+                // console.log('kfkgkdfj', res);
+            },
+        });
+    })
+    jQuery('.fac_ddap').on("change",function(){
+        var fac_id = $(".fac_ddap").val();
+        var doctor_id = jQuery('.user_ddapt').val()
+        var date = jQuery('.opdfollowupdate-datepicker').val()
+        //load users
+        jQuery.ajax({
+            type: "GET",
+            dataType: "json",
+            url: "/main/get_user_id_admission_list",
+            data: {facility_id: fac_id},
+            success: function(response){
+                jQuery('.user_ddapt').children().remove();
+                jQuery.each(response, function(key, value) {
+                    jQuery('.user_ddapt').append(jQuery("<option></option>").attr("value",value[1]).text(value[0]));
+                });
+                jQuery('.user_ddapt').trigger("change")
+            }
+        });
+        jQuery.ajax({
+            url: '/opd_appointments/get_booked_appointments',
+            type: 'get',
+            data: {
+                doctor_id: doctor_id,
+                date: date,
+                facility_id: fac_id
+            },
+            success: function(res) {
+                // console.log('kfkgkdfj', res);
+            },
+        });
+    });
+
+    // to clear timeframe
+    if ($("#opdrecord_opdfollowuptimeframe").val() == ""){
+        $("#clear_timeframe").hide()
+    }
+    else{
+        $("#clear_timeframe").show()
+    }
+
+$(document).ready(function(){
+   $('[data-toggle="tooltip"]').tooltip();
+})
+</script>
+<style type="text/css">
+  [data-toggle='tooltip'] + .tooltip > .tooltip-inner {
+    background: black;
+    color:#ffffff;
+    border: 1px solid #000000;
+  }
+</style>

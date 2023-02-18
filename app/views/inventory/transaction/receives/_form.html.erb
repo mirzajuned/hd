@@ -1,0 +1,82 @@
+<div class="transaction-lots-list" style="margin-top:15px;">
+  <table class="table transaction-lots-table">
+    <thead class="transaction-table-head">
+      <tr class='thead-fixable'>
+        <td class='thead-fix col-xs-3'>#</td>
+        <td class='thead-fix col-xs-3'>Description</td>
+        <td class='thead-fix col-xs-2'>Batch No.</td>
+        <td class='thead-fix col-xs-2'>MRP</td>
+        <% if @sub_stores.length > 1 %>
+          <td class='thead-fix col-xs-2'>Sub Store</td>
+        <% end %>
+        <td class='thead-fix col-xs-2'>Expiry</td>
+        <td class='thead-fix col-xs-2'>Transfered Quantity</td>
+        <td class='thead-fix col-xs-2'>Qty. Received</td>
+        <td class='thead-fix col-xs-2'>Qty. Not Received</td>
+        <td class='thead-fix col-xs-2 not-received-comment' >Not Received Comment</td>
+      </tr>
+    </thead>
+    <tbody class="transaction-table-body" style="overflow-y: auto">
+      <% total = 0.0 %>
+      <% @transfer.items.each_with_index do |item, index| %>
+        <tr class="font_size item-row tr-receive-<%= item.lot_id.to_s %>">
+          <%= f.fields_for :items, item do |field| %>
+            <%= f.hidden_field :count, value: params[:count] %>
+            <%= field.hidden_field :transfer_item_id, value: item.id %>
+            <%= field.hidden_field :unit_cost, class: 'unit-cost' %>
+            <%= field.hidden_field :rejected_stock,value: 0.0 %>
+            <td class="col-xs-3"><%= index + 1 %></td>
+            <td class="col-xs-3"><%= item.description%></td>
+            <td class="col-xs-2"><%= item.batch_no %></td>
+            <td class="col-xs-2"><%= item.list_price %></td>
+            <% if @sub_stores.count == 1 %>
+                <%#= field.select :sub_store_id, options_for_select(@sub_stores, @sub_stores[0][1]), { include_hidden: false }, class: '', style: 'padding: 5px;' %>
+                <%= field.hidden_field :sub_store_name, value: @sub_stores[0][0], class: 'sub-store-name' %>
+                <%= field.hidden_field :sub_store_id, value: @sub_stores[0][1], class: 'sub-store-id',id: 'sub_store_id' %>
+            <% else %>
+              <td class="col-xs-2">
+                <%= field.select :sub_store_id, options_for_select(@sub_stores, ''), { include_hidden: false, include_blank: true, required: true }, class: 'sub-store-id', id: 'sub_store_id', style: 'padding: 5px;' %>
+                <%= field.hidden_field :sub_store_name, class: 'sub-store-name', value: '' %>
+              </td>
+            <% end %>
+            <td class="col-xs-2"><%= item.expiry %></td>
+            <td class="col-xs-2 item-stock"><%= item.stock %></td>
+            <td class="col-xs-2">
+              <div class="col-xs-6">
+                <% lot_unit_ids = item.lot_unit_ids %>
+                <% readonly = item.lot_unit_ids.present? ? true : false %>
+                <%= field.number_field :stock, value: item.stock,
+                                       class: "item_quantity modalRequest_input_style",
+                                       placeholder: "Qty", max: item.stock,
+                                       style: "width:100%;text-align:left",
+                                       readonly: readonly, min: 0, data: "#{field.options[:child_index]}" %>
+              </div>
+              <div class="col-xs-6">
+                <% if readonly %>
+                  <%= field.select :lot_unit_ids, options_for_select(lot_unit_ids, lot_unit_ids), { include_hidden: false }, multiple: true, style: "display: none;", class: 'lot_unit_ids' %>
+                  <%= field.select :received_lot_unit_ids, options_for_select(lot_unit_ids, lot_unit_ids), { include_hidden: false }, multiple: true, style: "display: none;", class: 'received_lot_unit_ids' %>
+                  <%= field.select :rejected_lot_unit_ids, options_for_select([], []), { include_hidden: false }, multiple: true, style: "display: none;", class: 'rejected_lot_unit_ids' %>
+                  <%= link_to filter_item_inventory_transaction_receives_path(selected_lot_unit_ids:lot_unit_ids, lot_unit_ids: lot_unit_ids, tr_class_val: "tr-receive-#{item.lot_id.to_s}"), id: '', data: { remote: true, toggle: 'modal', target: '#add-unit-lot-modal' }, class: "btn btn-xs tr-receive-#{item.lot_id.to_s}" do %><i class="fa fa-edit"></i><% end %>
+                <% end %>
+              </div>
+            </td>
+
+            <td class="col-xs-2 rejected-stock rejected-stock-<%= field.options[:child_index] %>">0</td>
+            <td class="col-xs-2 not_received_comment_<%= field.options[:child_index] %>">
+              <%= field.text_field :not_received_comment, class: 'not-received-comment modalRequest_input_style', style: "width:100%;text-align:left;display:none" %>
+            </td>
+            
+              <% cost = (item.stock * item.unit_cost).round(2)
+                 total += cost %>
+              <%= field.hidden_field :total_cost, value: cost, class: 'received-total-cost', min: 0, readonly: true %>
+            
+          <% end %>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>
+
+<% content_for :total_cost do %>
+  <%= f.text_field :total_cost, { class: 'form-control p7_10 fullname',readonly: true, placeholder: "Total Cost" , value: total} %>
+<% end %>

@@ -1,0 +1,173 @@
+<% if params[:opd] == "440655000" %>
+  <% @speciality_folder_name = TemplatesHelper.get_speciality_folder_name(@appointment.specialty_id) %>
+  <% if @speciality_folder_name.to_s.downcase == "ophthalmology" %>
+    <% if @appointment.dilation_start_time != nil && @appointment.dilation_end_time == nil%>
+        <button type="button" class="btn btn-xs btn-danger btn-dilate" style="cursor: pointer;margin-top: -10px;" data-dilation-path="/opd_appointments/stop_dilation?appointment_id=<%= @appointment.id %>"><i class="fa fa-ban"></i>  Stop Dilatation</button>
+    <% elsif @appointment.dilation_end_time != nil %>
+        <button type="button" class="btn btn-xs btn-success" style="cursor: pointer;margin-top: -10px;"><i class="fa fa-check-circle"></i>  Dilated</button>
+    <% else %>
+        <button type="button" class="btn btn-xs btn-warning btn-dilate" style="cursor: pointer;margin-top: -10px;" data-dilation-path="/opd_appointments/dilate_patient?appointment_id=<%= @appointment.id %>"><i class="fa fa-clock-o"></i>  Dilate</button>
+    <% end %>&nbsp;&nbsp;&nbsp;
+    <% if @appointment.dilation_start_time != nil && @appointment.dilation_end_time == nil %>
+        <% difference =  TimeDifference.between(@appointment.dilation_start_time, Time.current).in_seconds %>
+        <span id="dilation-timer" data-dilation-status="dilating" data-dilation-headstart="<%= difference.to_i %>"></span>
+    <% elsif @appointment.dilation_end_time != nil %>
+        <% difference =  TimeDifference.between(@appointment.dilation_start_time, @appointment.dilation_end_time).in_seconds %>
+        <span id="dilation-timer" data-dilation-headstart="<%= difference.to_i %>" data-dilation-status="dilated"><%= Time.at(difference.to_i).utc.strftime("%H:%M:%S") %></span>
+    <% else %>
+        <span id="dilation-timer" data-dilation-status="dilate">00:00:00</span>
+    <% end %>&nbsp;
+    <div class="mb10"></div>
+  <%end%>
+
+
+
+  <% if @appointment && false %>
+    <% if @appointment.dilation_start_time == nil%>
+      <%= link_to opd_appointments_dilate_patient_path(:appointment_id => @appointment.id), :class => "btn btn-xs btn-success", :data => {:remote => true},:style =>"width:160px;" do %> Dilate <% end %>
+    <% elsif @appointment.dilation_start_time != nil && @appointment.dilation_end_time == nil%>
+      <%= link_to opd_appointments_stop_dilation_path(:appointment_id => @appointment.id), :class => "btn btn-xs btn-danger", :style => "cursor: inherit;width:160px;", :data => {:remote => true} do %> Dilated For <span id="dilation_time_<%= @appointment.id%>"></span><% end %>
+   <% else %>
+      <%= link_to opd_appointments_dilate_patient_path(:appointment_id => @appointment.id), :class => "btn btn-xs btn-success", :data => {:remote => true}, :style=> "width:160px;" do %> Dilate <% end %>
+    <%end%>
+  <%end%>
+<% end %>
+
+<%if @eyedrop_allergy.present?%>
+  <div id="dialog-confirm" title="Do you still want to Dilate ?" class="hidden">
+    <p><span class="ui-icon ui-icon-alert" style="float:left; margin:12px 12px 20px 0;"></span> Patient is allergic to <strong><%= "#{@eyedrop_allergy.join(", ")}" %>.</strong></p>
+  </div>
+<%end%>
+
+<style type="text/css">
+  .ui-dialog{
+    background-color: #FFFFFF;
+    /*border: solid 1px black;*/
+    border-radius: 3px;
+    top: 30% !important;
+  }
+
+  .ui-dialog-titlebar{
+    border-bottom: 1px solid #e5e5e5;
+  }
+
+  .ui-widget-overlay{
+    background: #333;
+    opacity: 0.6;
+  }
+
+  .ui-dialog .ui-dialog-buttonpane button {
+    background-color: #31b0d5;
+    border: 1px;
+    color: #FFFFFF;
+    padding: 0px 10px;
+    border-radius: 3px;
+    border-color: #46b8da;
+  }
+
+  .ui-dialog-titlebar-close{
+
+  }
+
+  #dilation-timer{
+    font-size: 16px;
+    /*padding: 0.5em 0.7em;*/
+    /*color: #ecf0f1;*/
+    /*margin-bottom: 50px;*/
+    -webkit-transition: background 0.5s ease-out;
+    transition: background 0.5s ease-out;
+    text-align: center;
+    /*text-shadow: 0 3px 2px rgba(0, 0, 0, 0.3);*/
+    text-shadow:
+    0 0 1px #fff,
+    0 1px 2px rgba(0,0,0,0.4);
+
+    transition: opacity 500ms;
+    margin-bottom: 8px;
+  }
+
+  .btn-dilate{
+    cursor: pointer;
+  }
+</style>
+<% if params[:opd] == "440655000" %>
+    <% if current_user.department.name == "Ophthalmology" %>
+<script type="text/javascript">
+  $(document).ready(function(){
+
+    $(".btn-dilate").on('click', function(e) {
+      url = $(this).attr("data-dilation-path");
+      if ("<%= @patient_allergy_eye_drops.present? %>" == "true" && url.indexOf("dilate_patient")>-1 ) {
+        e.preventDefault();
+        $('#dialog-confirm').removeClass("hidden")
+        var dialog = $('#dialog-confirm').dialog({
+          resizable: false,
+          height: "auto",
+          width: 400,
+          modal: true,
+          buttons: {
+            "Dilate": function() {
+              $.ajax({
+                url: url,
+                type: "GET",
+                dataType: "script",
+                data: {opd: "440655000", remote: "true"},
+                success: function (res) {
+                  //start counter
+                  $("#dilation-div").html("")
+                  //           location.reload()
+                  //          $("#refreshappointmentlist").trigger('click')
+                },
+                error: function (err) {
+                }
+              })
+              dialog.dialog('close');
+            },
+
+            "No":  function() {
+              dialog.dialog('close');
+            }
+          }
+        });
+        $('.ui-dialog-titlebar-close').addClass("fa fa-close")
+      }
+      else{
+        $.ajax({
+          url: url,
+          type: "GET",
+          dataType: "script",
+          data: {opd: "440655000", remote: "true"},
+          success: function (res) {
+            //start counter
+            $("#dilation-div").html("")
+  //           location.reload()
+  //          $("#refreshappointmentlist").trigger('click')
+          },
+          error: function (err) {
+          }
+        })
+      }
+    });
+
+    var dilation_timer = $("#dilation-timer")
+    var dilation_status = $(dilation_timer).attr("data-dilation-status");
+    switch(dilation_status){
+      case "dilate":
+        //do nothing
+        break;
+      case "dilating":
+        //Start timer
+        var dilation_headstart = parseInt($(dilation_timer).attr("data-dilation-headstart"));
+        $("#dilation-timer").timer({
+          seconds: dilation_headstart,
+          format: '%H:%M:%S'  //Display time as 00:00:00
+        });
+        break;
+      case "dilated":
+        //do nothing
+        break;
+    }
+  })
+</script>
+<%end%>
+<%end%>

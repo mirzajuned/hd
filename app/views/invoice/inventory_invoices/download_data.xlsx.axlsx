@@ -1,0 +1,42 @@
+wb = xlsx_package.workbook
+
+wb.styles do |style|
+
+  column_heading = ch = style.add_style(b: true, sz: 10, bg_color: "87CEFA", :alignment => { :horizontal => :center })
+  desc_heading = style.add_style(b: true, sz: 9, bg_color: "EC8C04")
+  normal_heading = style.add_style(sz: 9, :alignment => { :horizontal => :center })
+  summary_heading = style.add_style(b: true, sz: 10, bg_color: "FDB0C0", :alignment => { :horizontal => :center }, format_code: "###0.00;[Red]-###0.00")
+  if params[:gst_include] == '1'
+    gst_ch = style.add_style(b: true, sz: 10, bg_color: "FDB0C0", :alignment => { :horizontal => :center })
+    gst_column_headings = [ch, ch, ch, ch, ch, ch, ch, ch, ch, ch, ch, ch, gst_ch, gst_ch, gst_ch, gst_ch, gst_ch, ch , ch, ch, ch, ch, ch]
+    column_heading = gst_column_headings
+  end
+
+  wb.add_worksheet(name: "Items") do |sheet|
+
+    @description.each do |head, value|
+      sheet.add_row([head, value, ''], style: desc_heading)
+    end
+    sheet.add_row
+
+    # Create the header row
+    sheet.add_row xlsx_headings(@department_id, params[:gst_include]), style: column_heading, :widths => [15, :auto, :auto]
+
+    # Create entries for each item
+    if @data_array.size > 0
+      cols = if @department_id == '50121007'
+             params[:gst_include] == '1' ? 21 : 20
+           else
+             params[:gst_include] == '1' ? 18 : 17
+           end
+      @data_array.each do |item|
+        sheet.add_row item[0..cols], style: normal_heading
+      end
+      sheet.add_row []
+      sheet.add_row @summary, style: summary_heading
+
+    else
+      sheet.add_row ['No Order To Display']
+    end
+  end
+end

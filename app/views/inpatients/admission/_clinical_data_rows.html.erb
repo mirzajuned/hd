@@ -1,0 +1,85 @@
+<% specialities = (current_facility.specialty_ids & current_user.specialty_ids).count %>
+<% admission_list.try(:each) do |admission| %>
+  <% patient = @patient_fields.find { |p| p[:id].to_s == admission.patient_id.to_s } %>
+  <div class='row no_margin summary_admission summary_admission_clickable' data-admission-id='<%= admission.admission_id %>'>
+    <div class='col-xs-4 no_padding text-left'>
+      <div class="overflow patient-name">
+        <% if patient.present? && patient[:bang] %>
+          <span title="<%= patient[:title] %>"><%= patient[:bang] ? "<b><i class='fa fa-exclamation' style='font-size: 14px;color:#FF8735;'></i>&nbsp;</b>".html_safe : "" %></span>
+        <% end %>
+        <span><b><%= admission.patient_name.to_s.upcase %></b></span>
+      </div>
+      <div class="overflow admission-reason">
+        <b style='font-size:12px;'>Reason : <%= admission.reason_for_admission %></b>
+      </div>
+      <div class="overflow admitting-doctor">
+        <b style='font-size:12px;'>Doctor : <%= admission.admitting_doctor %></b>
+      </div>
+    </div>
+    <div class='col-xs-3 no_padding text-center'>
+      <div class="overflow admission-datetime">
+        <% opacity = admission.current_state == "Discharged" ? "0.5" : "1" %>
+        <span style='font-size: 12px;opacity: <%= opacity %>'>
+          Adm: <%= admission.admission_time.in_time_zone.strftime('%I:%M %p') %>
+          <% if admission.current_state == "Admitted" || admission.current_state == "Scheduled" %>
+            <% unless admission.admission_date == Date.current %>
+              <%= admission.admission_date.strftime(' (%d%b)') %>
+            <% else %>
+              (Today)
+            <% end %>
+          <% end %>
+        </span>
+      </div>
+      <% if admission.discharge_time.present? && admission.discharge_date.present? %>
+        <div class="overflow discharge-datetime">
+          <% opacity = admission.current_state == "Discharged" ? "1" : "0.5" %>
+          <span style='font-size: 12px;opacity: <%= opacity %>;'>
+            Dis: <%= admission.discharge_time.in_time_zone.strftime('%I:%M %p') %>
+            <% if admission.current_state == "Admitted" || admission.current_state == "Scheduled" %>
+              <% unless admission.discharge_date == Date.current %>
+                <%= admission.discharge_date.strftime(' (%d%b)') %>
+              <% else %>
+                (Today)
+              <% end %>
+            <% end %>
+          </span>
+        </div>
+      <% end %>
+      <% if specialities > 1 && admission.specialty_name.present? %>
+        <div class="overflow specialty">
+          <span class="label label-info" title="Specialty Name"><%= admission.specialty_name %></span>
+        </div>
+      <% end %>
+    </div>
+    <div class='col-xs-2 overflow no_padding text-center'>
+      <div class="overflow admission-type">
+        <% atis = AdmissionListViewsHelper.admission_type_insurance_state(admission) %>
+        <span class="<%= atis[2] %>" title="<%= atis[3] %>"><i class="<%= atis[0] %>"> <%= atis[1] %></i></span>
+      </div>
+      <div class="overflow admission-stage">
+        <span style="font-size:12px;"><%= admission.admission_stage.to_s.titleize %></span>
+      </div>
+      <div class="overflow admission-ward">
+        <span style='font-size:12px;'>
+          <% if admission.ward_code.nil? || admission.room_code.nil? || admission.bed_code.nil? %>
+            <!-- <i class="fa fa-bed"></i> : DAYCARE -->
+          <% else %>
+            <i class="fa fa-bed"></i> : <%= admission.ward_code.try(:upcase) %>/<%= admission.room_code.try(:upcase) %>/<%= admission.bed_code.try(:upcase) %>
+          <% end %>
+        </span>
+      </div>
+    </div>
+    <div class="col-xs-3 overflow no_padding text-left">
+      <div class="overflow stages" style="font-size: 10px;padding-left: 5px;">
+        <% last_milestones = admission.admission_milestones.last(2) %>
+        <% last_milestones.each do |milestone| %>
+          <div class="mb5 mt5"><i class="fa fa-check"></i> <%= milestone.label.try(:titleize) %></div>
+        <% end %>
+        <% if last_milestones.count > 0 && last_milestones.last.position != 10 %>
+          <% next_milestone = AdmissionListViewsHelper.next_milestone(admission, last_milestones.last) %>
+          <div class="mb5 mt5"><i class="fa fa-spinner"></i> <%= next_milestone %></div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+<% end %>

@@ -1,0 +1,169 @@
+<div class="modal-dialog modal-lg" style="width: 95%">
+  <div class="modal-content">
+    <%= simple_form_for(@ehr_investigation_record,as: :ehr_investigation_record,:url => {:controller => "records",:action => 'create_all_reports'}, :remote => true) do |f| %>
+        <%= f.error_notification %>
+        <div class="modal-header hidden-print">
+          <div class="pull-right">
+            <%= f.button :submit,class: "btn btn-sm btn-success" %>
+            <button aria-hidden="true" class="btn btn-sm btn-default" data-dismiss="modal">Close</button>
+          </div>
+
+          <div class="text-center">
+            <h4 class="modal-title">Create Record</h4>
+          </div>
+        </div>
+
+        <div class="modal-body ">
+          <div class="row">
+            <div class="col-md-9 template-new-sidebar" >
+              <div class="row mb20 text-left" style="border-bottom: 1px solid #e5e5e5">
+                <div class="col-md-4">
+                  <b style="color:#000;">Name:</b> <%= @patient.fullname %>
+                </div>
+                <div class="col-md-4">
+                  <b style="color:#000;">Age/Sex:</b> <%if @patient.calculate_age.present? || @patient.gender.present?%><%= @patient.calculate_age %>/<%= @patient.gender %><% else %> Unavailable<% end %>
+                </div>
+                <div class="col-md-4">
+                  <b style="color:#000;">Patient ID  :</b> <%= @patient.patient_mrn.empty? ? @patient.patient_identifier_id : @patient.patient_mrn%>
+                </div>
+                <!--<div class="col-md-2">-->
+                <!--<b style="color:#000;">INV Date:</b> 13 Jan'17-->
+                <!--</div>-->
+              </div>
+              <div class="panel-heading mb10" style="padding: 0;">
+                <div class="row mb10" style="margin-left: 20px;">
+                  <h5 class="col-md-4 text-center">
+                    <strong>INVESTIGATION</strong>
+                  </h5>
+
+                  <h5 class="col-md-4 text-center">
+                    <strong>RESULT</strong>
+                  </h5>
+
+                  <h5 class="col-md-4 text-center">
+                    <strong>NORMAL RANGE</strong>
+                  </h5>
+
+                </div>
+              </div>
+              <% @patient_investigation.each_with_index do |pat_investigation,i|%>
+                  <%= f.fields_for @ehr_investigation_record,pat_investigation do |p| %>
+                      <%= p.hidden_field :loinc_class,name: 'ehr_investigation_record['+i.to_s+'][loinc_class]',:value => pat_investigation.try(:loinc_class) %>
+
+                      <%= p.hidden_field :loinc_code,name: 'ehr_investigation_record['+i.to_s+'][loinc_code]',:value => pat_investigation.try(:loinc_code) %>
+
+                      <% type = Investigation::InvestigationDetails::DocumentType.new(pat_investigation.id.to_s).get_ehr_investigation_type %>
+
+                      <%= p.hidden_field :_type,name: 'ehr_investigation_record['+i.to_s+'][_type]',:value => type %>
+                      <%= p.hidden_field :template_created_by,name: 'ehr_investigation_record['+i.to_s+'][template_created_by]',:value => current_user.id %>
+                      <%= p.hidden_field :patient_id,name: 'ehr_investigation_record['+i.to_s+'][patient_id]',:value => pat_investigation.patient_id %>
+
+                      <%= p.hidden_field :appointment_id,name: 'ehr_investigation_record['+i.to_s+'][appointment_id]',:value => pat_investigation.appointment_id %>
+
+                      <%= p.hidden_field :requested_by,name: 'ehr_investigation_record['+i.to_s+'][requested_by]',:value => pat_investigation.requested_by %>
+
+                      <%= p.hidden_field :advised_by,name: 'ehr_investigation_record['+i.to_s+'][advised_by]',:value => pat_investigation.advised_by %>
+
+                      <%= p.hidden_field :advised_at,name: 'ehr_investigation_record['+i.to_s+'][advised_at]',:value => pat_investigation.advised_at %>
+
+                      <%= p.hidden_field :performed_by,name: 'ehr_investigation_record['+i.to_s+'][performed_by]',:value => pat_investigation.performed_by %>
+
+                      <%= p.hidden_field :performed_at,name: 'ehr_investigation_record['+i.to_s+'][performed_at]',:value => pat_investigation.performed_at %>
+
+                      <%= p.hidden_field :opd_record_id,name: 'ehr_investigation_record['+i.to_s+'][opd_record_id]',:value => pat_investigation.opd_record_id %>
+
+                      <%= p.hidden_field :facility_id,name: 'ehr_investigation_record['+i.to_s+'][facility_id]',:value => current_facility.id %>
+
+                      <%= p.hidden_field :investigation_full_code,name: 'ehr_investigation_record['+i.to_s+'][investigation_full_code],',:value => pat_investigation.investigation_full_code %>
+
+                      <%= p.hidden_field :name,name: 'ehr_investigation_record['+i.to_s+'][name]',:value => pat_investigation.name %>
+
+                      <%= p.hidden_field :organisation_id,name: 'ehr_investigation_record['+i.to_s+'][organisation_id]',:value => pat_investigation.organisation_id %>
+
+                      <%= p.hidden_field :investigation_advised_id,name: 'ehr_investigation_record['+i.to_s+'][investigation_advised_id]',:value => pat_investigation.id %>
+                      <% lab_data = @investigation_tests.find_by(loinc_code: pat_investigation.try(:loinc_code)) %>
+                      
+                      <% if type == 'EhrInvestigation::LaboratoryRecord' %>
+                        <% if lab_data.panel_ids.present? %>
+                          <% panel_data = @panel_investigation.where(:loinc_code.in => lab_data.try(:panel_ids))  %>
+                        <% else %>
+                          <% panel_data = [] %>
+                        <% end %>
+                      <% else %>
+                        <% panel_data = [] %>
+                      <% end %>
+                      
+                      <% if panel_data.count > 0  %>
+                          <%= render partial: 'ehr_investigation/records/all/all_panel_form',locals: {pat_investigation: pat_investigation,p: p,i: i,panel_data: panel_data,type: type} %>
+                      <%else %>
+                          <%= render partial: 'ehr_investigation/records/all/all_form',locals: {p: p,pat_investigation: pat_investigation,i: i,type: type}%>
+                      <%end %>
+                          <%= fields_for :record_histories do |record| %>
+                              <%= record.hidden_field :user_id,name: 'investigation_record['+i.to_s+'][record_histories_attributes][0][user_id]',:value => current_user.id.to_s%>
+                              <%= record.hidden_field :action,name: 'investigation_record['+i.to_s+'][record_histories_attributes][0][action]',:value => 'C'%>
+                              <%= record.hidden_field :actiontime,name: 'investigation_record['+i.to_s+'][record_histories_attributes][0][actiontime]',:value => Time.current%>
+                              <%= record.hidden_field :template_type,name: 'investigation_record['+i.to_s+'][record_histories_attributes][0][template_type]',:value => type%>
+                          <%end%>
+
+                      <!--</div>-->
+                  <% end %>
+              <% end %>
+            </div>
+            <%= render 'template_sidebar' %>
+          </div>
+        </div>
+        <div class="modal-footer hidden-print">
+
+        </div>
+    <% end %>
+  </div>
+
+</div>
+<style>
+    .circle-text
+    {
+        border-radius: 100%;
+        background-color: #026AA7;
+        padding: 7px 10px;
+        font-size: 12px;
+        color: white;
+        font-weight: bold;
+    }
+
+</style>
+
+<script>
+    $(".testing-tooltip").tooltip();
+    //    $('.last-updated').on('hover',function(){
+    //        $('.hidden-history').show();
+    //    })
+    $(".last-updated").on({
+        mouseover: function () {
+            $(".hidden-history").show();
+        },
+
+        mouseout: function () {
+            $(".hidden-history").hide();
+        }
+    });
+    $(".hidden-history").on({
+        mouseover: function () {
+            $(".hidden-history").show();
+        },
+
+        mouseout: function () {
+            $(".hidden-history").hide();
+        }
+    });
+    $('.datepicker').each(function(){
+        $(this).datepicker({
+            format: 'dd/mm/yy'
+        });
+    });
+    $('#fill-lab-record').on('shown.bs.modal', function (e) {
+        // do something..
+        var modal_height = $('.template-new-sidebar').height();
+        $('.template-sidebar').css('height',modal_height+'px')
+    })
+
+</script>

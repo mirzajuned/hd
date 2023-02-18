@@ -1,0 +1,406 @@
+<% unless current_facility.clinical_workflow %>
+    <%= render 'opd_appointments/calendar/calendar_appointment_details_without_workflow'%>
+<% else%>
+    <% if current_user.role_ids.include?159561009 || current_user.role_ids.include?(106292003)%>
+      <%= render partial: 'opd_appointments/list/receptionist',locals: {source: @source}%>
+    <% elsif current_user.role_ids.include?59561000 || current_user.role_ids.include?(106292003)%>
+      <%= render partial: 'opd_appointments/list/receptionist',locals: {source: @source}%>
+    <%elsif current_user.role_ids.include?158965000 || current_user.role_ids.include?158966000 %>
+      <%= render partial: 'opd_appointments/list/doctor',locals: {source: @source}%>
+    <%elsif current_user.role_ids.include?28229004%>
+      <%= render partial: 'opd_appointments/list/optometrist',locals: {source: @source}%>
+    <%elsif current_user.role_ids.include?28221005%>
+      <%= render partial: 'opd_appointments/list/ar_nct',locals: {source: @source}%>
+    <% elsif current_user.role_ids.include?106292003 || current_user.role_ids.include?(106292003)%>
+      <%= render partial: 'opd_appointments/list/other_roles',locals: {source: @source}%>
+    <% elsif current_user.role_ids.include?405277009 || current_user.role_ids.include?(106292003)%>
+      <%= render partial: 'opd_appointments/list/other_roles',locals: {source: @source}%>
+    <%end%>
+<% end %>
+
+<%if @eyedrop_allergy.present?%>
+    <div id="dialog-confirm" title="Do you still want to Dilate ?" class="hidden">
+      <p><span class="ui-icon ui-icon-alert" style="float:left; margin:12px 12px 20px 0;"></span> Patient is allergic to <strong><%= "#{@eyedrop_allergy.join(", ")}" %>.</strong></p>
+    </div>
+<%end%>
+
+<style type="text/css">
+
+  .ui-dialog{
+    background-color: #FFFFFF;
+    /*border: solid 1px black;*/
+    border-radius: 3px;
+    top: 30% !important;
+  }
+
+  .ui-dialog-titlebar{
+    border-bottom: 1px solid #e5e5e5;
+  }
+
+  .ui-widget-overlay{
+    background: #333;
+    opacity: 0.6;
+  }
+
+  .ui-dialog .ui-dialog-buttonpane button {
+    background-color: #31b0d5;
+    border: 1px;
+    color: #FFFFFF;
+    padding: 0px 10px;
+    border-radius: 3px;
+    border-color: #46b8da;
+  }
+
+  .ui-dialog-titlebar-close{
+
+  }
+
+    .yes_padding {
+        padding: 10px 5px;
+    }
+
+    .patient_profile_pic{
+        border: 3px solid white;
+        border-radius: 3px;
+        box-shadow: 0px 0px 5px rgba(0,0,0,0.4);
+        width: 75%;
+        height: 85%;
+    }
+
+    .appointment-control{
+        margin-bottom: 3px;
+    }
+
+    .navnew-btn-pri {
+        background: transparent;
+        color: #337ab7;
+        padding: 2px 5px;
+    }
+
+    .navnew-btn-info {
+      background: transparent;
+      color: #5bc0de;
+      padding: 2px 5px;
+    }
+
+    .navnew-btn-dan {
+        background: transparent;
+        color: #d9534f;
+        padding: 2px 5px;
+    }
+
+    .navnew-btn-def {
+        background: transparent;
+        color: #333;
+        padding: 2px 5px;
+    }
+
+    /*.doc_reminder_text{
+        border: 0px;
+        width: 90%;
+        color: white;
+        background: #3071A9;
+        border-radius: 3px;
+        padding: 3px;
+        overflow-y: hidden;
+    }
+
+    .doc_reminder_text:focus {
+        background-color: #FFF;
+        color: #000;
+    }
+
+    .doc_reminder_text:hover {
+
+    }
+*/
+    .numberCircle {
+        border-radius: 50%;
+        /*behavior: url(PIE.htc); !* remove if you don't care about IE8 *!*/
+
+        width: 40px;
+        height: 40px;
+        padding: 0px;
+
+        background: #354670;
+        border: 2px solid #354670;
+        color: #FFF;
+        text-align: center;
+
+        margin: auto;
+        margin-top: 5px;
+
+        cursor: pointer;
+
+        font: 32px Arial, sans-serif;
+    }
+
+    .appointment-control .btn-group{
+        margin-bottom: 0px;
+    }
+
+    .appointment-control{
+
+    }
+
+    .btn-engage-patient{
+        margin-left: 10px;
+    }
+
+    #dilation-timer{
+        font-size: 25px;
+        /*padding: 0.5em 0.7em;*/
+        /*color: #ecf0f1;*/
+        /*margin-bottom: 50px;*/
+        -webkit-transition: background 0.5s ease-out;
+        transition: background 0.5s ease-out;
+        text-align: center;
+        /*text-shadow: 0 3px 2px rgba(0, 0, 0, 0.3);*/
+        text-shadow:
+        0 0 1px #fff,
+        0 1px 2px rgba(0,0,0,0.4);
+
+        transition: opacity 500ms;
+        margin-bottom: 8px;
+    }
+
+    .btn-dilate{
+        cursor: pointer;
+    }
+
+    .edit_patient_info {
+        color: #636e7b;
+    }
+    .edit_patient_info:hover {
+        text-decoration: none;
+        color: #636e7b;
+    }
+
+</style>
+<script type="text/javascript">
+
+    $(".btn-sign-patient").on('click', function(){
+        _this = this;
+        $.ajax({
+            url: $(_this).attr('data-path'),
+            dataType: 'script',
+            data: {
+                appointment_id: "<%= @appointment.id %>"
+            },
+            success: function(res){
+                $("#calendar").fullCalendar('refetchEvents');
+            },
+            error: function(err){
+            }
+        })
+    });
+
+
+    $(".btn-dilate").on('click', function(e) {
+
+      url = $(this).attr("data-dilation-path");
+      if ("<%= Patient.find_by(id: @appointment.patient_id).patient_history.patientallergyhistory.eyedrops.present? %>" == "true" && url.indexOf("dilate_patient")>-1 ) {
+        e.preventDefault();
+        $('#dialog-confirm').removeClass("hidden")
+        var dialog = $('#dialog-confirm').dialog({
+          resizable: false,
+          height: "auto",
+          width: 400,
+          modal: true,
+          buttons: {
+            "Dilate": function() {
+              $.ajax({
+                url: url,
+                dataType: 'json',
+                success: function (res) {
+                  //start counter
+                  var hidden_appointment_id = $("#modalCalendarAppointmentDetailsBody").find("#calender_hidden_id")
+                  var appointment_id = $('#hidden_appointment_id').val()
+                  var detailsArea = $("#modalCalendarAppointmentDetailsBody");
+                  $(detailsArea).html("<div class='loading_dots'><span></span>&nbsp;<span></span>&nbsp;<span></span></div>");
+                  $.ajax({
+                    url: "/opd_appointments/calendar_appointment_details",
+                    data: {
+                      appointment_id: appointment_id
+                    },
+                    dataType: 'html',
+                    success: function (res) {
+                       $(detailsArea).html(res)
+                      $("#refreshappointmentcalendar").trigger('click')
+                    },
+                    error: function (err) {
+                    }
+                  });
+                },
+                error: function (err) {
+                }
+              })
+              dialog.dialog('close');
+            },
+
+            "No":  function() {
+              dialog.dialog('close');
+            }
+          }
+        });
+        $('.ui-dialog-titlebar-close').addClass("fa fa-close")
+
+      }
+      else{
+        $.ajax({
+          url: url,
+          dataType: 'json',
+          success: function (res) {
+            //start counter
+            var hidden_appointment_id = $("#modalCalendarAppointmentDetailsBody").find("#calender_hidden_id")
+            var appointment_id = $('#hidden_appointment_id').val()
+            var detailsArea = $("#modalCalendarAppointmentDetailsBody");
+            $(detailsArea).html("<div class='loading_dots'><span></span>&nbsp;<span></span>&nbsp;<span></span></div>");
+            $.ajax({
+              url: "/opd_appointments/calendar_appointment_details",
+              data: {
+                appointment_id: appointment_id
+              },
+              dataType: 'html',
+              success: function (res) {
+                 $(detailsArea).html(res)
+                $("#refreshappointmentcalendar").trigger('click')
+              },
+              error: function (err) {
+              }
+            });
+          },
+          error: function (err) {
+          }
+        })
+      }
+    });
+
+    $("#btnGetInvoiceAmount").on('click', function(){
+        that = this;
+        $(this).addClass('fa-spin');
+
+        $.ajax({
+            url: '/opd_appointments/get_invoice_amount',
+            dataType: 'json',
+            data: {
+                appointment_id: "<%= @appointment.id %>"
+            },
+            success: function(res){
+                amount = res.amount;
+                if(amount){
+                    $("#labelInvoiceAmount").text(res.amount);
+                    $(that).removeClass("fa-spin");
+                } else {
+                    $(that).removeClass("fa-spin");
+                }
+            },
+            error: function(err){
+                alert("Something went wrong. Please try again.");
+                $(that).removeClass("fa-spin");
+            }
+        });
+    });
+
+    $(".appointment-action").on('click', function(e){
+        e.preventDefault();
+        var _this = this;
+        $.ajax({
+            url: $(_this).attr('data-path'),
+            dataType: 'script',
+            data: {
+                type: $(_this).attr('data-type'),
+                cash_register_template: $(_this).attr('data-cash-register-template'),
+                typeid: $(_this).attr('data-typeid'),
+                appointmentid: "<%= @appointment.id %>",
+                appointment_id: "<%= @appointment.id %>"
+            }
+        })
+    })
+
+    var dilation_timer = $("#dilation-timer")
+    var dilation_status = $(dilation_timer).attr("data-dilation-status");
+    switch(dilation_status){
+        case "dilate":
+            //do nothing
+            break;
+        case "dilating":
+            //Start timer
+            var dilation_headstart = parseInt($(dilation_timer).attr("data-dilation-headstart"));
+            $("#dilation-timer").timer({
+                seconds: dilation_headstart,
+                format: '%H:%M:%S'  //Display time as 00:00:00
+            });
+            break;
+        case "dilated":
+            //do nothing
+            break;
+    }
+
+    $("#edit-patient-info").on('click', function(e){
+        var patient_id = $(this).attr('data-patient-id');
+        $.ajax({
+            url: "/patients/" + patient_id + "/edit",
+            dataType: 'script'
+        });
+    });
+
+    $(".edit_patient_info").on('hover', function(){
+        $(this).append("&nbsp;Edit")
+    })
+    $(".edit_patient_info").on('mouseleave', function(){
+        $(this).html("<i class='fa fa-edit'></i>")
+    })
+
+
+    // $(".doc_reminder_text").on('focusout',function(e){
+
+    //     $(this).attr('title',$(this).val())
+
+
+    //     jQuery.ajax({
+    //         type: "GET",
+    //         url: '/patients/save_doc_reminder_note',
+    //         data: {
+    //             reminder_text: $(this).val(),
+    //             patient_id:'<%= @appointment.patient.id.to_s %>',
+    //             doctor_id: '<%= @appointment.doctor.to_s %>',
+    //             remote: "true"
+    //         },
+    //         success: function(res){
+    //         }
+    //     });
+    // })
+
+    $(".btn-surgery_advised").on('click', function(){
+      var appointment_id = $("#hidden_appointment_id").val();
+      var state = $(this).attr('data-state');
+      $.ajax ({
+        type: "GET",
+        dataType: "json",
+        url: '/opd_appointments/surgery_advised',
+        data: {
+          id: appointment_id,
+          state: state
+        },
+        success: function(res){
+          $("#calendar").fullCalendar('refetchEvents');
+        }
+      })
+    })
+    jQuery('.minimize').click(function(){
+        var t = jQuery(this);
+        var p = t.closest('.panel');
+        if(!jQuery(this).hasClass('maximize')) {
+            p.find('.panel-body, .panel-footer').slideUp(200);
+            t.addClass('maximize');
+            t.html('&plus;');
+        } else {
+            p.find('.panel-body, .panel-footer').slideDown(200);
+            t.removeClass('maximize');
+            t.html('&minus;');
+        }
+        return false;
+    });
+
+</script>

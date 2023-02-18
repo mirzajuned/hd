@@ -1,0 +1,140 @@
+$("#btn-add-ot-room").on('click', function(e){
+  e.preventDefault();
+  let facility_id = $("#ot_rooms_facility_id").val();
+  let otRoomRowCount = $(".ot-room-row").length
+  let otroomDetails = `
+    <div class="row ot-room-row mb10">
+      <input type="hidden" name="ot_rooms[${otRoomRowCount}][organisation_id]" id="ot_rooms_${otRoomRowCount}_organisation_id" value="<%= current_facility.organisation_id %>" />
+      <input type="hidden" name="ot_rooms[${otRoomRowCount}][facility_id]" id="ot_rooms_${otRoomRowCount}_facility_id" class="ot_rooms_facility_id" value="${facility_id}" />
+      <div class="col-md-1"></div>
+      <div class="col-md-3">
+        <input type="text" class="form-control p5_10 ot-name" name="ot_rooms[${otRoomRowCount}][name]" id="ot_rooms_${otRoomRowCount}_name">
+      </div>
+      <div class="col-md-3">
+      <select class="form-control p5_10 ot-specialty_id" name="ot_rooms[${otRoomRowCount}][specialty_id]" id="ot_rooms_${otRoomRowCount}_specialty_id">
+      </select>
+      </div>
+      <div class="col-md-3">
+        <input type="number" min="1" max="100" class="form-control p5_10 ot-capacity" name="ot_rooms[${otRoomRowCount}][capacity]" id="ot_rooms_${otRoomRowCount}_capacity">
+      </div>
+      <div class="col-md-1">
+        <button class="btn btn-danger btn-remove-ot-room  btn-xs" id="ot_rooms_${otRoomRowCount}_remove"><i class="fa fa-trash-alt"></i></button>
+      </div>
+      <div class="col-md-1"></div>
+    </div>
+  `
+  $(".ot-form-row").append(otroomDetails)
+  _renumber_id_after_add(".ot-form");
+  if($(".btn-remove-ot-room").length > 1){
+    $(".btn-remove-ot-room").removeAttr('disabled', 'disabled');
+  }
+
+  $(".ot-specialty_id").select2();
+  get_specialty(facility_id, true);
+});
+
+function _renumber_id_after_remove(removed) {
+  var counter = jQuery(removed).find(".ot-room-row").length - 1
+  jQuery(removed).find(".ot-room-row").each(function() {
+    jQuery(this).find("input").each(function(index, element) {
+      var nameattr, idattr;
+      nameattr = element.name.replace(/\[[0-9]+\]/g, '['+counter+']');
+      idattr = element.id.replace(/\_[0-9]+\_/g, '_'+counter+'_');
+      jQuery(this).attr('name', nameattr);
+      jQuery(this).attr('id', idattr);
+    });
+    jQuery(this).find("select").each(function(index, element) {
+      var nameattr, idattr;
+      nameattr = element.name.replace(/\[[0-9]+\]/g, '['+counter+']');
+      idattr = element.id.replace(/\_[0-9]+\_/g, '_'+counter+'_');
+      jQuery(this).attr('name', nameattr);
+      jQuery(this).attr('id', idattr);
+    });
+    jQuery(this).find("a").each(function(index, element) {
+      var idattr;
+      idattr = element.id.replace(/[0-9]/g, counter);
+      jQuery(this).attr('id', idattr);
+    });
+    counter--;
+  });
+}
+
+function _renumber_id_after_add(added) {
+  var counter = 0
+  jQuery(added).find(".ot-room-row").each(function() {
+    jQuery(this).find("input").each(function(index, element) {
+      var nameattr, idattr;
+      nameattr = element.name.replace(/\[[0-9]+\]/g, '['+counter+']');
+      idattr = element.id.replace(/\_[0-9]+\_/g, '_'+counter+'_');
+      jQuery(this).attr('name', nameattr);
+      jQuery(this).attr('id', idattr);
+    });
+    jQuery(this).find("select").each(function(index, element) {
+      var nameattr, idattr;
+      nameattr = element.name.replace(/\[[0-9]+\]/g, '['+counter+']');
+      idattr = element.id.replace(/\_[0-9]+\_/g, '_'+counter+'_');
+      jQuery(this).attr('name', nameattr);
+      jQuery(this).attr('id', idattr);
+    });
+    jQuery(this).find("a").each(function(index, element) {
+      var idattr;
+      idattr = element.id.replace(/[0-9]/g, counter);
+      jQuery(this).attr('id', idattr);
+    });
+    counter++;
+  });
+}
+
+
+$(".ot-form-row").on('click',".btn-remove-ot-room", function(e){
+  e.preventDefault();
+  $(this).closest(".ot-room-row").remove();
+  _renumber_id_after_remove(".ot-form",".ot-form-row")
+  if($(".btn-remove-ot-room").length == 1){
+    $(".btn-remove-ot-room").attr('disabled', 'disabled');
+  }
+});
+
+//specialty dropdown change
+function get_specialty(facility_id, last){
+  $.ajax({
+    type: "GET",
+    dataType: "json",
+    url: "/ot_rooms/search_specialty",
+    data: { facility_id: facility_id },
+    success: function(response){
+      if(last){
+        specialty_dropdown = '.ot-specialty_id:last'
+      }else{
+        specialty_dropdown = '.ot-specialty_id'
+      }
+      $(specialty_dropdown).children().remove();
+      if (response.length == 0){
+        $(specialty_dropdown).append($("<option></option>").attr("value","").text("No Specialty Available")).trigger('change.select2');
+      } else {
+        $.each(response, function(key, value) {
+          $(specialty_dropdown).append($("<option></option>").attr("value",value[1]).text(value[0])).trigger('change.select2');
+        });
+      }
+    }
+  });
+}
+
+//to change specialty on change of facility
+$("#ot_rooms_facility_id").on('change', function(){
+  var facility_id = $(this).val()
+  $(".ot_rooms_facility_id").val(facility_id)
+  get_specialty(facility_id, false)
+}).trigger("change");
+
+
+$("#ot_rooms_facility_id").select2();
+$(".ot-specialty_id").select2();
+
+const otformvalidation = () => {
+  $("#new-ot-form").validate();
+  $.validator.addClassRules("ot-name", { required: true });
+  $.validator.addClassRules("ot-specialty_id", { required: true });
+  $.validator.addClassRules("ot-capacity", { required: true });
+};
+otformvalidation();

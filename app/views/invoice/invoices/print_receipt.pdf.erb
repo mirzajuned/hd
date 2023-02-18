@@ -1,0 +1,68 @@
+<% precision = (@payment_received.currency_id == "VND001") ? 0 : 2  %>
+<div class="row advance_payment">
+  <div class="col-md-12">
+    <% if @invoice._type == "Invoice::Ipd" %>
+      <div class="row mb5">
+        <span style="font-size:12px;" class="text-center col-md-12"><b>InPatient Receipt</b></span>
+      </div>
+      <div class="row patient-info mb20">
+        <%= render partial: 'invoice/ipd/overall_info.html.erb', locals: { patient: @patient , admission: @admission, invoice: @invoice, flag: "Invoice", current_user: current_user } %>
+      </div>
+    <% else %>
+      <div class="row mb5">
+        <span style="font-size:12px;" class="text-center col-md-12"><b>OutPatient Receipt</b></span>
+      </div>
+      <div class="row patient-info mb20">
+        <%= render partial: 'invoice/opd/overall_info.html.erb', locals: { patient: @patient , appointment: @appointment, invoice: @invoice, flag: "Invoice", current_user: current_user } %>
+      </div>
+    <% end %>
+    <hr/>
+    <div class="row advance-info mb20">
+      <div class="col-md-12">
+        <% amount_with_precision = number_with_precision(@payment_received.try(:amount_received).to_f, precision: precision) %>
+        <% amount_display = Common::Finance::NumberFormatService.call(@number_format, amount_with_precision) %>
+        <p>Received with thanks a sum of <b><%= @payment_received.currency_symbol %> <%= amount_display %></b> from <b><%= @received_from.to_s.upcase %></b> towards <b><%= @invoice.bill_number %></b> by <b><%= @payment_received.mode_of_payment.titleize %></b> dated <b><%= @payment_received.date.strftime("%d/%m/%Y") %></b>.</p>
+        <% if @refund_payments.present? %>
+          <% @refund_payments.each do |refund_payment| %>
+            <% amount_with_precision = number_with_precision(refund_payment.amount, precision: precision) %>
+            <% amount_display = Common::Finance::NumberFormatService.call(@number_format, amount_with_precision) %>
+            <p>Refunded a sum of <b><%= refund_payment.currency_symbol %> <%= amount_display %></b> to <b><%= @patient.fullname.to_s.upcase %></b> by <b><%= refund_payment.mode_of_payment.titleize %></b> dated <b><%= refund_payment.payment_date.strftime("%d/%m/%Y") %></b>.</p>
+            <p>Refund Remark:  <b><%= refund_payment.reason || "-" %></b></p>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+    <div class="row footer-info">
+      <div class="col-md-8">
+        <% amount_with_precision = number_with_precision(@payment_received.try(:amount_received).to_f, precision: precision) %>
+        <% amount_display = Common::Finance::NumberFormatService.call(@number_format, amount_with_precision) %>
+        <b style="font-size: 12px;"><%= @payment_received.currency_symbol %> <%= amount_display %>/-</b>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-md-7">
+        <% if @organisation_settings.cin.present? %>
+          <strong>CIN:&nbsp;&nbsp;</strong><%= @organisation_settings.cin %><br/>
+        <% end %>
+        <% if @invoice.tax_enabled %>
+          <% if @invoice_setting.gst_indentification_number.present? %>
+            <strong>GST No.:&nbsp;&nbsp;</strong><%= @invoice_setting.gst_indentification_number %>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-md-12">
+        <!--Signature-->
+        <%= render partial: 'common/user_signature.html.erb',locals: {user_id: @invoice.user.try(:id)} %>
+        <!--Signature Ends-->
+      </div>
+    </div>
+  </div>
+</div>
+
+<style type="text/css">
+  .advance_payment {
+     font-size: 10px;
+  }
+</style>

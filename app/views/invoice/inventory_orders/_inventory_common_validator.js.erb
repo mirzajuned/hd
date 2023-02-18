@@ -1,0 +1,243 @@
+function validate_inventory_orders_form() {
+  if ($('#invoice_inventory_order_payer_master_id').val() == "") {
+    $('#invoice_inventory_order_contact_group_id').val("")
+  }
+
+  if ($('#invoice_inventory_order_insurer_id').val() == "") {
+    $('#invoice_inventory_order_insurer_group_id').val("")
+  }
+
+  $("#inventory_orders_form").validate({
+    rules: {
+      "invoice_inventory_order[mode_of_payment]": {
+        required: true,
+      },
+      "invoice_inventory_order[total]": {
+        required: true,
+        number: true,
+      },
+      "invoice_inventory_order[additional_discount]": {
+        number: true,
+        min: 0,
+      },
+      "invoice_inventory_order[amount_remaining]": {
+        number: true,
+        min: 0,
+      },
+      "invoice_inventory_order[net_amount]": {
+        number: true,
+        min: 0,
+      },
+    },
+    messages: {
+      "invoice_inventory_order[amount_remaining]": {
+        number: "Enter advance amount",
+        min: "Advance cannot be more than net amount"
+      },
+      "invoice_inventory_order[net_amount]": {
+        number: "Required",
+        min: "Advance cannot be more than net amount"
+      }
+    },
+    errorPlacement: function (error, element) {
+      var id = $(element).attr("id");
+      var parent = $("#"+id).parents(".input-group").length
+      if(parent == 0){
+        error.insertAfter(element);
+      } else {
+        error.insertAfter($("#"+id).parents(".input-group"));
+      }
+    }
+  });
+}
+
+$.validator.addMethod("PaymentReceived", function(value, element) {
+  if ($('#delivery_pending').prop('checked')) {
+    if ($('#fullpaymentform').prop('checked')) {
+      return parseFloat($("#grand_total_inc_discount").val()) == parseFloat($("#invoice_total_payment").val());
+    } else if ($('#advancepaymentform').prop('checked')) {
+      return parseFloat($("#invoice_total_payment").val()) == parseFloat($('#invoice_inventory_order_advance_payment').val())
+    }
+  } else {
+    return parseFloat($("#grand_total_inc_discount").val()) == parseFloat($("#invoice_total_payment").val());
+  }
+}, "Review Payment Details");
+
+$.validator.addMethod("Number", $.validator.methods.digits, "Quantity Should be Number");
+$.validator.addMethod("checkQuantity", function(value, element, options) {
+  var id = $(element).attr("id")
+  var item_quantity = $('#'+id).val()
+  var item_max_quantity = $('#'+id).siblings(".item_max_quantity").val()
+  if (!item_max_quantity) {
+    return true
+  }
+  else{
+    return this.optional(element) || parseFloat(item_quantity) <= parseFloat(item_max_quantity);
+  }
+}, "Cannot Checkout more than stock");
+
+$.validator.addMethod("ModeOfPayment", function(value, element) {
+  var mop = $(element).val()
+  var amount = $(element).closest(".payment_received_row").find(".payment_received_breakups_amount").val()
+  var invoice_type = $('.invoice_type:checked').val()
+  if(mop != ""){
+    return true
+  } else if((parseFloat(amount) > 0) && (mop == "")) {
+    return false
+  } else if ((mop == "") && (invoice_type == 'cash')) {
+    return false
+  } else {
+    return true
+  }
+}, "MOP Required");
+
+$.validator.addMethod("PaymentBreakup", function(value, element) {
+  var amount = $(element).val()
+  var invoice_type = $('.invoice_type:checked').val()
+  if (invoice_type == 'cash')
+  {
+
+    if (parseFloat(amount) < 0) {
+      return false
+    } else if (amount == "") {
+      return false
+    } else {
+      return true
+    }
+  }
+  else
+  {
+    return true
+  }
+}, "");
+
+$.validator.addMethod("CreditPaymentOption", function(value, element) {
+  var amount = parseFloat($(element).val()) || 0
+  var invoice_type = $('.invoice_type:checked').val()
+  if ((amount <= 0) && (invoice_type == 'credit')) {
+    return false
+  } else {
+    return true
+  }
+}, "Amount cant be zero if Credit is selected.");
+
+$.validator.addMethod("CreditPaymentBreakup", function(value, element) {
+  var amount = parseFloat($(element).val()) || 0
+  var payer = $(element).closest('.payment_pending_row').find('.payment_pending_breakups_received_from').val()
+  if ((amount > 0) && (payer == '') ) {
+    return false
+  } else {
+    return true
+  }
+}, "Payer Required.");
+
+$.validator.addMethod("pendingAdvanceMOP", function(value, element) {
+  amount = parseFloat($('.invoice_pending_advance_amount').val()) || 0
+  mop = $(element).val().length
+  reason = $('.invoice_pending_advance_reason').val().length
+  if ( ( amount > 0 || reason > 0 ) && (mop == 0) ) {
+    return false
+  } else {
+    return true
+  }
+}, "MOP Required");
+
+
+$.validator.addMethod("pendingAdvanceReason", function(value, element) {
+  amount = parseFloat($('.invoice_pending_advance_amount').val()) || 0
+  mop = $('.invoice_pending_advances_mode_of_payment').val().length
+  reason = $(element).val().length
+
+  if ( ((amount > 0) || mop > 0 ) && (reason == 0)) {
+    return false
+  } else {
+    return true
+  }
+}, "Reason Required");
+
+$.validator.addMethod("pendingAdvanceAmount", function(value, element) {
+  amount = parseFloat($(element).val()) || 0
+  mop = $('.invoice_pending_advances_mode_of_payment').val().length
+  reason = $('.invoice_pending_advance_reason').val().length
+  net_amount = parseFloat($('#grand_total_inc_discount').val()) || 0
+
+  if ( (mop > 0 || reason > 0) && (amount == 0) ) {
+    return false
+  } else if (amount > net_amount) {
+    return false
+  } else {
+    return true
+  }
+}, "");
+
+
+$.validator.addMethod("pendingAdvanceBalance", function(value, element) {
+  var amount = $('.invoice_pending_advance_amount').val()
+  if (amount == "")
+  {
+    return true
+  } else if ($('#pending_invoice_total_payment_remaining').val() < 0) {
+    return false
+  } else {
+    return true
+  }
+
+},"Amount should be equal or more than zero");
+
+$.validator.addMethod("checkFitter", function(value, element) {
+  if (($("#invoice_inventory_order_fitting_required").prop('checked'))) {
+    let fitter_id = $('#invoice_inventory_order_fitter_id').val()
+    if (fitter_id == '') {
+      return false
+    } else { return true }
+  } else { return true }
+
+},"Please select fitter first");
+
+$.validator.addMethod("checkEstimatedDeliveryDate", function(value, element) {
+  let delivery_date = $('#invoice_inventory_order_estimated_delivery_date').val().split('/')
+  let ready_date = $('#invoice_inventory_order_estimated_ready_date').val().split('/')
+  if (delivery_date == '' || ready_date == '') {
+    return true
+  } else {
+    let estimated_ready_date = ready_date[2]+ "/" + ready_date[1] + "/" + ready_date[0]
+    let estimated_delivery_date = delivery_date[2]+ "/" + delivery_date[1] + "/" + delivery_date[0]
+    if (new Date(estimated_delivery_date).getTime() >= new Date(estimated_ready_date).getTime()) {
+      return true
+    } else { return false }
+  }
+},"Delivery date can't be less than ready date");
+
+$.validator.addClassRules("item_quantity", { number: true, checkQuantity: true, required: true, min: 1});
+$.validator.addClassRules("invoice_total_payment", { PaymentReceived: true });
+$.validator.addClassRules("payment_received_breakups_mode_of_payment", { ModeOfPayment: true });
+$.validator.addClassRules("payment_received_breakups_amount", { PaymentBreakup: true });
+$.validator.addClassRules("invoice_payment_pending", { CreditPaymentOption: true });
+$.validator.addClassRules("payment_pending_breakups_amount", { CreditPaymentBreakup: true });
+$.validator.addClassRules("invoice_pending_advance_amount", { pendingAdvanceAmount: true });
+$.validator.addClassRules("invoice_pending_advances_mode_of_payment", { pendingAdvanceMOP: true });
+$.validator.addClassRules("invoice_total_payment_remaining", { pendingAdvanceBalance: true });
+$.validator.addClassRules("invoice_pending_advance_reason", { pendingAdvanceReason: true });
+$.validator.addClassRules("fitter-id", { checkFitter: true });
+$.validator.addClassRules("estimated-delivery-date", { checkEstimatedDeliveryDate: true });
+
+
+jQuery.extend(jQuery.validator.messages, {
+  required: "Required",
+  remote: "Please fix this field.",
+  email: "Please enter a valid email address.",
+  url: "Please enter a valid URL.",
+  date: "Please enter a valid date.",
+  dateISO: "Invalid date.",
+  number: "Invalid No.",
+  digits: "Please enter only digits.",
+  creditcard: "Please enter a valid credit card number.",
+  equalTo: "Please enter the same value again.",
+  accept: "Please enter a value with a valid extension.",
+  maxlength: jQuery.validator.format("Please enter no more than {0} characters."),
+  minlength: jQuery.validator.format("Please enter at least {0} characters."),
+  rangelength: jQuery.validator.format("Please enter a value between {0} and {1} characters long."),
+  range: jQuery.validator.format("Please enter a value between {0} and {1}."),
+  max: jQuery.validator.format("Please enter a value less than or equal to {0}."),
+  min: jQuery.validator.format("Please enter a value greater than or equal to {0}.")
+});

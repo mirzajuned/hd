@@ -1,0 +1,31 @@
+class FacilityCountJob < ActiveJob::Base
+  queue_as :urgent
+
+  def perform(*args)
+    @user = User.find(args[0])
+    @facility_timing_count = FacilityTimingCount.create(start_time: '00:00:00', end_time: '00:59:59', user_id: @user.id, facility_id: @user.facilities[0].id, organisation_id: @user.organisation.id)
+    @facility_timing_count = FacilityTimingCount.create(start_time: '01:00:00', end_time: '01:59:59', user_id: @user.id, facility_id: @user.facilities[0].id, organisation_id: @user.organisation.id)
+    @facility_timing_count = FacilityTimingCount.create(start_time: '02:00:00', end_time: '02:59:59', user_id: @user.id, facility_id: @user.facilities[0].id, organisation_id: @user.organisation.id)
+    @facility_timing_count = FacilityTimingCount.create(start_time: '03:00:00', end_time: '03:59:59', user_id: @user.id, facility_id: @user.facilities[0].id, organisation_id: @user.organisation.id)
+    @facility_timing_count = FacilityTimingCount.create(start_time: '04:00:00', end_time: '04:59:59', user_id: @user.id, facility_id: @user.facilities[0].id, organisation_id: @user.organisation.id)
+    @facility_timing_count = FacilityTimingCount.create(start_time: '05:00:00', end_time: '05:59:59', user_id: @user.id, facility_id: @user.facilities[0].id, organisation_id: @user.organisation.id)
+    @facility_timing_count = FacilityTimingCount.create(start_time: '06:00:00', end_time: '06:59:59', user_id: @user.id, facility_id: @user.facilities[0].id, organisation_id: @user.organisation.id)
+    @facility_timing_count = FacilityTimingCount.create(start_time: '07:00:00', end_time: '07:59:59', user_id: @user.id, facility_id: @user.facilities[0].id, organisation_id: @user.organisation.id)
+    @facility_timing_count = FacilityTimingCount.create(start_time: '08:00:00', end_time: '08:59:59', user_id: @user.id, facility_id: @user.facilities[0].id, organisation_id: @user.organisation.id)
+    @facility_timing_count = FacilityTimingCount.create(start_time: '09:00:00', end_time: '09:59:59', user_id: @user.id, facility_id: @user.facilities[0].id, organisation_id: @user.organisation.id)
+    @facility_timing_count = FacilityTimingCount.create(start_time: '10:00:00', end_time: '10:59:59', user_id: @user.id, facility_id: @user.facilities[0].id, organisation_id: @user.organisation.id)
+    @facility_timing_count = FacilityTimingCount.create(start_time: '11:00:00', end_time: '11:59:59', user_id: @user.id, facility_id: @user.facilities[0].id, organisation_id: @user.organisation.id)
+    @facility_timing_count = FacilityTimingCount.create(start_time: '12:00:00', end_time: '12:59:59', user_id: @user.id, facility_id: @user.facilities[0].id, organisation_id: @user.organisation.id)
+    @facility_timing_count = FacilityTimingCount.create(start_time: '13:00:00', end_time: '13:59:59', user_id: @user.id, facility_id: @user.facilities[0].id, organisation_id: @user.organisation.id)
+    @facility_timing_count = FacilityTimingCount.create(start_time: '14:00:00', end_time: '14:59:59', user_id: @user.id, facility_id: @user.facilities[0].id, organisation_id: @user.organisation.id)
+    @facility_timing_count = FacilityTimingCount.create(start_time: '15:00:00', end_time: '15:59:59', user_id: @user.id, facility_id: @user.facilities[0].id, organisation_id: @user.organisation.id)
+    @facility_timing_count = FacilityTimingCount.create(start_time: '16:00:00', end_time: '16:59:59', user_id: @user.id, facility_id: @user.facilities[0].id, organisation_id: @user.organisation.id)
+    @facility_timing_count = FacilityTimingCount.create(start_time: '17:00:00', end_time: '17:59:59', user_id: @user.id, facility_id: @user.facilities[0].id, organisation_id: @user.organisation.id)
+    @facility_timing_count = FacilityTimingCount.create(start_time: '18:00:00', end_time: '18:59:59', user_id: @user.id, facility_id: @user.facilities[0].id, organisation_id: @user.organisation.id)
+    @facility_timing_count = FacilityTimingCount.create(start_time: '19:00:00', end_time: '19:59:59', user_id: @user.id, facility_id: @user.facilities[0].id, organisation_id: @user.organisation.id)
+    @facility_timing_count = FacilityTimingCount.create(start_time: '20:00:00', end_time: '20:59:59', user_id: @user.id, facility_id: @user.facilities[0].id, organisation_id: @user.organisation.id)
+    @facility_timing_count = FacilityTimingCount.create(start_time: '21:00:00', end_time: '21:59:59', user_id: @user.id, facility_id: @user.facilities[0].id, organisation_id: @user.organisation.id)
+    @facility_timing_count = FacilityTimingCount.create(start_time: '22:00:00', end_time: '22:59:59', user_id: @user.id, facility_id: @user.facilities[0].id, organisation_id: @user.organisation.id)
+    @facility_timing_count = FacilityTimingCount.create(start_time: '23:00:00', end_time: '23:59:59', user_id: @user.id, facility_id: @user.facilities[0].id, organisation_id: @user.organisation.id)
+  end
+end

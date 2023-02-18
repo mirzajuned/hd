@@ -1,0 +1,89 @@
+<%# if false %>
+  <li class="mobile_responsive common-li-class activate">
+    <div class="dropdown">
+      <button type="button" class="btn btn-default dropdown-toggle focus-set mobile_dash_menu" data-toggle="dropdown" style="padding:15px 18px 14px; background-color:#fff; border:none;">
+        <% if params[:action] == "appointment_management" || params[:action] == "appointment_scheduler" %>
+          <span class="fa-color"> <i class="fa fa-stethoscope"></i> OPD</span>
+        <% elsif (params[:controller] == "inpatients" && params[:action] == "admission_management") || (params[:controller] == "inpatients" && params[:action] == "admission_scheduler") %>
+          <span class="fa-color"><i class="fa fa-ambulance"></i> IPD</span>
+        <% elsif (params[:controller] == "inpatients" && params[:action] == "ot_management") || (params[:controller] == "inpatients" && params[:action] == "ot_scheduler") %>
+          <span class="fa-color"><i class="fa fa-heartbeat"></i> OT</span>
+        <% else %>
+          <span class=""> <i class="fa fa-stethoscope"></i> OPD</span>
+        <% end %>
+        <span class="caret fa-color"></span>
+      </button>
+
+      <ul class="dropdown-menu children" style="text-align: center;">
+        <li>
+          <%= link_to current_user.user_selected_url.to_s, data: { remote: true }, class: 'ps hover-effect clinical_mobile_menu', id: 'opd_navigation', value: 'OPD' do %><span class="leftnav-main-title mobile_button"> <i class="fa fa-stethoscope"></i> OPD</span><% end %>
+        </li>
+        <li>
+          <%= link_to '/inpatients/admission_management', data: { remote: true }, class: 'ps hover-effect clinical_mobile_menu', id: 'ipd_navigation', value: 'IPD' do %>
+            <span class="leftnav-main-title mobile_button"><i class="fa fa-ambulance"></i> IPD</span>
+          <% end %>
+        </li>
+        <li>
+          <%= link_to '/inpatients/ot_management', data: { remote: true }, class: 'ps hover-effect clinical_mobile_menu', id: 'ot_navigation', value: 'OT' do %>
+            <span class="leftnav-main-title mobile_button"><i class="fa fa-heartbeat"></i> OT</span>
+          <% end %>
+        </li>
+      </ul>
+    </div>
+  </li>
+<%# end %>
+
+<% current_departments = @current_user.department_ids & current_facility.department_ids %>
+<li class="web_responsive">
+  <% if current_departments.count <= 3 %>
+    <% current_departments.each do |department_id| %>
+      <% department_data = NavbarHelper.get_department_wise_data(department_id, current_facility) %>
+      <li class="common-li-class web_responsive <%= 'activate' if department_data['controller'] == params[:controller] && department_data['action'] == params[:action] %>" id="<%= department_data['li_id'] %>">
+        <%= link_to department_data['selected_url'].to_s, data: { remote: department_data['remote'] }, class: "#{department_data['push_state']} hover-effect clinical_mobile_menu", id: department_data['link_id'].to_s, value: department_data['value'].to_s do %>
+        <span class="leftnav-main-title mobile_button"> <i class="<%= department_data['fa_icon'] %>"></i> <%= department_data['value'] %></span><% end %>
+      </li>
+    <% end %>
+
+  <% else %>
+    <button type="button" class="btn btn-default dropdown-toggle focus-set departments_button" data-toggle="dropdown" style="padding:14px 10px; background-color:#fff; border:none;">
+      <span class="fa-color departments_span"><i class="fa fa-hospital-o fa-lg" style="font-size:15px;"></i> <strong> DEPARTMENTS </strong></span>
+      <span class="caret fa-color"></span>
+    </button>
+
+    <ul class="dropdown-menu navbar_department_dropdown children">
+      <% current_departments.each do |department_id| %>
+        <% department_data = NavbarHelper.get_department_wise_data(department_id, current_facility) %>
+
+        <li class="departments_link <%= 'active' if department_data['controller'] == params[:controller] && department_data['action'] == params[:action] %>" id="<%= department_data['li_id'] %>">
+          <%= link_to department_data['selected_url'].to_s, data: { remote: department_data['remote'] }, class: "#{department_data['push_state']} hover-effect clinical_mobile_menu", id: department_data['link_id'].to_s, value: department_data['value'].to_s do %>
+          <span class="leftnav-main-title departments_li_span"> <i class="<%= department_data['fa_icon'] %>"></i>&nbsp;&nbsp;&nbsp; <%= department_data['value'] %></span><% end %>
+        </li>
+      <% end %>
+    </ul>
+  <% end %>
+</li>
+
+<script>
+
+  var is_present = $('.navbar_department_dropdown').find('.departments_link').hasClass('active')
+
+  if (is_present){
+    var selected_department = $('.navbar_department_dropdown').find('.active')
+    var dep_value = $(selected_department).children().attr('value')
+    var dep_icon = $(selected_department).find('.departments_li_span').children().attr('class')
+    var final_dep = '<i class=" '+ dep_icon +' " style="font-size:15px;"></i> <strong> '+ dep_value +' </strong>'
+    $('.departments_button').find('.departments_span').html(final_dep)
+  }
+
+  $('.navbar_department_dropdown').on('click', '.clinical_mobile_menu', function(e){
+    $('.navbar_department_dropdown').find('.departments_link').removeClass('active')
+    $(this).parent().addClass('active')
+    // var a = $(this).attr('value')
+    // $('.mobile_dash_menu').html('<span class="leftnav-main-title fa-color"> <i class="fa fa-ambulance"></i> '+ a +' </span> <span class="caret fa-color"></span>')
+    $('.web_responsive').removeClass('open')
+    var dep_value = $(this).attr('value')
+    var dep_icon = $(this).find('.departments_li_span').children().attr('class')
+    var final_dep = '<i class=" '+ dep_icon +' " style="font-size:15px;"></i> <strong> '+ dep_value +' </strong>'
+    $('.departments_button').find('.departments_span').html(final_dep)
+  })
+</script>

@@ -1,0 +1,262 @@
+function calTotalPrice() {
+  var each_item_totals = 0;
+  $('.price_including_tax_label').each(function(){
+    each_item_totals += parseFloat($(this).text()) || 0;
+  });
+  $("#inventory_transaction_return_total_cost").val(each_item_totals.toFixed(2))
+  $("#inventory_transaction_return_return_amount").val(each_item_totals.toFixed(2))
+}
+
+$(".item_quantity").on('change keyup', function() {
+  var quantity = $(this).val()
+  var return_quantity = (quantity.length > 0) ? parseFloat(quantity) : 0.00
+  var max_quantity = parseFloat($(this).closest(".return-medicine").find(".item_max_quantity").val())
+  var final_return_quantity = return_quantity < max_quantity ? return_quantity : max_quantity
+  // $(this).val(final_return_quantity)
+  var actual_quantity = $(this).closest(".return-medicine").find(".quantity").val()
+  var item_unit_cost = $(this).closest(".return-medicine").find(".item_unit_cost").val()
+  var item_unit_taxable_amount = parseFloat($(this).closest(".return-medicine").find(".item_unit_taxable_amount").val())
+  var item_total_cost = item_unit_cost * final_return_quantity
+
+  var item_tax = tax_groups($(this).closest(".return-medicine"), final_return_quantity, max_quantity)
+  var item_discount = (parseFloat($('#inventory_transaction_return_invoice_discount_percentage').val()) * item_total_cost)
+  var item_gross = (item_unit_taxable_amount * final_return_quantity + item_tax) || 0
+  $(this).closest(".return-medicine").find('.item-discount').text(item_discount.toFixed(2))
+  $(this).closest(".return-medicine").find('.item-discount-input').val(item_discount.toFixed(2))
+  $(this).closest(".return-medicine").find('.discount_amount').val(item_discount)
+  $(this).closest(".return-medicine").find(".price_including_tax").val(item_gross.toFixed(1))
+  $(this).closest(".return-medicine").find(".price_including_tax_label").text(item_gross.toFixed(1))
+  calTotalPrice()
+  $('.return-changes').trigger('change')
+  
+})
+
+function taxBreakup() {
+  $('.tax-breakup-amount').val(0)
+  $('.tax-breakup-taxable').val(0)
+  $(".tax_group").each(function(){
+    parent_container = $(this).closest('.return-medicine')
+    id = $(this).find('.item-tax-group-id').val()
+    tax_amount = parseFloat($(".tax_group_amount_"+id).val()) + parseFloat($(this).find('.actual-tax-amount').val())
+    $(".tax_group_amount_"+id).val(tax_amount)
+    quantity = parseFloat(parent_container.find(".item_quantity").val()) || 0
+    taxable_amount = parseFloat($('.taxable_amount_'+id).val()) +  parseFloat(parent_container.find('.item_unit_taxable_amount').val())*quantity
+    $('.taxable_amount_'+id).val(taxable_amount)
+  });
+  var total_taxable_amount = 0
+  $('.return-medicine').each(function(){
+    quantity = $(this).find(".item_quantity").val()
+    total_taxable_amount += parseFloat($(this).find('.item_unit_taxable_amount').val())*quantity
+  });
+  $('#total_taxable_amount').val(total_taxable_amount.toFixed(2))
+}
+
+function calReturnPrice() {
+  var item_total_cost = parseFloat($('#inventory_transaction_return_total_cost').val() || 0)
+  var return_charges = parseFloat($('#inventory_transaction_return_return_charges').val() || 0)
+  var net_amount = item_total_cost - return_charges
+  $("#inventory_transaction_return_return_amount").val(net_amount.toFixed(2))
+}
+
+function tax_groups(item, qty, old_qty){
+  var groups = item.find('.tax_group')
+  var item_tax = 0.00
+  var discount_percentage = (parseFloat($('#inventory_transaction_return_invoice_discount_percentage').val())) || 0
+  groups.each(function(){
+    amount = parseFloat($(this).attr('data-amount')) || 0.00
+    new_amount = amount/old_qty*qty
+    console.log('tax-grp', new_amount)
+    $(this).find('.item-tax-group-amount').val(new_amount)
+    item_tax += new_amount
+  });
+  item.find('.item-tax-amount').text(item_tax.toFixed(2))
+  item.find('.item_total_tax_amount').val(item_tax)
+  return item_tax
+}
+
+function new_tax_groups(item, qty, old_qty, gross_rate){
+  var groups = item.find('.tax_group')
+  var item_tax = 0.00
+  groups.each(function(){
+    amount = parseFloat($(this).attr('data-amount')) || 0.00
+    new_amount = amount/old_qty*qty*gross_rate
+    $(this).find('.actual-tax-amount').val(new_amount)
+    item_tax += new_amount
+  });
+  //item.find('.item_total_tax_amount').val(item_tax)
+  return item_tax
+}
+
+ function grossRate()
+ {
+  var crg = parseFloat($('.return-changes').val()) || 0
+  var total_cost = (parseFloat($('#inventory_transaction_return_total_cost').val()) || 0)
+  var gross_rate = (crg / total_cost)
+  if ((gross_rate == 0) || (!isFinite(gross_rate))){
+    gross_rate = 1
+  }else{
+    gross_rate = 1 - gross_rate
+  }
+  return gross_rate
+ }
+
+function itemOperations()
+{
+  var gross_rate = grossRate()
+  $(".return-medicine").each(function() {
+    quantity = $(this).find(".item_quantity").val()
+    max_quantity = parseFloat($(this).find(".item_max_quantity").val())
+    item_unit_cost = $(this).find(".item_unit_cost").val()
+    item_unit_taxable_amount = $(this).find(".item_unit_taxable_amount").val()
+    item_total_cost = item_unit_cost * quantity
+    item_tax = new_tax_groups($(this), quantity, max_quantity, gross_rate)
+    item_discount = (parseFloat($('#inventory_transaction_return_invoice_discount_percentage').val()) * item_total_cost)
+    item_gross = (item_unit_taxable_amount * quantity)*gross_rate + item_tax
+    $(this).find('.item-discount').text(item_discount.toFixed(2))
+    $(this).find('.item-discount-input').val(item_discount.toFixed(2))
+    $(this).find('.discount_amount').val(item_discount*gross_rate)
+    $(this).find(".price_including_tax").val(item_gross.toFixed(2))
+    taxable_amount = parseFloat($(this).find('.item_unit_taxable_amount_label').text()) || 0
+    unit_taxable_amount = taxable_amount*gross_rate || 0
+    //$(this).find('.item_unit_taxable_amount').val(unit_taxable_amount)
+  });
+}
+
+$('.return-changes').on('change keyup', function() {
+  var total_cost = (parseFloat($('#inventory_transaction_return_total_cost').val()) || 0)
+  var crg = parseFloat($('.return-changes').val()) || 0
+  if (crg > total_cost){
+    $(this).val(total_cost)
+  }
+  itemOperations()
+  calReturnPrice()
+  taxBreakup()
+})
+calTotalPrice()
+calReturnPrice()
+
+
+
+var datepicker_options = {
+  dateFormat: "dd/mm/yy"
+}
+
+var datepicker_options_same_day = {
+  dateFormat: "dd/mm/yy",
+  maxDate: -0,
+  minDate: -0
+}
+
+$("#inventory_transaction_return_cheque_date").datepicker(datepicker_options)
+$("#inventory_transaction_return_transfer_date").datepicker(datepicker_options)
+$(".payment-datepicker").datepicker(datepicker_options_same_day)
+
+
+$(".mode_of_payment").on('change', function(){
+  var mode_of_payment = $(this).val()
+  var amount = $("#inventory_transaction_return_return_amount").val()
+  
+  if(mode_of_payment.length > 0){
+    if(mode_of_payment == "Cash"){
+      $(".mode_of_payment_details").html('')
+      $(".mode_of_payment_details").hide()
+    } else if(mode_of_payment == "Card"){
+      $(".mode_of_payment_details").html('<div class="row"><div class="card_details"><div class="col-md-6"><b>Card Number</b><input type="text" name="inventory_transaction_return[card_number]" id="inventory_transaction_return_card_number" class="form-control p7_10" minlength="4" maxlength="4" onKeyPress="return event.charCode >= 48 && event.charCode <= 57" value="" placeholder="Card Number"> </div><div class="col-md-6"><b>Transaction Note</b><input type="text" name="inventory_transaction_return[card_transaction_note]" id="inventory_transaction_return_card_transaction_note" class="form-control p7_10" value="" placeholder="Transaction Note"> </div></div></div>')
+      $(".mode_of_payment_details").show()
+    } else if(mode_of_payment == "Paytm"){
+      $(".mode_of_payment_details").html('<div class="row"><div class="paytm_details"><div class="col-md-6"><b>Transaction Id</b><input type="text" name="inventory_transaction_return[paytm_transaction_id]" id="inventory_transaction_return_paytm_transaction_id" class="form-control p7_10" value="" placeholder="Transaction Id"></div><div class="col-md-6"><b>Transaction Note</b><input type="text" name="inventory_transaction_return[paytm_transaction_note]" id="inventory_transaction_return_paytm_transaction_note" class="form-control p7_10" value="" placeholder="Transaction Note"></div></div></div>')
+      $(".mode_of_payment_details").show()
+    } else if(mode_of_payment == "Google Pay"){
+      $(".mode_of_payment_details").html('<div class="row"><div class="gpay_details"><div class="col-md-6"><b>Transaction Id</b><input type="text" name="inventory_transaction_return[gpay_transaction_id]" id="inventory_transaction_return_gpay_transaction_id" class="form-control p7_10" value="" placeholder="Transaction Id"></div><div class="col-md-6"><b>Transaction Note</b><input type="text" name="inventory_transaction_return[gpay_transaction_note]" id="inventory_transaction_return_gpay_transaction_note" class="form-control p7_10" value="" placeholder="Transaction Note"></div></div></div>')
+      $(".mode_of_payment_details").show()
+    } else if(mode_of_payment == "PhonePe"){
+      $(".mode_of_payment_details").html('<div class="row"><div class="phonepe_details"><div class="col-md-6"><b>Transaction Id</b><input type="text" name="inventory_transaction_return[phonepe_transaction_id]" id="inventory_transaction_return_phonepe_transaction_id" class="form-control p7_10" value="" placeholder="Transaction Id"></div><div class="col-md-6"><b>Transaction Note</b><input type="text" name="inventory_transaction_return[phonepe_transaction_note]" id="inventory_transaction_return_phonepe_transaction_note" class="form-control p7_10" value="" placeholder="Transaction Note"></div></div></div>')
+      $(".mode_of_payment_details").show()
+    } else if(mode_of_payment == "Online Transfer"){
+      $(".mode_of_payment_details").html('<div class="row"><div class="transfer_details"><div class="col-md-6"><b>Tranfer Date</b><input type="text" name="inventory_transaction_return[transfer_date]" id="inventory_transaction_return_transfer_date" class="form-control p7_10" placeholder="Transfer Date" readonly="readonly"></div><div class="col-md-6"><b>Transaction Note</b><input type="text" name="inventory_transaction_return[transfer_note]" id="inventory_transaction_return_transfer_note" class="form-control p7_10" value="" placeholder="Transaction Note"></div></div></div>')
+      $(".mode_of_payment_details").show()
+    } else if(mode_of_payment == "Cheque"){
+      $(".mode_of_payment_details").html('<div class="row"><div class="cheque_details"><div class="col-md-6"><b>Cheque Date</b><input type="text" name="inventory_transaction_return[cheque_date]" id="inventory_transaction_return_cheque_date" class="form-control p7_10" placeholder="Cheque Date" readonly="readonly"></div><div class="col-md-6"><b>Transaction Note</b><input type="text" name="inventory_transaction_return[cheque_note]" id="inventory_transaction_return_cheque_note" class="form-control p7_10" value="" placeholder="Transaction Note"></div></div></div>')
+      $(".mode_of_payment_details").show()
+    } else if(mode_of_payment == "Others"){
+      $(".mode_of_payment_details").html('<div class="row"><div class="other_details"><div class="col-md-6"><b>Transaction Id</b><input type="text" name="inventory_transaction_return[other_transaction_id]" id="inventory_transaction_return_other_transaction_id" class="form-control p7_10" value="" placeholder="Transaction Id"></div><div class="col-md-6"><b>Transaction Note</b><input type="text" name="inventory_transaction_return[other_note]" id="inventory_transaction_return_other_note" class="form-control p7_10" value="" placeholder="Transaction Note"></div></div></div>')
+      $(".mode_of_payment_details").show()
+    } else {
+      $(".mode_of_payment_details").html('')
+      $(".mode_of_payment_details").hide()
+    }
+  } else {
+    $(".mode_of_payment_details").html('')
+    $(".mode_of_payment_details").hide()
+  }
+
+  $("#inventory_transaction_return_cheque_date").datepicker(datepicker_options)
+  $("#inventory_transaction_return_transfer_date").datepicker(datepicker_options)
+});
+
+
+$(".transaction-datepicker").datepicker(datepicker_options_same_day)
+
+$.validator.addMethod("minQuantity", function(value, element) {
+  total_qty = 0
+  $('.item_quantity').each(function(){
+    total_qty += parseFloat($(this).val()) || 0
+  }); 
+  return total_qty > 0
+}, "Atleast one quantity is required");
+
+
+function validate_inventory_return_transactions_form() {
+  $('#inventory_return_transactions_form').validate({
+    rules: {
+      "inventory_transaction_return[total_cost]": {
+        required: true,
+        minQuantity: true
+      },
+      "inventory_transaction_return[return_amount]": {
+        required: true
+      },
+      "inventory_transaction_return[mode_of_payment]": {
+        required: true
+      }
+    },
+    messages: {
+      "inventory_transaction_return[total_cost]": {
+        required: "Required",
+        min: "Total Cost Cannot Blank"
+      },
+      "inventory_transaction_return[return_amount]": {
+        required: "Required",
+        min: "Return Amount Cannot Blank"
+      },
+      "inventory_transaction_return[mode_of_payment]": {
+        required: "Required"
+      }
+    },
+    errorPlacement: function (error, element) {
+      var id = $(element).attr("id");
+      var parent = $("#"+id).parents(".input-group").length
+      if(parent == 0){
+        error.insertAfter(element);
+      } else {
+        error.insertAfter($("#"+id).parents(".input-group"));
+      }
+    }
+  });
+}
+
+$.validator.addMethod("checkQuantity", function(value, element, options) {
+  var id = $(element).attr("id")
+  var item_quantity = $('#'+id).val()
+  var item_max_quantity = $('#'+id).siblings(".item_max_quantity").val()
+  if (!item_max_quantity) {
+    return true
+  }
+  else{
+    return this.optional(element) || parseFloat(item_quantity) <= parseFloat(item_max_quantity);
+  }
+}, "Cannot Checkout more than stock");
+
+$.validator.addClassRules("item_quantity", { number: true, checkQuantity: true, required: true });
+
+validate_inventory_return_transactions_form()

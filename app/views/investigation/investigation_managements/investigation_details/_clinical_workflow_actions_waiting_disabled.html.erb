@@ -1,0 +1,127 @@
+<div class="col-sm-6">
+  <div class="row no_margin">
+    
+  </div>
+</div>
+<% unless @clinical_workflow_present %>
+  <!-- Non-Workflow -->
+  <div class="col-sm-6 text-right">
+    <div class="row no_margin">
+      <% if @current_date <= Date.current %>
+        <% if @appointment_list_view.current_state == "Scheduled" %>
+          <% if @token_setting.try(:token_enabled) && @current_date == Date.current %>
+            <%= link_to token_settings_show_tokens_path(token_setting_id: @token_setting.id.to_s, appointment_id: @appointment.id), data: {remote: true, toggle: 'modal', target: '#appointment-modal'}, class: "btn btn-xs btn-danger p_arrived mb10" do %>Mark Patient Arrived<% end %>
+          <% else %>
+            <%= link_to opd_clinical_workflow_mark_as_arrived_path(id: @appointment.id, appointment_id: @appointment.id, patient_arrived: true), data: {remote: true,'disable-with': "Please Wait..."}, class: " btn btn-danger btn-xs" do %>Patient Arrived<% end %>
+          <% end %>
+        <% elsif @appointment_list_view.current_state == "Waiting" %>
+          <%= link_to opd_clinical_workflow_mark_as_arrived_path(id: @appointment.id, appointment_id: @appointment.id, patient_arrived: false), data: {remote: true,'disable-with': "Please Wait..."}, class: " btn btn-danger btn-xs" do %>NA<% end %>
+          <%= link_to opd_clinical_workflow_patient_engaged_path(id: @appointment.id, appointment_id: @appointment.id, patient_engaged: true), data: {remote: true,'disable-with': "Please Wait..."}, class: " btn btn-warning btn-xs" do %>Mark Engaged<% end %>
+          <%= link_to opd_clinical_workflow_patient_completed_path(id: @appointment.id, appointment_id: @appointment.id, patient_completed: true), data: {remote: true,'disable-with': "Please Wait..."}, class: "btn btn-success btn-xs" do %>Mark Completed<% end %>
+        <% elsif @appointment_list_view.current_state == "Engaged" %>
+          <%= link_to opd_clinical_workflow_patient_engaged_path(id: @appointment.id, appointment_id: @appointment.id, patient_engaged: false), data: {remote: true,'disable-with': "Please Wait..."}, class: "btn btn-warning btn-xs" do %>Undo<% end %>
+          <%= link_to opd_clinical_workflow_patient_completed_path(id: @appointment.id, appointment_id: @appointment.id, patient_completed: true), data: {remote: true,'disable-with': "Please Wait..."}, class: "btn btn-success btn-xs" do %>Mark Completed<% end %>
+        <% elsif @appointment_list_view.current_state == "Completed" %>
+          <%= link_to opd_clinical_workflow_patient_completed_path(id: @appointment.id, appointment_id: @appointment.id, patient_engaged: false), data: {remote: true,'disable-with': "Please Wait..."}, class: "btn btn-success btn-xs" do %><i class="fa fa-check"></i>&nbsp;&nbsp; Completed<% end %>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+<% else %>
+  <!-- Workflow -->
+  <% department_ids = @current_user.department_ids %>
+  <% if @clinical_workflow.appointmentdate&.to_date == Date.current %>
+    <% if current_user.primary_role == 'radiologist'  %>
+      <% type = 'radiology' %>
+      <% department_id = '309964003' %>
+    <% elsif current_user.primary_role == 'technician' %>
+      <% type = 'laboratory' %>
+      <% department_id = '261904005' %>
+    <% elsif current_user.primary_role == 'ophthalmology_technician' %>
+      <% type = 'ophthal' %>
+      <% department_id = '309935007' %>
+    <% end %>
+    <% if department_ids.size == 1 %>
+      <% if department_ids[0] == '309964003'  %>
+        <% type = 'radiology' %>
+        <% department_id = '309964003' %>
+      <% elsif department_ids[0] == '261904005' %>
+        <% type = 'laboratory' %>
+        <% department_id = '261904005' %>
+      <% elsif department_ids[0] == '309935007' %>
+        <% type = 'ophthal' %>
+        <% department_id = '309935007' %>
+      <% end %>
+    <% end %>
+    <% unless department_id.present? %>
+      <% department_id = @current_user.department_ids[0] %>
+    <% end %>
+    <% if type.nil? %>
+      <% if department_id == '309964003' || @inv_radiology.present?  %>
+        <% type = 'radiology' %>
+      <% elsif department_id == '261904005' || @inv_laboratory.present? %>
+        <% type = 'laboratory' %>
+      <% elsif department_id == '309935007' || @inv_ophthal.present? %>
+        <% type = 'ophthal' %>
+      <% end %>
+    <% end %>
+    <% if type == 'radiology' %>
+      <% to = 'radiologist' %>
+    <% elsif type == 'laboratory' %>
+      <% to = 'technician' %>
+    <% elsif type == 'ophthal' %>
+      <% to = 'ophthalmology_technician' %>
+    <% else %>
+      <% to = @current_user.primary_role %>
+    <% end %>
+    <% department_model = 'Investigation::Queue' %>
+    <div class="col-sm-6 text-right">
+      <%@current_user = current_user%>
+      <% if @clinical_workflow.state != "complete" && ["ophthalmology_technician", "technician", "radiologist"].include?(@clinical_workflow.state) %>
+        <% if @clinical_workflow.try(:user_id) == @current_user.id.to_s %>
+          <% unless @clinical_workflow_timeline.count == 1 %>
+            <a href="/opd_clinical_workflow/mark_as_away?appointment_id=<%= @appointment.id.to_s%>" data-remote="true" data-disable-with="Please Wait..." class="btn btn-xs btn-primary mark-away" >Mark as Away</a>
+          <% end %>
+          <a href="/opd_clinical_workflow/patient_complete?appointment_id=<%= @appointment.id.to_s%>" data-remote="true" data-disable-with="Please Wait..." class="btn btn-xs btn-success mark-completed">Mark as Completed</a>
+        <% end %>
+      <% end %>
+
+      <% if @clinical_workflow.state == "complete" %>
+        <% if @clinical_workflow_timeline_second_last.try(:user_id).to_s == @current_user.id.to_s %>
+          <a href='#' class="btn btn-xs btn-primary undo-state" data-disable-with="Please Wait...">Undo</a>
+        <% end %>
+      <% else %>
+        <% if @clinical_workflow.try(:user_id) != @current_user.id.to_s %>
+          <% if @clinical_workflow_timeline_second_last.try(:user_id).to_s == @current_user.id.to_s %>
+            <a href='#' class="btn btn-xs btn-primary undo-state" data-disable-with="Please Wait...">Undo</a>
+          <% end %>
+        <% end %>
+      <% end %>
+
+      <% unless @clinical_workflow.state == "complete"|| @clinical_workflow.state == "not_arrived" || @clinical_workflow.try(:user_id) == @current_user.id.to_s || @clinical_workflow.state == "away" %>
+        <% if @current_facility.show_finances && @current_facility.invoice_compulsory && @invoices&.size == 0 %>
+          <button class="btn btn-primary btn-xs" style="cursor: not-allowed;opacity: 0.8;">Get Patient</button>
+        <% else %>
+          <a href="/opd_clinical_workflow/get_patient?to=<%= to %>&to_user=<%= @current_user.id%>&workflow_id=<%= @clinical_workflow.id%>&department_id=<%= department_id %>&type=<%= type%>&department_model=<%= department_model%>&patient_id=<%= @patient.id%>" data-remote="true" class="btn btn-xs btn-primary get-patient" data-disable-with="Please Wait...">Get Patient</a>
+        <% end %>
+      <% end %>
+      <% if @clinical_workflow.state == "away" %>
+        <a href="/opd_clinical_workflow/get_patient?to=<%= to %>&to_user=<%= @current_user.id%>&workflow_id=<%= @clinical_workflow.id%>&department_id=<%= department_id%>&type=<%= type%>&department_model=<%= department_model%>" data-remote="true" class="btn btn-xs btn-primary get-patient" data-disable-with="Please Wait...">Get Patient</a>
+      <% end %>
+      
+    </div>
+  <% end %>
+
+<% end %>
+
+<script type="text/javascript">
+  $(".undo-state").on('click',function(e){
+    e.preventDefault()
+    $(this).attr('disabled','disabled').html("Please Wait...")
+    $.ajax({
+      data: {appointment_id: '<%= @appointment.try(:id).to_s%>'},
+      url:  "/opd_clinical_workflow/undo_state"
+    })
+  })
+
+</script>

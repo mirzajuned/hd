@@ -1,0 +1,126 @@
+<% @existing_time = Date.current - 100.years %>
+<% @current_facility_time_zone = current_facility.time_zone %>
+<% @patient_summary_timeline.each.with_index do |timeline,i| %>
+  <% encounter_date_time = timeline['pst'][0]['encounter_date_time'].in_time_zone(@current_facility_time_zone) %>
+  <% if encounter_date_time.strftime("%d/%m/%Y") != @existing_time.in_time_zone(@current_facility_time_zone).strftime("%d/%m/%Y") && encounter_date_time.strftime("%d/%m/%Y") != @past_encounter_date.try(:strftime, "%d/%m/%Y") %>
+    <div class="row" style="margin:0px;">
+      <div class="col-sm-12" style="margin-bottom:10px;">
+        <span style="font-size:16px;text-decoration: underline;">
+          <% if Date.current.in_time_zone(@current_facility_time_zone).strftime("%d/%m/%Y") == encounter_date_time.strftime("%d/%m/%Y") %>
+            <div id="today-events" class="events-date"><button class="btn btn-info btn-xs" style="border-radius:25px;opacity:1;border:0;" disabled><%= encounter_date_time.strftime('%d/%m/%Y') %> - TODAY</button></div>
+          <% else %>
+            <div id="past-events" class="events-date"><button class="btn btn-info btn-xs" style="border-radius:25px;opacity:1;border:0;background:#aaa" disabled><%= timeline['pst'][0]['encounter_date'].strftime('%d/%m/%Y') %></button></div>
+          <% end %>
+        </span>
+      </div>
+    </div>
+    <% @existing_time = timeline['pst'][0]['encounter_date_time'] %>
+  <% end %>
+
+  <div class="row" style="margin:0px;">
+    <div class="col-sm-1" style="margin-top:10px;">
+      <span style="font-size:12px;"><%= encounter_date_time.strftime('%I:%M%p') %></span>
+    </div>
+    <div class="col-sm-11">
+      <div class="panel panel-success" style="padding:0px;box-shadow:0 0 5px;margin-bottom:10px;">
+        <div class="panel-body" style="border-left:7px solid <%= "##{timeline['pst'][0]['event_type_color']}" %>;">
+          <div class="row">
+            <div class="col-sm-12">
+              <div class="row">
+                <div class="col-sm-8">
+                  <span style="font-size:12px;line-height:0;">
+                    <% if timeline['pst'][0]['comments'].present? %>
+                      <% if timeline['pst'][0]['comments'][0].split.include? 'BOM' %>
+                        <% comment = "BILL OF MATERIAL #{timeline['pst'][0]['comments'][0].split.last}" %>
+                      <% else %>
+                        <% comment = timeline['pst'][0]['comments'][0] %>
+                      <% end %>
+                      <b style="color:#000;"><%= comment %>
+                    <% end %>
+                      <% if ["OpdRecord"].include?(timeline['pst'][0]['primary_model']) %>
+                        - CREATED <%= timeline['pst'][0]['links']['opdrecord']['created_at'].in_time_zone(@current_facility_time_zone).strftime("%d %b'%y") %>
+                      <% elsif ["Inpatient::IpdRecord"].include?(timeline['pst'][0]['primary_model']) %>
+                        <% if timeline['pst'][0]['links']['ipdrecord']['created_at'].present? %>
+                          - CREATED <%= timeline['pst'][0]['links']['ipdrecord']['created_at'].in_time_zone(@current_facility_time_zone).strftime("%d %b'%y") %>
+                        <% elsif timeline['pst'][0]['links']['ipdrecord']['record_histories'].present? %>
+                          <% if timeline['pst'][0]['links']['ipdrecord']['record_histories'][0].present? && timeline['pst'][0]['links']['ipdrecord']['record_histories'][0]['created_at'].present? %>
+                            - CREATED <%= timeline['pst'][0]['links']['ipdrecord']['record_histories'][0]['created_at'].in_time_zone(@current_facility_time_zone).strftime("%d %b'%y") %>
+                          <% end %>
+                        <% end %>
+                        <% if timeline['pst'][0]['links']['ipdrecord']['note_created_at'].present? %>
+                          - NOTE DATE <%= timeline['pst'][0]['links']['ipdrecord']['note_created_at'].in_time_zone(@current_facility_time_zone).strftime("%d %b'%y") %>
+                        <% end %>
+                      <% elsif ["Inpatient::NursingRecord"].include?(timeline['pst'][0]['primary_model']) %>
+                        <% if timeline['pst'][0]['links']['nursingrecord'].present? && timeline['pst'][0]['links']['nursingrecord']['created_at'].present? %>
+                          - CREATED <%= timeline['pst'][0]['links']['nursingrecord']['created_at'].in_time_zone(@current_facility_time_zone).strftime("%d %b'%y") %>
+                        <% elsif timeline['pst'][0]['links']['otchecklist'].present? && timeline['pst'][0]['links']['otchecklist']['created_at'].present? %>
+                          - CREATED <%= timeline['pst'][0]['links']['otchecklist']['created_at'].in_time_zone(@current_facility_time_zone).strftime("%d %b'%y") %>
+                        <% elsif timeline['pst'][0]['links']['assessment'].present? && timeline['pst'][0]['links']['assessment']['created_at'].present? %>
+                           - CREATED <%= timeline['pst'][0]['links']['assessment']['created_at'].in_time_zone(@current_facility_time_zone).strftime("%d %b'%y") %>
+                        <% elsif timeline['pst'][0]['links']['wardchecklist'].present? && timeline['pst'][0]['links']['wardchecklist']['created_at'].present? %>
+                           - CREATED <%= timeline['pst'][0]['links']['wardchecklist']['created_at'].in_time_zone(@current_facility_time_zone).strftime("%d %b'%y") %>
+                        <% elsif timeline['pst'][0]['links']['pre_anaesthesia_note_id'].present? && timeline['pst'][0]['links']['pre_anaesthesia_note_id']['created_at'].present? %>
+                           - CREATED <%= timeline['pst'][0]['links']['pre_anaesthesia_note_id']['created_at'].in_time_zone(@current_facility_time_zone).strftime("%d %b'%y") %>
+                        <% end %>
+                      <% end %>
+                    </b>
+                    <br>At: <b><%= timeline['pst'][0]['facility_name'] %></b>&nbsp;|&nbsp;
+
+                    <% if timeline['pst'][0]['user_id'] != nil %>
+                      <% by_name = timeline['pst'][0]['user_name'] %>
+                    <% elsif timeline['pst'][0]['department_id'] != nil %>
+                      <% by_name = timeline['pst'][0]['department_name'] %>
+                    <% else %>
+                      <% by_name = timeline['pst'][0]['last_state_name'] %>
+                    <% end %>
+                    <% if timeline['pst'][0]['comments'][0].to_s.exclude?("CHECKED OUT") %>
+                      By: <b><%= by_name %></b>
+                    <% end %>
+                    <% if timeline['pst'][0]['users'] %>&nbsp;|&nbsp;
+                      For: <b><%= timeline['pst'][0]['users'][0][1] %></b>
+                    <% end %>
+
+                    <% if timeline['pst'][0]['specialty_id'].present? %>
+                      &nbsp;|&nbsp;
+                      <b style='display: none'><%= timeline['pst'][0]['specialty_id'] %></b>
+                      <% specialty_name = TemplatesHelper.get_speciality_folder_name(timeline['pst'][0]['specialty_id']) %>
+                      <% if specialty_name.present? %>
+                        In: <b><%= specialty_name.split('_').map(&:capitalize).join(' ') %> Specialty</b>
+                      <% end %>
+                    <% end %>
+
+                  </span>
+                </div>
+                <div class="col-sm-1 full-view" style="margin-top:7px;">
+                  <% if ["Admission","Appointment"].include?(timeline['pst'][0]['primary_model']) %>
+                    <% if timeline["pst"][0]['has_links'] %>
+                      <%= render partial: 'patient_summary_timelines/event_links/full_view/invoice_btn.html.erb', locals: { timeline: timeline } %>
+                    <% end %>
+                  <% end %>
+                </div>
+
+                <div class="col-sm-3 full-view" style="margin-top:7px;">
+                  <% if timeline["pst"][0]['has_links'] %>
+                    <% path_to_links = timeline['pst'][0]['event_type'].to_s.downcase %>
+                    <%= render partial: 'patient_summary_timelines/event_links/full_view/' + path_to_links + '.html.erb', locals: { timeline: timeline } %>
+                  <% end %>
+                  <%# if timeline['pst'].count > 1 %>
+                    <button class="btn btn-link btn-xs btn-grouped-timeline pull-right" data-query-id="<%= timeline['pst'][0]['query']['_id'].to_s %>" data-event-id='<%= timeline['pst'][0]['_id'].to_s %>' data-ajax-call='true' style="font-size:18px;"><i class='fa fa-caret-down'></i></button>
+                  <%# end %>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="grouped-timeline-<%= timeline['pst'][0]['query']['_id'].to_s %>" style="display: none;">
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+<% end %>
+<% if @patient_summary_timeline.count == 0 %>
+  <div class="text-center" style="margin-top:20%;">
+    <b style="font-size: 20px;">No Timeline</b>
+  </div>
+<% end %>

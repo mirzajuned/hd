@@ -1,0 +1,337 @@
+<%= javascript_include_tag "application-loggedin", "data-turbolinks-track" => true %>
+<div class="modal-dialog modal-hg-cash-register">
+  <div class="modal-content">
+
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+
+      <h4 class="modal-title">Generate <%= @cash_register_type %> Cash Register</h4>
+    </div>
+    <div class="modal-body form-bordered" >
+
+      <%= form_for(@cash_register,:format => :js, :remote=>true, method: :POST) do |f| %>
+        <%= f.text_field :cash_register_type, {:type => "hidden", :value => @cash_register_type, :id => "patient-type"} %>
+        <%= f.text_field :user_id, {:type => "hidden", :value=>@userid} %>
+        <%= f.text_field :patient_id, {:type => "hidden", :value=>@patientid} %>
+
+        <% if @cash_register_type_id.to_i == 440655000 %>
+            <%= f.text_field :appointment_id, {:type => "hidden", :value=>@appointmentid} %>
+        <% elsif @cash_register_type_id.to_i == 440654001 %>
+            <%= f.text_field :admission_id, {:type => "hidden", :value=>@admissionid} %>
+        <% end %>
+        <%= f.text_field :facility_id, {:type => "hidden", :value=> current_facility.id } %>
+        <%= f.text_field :cash_register_type_id, {:type => "hidden", :value=>@cash_register_type_id} %>
+
+          <div class="row">
+
+            <div class="col-md-4">
+
+              <div class="cash-register-patient-details">
+                <%= f.fields_for :patient do |builder|%>
+                  <div class="row">
+                    <div class="col-md-4">
+                      First Name
+                    </div>
+                    <div class="col-md-8">
+                      <%= builder.text_field :firstname,{:class => 'form-control',:value=>@cash_register.patient[:firstname]}%>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col-md-4">
+                      Last Name
+                    </div>
+                    <div class="col-md-8">
+                      <%= builder.text_field :lastname,{:class => 'form-control',:value=>@cash_register.patient[:lastname]}%>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col-md-4">
+                      Mobile
+                    </div>
+                    <div class="col-md-8">
+                      <%= builder.text_field :mobilenumber,{:class => 'form-control',:value=>@cash_register.patient[:mobilenumber]}%>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col-md-4">
+                      Age
+                    </div>
+                    <div class="col-md-2">
+                      <%= builder.text_field :age,{:class => 'form-control',:value=>@cash_register.patient[:age]}%>
+                    </div>
+                    <div class="col-md-2">
+                      Years
+                    </div>
+                    <div class="col-md-2">
+                      <%= builder.text_field :age_month,{:class => 'form-control',:value=>@cash_register.patient[:age_month]}%>
+                    </div>
+                    <div class="col-md-2">
+                      Months
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col-md-4">
+                      Gender
+                    </div>
+                    <div class="col-md-4">
+                      <%= builder.radio_button(:gender,"Male",{:checked=>(@cash_register.patient[:gender]=="Male")}) %>
+                      <%= builder.label :gender ,"Male", class: "mr3" %>
+                      <%= builder.radio_button(:gender, "Female",{:checked=>(@cash_register.patient[:gender]=="Female")}) %>
+                      <%= builder.label :gender ,"Female" %>
+                    </div>
+
+                  </div>
+
+                  <div class="row">
+                    <div class="col-md-4">
+                      Address Line 1
+                    </div>
+                    <div class="col-md-8">
+                      <%= builder.text_field :address_1,{:class => 'form-control',:value=>@cash_register.patient[:address_1]}%>
+                    </div>
+                  </div>
+
+                  <div class="row">
+                    <div class="col-md-4">
+                      Address Line 2
+                    </div>
+                    <div class="col-md-8">
+                      <%= builder.text_field :address_2,{:class => 'form-control',:value=>@cash_register.patient[:address_2]}%>
+                    </div>
+                  </div>
+
+                  <div class="row">
+                    <div class="col-md-4">
+                      Pin Code <a href="" class="clear-pincode" style="display:none;font-size: 10px;margin-top: -7px;">Clear</a>
+                    </div>
+                    <div class="col-md-8">
+                      <%= builder.text_field :pincode,{id:'search_pincode', :class => 'form-control',:value=>@cash_register.patient[:pincode]}%>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col-md-4">
+                      State
+                    </div>
+                    <div class="col-md-8">
+                      <%= builder.text_field :state,{id:'search_state', :class => 'form-control',:value=>@cash_register.patient[:state]}%>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col-md-4">
+                      City
+                    </div>
+                    <div class="col-md-8">
+                      <%= builder.text_field :city,{id:'search_city', :class => 'form-control',:value=>@cash_register.patient[:city]}%>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+
+            </div>
+
+            <div class="col-md-8">
+
+              <div  id="total-cash-register-fields" style="padding-bottom: 10px">
+
+                <div class="row form-group">
+                  <div class="col-sm-4"> <b>Item</b> </div>
+                  <div class="col-sm-2"> <b>Unit Price</b></div>
+                  <div class="col-sm-2"> <b>Qty</b></div>
+                  <div class="col-sm-2"> <b>Total Price</b></div>
+                </div>
+
+                <%= f.fields_for :cash_register_details do |builder| %>
+
+                  <div class="row form-group">
+                    <div class="col-sm-4 ui-widget">
+                      <%= hidden_field_tag "cash_register[cash_register_details_attributes][#{builder.index.to_s}][service_id]", "", {:id => "cash_register_cash_register_details_attributes_#{builder.index.to_s}_service_id"} %>
+                      <%= builder.text_field :label, {:class => 'form-control services-label-validation'} %>
+                    </div>
+                    <div class="col-sm-2">
+                      <%= builder.text_field :unit_price, {:class => 'form-control ui-autocomplete-input services-unit-price-validation'} %>
+                    </div>
+                    <div class="col-sm-2">
+                      <%= builder.text_field :total_units, {:type=>"number",:class => 'form-control services-total-units-validation',:min=>"1"} %>
+                    </div>
+                    <div class="col-sm-2">
+                      <%= text_field_tag "total_"+builder.index.to_s,0, {:class => 'form-control total',:disabled=>"true" } %>
+                    </div>
+                    <div class="col-sm-2" style="margin-top:5px;">
+                      <span id="add_cash_register_item" class="btn btn-xs btn-primary btn-square glyphicon glyphicon-plus-sign mr5"></span>
+                      <span id="remove_cash_register_item_<%= builder.index %>" class="btn btn-xs btn-primary btn-danger glyphicon glyphicon-remove"></span>
+                    </div>
+
+                  </div>
+
+                <% end %>
+
+
+              </div>
+
+              <div class="row">
+                <div class="col-md-5">
+                  <b>Comments:</b>
+                  <%= f.text_area :comments, {class: "form-control"} %>
+                </div>
+                <div class="col-md-2"></div>
+                <div class="col-md-1 form-group"><strong>Total :</strong></div>
+                <div class="col-md-2 form-group"><%= f.text_field :total,{:class => 'form-control',:readonly => "true"} %></div>
+              </div>
+
+            </div>
+
+
+          </div>
+
+          <div class="row form-group">
+            <%= f.submit "Save Cash Register", {:class => 'btn btn-success pull-right', :onclick => 'invoice_page()'} %>
+          </div>
+
+      <% end %>
+      <input id= "total_cash_register_row_count" type="hidden" value="<%= @total_cash_register_rows %>" >
+    </div>
+  </div>
+</div>
+
+
+<style type="text/css">
+  .ckbox-primary {
+    margin-left: 25px;
+    margin-right: -25px;
+    margin-top: 10px;
+  }
+  input.error, select.error {
+    border-color: #b94a48;
+    background-image: none;
+  }
+  input.valid, select.valid {
+    border-color: #468847;
+    background-image: none;
+  }
+  .ui-menu-item a.ui-state-focus {
+    background-color: #929090; 
+    color: #fff; 
+  }
+</style>
+
+<script type="text/javascript">
+  //Search State
+var country_id = "<%= current_facility.country_id %>"
+if (country_id == 'IN_108'){
+jQuery('#search_state').autocomplete({
+    minLength: 3,
+    source: function(request, response) {
+        jQuery.ajax({
+            dataType: "json",
+            type : 'get',
+            url: '/locations/search_state',
+            data: {q: request.term, country_id: country_id, remote: "true" },
+            success: function(data) {
+                response(data);
+            },
+            error: function(data) {
+            }
+        });
+    },
+    select: function( event, ui ) {
+      name = ui.item["state"]
+      setTimeout(function() {
+      jQuery("#search_state").val(name)
+      jQuery('#search_state').blur()
+    }, 20);
+    },
+    create: function () {
+      $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+        return $('<li>')
+            .append('<a style=\"color:#000;text-shadow: 2px\">' + item.state  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+            .appendTo(ul);
+      };
+   }
+});
+
+//Search City
+jQuery('#search_city').autocomplete({
+  minLength: 3,
+  source: function(request,response){
+    var state = jQuery('#search_state').val();
+    jQuery.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/locations/search_city',
+      data: {q: request.term, state: state, remote: "true"},
+      success: function(data){
+        response(data);
+      },
+      error: function(data){
+
+      }
+    });
+  },
+  select: function( event, ui ) {
+      city  = ui.item["city"]
+      state = ui.item["state"]
+      setTimeout(function() {
+      jQuery("#search_city").val(city)
+      jQuery("#search_state").val(state)
+      jQuery('#search_city').blur()
+    }, 20);
+    },
+  create: function () {
+      $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+        return $('<li>')
+            .append('<a style=\"color:#000;text-shadow: 2px\">' + item.city  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+            .appendTo(ul);
+      };
+  }
+});
+
+//Search Pincode 
+jQuery('#search_pincode').autocomplete({
+  minLength: 3,
+  source: function(request,response){
+    var state = jQuery('#search_state').val();
+    var city = jQuery('#search_city').val();
+    jQuery.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/locations/search_pincode',
+      data: {q: request.term, state: state, city: city, remote: "true"},
+      success: function(data){
+        response(data);
+      },
+      error: function(data){
+
+      }
+    });
+  },
+  select: function( event, ui ) {
+      pincode = ui.item["pincode"]
+      city  = ui.item["city"]
+      state = ui.item["state"]
+      setTimeout(function() {
+      jQuery("#search_pincode").prop('readonly',true).val(pincode)
+      jQuery("#search_state").prop('readonly', true).val(state)
+      jQuery("#search_city").prop('readonly', true).val(city)
+      jQuery(".clear-pincode").show()
+      jQuery('#search_pincode').blur()
+    }, 20);
+    },
+  create: function () {
+      $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+        return $('<li>')
+            .append('<a style=\"color:#000;text-shadow: 2px; text-align: center;\">' + item.pincode  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+            .appendTo(ul);
+      };
+  }
+});
+
+// Clear pincode
+$(".clear-pincode").on('click', function(e){
+  e.preventDefault()
+  $("#search_pincode").prop('readonly',false).val("")
+  $("#search_state").prop('readonly', false).val("")
+  $("#search_city").prop('readonly', false).val("")
+  $(".clear-pincode").hide()
+});
+}
+</script>

@@ -1,0 +1,112 @@
+<% partial_name = @partial_name.present? %>
+<% data = {
+  service_name: "ReferralSource",
+  action_name: "call",
+  partial_name: "referral_source"
+}%>
+<div class="row">
+  <div class="<%= partial_name ? 'col-md-6': 'col-md-12' %>">
+    <div class="panel panel-default panel_b borderd_panel">
+      <div class="panel-heading to_add_expand_button">
+        <h5 class="subtitle mb5 title_in_caps"><i class="fa fa-bar-chart" aria-hidden="true"></i><strong> Patient Referrals</strong></h5>
+        <%=render partial: "/analytics/shared/expand_button", locals:{partial_name: partial_name, data: data }%>
+      </div>
+      <div class="panel-body reduced_padding">
+        <canvas id="patient-referral-bar-chart_<%= partial_name %>" width="800" height="400"></canvas>
+      </div>
+    </div>
+  </div>
+  <% if partial_name %>
+    <div class="col-md-6">
+      <div class="table_wrapper">
+      <table class="table table_data table-bordered table-hover">
+        <thead>
+          <tr>
+            <th>Referal Source</th>
+            <th>Patient Count</th>
+          </tr>
+        </thead>
+        <tbody>
+
+          <% @referral_types_labels.each_with_index do |f_name, indx|%>
+            <tr>
+              <td><%= f_name %></td>
+              <td><%= @referral_types_data[indx].to_s %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+
+<script>
+  new Chart(document.getElementById("patient-referral-bar-chart_<%= partial_name %>"), {
+    type: 'horizontalBar',
+    data: {
+      labels: <%= raw @referral_types_labels %>,
+      datasets: [
+        {
+          label: "Referral Source",
+          backgroundColor: ["#82ccdd", "#fed156","#1B9CFC","#58B19F",'#911eb4', '#46f0f0', '#f032e6', '#fabebe', '#008080', '#420420', '#53D1BA'],
+          data: <%= raw @referral_types_data %>
+        }
+      ]
+    },
+    options: {
+      tooltips: {
+        callbacks: {
+          label: function(tooltipItem) {
+            return "Referral Source:  " + tooltipItem.yLabel;
+          }
+        }
+      },
+      scales: {
+        yAxes: [{
+          display: true,
+          ticks: {
+            beginAtZero: true,
+            mirror: true,
+            display: false
+          }
+        }],
+        xAxes:[{
+          barThickness: 20,
+          ticks: {
+            beginAtZero: true,
+          }
+        }]
+      },
+      responsive: true,
+      legend: {
+        display: false,
+      },
+      title: {
+        display: false,
+      },
+      animation: {
+        duration: 500,
+        onComplete () {
+          const chartInstance = this.chart;
+          const ctx = chartInstance.ctx;
+          ctx.font = Chart.helpers.fontString(Chart.defaults.global.defaultFontFamily, 'normal', Chart.defaults.global.defaultFontFamily);
+          const dataset = this.data.datasets[0];
+          const meta = chartInstance.controller.getDatasetMeta(0);
+
+          Chart.helpers.each(meta.data.forEach((bar, index) => {
+            const label = this.data.labels[index];
+            const labelPositionX = 15;
+            const labelWidth = ctx.measureText(label).width + labelPositionX;
+
+            ctx.textBaseline = 'middle';
+            ctx.textAlign = 'left';
+            ctx.fillStyle = '#333';
+            ctx.fillText(label, labelPositionX, bar._model.y);
+          }));
+        }
+      }
+    }
+  });
+</script>

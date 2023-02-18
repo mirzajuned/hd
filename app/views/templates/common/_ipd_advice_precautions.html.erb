@@ -1,0 +1,147 @@
+<div class="col-md-12 mb15">
+  <div class="col-md-2">
+    Advice & Precautions:
+    <div class="mb5" style="border-bottom: solid"></div>
+    <div class="btn btn-success save-advice-set-btn mb10" style="width: 100%;">Save Advice <i class="fa fa-hand-o-right"></i></div>
+    <div class="btn btn-danger write_access mb10 hide" id="write_access" style="width: 100%;">Write Advice <i class="fa fa-pencil-alt"></i></div>
+  </div>
+  <div class="col-md-10 advice-set">
+    <span class="refresh-advice-set-options">
+      <%= select_tag("advice_sets_option", options_for_select(@advice_set,""),{:include_blank => '',:class => 'form-control'}) %>
+      <%= f.text_field :advice_set_id,{:type => "hidden",:value => @operative_note.advice.advice_set_id} %>
+    </span>
+    <br>
+    <br>
+    <div class="notice hide" id="notice" style="color: red;">language support is disabled no translation is available for this advice</div>
+    <%= f.text_area :advice_content, :value => @operative_note.advice.advice_content, :class => 'form-control',:rows => "7" ,:onBlur=> "lasttext=this",:style=> "overflow-y: auto" %>
+  </div>
+</div>
+
+<style>
+  .advice-set .note-editable {
+    overflow-y: auto;
+  }
+  .advice-set .note-editor {
+    box-shadow: 0 0 5px;
+  }
+  .advice-set .panel-default > .panel-heading {
+    background-color: #1CAF9A;
+  }
+
+  .hide{
+    display: none;
+  }
+</style>
+
+<script>
+
+  jQuery(".save-advice-set-btn").on('click', function(event) {
+    event.preventDefault();
+    jQuery(".save-advice-set-btn").addClass("disabled");
+    if (jQuery('.popover-save-advice-set').length) {
+      jQuery('.popover-save-advice-set').popover('destroy');
+    }
+
+    var specialty_id = <%= @admission.try(:specialty_id) %>
+    jQuery(this).popover({
+      placement : 'right',
+      title : 'New Advice Set',
+      html : true,
+      content : function(){
+        jQuery.ajax({
+          type: "GET",
+          url: "/advice_sets/new_advice_set_popup",
+          data: {specialty_id: specialty_id, remote: "true" }
+        }).done(function( data ) {
+          jQuery('.popover.in .popover-content').empty();
+          jQuery(".popover.in .popover-content").html(data);
+          jQuery(".popover.in").css("top","50px")
+        });
+      },
+      template : '<div class="popover popover-save-advice-set" role="tooltip" style="width: 700px"><div class="arrow"></div><h5 class="popover-title"></h5><div class="popover-content"></div></div>'
+    }).popover('show');
+  });
+
+  jQuery("#advice_sets_option").select2({
+
+  });
+
+  var summernote_options = {
+    toolbar: [
+      ['style', ['bold', 'italic', 'underline', 'clear']],
+      ['fontsize', ['fontsize']],
+      ['height', ['height']],
+      ['fontname', ['fontname']],
+      ['para', ['ul', 'ol', 'paragraph']],
+    ],height: 400,
+    insertTableMaxSize: {col: 5,row: 7},
+    focus: true,
+    callbacks: {
+      onBlur: "lasttext=this"
+    }
+
+  };
+  if($("#inpatient_ipd_record_operative_notes_attributes_0_advice_attributes_advice_content").length > 0 ){
+    $('#inpatient_ipd_record_operative_notes_attributes_0_advice_attributes_advice_content').summernote(summernote_options);
+    $("#inpatient_ipd_record_operative_notes_attributes_0_advice_attributes_advice_content").on("summernote.change", function (event) {});
+  }
+
+  $('.advice-set .note-editable').attr('id','advice-set-content-summernote')
+
+  jQuery("#options_for_sets").on('change',function(){
+    doinsert_ie($(this).val())
+    $(this).val("")
+    $("#select2-options_for_sets-container").hide()
+
+  })
+
+
+  jQuery("#advice_sets_option").on('change',function(){
+    doinsert_ie($(this).val())
+    var dataid = $(this).find('option:selected').data('id')
+    $('#inpatient_ipd_record_operative_notes_attributes_0_advice_attributes_advice_set_id').val(dataid)
+    $(this).val("")
+    $("#select2-advice_sets_option-container").hide()
+    $("#write_access").removeClass('hide');
+    $("#notice").addClass('hide');
+    $('#inpatient_ipd_record_operative_notes_attributes_0_advice_attributes_advice_content').next().find(".note-editable").attr("contenteditable", false);
+
+    if (dataid) {
+      jQuery.ajax({
+        type: "GET",
+        dataType: "script",
+        data: { id: dataid},
+        url: '/advice_sets/update_set_counter'
+      });
+    }
+  })
+
+  <%if @operative_note.advice.advice_set_id.present?%>
+    $('#inpatient_ipd_record_operative_notes_attributes_0_advice_attributes_advice_content').next().find(".note-editable").attr("contenteditable", false);
+    $("#write_access").removeClass('hide');
+  <%end%>
+
+  function doinsert_ie(sometext) {
+    // var oldtext = $("#advice-set-content-summernote").code();
+    // var marker = "##MARKER##";
+    $('.advice-set .note-editable').focus();
+    // var sel = document.getSelection();
+    // sel.text = marker;
+    // var tmptext = $("#advice-set-content-summernote").code();
+    // var curpos = tmptext.indexOf(marker);
+    // pretext = oldtext.substring(0,curpos);
+    // posttest = oldtext.substring(curpos,oldtext.length);
+    if($("#inpatient_ipd_record_operative_notes_attributes_0_advice_attributes_advice_content").length > 0 ) {
+      $("#inpatient_ipd_record_operative_notes_attributes_0_advice_attributes_advice_content").code(sometext)
+    }
+  }
+
+  $(".write_access").on("click",function(){
+    $('#inpatient_ipd_record_operative_notes_attributes_0_advice_attributes_advice_content').next().find(".note-editable").attr("contenteditable", true);
+    $("#notice").removeClass("hide")
+    if ($("#notice").attr("class") != "notice hide"){
+      $('#inpatient_ipd_record_operative_notes_attributes_0_advice_attributes_advice_set_id').val("")
+    }
+
+  })
+</script>

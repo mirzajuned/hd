@@ -1,0 +1,42 @@
+<% if @invoice.is_refunded && @refund_payments.present? && @refund_payments.count > 0 %>
+  <div class="col-md-12 well">
+    <div class="" style="color: #d43f3a">
+      <strong class="text-center">Bill Refunded</strong>
+    </div>
+    <% @refund_payments.each do |refund_payment|%>
+      <div class="col-md-12">
+        <% refund_amount = refund_payment.try(:amount).to_f || @invoice.try(:refund_amount).to_f %>
+        <% refund_amount_with_precision = number_with_precision(refund_amount, precision: 2) %>
+        <% refund_amount_display = Common::Finance::NumberFormatService.call(@number_format, refund_amount_with_precision) %>
+        <% refund_reason = refund_payment.try(:reason) || @invoice.try(:refund_reason) %>
+        <div class="col-md-4">
+          <strong><b style="color: #0b670b"><%= refund_amount_display %>(<%=refund_payment.try(:mode_of_payment)%>)</b></strong> on <%= refund_payment.try(:refund_time).try(:strftime, '%I:%M %p') || @invoice.try(:refund_time).try(:strftime, '%I:%M %p') %>, <%= refund_payment.try(:refund_date).try(:strftime, '%d/%m/%Y') || @invoice.try(:refund_date).try(:strftime, '%d/%m/%Y') %>
+          <% if refund_reason.present? %>
+            <div class="">
+              <strong>Refund Remarks: <b style=""><%= refund_reason %></b></strong>
+            </div>
+          <% end %>
+        </div>
+        <div class="col-md-8" style="float: left;">
+          <div class="btn-group print-bill-buttons">
+            <% if @print_settings.count > 1 %>
+              <div class="btn-group">
+                <button type="button" class="btn btn-primary btn-sm full_print dropdown-toggle" data-toggle="dropdown"><i class="fa fa-print mr5"></i> Print Refund <i class="fa fa-caret-down"></i></button>
+                <ul class="dropdown-menu dropdown-left-manual" role="menu" aria-labelledby="summary-print-dropdown" style="">
+                  <% @print_settings.each do |print_setting| %>
+                    <li style="text-align:left" class="multi-print">
+                      <%= link_to print_invoice_refund_payments_path(id: refund_payment.id, print_setting_id: print_setting.id, format: 'pdf'), data: { method: :get }, class: "", target: "_blank", style: "color: #d9534f;" do %> <i class="fa fa-print mr5"></i> <%= print_setting.name %> <% end %>
+                    </li>
+                  <% end %>
+                </ul>
+              </div>
+            <% else %>
+              <%= link_to print_invoice_refund_payments_path(id: refund_payment.id, print_setting_id: @print_settings[0].id, format: 'pdf'), class: "btn btn-primary btn-sm full_print", target: "_blank", data: { method: :get } do %> <i class="fa fa-print mr5"></i> Print Refund<% end %>
+            <% end %>
+            <%= link_to new_mail_record_tracker_path(record_name: 'RefundPayment', record_id: refund_payment.id, record_model: 'RefundPayment', patient_id: refund_payment.patient_id, speciality_id: refund_payment.specialty_id, :mode => @mode),  class: "btn btn-sm btn-primary", :id => "record-mail-html", :data => {:remote => true, 'disable-with' =>  "Please Wait..."} do %><i class="fa fa-envelope"></i> Email<% end %>
+          </div>
+        </div>
+      </div><br><br><br>
+    <% end %>
+  </div>
+<% end %>

@@ -1,0 +1,67 @@
+$("#invoice-offer-service-modal").html('<%= escape_javascript(render "show_service_offers.html") %>')
+
+$('.close-offer-listing').on('click', function() {
+  $('#invoice-offer-service-modal').hide();
+})
+
+<%= render partial: "templates/common/js/popup_modal_hidden.js" %>
+
+let row_number = $('#row_count').val();
+function selectOffer() {
+  let new_offer_id = $('.selected_offer:checked').val();
+  if('<%=@selected_offer_id%>' != new_offer_id && new_offer_id != undefined) {
+    $('#offer_actions_'+row_number).find(".delete_offer").find(".remove_offer").trigger('click');
+    $('#offer_'+row_number).find('.remove_offer').show();
+    $.ajax({
+      type: "get",
+      dataType: "json",
+      url: "/offer_managers/offer_details?id="+new_offer_id,
+      success: function(response){
+        let service_item_row = $('#invoice_service_item_row_'+row_number)
+        var net_item_price = parseFloat(service_item_row.find('.net_item_price').val());
+        let offer_manager = response;
+        var offer_discount = parseFloat(parseFloat(net_item_price)*parseFloat(offer_manager['discount'])/100).toFixed(2);
+        $('#offer_'+row_number).show();
+        service_item_row.find(".field_for_price").find('.field_for_service_offer_amount').show();
+        $('#offer_'+row_number).find('.delete_offer').removeClass('hidden');
+        var calculated_net_item_price = parseFloat(parseFloat(net_item_price) - parseFloat(offer_discount)).toFixed(2);
+        $('#offer_'+row_number).find('.offer_details').removeClass('hidden');
+        service_item_row.find('.service_offer_amount').val(offer_discount);
+        service_item_row.find('.service_offer_manager_id').val(offer_manager['_id']);
+        service_item_row.find('.service_offer_name').val(offer_manager['name']);
+        service_item_row.find('.service_offer_code').val(offer_manager['standard_code']);
+        service_item_row.find('.service_offer_details').html(offer_manager['standard_code']);
+        service_item_row.find('.lbl_offer_amount').show();
+        service_item_row.find('.lbl_offer_amount').html(' - ' + offer_manager['discount']+'%');
+        service_item_row.find('.service_offer_percentage').val(offer_manager['discount']);
+        service_item_row.find('.service_offer_applied_at').val('<%=current_facility.try(:id)%>');
+        service_item_row.find('.service_offer_applied_at_name').val('<%=current_facility.try(:name)%>');
+        service_item_row.find('.service_offer_applied_by').val('<%=current_user.try(:id)%>');
+        service_item_row.find('.service_offer_applied_by_name').val('<%=current_user.try(:fullname)%>');
+        service_item_row.find('.service_offer_applied_date').val('<%=Date.current%>');
+        service_item_row.find('.service_offer_applied_datetime').val('<%=Time.current%>');
+        service_item_row.find('.add_item_offer').remove();
+        service_item_row.find('.net_item_price').val(calculated_net_item_price).trigger('change');
+        $('.offer_on_services').trigger('change')
+      }
+    });
+  }
+  $('#invoice-offer-service-modal .close').click();
+}
+
+if(<%=@invoice_department_type == 'opd'%>) {
+  <%= render partial: "invoice/opd/common_validation.js.erb" %>
+  if(<%=@action == 'new'%>) {
+    opd_invoice_page();
+  } else {
+    opd_invoice_page_edit();
+  }
+} else if(<%=@invoice_department_type == 'ipd'%>) {
+  <%= render partial: "invoice/ipd/common_validation.js.erb" %>
+  if(<%=@action == 'new'%>) {
+    ipd_invoice_page();
+  } else {
+    ipd_invoice_page_edit();
+  }
+}
+// calculate_offer_discount()

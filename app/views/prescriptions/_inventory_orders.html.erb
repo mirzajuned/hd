@@ -1,0 +1,59 @@
+<% if @advance_payments.count > 0 %>
+  <div class="row no_margin">
+    <div class="col-sm-12 mb10">
+      <% advance_payment_total = @advance_payments.group_by(&:currency_symbol) %>
+      <span>Advance Payment (Remaining Adv. Amt.):
+          <label class="label label-warning">
+            <% counter = 0 %>
+            <% advance_payment_total.each do |currency_symbol, advance_payments| %>
+              <% if counter > 0 %>&nbsp;|&nbsp;<% end %> <%= currency_symbol %><%= (advance_payments.map { |va| va[:amount].to_f.try(:round, 3) }.sum).try(:round, 3) %> (<%= (advance_payments.map { |va| va[:amount_remaining].to_f }.sum).to_f.try(:round, 3) - (advance_payments.map { |va| va[:refund_amount].to_f }.sum).to_f.try(:round, 3) %> )
+              <% counter += 1 %>
+            <% end %>
+          </label>
+        </span>
+    </div>
+    <% @advance_payments.each do |advance_payment| %>
+      <div class="col-sm-4 mb3">
+        <% if advance_payment.is_refunded %>
+          <%= link_to invoice_advance_payment_path(id: advance_payment.id), class: 'btn btn-xs btn-default', data: { :remote => true, 'toggle' => 'modal', 'target' => '#invoice-modal' } do %><%= advance_payment.currency_symbol %><%= advance_payment.amount.try(:round, 3) %>(<strike> <%= advance_payment.currency_symbol %><%= advance_payment.amount_remaining.try(:round, 3) %> </strike>) on <%= advance_payment.created_at.strftime("%d %b'%y") %><% end %>
+        <% else %>
+          <%= link_to invoice_advance_payment_path(id: advance_payment.id), class: 'btn btn-xs btn-default', data: { :remote => true, 'toggle' => 'modal', 'target' => '#invoice-modal' } do %><%= advance_payment.currency_symbol %><%= advance_payment.amount.try(:round, 3) %> (<%= advance_payment.currency_symbol %><%= advance_payment.amount_remaining.try(:round, 3) %>) on <%= advance_payment.created_at.strftime("%d %b'%y") %><% end %>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+<% end %>
+
+<hr>
+<% if @refund_payments.count > 0 %>
+  <div class="row no_margin">
+    <div class="col-sm-12 mb10">
+      <% refund_payment_total = @refund_payments.group_by(&:currency_symbol) %>
+      <span>Refund Payment :
+          <label class="label label-warning">
+            <% counter = 0 %>
+            <% refund_payment_total.each do |currency_symbol, refund_payments| %>
+              <% if counter > 0 %>&nbsp;|&nbsp;<% end %> <%= currency_symbol %><%= (refund_payments.map { |va| va[:amount].to_f }.sum).try(:round, 3) %>
+              <% counter += 1 %>
+            <% end %>
+          </label>
+        </span>
+    </div>
+    <% @refund_payments.each do |refund_payment| %>
+      <div class="col-sm-4 mb3">
+        <%= link_to invoice_refund_payment_path(id: refund_payment.id), class: 'btn btn-xs btn-default', data: { :remote => true, 'toggle' => 'modal', 'target' => '#invoice-modal' } do %><%= refund_payment.currency_symbol %><%= refund_payment.amount.try(:round, 3) %> on <%= refund_payment&.payment_date&.strftime("%d %b'%y") %><% end %>
+      </div>
+    <% end %>
+  </div>
+<% end %>
+<hr>
+
+
+<style type="text/css">
+  .old_invoice_ss {
+    text-align:center;
+    font-size:10px;
+    border-top: 1px solid #ccc;
+    border-bottom: 1px solid #ccc;
+  }
+</style>

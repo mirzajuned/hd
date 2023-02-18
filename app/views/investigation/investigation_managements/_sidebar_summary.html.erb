@@ -1,0 +1,117 @@
+<div class="row no-margin text-center">
+  <div class="row no_margin" style="width: 98%; margin-top: -15px;margin-left:7px;">
+    <ul class="nav nav-tabs tab_active" role="tablist">
+      <li role="presentation" class="full-width <%= "active" if (params[:active_tab] == 'my_queue_tab' || params[:active_tab] == nil) %>" data-tab-id="my_queue_tab">
+        <a href="#my_queue_list" id="my-queue-list" aria-controls="home" role="tab" data-toggle="tab">
+          <span style="display: block; font-size: 16px;" class="todays_patient_list_count"><%= @investigation_my_queue.count %></span>
+          <% if @current_date < Date.current %>
+            Incompleted
+          <% else %>
+            My Queue
+          <% end %>          
+        </a>
+      </li>
+      <li role="presentation" class="full-width <%= "active" if (params[:active_tab] == 'my_queue') %>" data-tab-id="my_queue">
+        <a href="#todays_patient_list" id="my-queue-list" aria-controls="home" role="tab" data-toggle="tab">
+        <span style="display: block; font-size: 16px;" class="todays_patient_list_count"><%= @investigation_queue.count %></span>
+          Today's Patient
+        </a>
+      </li>
+      <li role="presentation" class="full-width <%= "active" if params[:active_tab] == 'pending' %>" data-tab-id="pending">
+        <a href="#pending_patient_list" id="pending-queue-list" aria-controls="home" role="tab" data-toggle="tab">
+        <span style="display: block; font-size: 16px;" class="pending_patient_list_count"><%= @investigation_pending.count %></span>
+          Pending Investigations
+        </a>
+      </li>
+      <li role="presentation" class="full-width <%= "active" if params[:active_tab] == 'review' %>" data-tab-id="review">
+        <a href="#review_patient_list" id="review-queue-list" aria-controls="home" role="tab" data-toggle="tab">
+          <span style="display: block; font-size: 16px;" class="review_patient_list_count"><%= @investigation_review.count %></span>
+          Review Investigations
+        </a>
+      </li>
+      <li role="presentation" class="full-width <%= "active" if params[:active_tab] == 'completed' %>" data-tab-id="completed">
+        <a href="#completed_patient_list" id="completed-queue-list" aria-controls="home" role="tab" data-toggle="tab">
+        <span style="display: block; font-size: 16px;" class="completed_patient_list_count"><%= @investigation_completed.count %></span>
+          Completed Patient
+        </a>
+      </li>
+    </ul>
+  </div>
+  <div class="row no_margin  summary_body collapse in" id="summary_investigation_today">
+    <div class="investigation_today">
+      <div class="tab-content" style="width:95%; margin-left:10px;">        
+        <div role="tabpanel" class="investigation_type_content tab-pane <%= "active" if (params[:active_tab] == 'my_queue_tab' || params[:active_tab] == nil) %>" id="my_queue_list">
+          <%= render partial: 'data_rows.html.erb', locals: { investigation: @investigation_my_queue } %>
+        </div>
+        <div role="tabpanel" class="investigation_type_content tab-pane <%= "active" if (params[:active_tab] == 'my_queue') %>" id="todays_patient_list">
+          <%= render partial: 'data_rows.html.erb', locals: { investigation: @investigation_queue } %>
+        </div>
+        <div role="tabpanel" class="investigation_type_content tab-pane <%= "active" if params[:active_tab] == 'pending' %>" id="pending_patient_list">
+          <%= render partial: 'data_rows.html.erb', locals: { investigation: @investigation_pending } %>
+        </div>
+        <div role="tabpanel" class="investigation_type_content tab-pane <%= "active" if params[:active_tab] == 'review' %>" id="review_patient_list">
+          <%= render partial: 'data_rows.html.erb', locals: { investigation: @investigation_review } %>
+        </div>
+        <div role="tabpanel" class="investigation_type_content tab-pane <%= "active" if params[:active_tab] == 'completed' %>" id="completed_patient_list">
+          <%= render partial: 'data_rows.html.erb', locals: { investigation: @investigation_completed } %>
+        </div>
+      </div>
+    </div>
+  </div><!-- summary_body -->
+</div>
+
+<style type="text/css">
+  /*.full-width {
+    width: 25%;
+  }*/
+</style>
+
+<script type="text/javascript">
+  var tab_count = $('.tab_active').find('li').length
+  $(".full-width").css('width',100/tab_count+"%")
+
+  $(".summary_investigation_clickable").on('click', function(){
+    $("#investigation_summary").html('<div class="loading_dots"> <span></span> <span></span> <span></span></div>').css('background','#fff')
+    $("#summary_investigation_today").find(".active-investigation").removeClass("active-investigation")
+    $(this).addClass("active-investigation")
+
+    $.ajax({
+      type: "GET",
+      dataType: "script",
+      data: {        
+        patient_id: $(this).attr('data-patient-id'),
+        appointment_id: $(this).data('appointment-id'),
+        department_id: $(this).data('department-id'),
+        current_date: "<%= @current_date.strftime('%d/%m/%Y') %>"
+      },
+      url: "/investigation/investigation_managements/investigation_details",
+      success: function(){
+        
+      }
+    })
+  })
+
+  // Initialize Trigger on Load
+  var params_investigation = $("#summary_investigation_today").find(".active").find("[data-patient-id='<%= @patient_id %>']")
+  var js_investigation = $("#summary_investigation_today").find(".active").find(".summary_investigation_clickable")
+  if(params_investigation.length > 0){
+    params_investigation.trigger('click');
+  } else {
+    if(js_investigation.length > 0){
+      js_investigation.first().trigger('click')
+    } else {
+      $("#investigation_summary").html("").css("background-color","transparent")
+    }
+  }
+
+  // Initialize Trigger on Change of Tabs
+  $(".full-width").find('a').on('click', function(){
+    var href = $(this).attr("href")
+    var investigation_list = $(href).find(".summary_investigation_clickable")
+    if(investigation_list.length > 0){
+      investigation_list.first().trigger('click')
+    } else {
+      $("#investigation_summary").html("").css("background-color","transparent")
+    }
+  })
+</script>

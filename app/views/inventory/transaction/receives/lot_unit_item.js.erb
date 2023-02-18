@@ -1,0 +1,45 @@
+$("#add-unit-lot-modal").modal("hide")
+var tr_class = '<%= params[:tr_class_val] %>'
+parent = $('.' + tr_class)
+total_stock = parseInt(parent.find('.item-stock').text()) || 0
+received_qty = parseInt('<%= @received_lot_units&.size.to_i %>')
+rejected_qty = total_stock - received_qty
+parent.find('.rejected-stock').text(rejected_qty)
+data = parseInt(parent.find('.rejected-stock').attr("data"))
+$("#"+"inventory_transaction_receive_items_attributes_"+data+"_rejected_stock").val(rejected_qty)
+parent.find('.item_quantity').val(received_qty)
+unit_cost = parseFloat(parent.find('.unit-cost').val()) || 0
+received_total_cost = (unit_cost * received_qty).toFixed(2)
+parent.find('.received-total-cost').val(received_total_cost)
+total_cost()
+
+function total_cost() {
+  total = 0;
+  $('.received-total-cost').each(function(i,n){
+    total += parseFloat($(n).val()) || 0 
+  })
+  $('#inventory_transaction_receive_total_cost').val(total) 
+}
+
+let lot_unit_ids = '<%= params[:lot_unit_ids] %>'
+let data_1 = JSON.parse(lot_unit_ids.replace(/&quot;/g,'"'));
+var _href = '/inventory/transaction/receives/filter_item?'
+if (received_qty > 0) {
+	let selected_lot_unit_ids = '<%= @received_lot_units %>'
+	var data = JSON.parse(selected_lot_unit_ids.replace(/&quot;/g,'"'));
+	$('.' + tr_class).attr("href", _href +`&selected_lot_unit_ids=${data}`+`&lot_unit_ids=${data_1}`+`&tr_class_val=${tr_class}`);
+} else {
+	$('.' + tr_class).attr("href", _href +`&lot_unit_ids=${data_1}`+`&tr_class_val=${tr_class}`);
+}
+
+parent.find('.received_lot_unit_ids').val('')
+data.forEach(function(item) {
+	parent.find('.received_lot_unit_ids').append(`<option selected="selected" value="${item}">${item}</option>`);
+})
+
+var rejected_lot_unit_ids = '<%= @rejected_lot_units_ids %>'
+var rejected_ids = JSON.parse(rejected_lot_unit_ids.replace(/&quot;/g,'"'));
+parent.find('.rejected_lot_unit_ids').val('')
+rejected_ids.forEach(function(id) {
+	parent.find('.rejected_lot_unit_ids').append(`<option selected="selected" value="${id}">${id}</option>`);
+})

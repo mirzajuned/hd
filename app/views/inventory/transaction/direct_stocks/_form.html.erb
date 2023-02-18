@@ -1,0 +1,103 @@
+<div class="row transaction-title">
+  <div class="col-sm-12 text-center" style="border-bottom:1px solid #ccc;border-top:1px solid #ccc;">
+    <strong>Direct Stock Entry</strong>
+  </div>
+</div>
+<div class="row mb5 transaction-common-fields" style="margin-top:15px;">
+  <div class="col-sm-5">
+    <strong>Note</strong><br>
+    <%= f.text_field :note, { class: 'form-control p7_10 fullname', placeholder: "Transaction Note" } %>
+  </div>
+  <div class="col-sm-3">
+    <strong> Vendor Name </strong><br>
+    <%= f.text_field :vendor_location_address, { value: @vendor_location_address, class: 'form-control p7_10', readonly: true } %>
+    <%= f.hidden_field :vendor_id, { value: @vendor.id } %>
+    <%= f.hidden_field :vendor_location_id, { value: @vendor_location.id } %>
+  </div>  
+  <div class="col-sm-2">
+    <strong>Transaction Date</strong><br>
+    <% unless Authorization::PolicyHelper.verification(current_user.id,"HGP-100-105-104") %>
+      <%= f.text_field :transaction_date, { value: Date.current.strftime("%d/%m/%Y"), class: 'form-control p7_10 fullname', placeholder: "Date of transition", readonly: true } %>
+    <% else %>
+      <%= f.text_field :transaction_date, { value: Date.current.strftime("%d/%m/%Y"), class: 'form-control p7_10 fullname transaction-datepicker', placeholder: "Date of transition" } %>
+    <% end %>
+  </div>
+  <div class="col-sm-2">
+    <strong>Transaction Time</strong><br>
+    <%= f.text_field :transaction_time_picker, { value: Time.current.strftime("%I:%M %p"), class: 'form-control p7_10 transaction-timepicker', placeholder: "Time of transition", disabled: !Authorization::PolicyHelper.verification(current_user.id,"HGP-100-105-104") } %>
+    <%= f.hidden_field :transaction_time, { value: Time.current } %>
+  </div>
+  <div class="col-sm-2">
+    <strong>Bill Type</strong>
+    <%= f.select :bill_type, options_for_select(Inventory::Transaction::DirectStock.bill_type.options, @direct_stock.bill_type), { include_blank: 'Please Select'}, { class: 'form-control' } %>
+  </div>
+  <div class="col-sm-2 bill-type-details challan_col">
+    <strong>Challan Number</strong>
+    <%= f.text_field :challan_number, { class: 'form-control p7_10' } %>
+  </div>
+  <div class="col-sm-2 bill-type-details challan_col">
+    <strong>Challan Date</strong>
+    <%= f.text_field :challan_date, { value: @direct_stock.challan_date&.strftime("%d/%m/%Y"),
+      class: 'form-control p7_10 fullname challan-datepicker', placeholder: "Date of challan", readonly: 'readonly' } %>
+  </div>
+  <div class="col-sm-2 bill-type-details bill_col">
+    <strong>Bill Number</strong>
+    <%= f.text_field :bill_number, { class: 'form-control p7_10' } %>
+  </div>
+  <div class="col-sm-2 bill-type-details bill_col">
+    <strong>Bill Date</strong>
+    <%= f.text_field :bill_date, { value: @direct_stock.bill_date&.strftime("%d/%m/%Y"), class: 'form-control p7_10 fullname bill-datepicker', placeholder: "Date of bill", readonly: 'readonly' } %>
+  </div> 
+  <%= f.hidden_field :entry_type, { value: "direct_stock" } %>
+  <%= f.hidden_field :entered_by, { value: current_user.fullname } %>
+  <%= f.hidden_field :user_id, { value: current_user.id } %>
+  <%= f.hidden_field :store_id, { value: @store_id } %>
+  <%= f.hidden_field :facility_id, { value: current_facility.id } %>
+  <%= f.hidden_field :organisation_id, { value: current_user.organisation_id } %>
+  <%= f.hidden_field :department_id, { value: @inventory_store&.department_id } %>
+  <%= f.hidden_field :department_name, { value: @inventory_store&.department_name } %>
+  <% vendor_address = po_vendor_location_format(@vendor) %>
+  <%= f.hidden_field :vendor_address, { value: vendor_address } %>
+  <%= f.hidden_field :vendor_name, { value: @vendor&.name || "" } %>
+  <%= f.hidden_field :vendor_location_name, { value: @vendor_location&.name } %>
+</div>
+
+<div class="row mb5" style="border-bottom:1px solid #eee;border-top:1px solid #eee;">
+  <div class="transaction-lots-list" style="margin-top:15px;">
+    <table class="table transaction-lots-table">
+      <thead class="transaction-table-head">
+      <tr class='thead-fixable'>
+        <td class='col-md-2 thead-fix'>Description</td>
+        <td class='col-md-1 thead-fix'>Quantity</td>
+        <td class='col-md-1 thead-fix'>Batch No.</td>
+        <td class='col-md-1 thead-fix'>Expiry</td>
+        <td class='col-md-1 thead-fix'>Taxable Amt.</td>
+        <td class='col-md-1 thead-fix'>GST %</td>
+        <td class='col-md-1 thead-fix'>Tax Incl.</td>
+        <td class='col-md-1 thead-fix'>Tax Amount</td>
+        <td class='col-md-1 thead-fix'>Unit Cost</td>
+        <td class='col-md-1 thead-fix'>Total</td>
+        <td class='col-md-1 thead-fix'>Action</td>
+      </tr>
+      </thead>
+    </table>
+  </div>
+
+  <div class="transaction-table-body" style="overflow-y: auto; font-size: 11px">
+    <% unless @direct_stock_items.blank? %>
+      <%= render 'inventory/transaction/direct_stocks/lots.html',
+                 lots: @direct_stock_items, direct_stock: @direct_stock, f: f %>
+    <% end %>
+  </div>
+
+</div>
+
+<%= render partial: 'inventory/transaction/direct_stocks/tax_details.html.erb', locals: { f:f } %>
+
+<style>
+  
+  .transaction-datepicker:disabled, .transaction-timepicker:disabled {
+    cursor: not-allowed !important;
+  }
+  
+</style>

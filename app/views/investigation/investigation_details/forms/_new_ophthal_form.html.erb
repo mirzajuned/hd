@@ -1,0 +1,164 @@
+<div class="row">
+  <div class="col-sm-12">
+    <div class="col-md-2"></div>
+    <div class="rdio rdio-primary col-md-4">
+      <div id="standard_oph_inv" class="standard_oph_inv" style="margin-bottom:15px;">
+        <%= radio_button_tag "ophthal_inv_type", "standard_opthal_investigation", true, {:class => 'ophthal_inv_type', :id => "OphthalRadio1"} %>
+        <label for="OphthalRadio1">Standard Investigations</label>
+      </div>
+    </div>
+    <div class="rdio rdio-primary col-md-6 custom_oph_inv" id="custom_oph_inv">
+      <%= radio_button_tag "ophthal_inv_type", "custom_opthal_investigation", false, {:class => 'ophthal_inv_type', :id => "OphthalRadio2"} %>
+      <label for="OphthalRadio2">Custom Investigations</label>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-md-2" style="padding-left: 20px;">
+    <b>Ophthal Sets</b>
+    <%= select_tag  "ophthal_set", options_for_select(@ophthal_laboratory_set.pluck(:name, :id)) ,{ multiple: true, :style => 'height: 250px; width:100%', :class => 'form-control' } %>
+  </div>
+  
+  <div class="standard-ophthal-investigations">
+    <div class="col-sm-3 col-md-5-shared">
+      <b>Eye Region</b>
+      <%= select_tag  "standard_eyearea", options_for_select([ ["All", "all_region"], ["Cornea", "cornea###181162001"], ["Retina", "retina###5665001"], ["Glaucoma", "glaucoma###23986001"], ["Cataract", "cataract###193570009"], ["Neuro-Ophthal & Squint", "squint###22066006"]]) ,{ multiple: true, :style => 'height: 250px; width:100%', :class => 'form-control' } %>
+    </div>
+    <div class="col-sm-3 col-md-5-shared">
+      <b>Investigation</b>
+      <select class='form-control eyearea-options' multiple='true' id="investigation-eyearea-option" style="height:250px;width:100%;"></select>
+    </div> 
+  </div>
+
+  <div class="custom-ophthal-investigations">
+    <% @custom_oph_inv_regions =  (CustomOphthalInvestigation.where(:organisation_id => current_user.organisation_id, '$or' => [{ level: 'organisation' }, { facility_id: current_facility.id.to_s, level: 'facility' }], is_deleted: false).pluck(:region)) %>
+    <% @custom_ophthal_investigations_regions = @custom_oph_inv_regions.flatten.map { |region| region.to_s.downcase }.uniq %>
+
+    <div class="col-sm-3 col-md-5-shared">
+       <b>Eye Region</b>
+      <%= select_tag "custom_eyearea", options_for_select( @custom_ophthal_investigations_regions.map { |region| [region.capitalize, region] } ) , {:class => 'form-control opdrecord_eyearea',:multiple => true, :style => "min-height: 250px; width: 88%"} %>
+    </div>
+
+    <div class="col-sm-3 col-md-5-shared custom_ophthal_investigations_label_select" id="custom_ophthal_investigations_label_select">
+      <b>Investigation</b>
+      <select class='form-control select_custom_ophthal_investigations'  multiple='true' style="height:250px;min-width:80%;"></select>
+    </div>
+  </div>
+
+  <div class="col-sm-5 selected-investigations">
+    <b>Selected Tests</b>
+  </div>
+</div>
+
+<script type="text/javascript">
+  jQuery(document).ready(function() {
+    jQuery(".custom-ophthal-investigations").hide();
+    jQuery("input[name='ophthal_inv_type']").on('click', function () {
+      var ophthal_inv_type = jQuery("input[name='ophthal_inv_type']:checked").val();
+      if (ophthal_inv_type == 'standard_opthal_investigation') {
+        jQuery(".standard-ophthal-investigations").show();
+        jQuery(".custom-ophthal-investigations").hide();
+      }
+       else if (ophthal_inv_type == 'custom_opthal_investigation') {
+        jQuery(".standard-ophthal-investigations").hide();
+        jQuery(".custom-ophthal-investigations").show();
+      }
+    });
+  });
+  
+  $("#ophthal_set").on('change', function(){
+    var row_count = $(".selected-investigations").find('.ophthal-investigation-row').length
+    var ophthal_set_id = $("#ophthal_set option:selected").val();
+    $.ajax({
+      dataType: "script",
+      type: "GET",
+      url: "/investigation/investigation_details/append_ophthal_set",
+      data: {id: ophthal_set_id, row_count: row_count},
+      success: function(response){
+        $('#ophthal_set option:selected').removeAttr('selected');
+      }
+    })
+  })
+
+  $('#standard_eyearea').on('change', function() {
+      var eyearea_selected_option_value = $("#standard_eyearea option:selected").val();
+      var selected_eyearea_region = eyearea_selected_option_value.split("###")[0];
+      var selected_eyearea_region_snomedid = eyearea_selected_option_value.split("###")[1];
+      var params = { eyearea: selected_eyearea_region, selected_eyearea_region_snomedid: selected_eyearea_region_snomedid }
+      
+      $.ajax({
+        dataType: "JSON",
+        type: "GET",
+        url: "/opd_records/populate_ophthal_investigations",
+        data: { ajax: params, ophthal_model: 'OphthalmologyInvestigationData', remote: "true" },
+        success: function(response){
+          $(".eyearea-options").html("")
+          $.each(response, function(key, value) {            
+            $(".eyearea-options").append("<option value=" + value[1] + ">" + value[0] + "</option>")
+          });
+        }
+      })
+  });
+
+  $(".eyearea-options").on('change', function(){
+
+    var this_length = $(".selected-investigations").find('.ophthal-investigation-row').length
+    $(".selected-investigations").append("<div class='row ophthal-investigation-row mb5'><input type='hidden' name='ophthal_investigation[" + this_length + "][investigation_id]' class='form-control investigation_id' value='" + $(".eyearea-options option:selected").val() + "'><input type='hidden' name='ophthal_investigation[" + this_length + "][order_item_advised_id]' class='form-control order_item_advised_id' value='" + "<%= BSON::ObjectId.new.to_s %>" + "'><div class='col-sm-5'><input type='text' name='ophthal_investigation[" + this_length + "][investigationname]' class='form-control investigationname p5_10' value='" + $(".eyearea-options option:selected").text() + "'></div><div class='col-sm-5'><select class='form-control investigationside p5_10' name='ophthal_investigation[" + this_length + "][investigationside]'><option selected value='40638003'>B/E</option><option value='18944008'>R</option><option value='8966001'>L</option></select></div><div class='col-sm-2'><button class='btn btn-danger btn-xs delete-row'>&times;</button></div></div>")
+
+    $(".delete-row").on('click', function(){
+      $(this).closest('.ophthal-investigation-row').remove()
+      renumber_investigation_rows()
+    })
+    $('.eyearea-options option:selected').removeAttr('selected');
+  })
+
+  $('#custom_eyearea').on('change', function() {
+    var eyearea_selected_option_value = $("#custom_eyearea option:selected").val();
+    var params = { eyearea: eyearea_selected_option_value }
+
+    $.ajax({
+      dataType: "JSON",
+      type: "GET",
+      url: "/opd_records/populate_ophthal_investigations",
+      data: { ajax: params, ophthal_model: 'CustomOphthalInvestigation', remote: "true" },
+      success: function(response){
+        $(".select_custom_ophthal_investigations").html("")
+        $.each(response, function(key, value) {            
+          $(".select_custom_ophthal_investigations").append("<option value=" + value[1] + ">" + value[0] + "</option>")
+        });
+      }
+    })
+  });
+
+  $(".select_custom_ophthal_investigations").on('change', function(){
+    var this_length = $(".selected-investigations").find('.ophthal-investigation-row').length
+    $(".selected-investigations").append("<div class='row ophthal-investigation-row mb5'><input type='hidden' name='ophthal_investigation[" + this_length + "][investigation_id]' class='form-control investigation_id' value='" + $(".select_custom_ophthal_investigations option:selected").val() + "'><input type='hidden' name='ophthal_investigation[" + this_length + "][order_item_advised_id]' class='form-control order_item_advised_id' value='" + "<%= BSON::ObjectId.new.to_s %>" + "'><div class='col-sm-5'> <input type='hidden' name='ophthal_investigation[" + this_length + "][is_custom]' value='true'><input type='text' name='ophthal_investigation[" + this_length + "][investigationname]' class='form-control investigationname p5_10' value='" + $(".select_custom_ophthal_investigations option:selected").text() + "'></div><div class='col-sm-5'><select class='form-control investigationside p5_10' name='ophthal_investigation[" + this_length + "][investigationside]'><option selected value='40638003'>B/E</option><option value='18944008'>R</option><option value='8966001'>L</option></select></div><div class='col-sm-2'><button class='btn btn-danger btn-xs delete-row'>&times;</button></div></div>")
+
+    $(".delete-row").on('click', function(){
+      $(this).closest('.ophthal-investigation-row').remove()
+      renumber_investigation_rows()
+    })
+    $('.select_custom_ophthal_investigations option:selected').removeAttr('selected');
+  })
+
+  function renumber_investigation_rows(){
+    var ophthal_investigation_rows = $(".selected-investigations").find('.ophthal-investigation-row')
+    for (var i = ophthal_investigation_rows.length - 1; i >= 0; i--) {
+      $(ophthal_investigation_rows[i]).find('.investigationname').attr('name','ophthal_investigation[' + i + '][investigationname]')
+      $(ophthal_investigation_rows[i]).find('.investigationside').attr('name','ophthal_investigation[' + i + '][investigationside]')
+      $(ophthal_investigation_rows[i]).find('.investigation_id').attr('name','ophthal_investigation[' + i + '][investigation_id]')
+      $(ophthal_investigation_rows[i]).find('.entered_by_id').attr('name','ophthal_investigation[' + i + '][entered_by_id]')
+      $(ophthal_investigation_rows[i]).find('.order_item_advised_id').attr('name','ophthal_investigation[' + i + '][order_item_advised_id]')
+      $(ophthal_investigation_rows[i]).find('.entered_by').attr('name','ophthal_investigation[' + i + '][entered_by]')
+      $(ophthal_investigation_rows[i]).find('.entered_at_facility_id').attr('name','ophthal_investigation[' + i + '][entered_at_facility_id]')
+      $(ophthal_investigation_rows[i]).find('.entered_at_facility').attr('name','ophthal_investigation[' + i + '][entered_at_facility]')
+      $(ophthal_investigation_rows[i]).find('.entered_datetime').attr('name','ophthal_investigation[' + i + '][entered_datetime]')
+      $(ophthal_investigation_rows[i]).find('.advised_by_id').attr('name','ophthal_investigation[' + i + '][advised_by_id]')
+      $(ophthal_investigation_rows[i]).find('.advised_by').attr('name','ophthal_investigation[' + i + '][advised_by]')
+      $(ophthal_investigation_rows[i]).find('.advised_at_facility_id').attr('name','ophthal_investigation[' + i + '][advised_at_facility_id]')
+      $(ophthal_investigation_rows[i]).find('.advised_at_facility').attr('name','ophthal_investigation[' + i + '][advised_at_facility]')
+      $(ophthal_investigation_rows[i]).find('.advised_datetime').attr('name','ophthal_investigation[' + i + '][advised_datetime]')
+    }
+  }
+</script>

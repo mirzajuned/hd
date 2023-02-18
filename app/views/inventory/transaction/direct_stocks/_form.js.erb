@@ -1,0 +1,340 @@
+$('.items-variants-list .inventory-list-row').unbind()
+$('.items-variants-list .inventory-list-row').on('click', function(e){
+  e.preventDefault();
+  var variant_name =  $(this).find('.description').text();
+  var vendor_id = $("#inventory_transaction_direct_stock_vendor_id").val()
+  var _id =  $(this).attr('id');
+
+  $.ajax({
+    type: 'GET',
+    data: {
+      variant_name: variant_name,
+      variant_id: _id,
+      store_id: '<%= @inventory_store.id %>',
+      vendor_id: vendor_id,
+      remote: true
+    },
+    url: '/inventory/transaction/direct_stocks/new_lot',
+    success: function(){
+    }
+  })
+})
+
+$('#inventory_transaction_direct_stock_bill_type').on('change', function() {
+  var bill_type = $(this).val()
+  $('.bill-type-details').hide()
+  $('.bill-type-details input').not('.'+bill_type+'_col input').val("")
+  $('.'+bill_type+'_col').show()
+}).trigger('change')
+
+$('.challan-datepicker, .bill-datepicker').datepicker({
+  dateFormat: "dd/mm/yy",
+})
+
+$('.delete_empty_item').on('click', function(){
+  if ($('.stock-opening-transaction-log-item').length > 1){
+    var parent = $(this).closest('.stock-opening-transaction-log-item')
+    var key = parent.data('child-index')
+    var destroy_item = parent.find('.destroy-item')
+    if (destroy_item.length > 0){
+      destroy_item.val(1)
+      parent.hide().addClass('removed')
+    } else {
+      parent.remove()
+    }
+    delete tax_breakup[key];
+  }
+  calTotalPrice()
+  calculate_purchase_tax()
+})
+
+
+$(window).resize(function() {
+  adjust_height()
+})
+adjust_height()
+
+function adjust_height(){
+  modalContentHeigth = $(window).height() - 275
+  itemsVariants = modalContentHeigth - $('.transaction-header').height() + 120
+  $('.items-variants-body').height(itemsVariants)
+  InvoiceInfoHeight = $('.stock-opening-invoice-information').height()
+  transactionListHeight = modalContentHeigth - $('.transaction-title').height() - $('.transaction-common-fields').height() - InvoiceInfoHeight
+  $('.transaction-table-body').height(transactionListHeight - $('.transaction-table-head').height())
+}
+
+var date_format = {
+    dateFormat: "dd/mm/yy",
+    maxDate: -0
+  }
+
+$('.transaction-datepicker').datepicker(date_format).on('change', function(e) {
+  validateMaxTime("transaction")
+});
+
+function validateMaxTime(picker)
+{
+  var picker_time = moment($("."+picker+"-timepicker").val(), 'HH:mm a')
+  if ( ($("."+picker+"-datepicker").val() == "<%= Date.current.strftime("%d/%m/%Y") %>") && (moment().isBefore(picker_time)) )
+  {
+    $("."+picker+"-timepicker").timepicker('setTime', moment().format('HH:mm a'))
+  }
+}
+
+$('.transaction-timepicker').timepicker({
+  defaultTime: 'current',
+  TimeFormat: 'HH:mm a',
+  minuteStep: 1
+})
+
+
+$('.transaction-timepicker').on('changeTime.timepicker', function(e) {  
+  validateMaxTime("transaction")
+  date_time = "<%= Date.current%> "+$('#inventory_transaction_direct_stock_transaction_time_picker').val()
+  date_time = new Date(Date.parse(date_time))
+  $('#inventory_transaction_direct_stock_transaction_time').val(date_time)
+});
+
+function calTotalPrice() {
+  $("#inventory_transaction_direct_stock_total_cost").val(price_including_tax())
+  var total_cost = parseFloat($('#inventory_transaction_direct_stock_total_cost').val()) || 0
+  var discount_amount = parseFloat($('#inventory_transaction_direct_stock_discount').val()) || 0
+  var net_amount = total_cost - discount_amount
+  $("#inventory_transaction_direct_stock_net_amount").val(net_amount.toFixed(2))
+  $('#inventory_transaction_direct_stock_amount_remaining').val(net_amount.toFixed(2))
+}
+
+function price_including_tax() {
+  var each_item_totals = 0;
+  $('.price_including_tax').each(function(){
+    parent = $(this).parents('.stock-opening-transaction-log-item')
+    if (!parent.hasClass('removed')){
+      each_item_totals += parseFloat($(this).val());
+    }
+  });
+  return each_item_totals.toFixed(2)
+}
+
+$('#inventory_transaction_direct_stock_discount').on('keyup', function() {
+  var total_cost = parseFloat($('#inventory_transaction_direct_stock_total_cost').val()) || 0
+  var discount_amount = parseFloat($('#inventory_transaction_direct_stock_discount').val()) || 0
+  var net_amount = total_cost - discount_amount
+  $('#inventory_direct_stock_net_amount').val(net_amount.toFixed(2))
+  $('#inventory_transaction_direct_stock_amount_remaining').val(net_amount.toFixed(2))
+  calculate_purchase_tax()
+})
+
+function calculate_purchase_tax() {
+  $('.price_including_tax').each(function(){
+    var this_parent = $(this).parents('.stock-opening-transaction-log-item')
+    if (!this_parent.hasClass('removed')){
+      var quantity = parseFloat($(this_parent).find('.item_quantity').val() || 0)
+      var tax_group_id = $(this_parent).find(".item_tax_group_id").val()
+      var purchase_tax_amount = parseFloat($(this_parent).find(".purchase_tax_amount").val()) || 0
+      $(this_parent).find('.price_including_tax').trigger('change')
+      var gross_amount = 0
+      $('.price_including_tax').each(function() {
+        gross_amount += parseFloat($(this).val());
+      })
+      var discount = parseFloat($('#inventory_transaction_direct_stock_discount').val() || 0)
+      discount_percent = (discount / gross_amount) * 100
+      var purchase_tax_amount = purchase_tax_amount - (purchase_tax_amount * discount_percent) / 100
+      var get_service_count = $(this_parent).attr('data-child-index')
+
+      var item_cost_without_tax = $(this_parent).find(".item_cost_without_tax").val()
+      var taxable_amount_with_disc = item_cost_without_tax - (item_cost_without_tax * discount_percent) / 100
+      $(this_parent).find('.item_taxable_amount_with_disc').val(taxable_amount_with_disc.toFixed(2))
+      generate_tax_group(this_parent, (purchase_tax_amount || 0), get_service_count)
+    }
+  });
+  calTotalPrice()
+  $("#inventory_transaction_direct_stock_net_amount").trigger('change')
+}
+
+function generate_tax_group(parent, taxable_amount, count) {
+  var item_id = $(parent).find('.item-id').val()
+  var index = $(parent).data('child-index')
+  var item_tax_group = tax_breakup[index]
+  var tax_rate_amount;
+  var group_rate = parseFloat(item_tax_group['group_rate'])
+  $(parent).find('.tax_fields').html("")
+  item_tax_group['tax_rates'].forEach(function(item) {
+    if (group_rate != 0.0) {
+      tax_rate_amount = parseFloat(taxable_amount) * parseFloat(item.rate) / group_rate
+    } else {
+      tax_rate_amount = 0.0
+    }
+    $(parent).find('.tax_fields').append(`
+      <div class="tax_box">
+      <input type="hidden" name="inventory_transaction_direct_stock[items_attributes][${count}][tax_group][][amount]" value="${tax_rate_amount.toFixed(2)}" class="tax_group_id_amount">
+      <input type="hidden" name="inventory_transaction_direct_stock[items_attributes][${count}][tax_group][][name]" value="${item.name}" class="tax_group_id_name">
+      <input type="hidden" name="inventory_transaction_direct_stock[items_attributes][${count}][tax_group][][_id]" value="${item._id}" class="tax_group_id_id">
+      <input type="hidden" name="inventory_transaction_direct_stock[items_attributes][${count}][tax_group][][tax_rate]" value="${item.rate}" class="tax_rate">
+      <input type="hidden" name="inventory_transaction_direct_stock[items_attributes][${count}][tax_group][][tax_type]" value="${item.type}" class="tax_type">
+      </div>
+      `)
+  });
+}
+
+$("#inventory_transaction_direct_stock_net_amount").on('change', function(){
+  $("#tax-cage").html("")
+  var tax_field = $('.tax_fields')
+  var counter = 0
+  for (var j = tax_field.length - 1; j >= 0; j--) {
+
+    var tax_box = $(tax_field[j]).find('.tax_box')
+    for (var i = tax_box.length - 1; i >= 0; i--) {
+      if (!$(tax_box[i]).closest('.stock-opening-transaction-log-item').hasClass('removed')) {
+        var tax_group_id2 = $(tax_box[i]).find('.tax_group_id_id').val()
+        var tax_group_id = $("#tax-cage").find('.tax_group_' + tax_group_id2)
+        var tax_group_name = $(tax_box[i]).find('.tax_group_id_name').val()
+        var tax_group_amount = $(tax_box[i]).find('.tax_group_id_amount').val()
+        var tax_rate = parseFloat($(tax_box[i]).find('.tax_rate').val()).toFixed(2)
+        var tax_type = $(tax_box[i]).find('.tax_type').val()
+        var taxable_amount = parseFloat($(tax_box[i]).closest('.stock-opening-transaction-log-item')
+                                .find('.item_taxable_amount_with_disc').val()) || 0
+
+        if(tax_group_id.length <= 0){
+          $("#tax-cage").prepend(`
+            <div class="row mb5 tax_group_${tax_group_id2}">
+            <div class="col-md-5 text-right"><b>${tax_group_name}</b></div>
+            <div class="col-md-3 text-center">:</div><div class="col-md-3 text-right">
+            <input style="width:92%;" class="tax_group_id_${tax_group_id2}" value="${tax_group_id2}" type="hidden" name="inventory_transaction_direct_stock[tax_breakup][][_id]" readonly="readonly">
+            <input style="width:92%;" class="tax_group_id_${tax_group_id2}" value="${tax_group_name}" type="hidden" name="inventory_transaction_direct_stock[tax_breakup][][name]" readonly="readonly">
+            <input style="width:92%;" class="fi_input_style text-right tax_group_amount_${tax_group_id2}" value="${parseFloat(tax_group_amount).toFixed(2)}" type="text" name="inventory_transaction_direct_stock[tax_breakup][][amount]" readonly="readonly">
+            <input value="${tax_rate}" type="hidden" name="inventory_transaction_direct_stock[tax_breakup][][tax_rate]" readonly="readonly">
+            <input value="${tax_type}" type="hidden" name="inventory_transaction_direct_stock[tax_breakup][][tax_type]" readonly="readonly">
+            <input value="${taxable_amount}" type="hidden" name="inventory_transaction_direct_stock[tax_breakup][][taxable_amount]" class="taxable_amount_${tax_group_id2}">
+            </div></div>`)
+        } else {
+          var old_value = $(tax_group_id).find('.tax_group_amount_' + tax_group_id2).val()
+          var new_value = (parseFloat(tax_group_amount) + parseFloat(old_value)).toFixed(2)
+          $(tax_group_id).find('.tax_group_amount_' + tax_group_id2).val(new_value)
+          var old_taxable_amount = parseFloat($(tax_group_id).find('.taxable_amount_'+tax_group_id2).val()) || 0
+          $(tax_group_id).find('.taxable_amount_'+tax_group_id2).val(taxable_amount + old_taxable_amount)
+        }
+        if(counter == 0){
+          $("#tax-cage").attr('style', 'background: #eee;padding: 5px;font-size: smaller;')
+        }
+        counter = counter + 1
+      }
+    }
+  }
+  direct_stock_taxable_amount()
+})
+
+function direct_stock_taxable_amount() {
+  var total_taxable_amount = 0.0
+  // var x = $(".item_cost_without_tax")
+  // for (var i = x.length - 1; i >= 0; i--) {
+  //   total_taxable_amount = (parseFloat(total_taxable_amount) + parseFloat($(x[i]).val())).toFixed(2)
+  // }
+
+  $('.item_cost_without_tax').each(function(){
+    parent = $(this).parents('.stock-opening-transaction-log-item')
+    if (!parent.hasClass('removed')){
+      total_taxable_amount += parseFloat($(this).val());
+    }
+  });
+
+  if(parseFloat(total_taxable_amount).toFixed(2) == "NaN"){
+    var total_taxable_amount = 0.0
+  }
+
+  var gross_amount = parseFloat($('#inventory_transaction_direct_stock_total_cost').val() || 0)
+  var discount = parseFloat($('#inventory_transaction_direct_stock_discount').val() || 0)
+  discount_percent = (discount / gross_amount) * 100
+  var total_taxable_amount = total_taxable_amount - (total_taxable_amount * discount_percent) / 100
+
+  if(total_taxable_amount != 0.0){
+    $("#tax-cage").find('.stock_open_taxable_amount').remove()
+    $("#tax-cage").prepend(`
+      <div class="row mb5 stock_open_taxable_amount">
+        <div class="col-md-5 text-right"><b>Taxable Amount</b></div>
+        <div class="col-md-3 text-center">:</div>
+        <div class="col-md-3 text-right">
+          <input style="width:92%;" class="fi_input_style text-right stock_open_taxable_amount"
+            value="${parseFloat(total_taxable_amount).toFixed(2)}" type="text"
+            name="inventory_transaction_direct_stock[taxable_amount]" readonly="readonly">
+      </div></div>
+    `)
+    $("#tax-cage").attr('style', 'background: #eee;padding: 5px;')
+  }
+}
+
+
+function validate_form() {
+  $("#inventory_direct_stock_form").validate({
+    rules: {
+      "inventory_transaction_direct_stock[total_cost]": {
+        required: true,
+      },
+      "inventory_transaction_direct_stock[mode_of_payment]": {
+        required: true,
+      },
+      "inventory_transaction_direct_stock[net_amount]": {
+        required: true,
+        min: 0
+      },
+      "inventory_transaction_direct_stock[bill_type]": {
+        required: true
+      },
+      "inventory_transaction_direct_stock[bill_number]": {
+        required: true
+      },
+      "inventory_transaction_direct_stock[bill_date]": {
+        required: true
+      },
+      "inventory_transaction_direct_stock[challan_number]": {
+        required: true
+      },
+      "inventory_transaction_direct_stock[challan_date]": {
+        required: true
+      },
+      "inventory_transaction_direct_stock[vendor_name]": {
+        required: true
+      }
+    },
+    messages: {
+      "inventory_transaction_direct_stock[total_cost]": {
+        required: "Required"
+      },
+
+    },
+    errorPlacement: function (error, element) {
+      var elem = $(element);
+      error.insertAfter(element);
+      if(elem.hasClass("select2-hidden-accessible")) {
+        element = $("#select2-" + elem.attr("id") + "-container").parent();
+        error.insertAfter(element);
+      } else {
+        error.insertAfter(element);
+      }
+    }
+  });
+}
+validate_form()
+
+$.validator.addClassRules("item_description", { required: true});
+$.validator.addClassRules("item_quantity", { required: true, number: true});
+$.validator.addClassRules("price_including_tax", { required: true, number: true});
+
+jQuery.extend(jQuery.validator.messages, {
+  required: "Required",
+  remote: "Please fix this field.",
+  email: "Please enter a valid email address.",
+  url: "Please enter a valid URL.",
+  date: "Please enter a valid date.",
+  dateISO: "Invalid date.",
+  number: "Invalid No.",
+  digits: "Please enter only digits.",
+  creditcard: "Please enter a valid credit card number.",
+  equalTo: "Please enter the same value again.",
+  accept: "Please enter a value with a valid extension.",
+  maxlength: jQuery.validator.format("Please enter no more than {0} characters."),
+  minlength: jQuery.validator.format("Please enter at least {0} characters."),
+  rangelength: jQuery.validator.format("Please enter a value between {0} and {1} characters long."),
+  range: jQuery.validator.format("Please enter a value between {0} and {1}."),
+  max: jQuery.validator.format("Please enter a value less than or equal to {0}."),
+  min: jQuery.validator.format("Please enter a value greater than or equal to {0}.")
+});

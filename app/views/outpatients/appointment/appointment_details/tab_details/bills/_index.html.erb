@@ -1,0 +1,312 @@
+<% if current_facility.show_finances %>
+  <div class="row">
+    <div class="col-md-6">
+      <strong>All Bills (<%= @patient_invoices.count %>)</strong>
+      <% if @invoices.count > 0 %>
+        <% currency_wise_invoices = @invoices.group_by(&:currency_symbol) %>
+        <span class="pull-right">Bills Amount :
+          <label class="label label-success">
+            <% counter = 0 %>
+            <% currency_wise_invoices.each do |currency_symbol, invoices| %>
+              <% if counter > 0 %>&nbsp;|&nbsp;<% end %> <%= currency_symbol %><%= invoices.map { |va| va[:net_amount].to_f }.sum %>
+              <% counter += 1 %>
+            <% end %>
+          </label>
+        </span>
+      <% else %>
+        <span class="pull-right">Bills Amount : <label class="label label-success"> No Bills Found </label></span>
+      <% end %>
+      <table class="table mt10">
+        <thead>
+          <tr>
+            <th class="text-center"><span class="text-success">Received</span></th>
+            <th class="text-center"><span class="text-danger">Pending</span></th>
+            <th class="text-center"><span class="text-primary">Net Total</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if @patient_invoices.count > 0 %>
+            <% currency_wise_invoices = @patient_invoices.group_by(&:currency_symbol) %>
+            <tr>
+              <td class="text-center">
+                <% counter = 0 %>
+                <% currency_wise_invoices.each do |currency_symbol, invoices| %>
+                  <strong><% if counter > 0 %>&nbsp;|&nbsp;<% end %> <%= currency_symbol %><%= invoices.sum { |va| (va[:payment_received].to_f + va[:advance_payment].to_f) } %></strong>
+                  <% counter += 1 %>
+                <% end %>
+              </td>
+              <td class="text-center">
+                <% counter = 0 %>
+                <% currency_wise_invoices.each do |currency_symbol, invoices| %>
+                  <strong><% if counter > 0 %>&nbsp;|&nbsp;<% end %> <%= currency_symbol %><%= invoices.sum { |va| va[:payment_pending].to_f } %></strong>
+                  <% counter += 1 %>
+                <% end %>
+              </td>
+              <td class="text-center">
+                <% counter = 0 %>
+                <% currency_wise_invoices.each do |currency_symbol, invoices| %>
+                  <strong><% if counter > 0 %>&nbsp;|&nbsp;<% end %> <%= currency_symbol %><%= invoices.sum { |va| va[:net_amount].to_f } %></strong>
+                  <% counter += 1 %>
+                <% end %>
+              </td>
+            </tr>
+          <% else %>
+            <tr>
+              <td class="text-center" colspan="3">No Bills</td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+    <div class="col-md-6 text-right">
+      <% if @patient.try(:reg_status) %>
+        <% if ((@organisations_setting.try(:mandatory_invoice) && !@appointment.try(:opd_consultation_taken))) %>
+          <%= link_to new_invoice_opd_path(specialty_id: @appointment.specialty_id, appointment_id: @appointment.id, type: Global.ehrcommon.opd.abbr, service_type: "General Consultation"), id: 'opd_new_invoice', data: { :remote => true, 'toggle' => 'modal', 'target' => '#invoice-modal' }, class: "btn btn-xs btn-info p_arrived" do %>Consultation Bill<% end %>
+        <% else %>
+
+          <div class="btn-group">
+            <button type="button" class="btn btn-success btn-xs dropdown-toggle opd-invoice" data-toggle="dropdown">
+              <%= current_facility.currency_symbol %>Template Bills
+            </button>
+            <ul class="dropdown-menu dropdown-menu-right" role="menu" aria-labelledby="invoice-print-dropdown">
+              <!-- Stored Receipts -->
+              <% @invoice_templates.each do |invoice_template| %>
+                <li class="text-center">
+                  <%= link_to new_invoice_opd_path(specialty_id: @appointment.specialty_id, appointment_id: @appointment.id, type: Global.ehrcommon.opd.abbr, department_id: '485396012', invoice_template_id: invoice_template.id), data: { :remote => true, 'toggle' => 'modal', 'target' => '#invoice-modal' } do %><%= invoice_template[:name] %><% end %>
+                </li>
+              <% end %>
+            </ul>
+          </div>
+
+          <div class="btn-group">
+            <button type="button" class="btn btn-success btn-xs dropdown-toggle opd-invoice" data-toggle="dropdown">
+              <%= current_facility.currency_symbol %> Bills
+            </button>
+            <ul class="dropdown-menu dropdown-menu-right" role="menu" aria-labelledby="invoice-print-dropdown">
+              <!-- Stored Receipts -->
+              <%# @invoice_templates.each do |invoice_template| %>
+<!--                <li class="text-center">-->
+                  <%#= link_to new_invoice_opd_path(specialty_id: @appointment.specialty_id, appointment_id: @appointment.id, type: Global.ehrcommon.opd.abbr, department_id: '485396012', invoice_template_id: invoice_template.id), data: { :remote => true, 'toggle' => 'modal', 'target' => '#invoice-modal' } do %><%#= invoice_template[:name] %><%# end %>
+<!--                </li>-->
+              <%# end %>
+              <!-- New Draft Receipt -->
+              <li class="text-center">
+                <% if Authorization::PolicyHelper.verification(current_user.id,"HGP-102-112-100") %>
+                  <%= link_to new_invoice_opd_path(specialty_id: @appointment.specialty_id, appointment_id: @appointment.id, type: Global.ehrcommon.opd.abbr, is_draft: true), id: 'opd_new_invoice', data: { :remote => true, 'toggle' => 'modal', 'target' => '#invoice-modal' } do %>New Draft Bill<% end %>
+                <% else %>
+                  <a title="Not Authorized" style="cursor: not-allowed;text-decoration: line-through;">New Draft Bill</a>
+                <% end %>
+              </li>
+              <!-- New Receipt -->
+              <li class="text-center">
+                <% if Authorization::PolicyHelper.verification(current_user.id,"HGP-102-111-100") %>
+                  <%= link_to new_invoice_opd_path(specialty_id: @appointment.specialty_id, appointment_id: @appointment.id, type: Global.ehrcommon.opd.abbr), id: 'opd_new_invoice', data: { :remote => true, 'toggle' => 'modal', 'target' => '#invoice-modal' } do %>New Bill<% end %>
+                <% else %>
+                  <a title="Not Authorized" style="cursor: not-allowed;text-decoration: line-through;">New Bill</a>
+                <% end %>
+              </li>
+              <!-- Advance Receipt -->
+              <li class="text-center">
+                <% if Authorization::PolicyHelper.verification(current_user.id, "HGP-102-113-100") %>
+                  <%= link_to new_invoice_advance_payment_path(appointment_id: @appointment.id, type: Global.ehrcommon.opd.abbr, patient_id: @appointment.patient_id, specialty_id: @appointment.specialty_id), data: { :remote => true, 'toggle' => 'modal', 'target' => '#invoice-modal' } do %> Advance Receipt<% end %>
+                <% else %>
+                  <a title="Not Authorized" style="cursor: not-allowed;text-decoration: line-through;">Advance Receipt</a>
+                <% end %>
+              </li>
+              <!-- Old Receipts -->
+              <% if @patient_invoices.size > 0 %>
+                <li class="old_invoice_ss"><span>Previous Bills</span></li>
+                <% @patient_invoices.newest_invoice_first.each do |patient_pastinvoice| %>
+                  <% is_draft = patient_pastinvoice.try(:is_draft) %>
+                  <% draft_class = is_draft ? 'is-draft-bg' : '' %>
+                  <% fa_class = is_draft ? 'fa-edit' : 'fa-fw' %>
+                  <li class="text-center">
+                    <% if patient_pastinvoice._type == 'Invoice::Opd' %>
+                      <%= link_to invoice_opd_path(id: patient_pastinvoice.id), class: draft_class, data: { remote: true } do %><i class="fa <%= fa_class %>"></i><%= patient_pastinvoice.created_at.strftime("%d %b'%y at %I:%M %p") %> <label class='label label-info'>OP</label><% end %>
+                    <% elsif patient_pastinvoice._type == 'Invoice::Ipd' %>
+                      <%= link_to invoice_ipd_path(id: patient_pastinvoice.id), class: draft_class, data: { remote: true } do %><i class="fa <%= fa_class %>"></i><%= patient_pastinvoice.created_at.strftime("%d %b'%y at %I:%M %p") %> <label class='label label-danger'>IP</label><% end %>
+                    <% end %>
+                  </li>
+                <% end %>
+              <% end %>
+              <!-- All Receipts End -->
+            </ul>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+  <% if @advance_payments.count > 0 || @refund_payments.count > 0 %>
+    <hr>
+    <div class="row">
+      <div class="col-md-7 divider-right">
+        <strong class="text-success">Advance Payments</strong>
+        <table id="advancePayments-<%= tab_id %>" class="table mt10">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th class="text-right">Remaining</th>
+              <th class="text-right">Refund</th>
+              <th class="text-right">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if @advance_payments.count > 0 %>
+              <% @advance_payments.each do |advance_payment| %>
+                <tr>
+                  <td>
+                    <%= link_to invoice_advance_payment_path(id: advance_payment.id), data: { :remote => true, 'toggle' => 'modal', 'target' => '#invoice-modal' } do %>
+                      <%= advance_payment.created_at.strftime("%I:%M %p, %d %b'%y") %>
+                    <% end %>
+                  </td>
+                  <td class="text-right">
+                    <%= advance_payment.currency_symbol %><%= advance_payment.amount_remaining.try(:round, 3).to_f - advance_payment.refund_amount.try(:round, 3).to_f %>
+                  </td>
+                  <td class="text-right">
+                    <%= advance_payment.currency_symbol %><%= advance_payment.refund_amount.try(:round, 3).to_f %>
+                  </td>
+                  <td class="text-right">
+                    <%= advance_payment.currency_symbol %><%= advance_payment.amount.try(:round, 3).to_f %>
+                  </td>
+                </tr>
+              <% end %>
+            <% else %>
+              <tr>
+                <td class="text-center" colspan="4">No Advance Payments</td>
+              </tr>
+            <% end %>
+          </tbody>
+          <tfoot>
+            <% advance_payment_total = @advance_payments.group_by(&:currency_symbol) %>
+            <% advance_payment_total.each do |currency_symbol, advance_payments| %>
+              <tr>
+                <td><strong>Total</strong></td>
+                <td class="text-right">
+                  <strong><%= currency_symbol %><%= advance_payments.sum { |va| va[:amount_remaining].to_f }.round(3) - advance_payments.sum { |va| va[:refund_amount].to_f }.round(3) %></strong>
+                </td>
+                <td class="text-right">
+                  <strong><%= currency_symbol %><%= advance_payments.sum { |va| va[:refund_amount].to_f }.round(3) %></strong>
+                </td>
+                <td class="text-right">
+                  <strong><%= currency_symbol %><%= advance_payments.sum { |va| va[:amount].to_f }.round(3) %></strong>
+                </td>
+              </tr>
+            <% end %>
+          </tfoot>
+        </table>
+      </div>
+      <div class="col-md-5">
+        <strong class="text-danger">Refund Payments</strong>
+        <table id="refundPayments-<%= tab_id %>" class="table mt10">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th class="text-right">Refund</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if @refund_payments.count > 0 %>
+              <% @refund_payments.each do |refund_payment| %>
+                <tr>
+                  <td>
+                    <%= link_to invoice_refund_payment_path(id: refund_payment.id), data: { :remote => true, 'toggle' => 'modal', 'target' => '#invoice-modal' } do %>
+                      <%= refund_payment.created_at.strftime("%I:%M %p, %d %b'%y") %>
+                    <% end %>
+                  </td>
+                  <td class="text-right">
+                    <%= refund_payment.currency_symbol %><%= refund_payment.amount.try(:round, 3).to_f %>
+                  </td>
+                </tr>
+              <% end %>
+            <% else %>
+              <tr>
+                <td class="text-center" colspan="2">No Refund Payments</td>
+              </tr>
+            <% end %>
+          </tbody>
+          <tfoot>
+            <% refund_payment_total = @refund_payments.group_by(&:currency_symbol) %>
+            <% refund_payment_total.each do |currency_symbol, refund_payments| %>
+              <tr>
+                <td><strong>Total</strong></td>
+                <td class="text-right"><strong><%= currency_symbol %><%= refund_payments.sum { |va| va[:amount].to_f }.round(3) %></strong></td>
+              </tr>
+            <% end %>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  <% end %>
+  <% if tab_id == 'bills-tab' && @patient_invoices.size > 0 %>
+    <hr>
+    <div class="row">
+      <div class="col-md-7">
+        <strong>Recent Bills</strong>
+        <table id="recentBills" class="table mt10">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Department</th>
+              <th>Bill Type</th>
+              <th class="text-right">Net Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if @patient_invoices.size > 0 %>
+              <% @patient_invoices.newest_invoice_first.each do |patient_pastinvoice| %>
+                <% is_draft = patient_pastinvoice.try(:is_draft) %>
+                <% draft_class = is_draft ? 'is-draft-bg' : '' %>
+                <% fa_class = is_draft ? 'fa-edit' : 'fa-fw' %>
+                <tr>
+                  <td>
+                    <% if patient_pastinvoice._type == 'Invoice::Opd' %>
+                      <%= link_to invoice_opd_path(id: patient_pastinvoice.id), data: { remote: true } do %>
+                        <%= patient_pastinvoice.created_at.strftime("%I:%M %p, %d %b'%y") %>
+                      <% end %>
+                    <% elsif patient_pastinvoice._type == 'Invoice::Ipd' %>
+                      <%= link_to invoice_ipd_path(id: patient_pastinvoice.id), data: { remote: true } do %>
+                        <%= patient_pastinvoice.created_at.strftime("%I:%M %p, %d %b'%y") %>
+                      <% end %>
+                    <% end %>
+                  </td>
+                  <td>
+                    <% if patient_pastinvoice._type == 'Invoice::Opd' %>
+                      OPD
+                    <% elsif patient_pastinvoice._type == 'Invoice::Ipd' %>
+                      IPD
+                    <% end %>
+                  </td>
+                  <td>
+                    <%= 'Draft - ' if patient_pastinvoice.try(:is_draft) %><%= patient_pastinvoice.invoice_type.to_s.titleize %>
+                  </td>
+                  <td class="text-right">
+                    <%= patient_pastinvoice.currency_symbol %><%= patient_pastinvoice.net_amount %>
+                  </td>
+                </tr>
+              <% end %>
+            <% else %>
+              <tr>
+                <td class="text-center" colspan="4">No Bills</td>
+              </tr>
+            <% end %>
+          </tbody>
+          <tfoot>
+            <% invoice_total = @patient_invoices.group_by(&:currency_symbol) %>
+            <% invoice_total.each do |currency_symbol, patient_invoices| %>
+              <tr>
+                <td colspan="3"><strong>Total</strong></td>
+                <td class="text-right"><strong><%= currency_symbol %><%= patient_invoices.sum { |inv| inv.net_amount.to_f }.round(3) %></strong></td>
+              </tr>
+            <% end %>
+          </tfoot>
+        </table>
+      </div>
+      <div class="col-md-5"></div>
+    </div>
+  <% end %>
+  <% if tab_id == 'bills-tab' # as this file is also called by overview tab %>
+    <script type="text/javascript">
+      <%= render partial: 'outpatients/appointment/appointment_details/tab_details/bills/index.js.erb', locals: { tab_id: tab_id } %>
+    </script>
+  <% end %>
+<% end %>

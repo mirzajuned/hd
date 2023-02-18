@@ -1,0 +1,1020 @@
+$(document).ready(function(){
+  var delete_service_array = []
+  var delete_item_array = []
+  // Add New Service
+  $("#add_service_invoice_opd").on('click', function(e){
+    e.preventDefault()
+    var service_row_count = $('#services_items_invoice_opd').children().length
+    $("#services_items_invoice_opd").append('<div class="service_row_count mb5 mt5" title="'+ service_row_count +'"><div class="row service_row mb10"><div class="col-md-3"><select class="form-control service_name" name="invoice_opd[services]['+ service_row_count +'][name]"><% @invoiceservicecard.where(card_deleted: false).each do |servicecard| %><% if servicecard.invoice_item_card.count > 0 %><option value="<%= servicecard.id.to_s %>"><%= servicecard.service_name %></option><% end %><% end %></select></div><div class="col-md-4"><button class="btn btn-primary btn-xs add_service_item" style="padding:0 5px; margin-top:3px;"><i class="fa fa-plus"></i> New Item</button></div><div class="col-md-3"><input style="padding:5px 10px;" class="form-control service_total" placeholder="Service Total" type="text" name="invoice_opd[services]['+ service_row_count +'][service_total]" readonly="readonly"></div><div class="col-md-2 text-right"><button class="btn btn-danger btn-xs remove_service_item" style="padding:0 5px; margin-top:3px;"><i class="fa fa-trash-alt"></i> Remove Service</button></div></div><div class="service_item_row_count mb10" id="service_item_row"></div></div>');
+
+    // Create Hook To Add Item Button Of The Newly Created Service
+    $("#services_items_invoice_opd").find(".service_row_count").last().find(".add_service_item").on('click', function(e){
+      e.preventDefault();
+      var service_row_counting = parseFloat($(this).closest(".service_row_count").attr('title'))
+      var item_row_count = $(this).closest('.service_row_count').children(".service_item_row_count").children().length
+
+      // Field for Rendering
+      var field_for_date = '<div class="field_for_date"><div class="tax_fields"></div><input name="invoice_opd[services][' + service_row_counting + '][items][' + item_row_count + '][item_entry_date]" style="padding:5px 10px;" class="form-control i_item_entry_date" type="hidden" value="<%= Time.current %>"></div>'
+      var field_for_description = '<div class="col-md-2 col-md-5-shared field_for_description"><select class="form-control i_description" name="invoice_opd[services][' + service_row_counting + '][items][' + item_row_count + '][description]"></select></div>'
+      var field_for_quantity = '<div class="col-md-1 field_for_quantity"><input name="invoice_opd[services][' + service_row_counting + '][items][' + item_row_count + '][quantity]" style="padding:5px 10px;" class="form-control i_quantity" placeholder="Quantity" maxlength="4" value="1" type="text"></div>'
+      var field_for_unit_price = '<div class="col-md-2 col-md-3-shared field_for_unit_price"><input name="invoice_opd[services][' + service_row_counting + '][items][' + item_row_count + '][unit_price]" style="padding:5px 10px;" class="form-control i_unit_price" placeholder="Unit Price" maxlength="12" type="text"></div>'
+      var field_for_tax_group_id = '<div class="col-md-2 col-md-3-shared field_for_tax_group_id"><select name="invoice_opd[services][' + service_row_counting + '][items][' + item_row_count + '][tax_group_id]" class="form-control i_tax_group"><option value="" data-tax-rate="0"> </option><% @tax_groups.each do |tax_group| %><option value="<%= tax_group.id.to_s %>" data-tax-rate="<%= tax_group.rate %>"><%= tax_group.name %> - <%= tax_group.rate %>%</option><% end %></select></div>'
+      var field_for_tax_inclusive = '<div class="col-md-1 field_for_tax_inclusive"><input type="hidden" name="invoice_opd[services][' + service_row_counting + '][items][' + item_row_count + '][tax_inclusive]" value="false"><div class="ckbox ckbox-primary"><input type="checkbox" name="invoice_opd[services][' + service_row_counting + '][items][' + item_row_count + '][tax_inclusive]" id="tax_inclusive_' + service_row_counting + item_row_count + '" class="i_tax_inclusive" value="true"><label for="tax_inclusive_' + service_row_counting + item_row_count + '"></label></div></div>'
+      var field_for_taxable_amount = '<div class="col-md-1 field_for_taxable_amount"><input name="invoice_opd[services][' + service_row_counting + '][items][' + item_row_count + '][non_taxable_amount]" style="padding:5px 10px;" class="form-control i_non_taxable_amount text-right" id="i_non_taxable_amount" placeholder="Total" readonly="readonly" type="hidden" value="0"><input name="invoice_opd[services][' + service_row_counting + '][items][' + item_row_count + '][taxable_amount]" style="padding:5px 10px;" class="form-control i_taxable_amount text-right" id="i_taxable_amount" placeholder="Total" readonly="readonly" type="text" value="0"></div>'
+      var field_for_price = '<div class="col-md-2 col-md-3-shared field_for_price"><input name="invoice_opd[services][' + service_row_counting + '][items][' + item_row_count + '][price]" style="padding:5px 10px;" class="form-control i_price" id="i_price" placeholder="Total" readonly="readonly" type="text"></div>'
+      var remove_item_btn = '<div class="col-md-2 col-md-3-shared"><button class="btn btn-danger btn-xs remove_item" style="padding:0 5px;margin-top:3px;"><i class="fa fa-trash-alt"></i> Remove Item</button></div>'
+
+      $(this).closest('.service_row_count').find(".service_item_row_count").append('<div class="invoice_service_item_row row mt5" id="invoice_service_item_row" style="padding-left:20px;">' + field_for_date + field_for_description + field_for_quantity + field_for_unit_price + field_for_tax_group_id + field_for_tax_inclusive + field_for_taxable_amount + field_for_price + remove_item_btn + '</div>')
+      $(this).closest('.service_row_count').find(".service_item_row_count").find('.i_description').select2();
+      // Calculation For Item Total
+      my_el = $(this).closest(".service_row_count").find(".invoice_service_item_row")
+      calculate_item_total(my_el);
+
+
+      $(this).closest('.service_row_count').find(".service_item_row_count").find(".i_tax_group").on('change', function(){
+        calculate_tax(this)
+      })
+
+      $(this).closest('.service_row_count').find(".service_item_row_count").find(".i_tax_inclusive").on('click', function(){
+        calculate_tax(this)
+      })
+
+      $(this).closest('.service_row_count').find(".service_item_row_count").find(".i_quantity").on('keyup', function(){
+        calculate_tax(this)
+      })
+
+      $(this).closest('.service_row_count').find(".service_item_row_count").find(".i_unit_price").on('keyup', function(){
+        calculate_tax(this)
+      })
+
+      // Create Hook To Remove Item Button Of The Newly Created Item
+      $("#services_items_invoice_opd").find(".service_row_count").find('.invoice_service_item_row').last().find(".remove_item").on('click',function(e){
+        e.preventDefault();
+        target = $(this).closest('.service_item_row_count');
+        delete_item_array.push($(this).closest(".invoice_service_item_row").find(".i_id").val())
+        $("#deleted-items").val(delete_item_array)
+        $(this).closest(".invoice_service_item_row").remove();
+        calculation_invoice_total(target);
+
+        // Reset Counter Logic
+        remove_reset_logic();
+      });
+
+      get_item_card_details($("#services_items_invoice_opd").find(".service_row_count").find('.invoice_service_item_row').last().find(".i_description"));
+
+      create_item_dropdown(this);
+    });
+
+    $("#services_items_invoice_opd").find('.service_name').select2();
+    // Create Hook To Remove Service Button Of The Newly Created Service
+    $("#services_items_invoice_opd").find(".service_row_count").last().find(".remove_service_item").on('click', function(e){
+      e.preventDefault();
+      delete_service_array.push($(this).closest(".service_row_count").find(".service_id").val())
+      $("#deleted-services").val(delete_service_array)
+      $(this).closest(".service_row_count").remove();
+      target = $(".service_row_count")
+      calculation_invoice_total(target);
+
+      // Reset Name Counter Attribute For Service
+      remove_reset_logic();
+
+    });
+
+    $("#services_items_invoice_opd").find(".service_name").last().on('change', function(){
+      var service_id = $(this).val()
+      var _this = this
+      $.ajax({
+        dataType: "JSON",
+        type: "get",
+        data: {
+          service_id: service_id
+        },
+        url: '/invoice_item_cards/get_items_for_service',
+        success: function(response){
+          $(_this).closest('.service_row_count').find('.service_item_row_count').find('.invoice_service_item_row').find('.i_description').children().remove()
+          $.each(response.invoice_item_card, function(key, value) {
+            if(value[2] === null){
+              $(_this).closest('.service_row_count').find('.service_item_row_count').find('.invoice_service_item_row').find('.i_description').append($("<option></option>").attr("value",value[0]).text(value[1]));
+            } else {
+              $(_this).closest('.service_row_count').find('.service_item_row_count').find('.invoice_service_item_row').find('.i_description').append($("<option></option>").attr("value",value[0]).text(value[1] + ' - ' + value[2]));
+            }
+          });
+          var path = $(_this).closest('.service_row_count').find('.service_item_row_count').find('.invoice_service_item_row')
+          for (var i = path.length - 1; i >= 0; i--) {
+            $(path[i]).find('.i_description').prepend($('<option selected="selected" disabled="disabled"></option>'))
+            $(path[i]).find('.i_description').removeAttr('disabled')
+            $(path[i]).find('.i_quantity').val(1)
+            $(path[i]).find('.i_unit_price').val("")
+            $(path[i]).find('.i_unit_price').trigger('focusout')
+            $(path[i]).find('.i_price').val("")
+            $(path[i]).find('.select2-selection__rendered').text("").attr('title', '')
+          }
+        }
+      })
+    })
+  });
+
+  // Add New Service Item For Default Existing Fields
+  $(".add_service_item").on('click', function(e){
+    e.preventDefault();
+    var service_row_counting = parseFloat($(this).closest(".service_row_count").attr('title'))
+    var item_row_count = $(this).closest('.service_row_count').children(".service_item_row_count").children().length
+
+    // Field for Rendering
+    var field_for_date = '<div class="field_for_date"><div class="tax_fields"></div><input name="invoice_opd[services][' + service_row_counting + '][items][' + item_row_count + '][item_entry_date]" style="padding:5px 10px;" class="form-control i_item_entry_date" type="hidden" value="<%= Time.current %>"></div>'
+    var field_for_description = '<div class="col-md-2 col-md-5-shared field_for_description"><select class="form-control i_description" name="invoice_opd[services][' + service_row_counting + '][items][' + item_row_count + '][description]"></select></div>'
+    var field_for_quantity = '<div class="col-md-1 field_for_quantity"><input name="invoice_opd[services][' + service_row_counting + '][items][' + item_row_count + '][quantity]" style="padding:5px 10px;" class="form-control i_quantity" placeholder="Quantity" maxlength="4" value="1" type="text"></div>'
+    var field_for_unit_price = '<div class="col-md-2 col-md-3-shared field_for_unit_price"><input name="invoice_opd[services][' + service_row_counting + '][items][' + item_row_count + '][unit_price]" style="padding:5px 10px;" class="form-control i_unit_price" placeholder="Unit Price" maxlength="12" type="text"></div>'
+    var field_for_tax_group_id = '<div class="col-md-2 col-md-3-shared field_for_tax_group_id"><select name="invoice_opd[services][' + service_row_counting + '][items][' + item_row_count + '][tax_group_id]" class="form-control i_tax_group"><option value="" data-tax-rate="0"> </option><% @tax_groups.each do |tax_group| %><option value="<%= tax_group.id.to_s %>" data-tax-rate="<%= tax_group.rate %>"><%= tax_group.name %> - <%= tax_group.rate %>%</option><% end %></select></div>'
+    var field_for_tax_inclusive = '<div class="col-md-1 field_for_tax_inclusive"><input type="hidden" name="invoice_opd[services][' + service_row_counting + '][items][' + item_row_count + '][tax_inclusive]" value="false"><div class="ckbox ckbox-primary"><input type="checkbox" name="invoice_opd[services][' + service_row_counting + '][items][' + item_row_count + '][tax_inclusive]" id="tax_inclusive_' + service_row_counting + item_row_count + '" class="i_tax_inclusive" value="true"><label for="tax_inclusive_' + service_row_counting + item_row_count + '"></label></div></div>'
+    var field_for_taxable_amount = '<div class="col-md-1 field_for_taxable_amount"><input name="invoice_opd[services][' + service_row_counting + '][items][' + item_row_count + '][non_taxable_amount]" style="padding:5px 10px;" class="form-control i_non_taxable_amount text-right" id="i_non_taxable_amount" placeholder="Total" readonly="readonly" type="hidden" value="0"><input name="invoice_opd[services][' + service_row_counting + '][items][' + item_row_count + '][taxable_amount]" style="padding:5px 10px;" class="form-control i_taxable_amount text-right" id="i_taxable_amount" placeholder="Total" readonly="readonly" type="text" value="0"></div>'
+    var field_for_price = '<div class="col-md-2 col-md-3-shared field_for_price"><input name="invoice_opd[services][' + service_row_counting + '][items][' + item_row_count + '][price]" style="padding:5px 10px;" class="form-control i_price" id="i_price" placeholder="Total" readonly="readonly" type="text"></div>'
+    var remove_item_btn = '<div class="col-md-2 col-md-3-shared"><button class="btn btn-danger btn-xs remove_item" style="padding:0 5px;margin-top:3px;"><i class="fa fa-trash-alt"></i> Remove Item</button></div>'
+
+    $(this).closest('.service_row_count').children(".service_item_row_count").append('<div class="invoice_service_item_row row mt5" id="invoice_service_item_row" style="padding-left:20px;">' + field_for_date + field_for_description + field_for_quantity + field_for_unit_price + field_for_tax_group_id + field_for_tax_inclusive + field_for_taxable_amount + field_for_price + remove_item_btn + '</div>')
+    $(this).closest('.service_row_count').children(".service_item_row_count").find('.i_description').select2();
+    // Calculation For Item Total Of Default Existing Fields
+    my_el = $(this).closest(".service_row_count").find(".invoice_service_item_row")
+    calculate_item_total(my_el);
+
+    $(this).closest('.service_row_count').children(".service_item_row_count").find(".i_tax_group").on('change', function(){
+      calculate_tax(this)
+    })
+
+    $(this).closest('.service_row_count').children(".service_item_row_count").find(".i_tax_inclusive").on('click', function(){
+      calculate_tax(this)
+    })
+
+    $(this).closest('.service_row_count').children(".service_item_row_count").find(".i_quantity").on('keyup', function(){
+      calculate_tax(this)
+    })
+
+    $(this).closest('.service_row_count').children(".service_item_row_count").find(".i_unit_price").on('keyup', function(){
+      calculate_tax(this)
+    })
+
+    // Create Hook To Remove Item Button Of The Newly Created Item
+
+    $(this).closest('.service_row').siblings('.service_item_row_count').find('.remove_item').last().on('click',function(e){
+      e.preventDefault();
+      target = $(this).closest('.service_item_row_count');
+      delete_item_array.push($(this).closest(".invoice_service_item_row").find(".i_id").val())
+      $("#deleted-items").val(delete_item_array)
+      $(this).closest(".invoice_service_item_row").remove();
+      calculation_invoice_total(target);
+
+      // Reset Counter Logic
+      remove_reset_logic();
+    });
+    //
+
+    get_item_card_details($(this).closest('.service_row').siblings('.service_item_row_count').find('.i_description').last());
+    create_item_dropdown(this);
+  });
+
+
+  // Remove Service Item For Default Existing Field
+  $(".remove_service_item").on('click', function(e){
+    e.preventDefault();
+    delete_service_array.push($(this).closest(".service_row_count").find(".service_id").val())
+    $("#deleted-services").val(delete_service_array)
+    $(this).closest(".service_row_count").remove();
+    target = $(".service_row_count")
+    calculation_invoice_total(target);
+
+    // Reset Name Counter Attribute For Service
+    remove_reset_logic();
+  });
+
+  // Remove Service Item For Default Existing Field
+  $(".remove_item").on('click',function(e){
+    e.preventDefault();
+    target = $(this).closest('.service_item_row_count');
+    delete_item_array.push($(this).closest(".invoice_service_item_row").find(".i_id").val())
+    $("#deleted-items").val(delete_item_array)
+    $(this).closest(".invoice_service_item_row").remove();
+    calculation_invoice_total(target);
+
+
+    // Reset Counter Logic
+    remove_reset_logic();
+  });
+
+  // Calculate Item Total For Default Existing Field
+  var i_price = 0
+  my_el = $(".invoice_service_item_row")
+  calculate_item_total(my_el);
+
+
+  // Net Amount Calculation
+  $(".discount_amount").on('keyup',function(){
+    if($(this).val().length > 0) {
+      var disc = $(this).val()
+    } else {
+      var disc = 0
+    }
+    var gross_amount =  $(".invoice_gross_total").val()
+    $(".invoice_net_total").val((parseFloat(gross_amount) - parseFloat(disc)).toFixed(2))
+    $(".invoice_net_total").trigger('change')
+    // if($(".amount_paid_tpa").val().length > 0) {
+    //   var amount_paid_tpa = $(".amount_paid_tpa").val()
+    // } else {
+    //   var amount_paid_tpa = 0
+    // }
+    var net_amount =  $(".invoice_net_total").val()
+    // $(".amount_paid_patient").val((parseFloat(net_amount) - parseFloat(amount_paid_tpa)).toFixed(2))
+    $('.mop_field').trigger('change')
+  });
+
+  $(".discount_amount").on('focusout',function(){
+    if($(this).val().length > 0) {
+      var disc = $(this).val()
+    } else {
+      var disc = 0
+    }
+    var gross_amount =  $(".invoice_gross_total").val()
+    $(".invoice_net_total").val((parseFloat(gross_amount) - parseFloat(disc)).toFixed(2))
+    $(".invoice_net_total").trigger('change')
+    // if($(".amount_paid_tpa").val().length > 0) {
+    //   var amount_paid_tpa = $(".amount_paid_tpa").val()
+    // } else {
+    //   var amount_paid_tpa = 0
+    // }
+    var net_amount =  $(".invoice_net_total").val()
+    // $(".amount_paid_patient").val((parseFloat(net_amount) - parseFloat(amount_paid_tpa)).toFixed(2))
+    $('.mop_field').trigger('change')
+  });
+
+  // $(".amount_paid_tpa").on('keyup',function(){
+  //   if($(this).val().length > 0) {
+  //     var amount_paid_tpa = $(this).val()
+  //   } else {
+  //     var amount_paid_tpa = 0
+  //   }
+  //   var net_amount =  $(".invoice_net_total").val()
+  //   $(".amount_paid_patient").val((parseFloat(net_amount) - parseFloat(amount_paid_tpa)).toFixed(2))
+  // });
+
+  $("#add_patient_info").on('click', function(e){
+    e.preventDefault();
+    $("#patient_button").hide();
+    $(".patient_info_partial").show();
+  })
+
+
+  // Function For Calculating Item Total
+  function calculate_item_total(el) {
+    $(el).find(".i_unit_price").on('keyup', function(){
+      if($(this).val().length > 0) {
+        var i_unit_price = $(this).val();
+      } else {
+        var i_unit_price = 0
+      }
+      if($(this).closest('.field_for_unit_price').siblings().find('.i_quantity').val().length > 0) {
+        var i_quantity = $(this).closest('.field_for_unit_price').siblings().find('.i_quantity').val();
+      } else {
+        var i_quantity = 0
+      }
+
+      var i_price = parseFloat(parseFloat(i_quantity) * parseFloat(i_unit_price)).toFixed(2);
+      $(this).closest('.invoice_service_item_row').find('.i_price').val(i_price);
+      $(this).closest(".invoice_service_item_row").find(".i_price").trigger("change");
+    });
+    $(el).find(".i_quantity").on('keyup', function(){
+      if($(this).val().length > 0) {
+        var i_quantity = $(this).val();
+      } else {
+        var i_quantity = 0
+      }
+      if($(this).closest('.field_for_quantity').siblings().find('.i_unit_price').val().length > 0) {
+        var i_unit_price = $(this).closest('.field_for_quantity').siblings().find('.i_unit_price').val();
+      } else {
+        var i_unit_price = 0
+      }
+      var i_price = parseFloat(parseFloat(i_quantity) * parseFloat(i_unit_price)).toFixed(2);
+      $(this).closest('.invoice_service_item_row').find('.i_price').val(i_price);
+      $(this).closest(".invoice_service_item_row").find(".i_price").trigger("change");
+    });
+    $(el).find(".i_unit_price").on('focusout', function(){
+      if($(this).val().length > 0) {
+        var i_unit_price = $(this).val();
+      } else {
+        var i_unit_price = 0
+      }
+      if($(this).closest('.field_for_unit_price').siblings().find('.i_quantity').val().length > 0) {
+        var i_quantity = $(this).closest('.field_for_unit_price').siblings().find('.i_quantity').val();
+      } else {
+        var i_quantity = 0
+      }
+
+      var i_price = parseFloat(parseFloat(i_quantity) * parseFloat(i_unit_price)).toFixed(2);
+      $(this).closest('.invoice_service_item_row').find('.i_price').val(i_price);
+      $(this).closest(".invoice_service_item_row").find(".i_price").trigger("change");
+    });
+    $(el).find(".i_quantity").on('focusout', function(){
+      if($(this).val().length > 0) {
+        var i_quantity = $(this).val();
+      } else {
+        var i_quantity = 0
+      }
+      if($(this).closest('.field_for_quantity').siblings().find('.i_unit_price').val().length > 0) {
+        var i_unit_price = $(this).closest('.field_for_quantity').siblings().find('.i_unit_price').val();
+      } else {
+        var i_unit_price = 0
+      }
+      var i_price = parseFloat(parseFloat(i_quantity) * parseFloat(i_unit_price)).toFixed(2);
+      $(this).closest('.invoice_service_item_row').find('.i_price').val(i_price);
+      $(this).closest(".invoice_service_item_row").find(".i_price").trigger("change");
+    });
+
+    $(el).find(".i_price").on('change', function(e){
+      calculation_invoice_total($(e.currentTarget).closest(".service_item_row_count"));
+    });
+  }
+
+
+  // Function For Calculating Invoice Based Total
+  function calculation_invoice_total(el) {
+    // Service Total Calculation
+    prices = $(el).find(".i_price")
+    total = 0
+    for (var i = prices.length - 1; i >= 0; i--) {
+      total += parseFloat($(prices[i]).val())
+    };
+    $(el).closest(".service_row_count").find(".service_total").val(total)
+
+    // Gross Amount Calculation
+    service_prices = $("#services_items_invoice_opd").find(".service_total")
+    total_gross = 0
+    for (var i = service_prices.length - 1; i >= 0; i--) {
+      total_gross += parseFloat($(service_prices[i]).val())
+    };
+    $(el).closest(".container-fluid").find(".invoice_gross_total").val(total_gross)
+
+    // Net Amount Calculation
+    var gross_amount_in =  total_gross
+    if($(".discount_amount").val() != "") {
+      var disc_in = $(".discount_amount").val()
+    } else {
+      var disc_in = 0
+    }
+    $(".invoice_net_total").val((parseFloat(gross_amount_in) - parseFloat(disc_in)).toFixed(2))
+
+    // Amount TPA Total
+    var net_amount =  $(".invoice_net_total").val()
+    if($(".amount_paid_tpa").val() != "") {
+      var amount_paid_tpa =  $(".amount_paid_tpa").val()
+    } else {
+      var amount_paid_tpa = 0
+    }
+    $(".amount_paid_patient").val((parseFloat(net_amount) - parseFloat(amount_paid_tpa)).toFixed(2))
+    net_amount_change_opd();
+  }
+
+  // Logic For Remove Reset
+  function remove_reset_logic() {
+    var x = $("#services_items_invoice_opd").find(".service_row_count")
+    for (var i = 0; i < x.length; i++) {
+      $(x[i]).find(".service_id").attr('name','invoice_opd[services][' + i + '][_id]')
+      $(x[i]).find(".service_name").attr('name','invoice_opd[services][' + i + '][name]')
+      $(x[i]).find(".service_total").attr('name','invoice_opd[services]['+ i +'][service_total]')
+      $(x[i]).attr('title',i)
+
+      var y = $(x[i]).find('.invoice_service_item_row')
+      for (var j = 0; j < y.length; j++){
+        $(y[j]).find('.i_id').attr('name', 'invoice_opd[services]['+ i +'][items]['+ j +'][_id]')
+        $(y[j]).find('.i_description').attr('name', 'invoice_opd[services]['+ i +'][items]['+ j +'][description]')
+        $(y[j]).find('.i_quantity').attr('name', 'invoice_opd[services]['+ i +'][items]['+ j +'][quantity]')
+        $(y[j]).find('.i_unit_price').attr('name', 'invoice_opd[services]['+ i +'][items]['+ j +'][unit_price]')
+        $(y[j]).find('.i_price').attr('name', 'invoice_opd[services]['+ i +'][items]['+ j +'][price]')
+        $(y[j]).find('.i_tax_group').attr('name', 'invoice_opd[services]['+ i +'][items]['+ j +'][tax_group_id]')
+        $(y[j]).find('.i_tax_inclusive').attr('name', 'invoice_opd[services]['+ i +'][items]['+ j +'][tax_inclusive]')
+        $(y[j]).find('.i_tax_inclusive').attr('id', 'tax_inclusive_' + i + j)
+        $(y[j]).find('.field_for_tax_inclusive').find('label').attr('for', 'tax_inclusive_' + i + j)
+        $(y[j]).find('.i_non_taxable_amount').attr('name', 'invoice_opd[services]['+ i +'][items]['+ j +'][non_taxable_amount]')
+        $(y[j]).find('.i_taxable_amount').attr('name', 'invoice_opd[services]['+ i +'][items]['+ j +'][taxable_amount]')
+        $(y[j]).find('.i_patient_payed').attr('name', 'invoice_opd[services]['+ i +'][items]['+ j +'][patient_payed]')
+        $(y[j]).find('.i_item_entry_date').attr('name', 'invoice_opd[services]['+ i +'][items]['+ j +'][item_entry_date]')
+
+        var z = $(y[j]).find('.tax_box')
+        for (var k = z.length - 1; k >= 0; k--) {
+          $(z[k]).find('.i_tax_group_amount').attr('name', 'invoice_opd[services]['+ i +'][items]['+ j +'][tax_group][][amount]')
+          $(z[k]).find('.i_tax_group_name').attr('name', 'invoice_opd[services]['+ i +'][items]['+ j +'][tax_group][][name]')
+          $(z[k]).find('.i_tax_group_id').attr('name', 'invoice_opd[services]['+ i +'][items]['+ j +'][tax_group][][id]')
+        }
+      }
+    };
+  }
+
+  datepicker_options = {
+    dateFormat: "dd/mm/yy"
+  }
+
+  $('.mop_field').on('change', function(){
+    var count = $(this).attr('data-count');
+    var net_amount = $("#invoice_payment_received_breakup_amount_" + count).val();
+    var mop = $(this).val();
+
+    if(mop == "Cash & Card") {
+      var cash = $(".hidden_fields_mop_" + count).find('.cash').val() || net_amount/2
+      var card = $(".hidden_fields_mop_" + count).find('.card').val() || net_amount/2
+    } else {
+      var cash = net_amount
+      var card = net_amount
+    }
+    var cheque_date = $(".hidden_fields_mop_" + count).find('.cheque_date').val() || ""
+    var transfer_date = $(".hidden_fields_mop_" + count).find('.transfer_date').val() || ""
+    var cheque_note = $(".hidden_fields_mop_" + count).find('.cheque_note').val() || ""
+    var transfer_note = $(".hidden_fields_mop_" + count).find('.transfer_note').val() || ""
+    var other_note = $(".hidden_fields_mop_" + count).find('.other_note').val() || ""
+    var card_number = $(".hidden_fields_mop_" + count).find('.card_number').val() || ""
+
+    if(mop == "Cash") {
+      $(".options-text-field-" + count).html("<input style='padding:5px 10px 0;border: none;border-bottom: 1px solid #aaa;display:inline;' class='form-control text-right mop-req cash_payment_only' id='cash_payment_only' value='" + cash + "' type='hidden' name='invoice_opd[payment_received_breakup][][cash]'>")
+    } else if(mop == "Card") {
+      $(".options-text-field-" + count).html("<input style='padding:5px 10px 0;border: none;border-bottom: 1px solid #aaa;display:inline;' class='form-control text-right mop-req card_payment' id='card_payment_only' value='" + card + "' type='hidden' name='invoice_opd[payment_received_breakup][][card]'><div class='col-md-6'>Card ending with:</div><div class='col-md-3 cash-card-payment'><input style='padding:5px 10px 0;border: none;border-bottom: 1px solid #aaa;display:inline;' class='form-control text-right card_number' id='card_number_only' placeholder='0000' minlength='4' maxlength='4' value='" + card_number + "' type='text' name='invoice_opd[payment_received_breakup][][card_number]'></div>")
+    } else if(mop == "Cash & Card") {
+      $(".options-text-field-" + count).html("<div class='col-md-3'>By Cash:</div><div class='col-md-3 cash-card-payment'><input style='padding:5px 10px 0;border: none;border-bottom: 1px solid #aaa;display:inline;' class='form-control text-right cash_payment' id='cash_payment' placeholder='By Cash' type='text' name='invoice_opd[payment_received_breakup][][cash]' value= '" + cash + "'></div><div class='col-md-3'>By Card:</div><div class='col-md-3'><input style='padding:5px 10px 0;border: none;border-bottom: 1px solid #aaa;display:inline;' class='form-control text-right card_payment' id='card_payment' placeholder='By Card' type='text' name='invoice_opd[payment_received_breakup][][card]' value= '" + card + "'></div><div class='col-md-6'>Card ending with:</div><div class='col-md-3 cash-card-payment'><input style='padding:5px 10px 0;border: none;border-bottom: 1px solid #aaa;display:inline;' class='form-control text-right card_number' id='card_number_only' placeholder='0000' minlength='4' maxlength='4' value='" + card_number + "' type='text' name='invoice_opd[payment_received_breakup][][card_number]'></div>")
+    } else if(mop == "Online Transfer") {
+      $(".options-text-field-" + count).html("<div class='col-md-5'><input style='padding:5px 10px 0;border: none;border-bottom: 1px solid #aaa;display:inline;background:#fff;cursor:pointer' class='form-control text-left transfer_date' id='transfer_date_" + count + "' placeholder='Transfer Date' type='text' name='invoice_opd[payment_received_breakup][][transfer_date]' value='" + transfer_date + "' readonly='readonly'></div><div class='col-md-6'><input style='padding:5px 10px 0;border: none;border-bottom: 1px solid #aaa;display:inline;' class='form-control text-left transfer_note' id='transfer_note' placeholder='Note' type='text' name='invoice_opd[payment_received_breakup][][transfer_note]' value='" + transfer_note + "'></div>")
+      $(".transfer_date").datepicker(datepicker_options)
+    } else if(mop == "Cheque") {
+      $(".options-text-field-" + count).html("<div class='col-md-5'><input style='padding:5px 10px 0;border: none;border-bottom: 1px solid #aaa;display:inline;background:#fff;cursor:pointer' class='form-control text-left cheque_date' id='cheque_date_" + count + "' placeholder='Cheque Date' type='text' name='invoice_opd[payment_received_breakup][][cheque_date]' value='" + cheque_date + "' readonly='readonly'></div><div class='col-md-6'><input style='padding:5px 10px 0;border: none;border-bottom: 1px solid #aaa;display:inline;' class='form-control text-left cheque_note' id='cheque_note' placeholder='Note' type='text' name='invoice_opd[payment_received_breakup][][cheque_note]' value='" + cheque_note + "'></div>")
+      $(".cheque_date").datepicker(datepicker_options)
+    } else if(mop == "Others") {
+      $(".options-text-field-" + count).html("<div class='col-md-12'><input style='padding:5px 10px 0;border: none;border-bottom: 1px solid #aaa;display:inline;' class='form-control text-left other_note' id='other_note' placeholder='Notes' type='text' name='invoice_opd[payment_received_breakup][][other_note]' value='" + other_note + "'></div>")
+    } else {
+      $(".options-text-field-" + count).html("")
+    }
+
+    if(parseInt("<%= @invoice.payment_received_breakup.count %>") > 1){
+      $('.cash_payment').attr('readonly', 'readonly')
+      $('.card_payment').attr('readonly', 'readonly')
+    }
+  })
+
+  $('.mop_field').trigger('change')
+
+  var xuz = 0
+  function net_amount_change_opd(){
+    $("#invoice_net_total").on('change', function(){
+      // xuz += 1
+      // var new_count = $(".mop_fields_col").find('label')
+      // for (var i = new_count.length - 1; i >= 0; i--) {
+      //   if($(new_count[i]).find("input").attr('checked') == "checked"){
+      //     if($(new_count[i]).find("input").hasClass('cash_card_payed') == false) {
+      //       $(new_count[i]).find(".mop_field").trigger('click')
+      //     }
+      //   }
+      // }
+      if($('#invoice_opd_mode_of_payment').val() == "Cash" || $('#invoice_opd_mode_of_payment').val() == "Card"){
+        $('#invoice_opd_mode_of_payment').trigger('change')
+      }
+
+      $(".mop_field").trigger('change')
+    })
+    $("#invoice_net_total").trigger('change')
+  }
+
+  $("#invoice_net_total").on('change', function(){
+    var net_amount = $(this).val();
+    var adjusted_amount = $("#invoice_advance_payment").val()
+    $("#invoice_amount_remaining").val(net_amount - adjusted_amount)
+    var amount_remaining = $("#invoice_amount_remaining").val()
+    $('.invoice_amount_remaining').trigger('change')
+
+    if($(".payment_received_breakups_amount").length == 1){
+      $(".payment_received_breakups_amount").first().val(net_amount).trigger('keyup')
+    }
+  })
+
+
+  // if($("#invoice_edit_form_opd").length > 0){
+  //   var new_count = $(".mop_fields_col").find('label')
+  //   for (var i = new_count.length - 1; i >= 0; i--) {
+  //     if($(new_count[i]).find("input").attr('checked') == "checked"){
+  //       $(new_count[i]).find(".mop_field").trigger('click')
+  //     }
+  //   }
+  // }
+
+  $("#services_items_invoice_opd").find(".service_name").on('change', function(){
+    var service_id = $(this).val()
+    var _this = this
+    $.ajax({
+      dataType: "JSON",
+      type: "get",
+      data: {
+        service_id: service_id
+      },
+      url: '/invoice_item_cards/get_items_for_service',
+      success: function(response){
+        $(_this).closest('.service_row_count').find('.service_item_row_count').find('.invoice_service_item_row').find('.i_description').children().remove()
+
+        $.each(response.invoice_item_card, function(key, value) {
+          if(value[2] === null){
+            $(_this).closest('.service_row_count').find('.service_item_row_count').find('.invoice_service_item_row').find('.i_description').append($("<option></option>").attr("value",value[0]).text(value[1]));
+          } else {
+            $(_this).closest('.service_row_count').find('.service_item_row_count').find('.invoice_service_item_row').find('.i_description').append($("<option></option>").attr("value",value[0]).text(value[1] + ' - ' + value[2]));
+          }
+        });
+        // var item = $(_this).closest('.service_row_count').find('.service_item_row_count').find('.invoice_service_item_row').find('.i_description')
+        var path = $(_this).closest('.service_row_count').find('.service_item_row_count').find('.invoice_service_item_row')
+        for (var i = path.length - 1; i >= 0; i--) {
+          $(path[i]).find('.i_description').prepend($('<option selected="selected" disabled="disabled"></option>'))
+          $(path[i]).find('.i_description').removeAttr('disabled')
+          $(path[i]).find('.i_quantity').val(1)
+          $(path[i]).find('.i_unit_price').val("")
+          $(path[i]).find('.i_unit_price').trigger('focusout')
+          $(path[i]).find('.i_price').val("")
+          $(path[i]).find('.select2-selection__rendered').text("").attr('title', '')
+        }
+      }
+    })
+  })
+  if($('.path_for_change').val() == "new"){
+    $("#services_items_invoice_opd").find(".service_name").first().trigger('change')
+  }
+
+  function get_item_card_details(link){
+    $(link).on('change', function(){
+
+      var item_id = $(this).val()
+      var _this = this
+      $.ajax({
+        dataType: "JSON",
+        type: "get",
+        data: {
+          item_id: item_id
+        },
+        url: '/invoice_item_cards/get_item_card_details',
+        success: function(response){
+          $(_this).closest('.invoice_service_item_row').find('.i_quantity').val(response.invoice_item_card.quantity)
+          $(_this).closest('.invoice_service_item_row').find('.i_unit_price').val((response.invoice_item_card.item_price)/(response.invoice_item_card.quantity))
+          $(_this).closest('.invoice_service_item_row').find('.i_unit_price').trigger('focusout')
+
+          calculate_tax(_this)
+        }
+      })
+    })
+  }
+
+  get_item_card_details($("#services_items_invoice_opd").find(".i_description"))
+
+  function create_item_dropdown(abc){
+    var service_id = $(abc).closest('.service_row').find('.service_name').val()
+
+    var dl = $(abc).closest('.service_row').siblings('.service_item_row_count').find('.i_description').last()
+    $.ajax({
+      dataType: "JSON",
+      type: "get",
+      data: {
+        service_id: service_id
+      },
+      url: '/invoice_item_cards/get_items_for_service',
+      success: function(response){
+        $(dl).children().remove()
+
+        $.each(response.invoice_item_card, function(key, value) {
+          if(value[2] === null){
+            $(dl).append($("<option></option>").attr("value",value[0]).text(value[1]));
+          } else {
+            $(dl).append($("<option></option>").attr("value",value[0]).text(value[1] + ' - ' + value[2]));
+          }
+        });
+        $(dl).prepend($('<option selected="selected" disabled="disabled"></option>'))
+        $(dl).removeAttr('disabled')
+      }
+    })
+  }
+
+  // Select2 Service/Item Dropdown
+  $("#services_items_invoice_opd").find('.service_name').select2();
+  $("#services_items_invoice_opd").find('.i_description').select2();
+
+  var datepicker_options = {
+    dateFormat: 'dd/mm/yy'
+  }
+  $('.invoice_payment_received_breakup_date').datepicker(datepicker_options);
+  $('.invoice_payment_received_breakup_time').timepicker({minuteStep: 5});
+
+  $('.invoice_amount_remaining').on('change', function(){
+    var amount_remaining = $(this).val()
+    if(parseInt('<%= @invoice.payment_received_breakup.count %>') <= 1){
+      if($('.invoice-payment-type:checked').val() == "Full Payment"){
+        $('.invoice_payment_received_breakup_amount').val(amount_remaining)
+        $('.invoice_payment_pending_amount').val(0)
+      } else {
+        var payment_received_breakup = $('#invoice_payment_received_breakup_amount_0').val()
+        $('.invoice_payment_pending_amount').val(parseFloat(amount_remaining) - parseFloat(payment_received_breakup))
+      }
+    } else {
+      var payment_received_breakup = 0
+      var invoice_payment_received_breakup = $('.invoice_payment_received_breakup_amount')
+      for (var i = invoice_payment_received_breakup.length - 1; i >= 0; i--) {
+        payment_received_breakup = parseFloat(payment_received_breakup) + parseFloat($(invoice_payment_received_breakup[i]).val())
+      }
+      $('.invoice_payment_pending_amount').val(parseFloat(amount_remaining) - parseFloat(payment_received_breakup))
+    }
+  })
+
+  // NEW PAYMENT DETALS CODE
+  var datepicker_options = {
+    dateFormat: 'dd/mm/yy'
+  }
+  $(".payment_received_breakups_date").datepicker(datepicker_options);
+  $(".payment_received_breakups_time").timepicker({minuteStep: 5});
+
+  // MOP LOGIC
+  $(".payment-received-details").on('change', '.payment_received_breakups_mode_of_payment', function(){
+    var payment_received_option = $(this).closest(".payment_received_row")
+    var mode_of_payment = $(this).val()
+    var counter = $(this).attr("data-index")
+    var amount = $(payment_received_option).find(".payment_received_breakups_amount").val()
+
+    var mop_nil = reset_mop_fields(mode_of_payment, counter)
+
+    if(mode_of_payment.length > 0){
+      if(mode_of_payment == "Cash"){
+        $(payment_received_option).find(".mop_details").html(mop_nil + '<div class="row"><div class="cash_details"><input type="hidden" name="invoice_opd[payment_received_breakups_attributes][' + counter + '][cash]" class="form-control payment_received_breakups_cash" value="' + amount + '"></div></div>')
+        $(payment_received_option).find(".mop_details").hide()
+      } else if(mode_of_payment == "Card"){
+        $(payment_received_option).find(".mop_details").html(mop_nil + '<div class="row"><div class="card_details"><div class="col-md-6"><b style="font-size:12px;">Card Number</b><input type="hidden" name="invoice_opd[payment_received_breakups_attributes][' + counter + '][card]" class="form-control payment_received_breakups_card" value="' + amount + '"><input type="text" name="invoice_opd[payment_received_breakups_attributes][' + counter + '][card_number]" class="form-control payment_received_breakups_card_number p3_10" minlength="4" maxlength="4" onKeyPress="return event.charCode >= 48 && event.charCode <= 57" value="" placeholder="Card Number"></div></div></div>')
+        $(payment_received_option).find(".mop_details").show()
+      } else if(mode_of_payment == "Cheque"){
+        $(payment_received_option).find(".mop_details").html(mop_nil + '<div class="row"><div class="cheque_details"><div class="col-md-6"><b style="font-size:12px;">Cheque Date</b><input type="text" name="invoice_opd[payment_received_breakups_attributes][' + counter + '][cheque_date]" class="form-control payment_received_breakups_cheque_date p3_10" placeholder="Cheque Date" readonly="readonly"></div><div class="col-md-6"><b style="font-size:12px;">Cheque Note</b><input type="text" name="invoice_opd[payment_received_breakups_attributes][' + counter + '][cheque_note]" class="form-control payment_received_breakups_cheque_note p3_10" value="" placeholder="Cheque Note"></div></div></div>')
+        $(payment_received_option).find(".mop_details").show()
+      } else if(mode_of_payment == "Online Transfer"){
+        $(payment_received_option).find(".mop_details").html(mop_nil + '<div class="row"><div class="transfer_details"><div class="col-md-6"><b style="font-size:12px;">Transfer Date</b><input type="text" name="invoice_opd[payment_received_breakups_attributes][' + counter + '][transfer_date]" class="form-control payment_received_breakups_transfer_date p3_10" placeholder="Transfer Date" readonly="readonly"></div><div class="col-md-6"><b style="font-size:12px;">Transfer Note</b><input type="text" name="invoice_opd[payment_received_breakups_attributes][' + counter + '][transfer_note]" class="form-control payment_received_breakups_transfer_note p3_10" value="" placeholder="Transfer Note"></div></div></div>')
+        $(payment_received_option).find(".mop_details").show()
+      } else if(mode_of_payment == "Others"){
+        $(payment_received_option).find(".mop_details").html(mop_nil + '<div class="row"><div class="other_details"><div class="col-md-6"><b style="font-size:12px;">Note</b><input type="text" name="invoice_opd[payment_received_breakups_attributes][' + counter + '][other_note]" class="form-control payment_received_breakups_other_note p3_10" value="" placeholder="Note"></div></div></div>')
+        $(payment_received_option).find(".mop_details").show()
+      } else {
+        $(payment_received_option).find(".mop_details").html(mop_nil)
+        $(payment_received_option).find(".mop_details").hide()
+      }
+    } else {
+      $(payment_received_option).find(".mop_details").html(mop_nil)
+      $(payment_received_option).find(".mop_details").hide()
+    }
+
+    $(".payment_received_breakups_cheque_date").datepicker(datepicker_options)
+    $(".payment_received_breakups_transfer_date").datepicker(datepicker_options)
+  });
+
+  function reset_mop_fields(mode_of_payment, counter){
+    var cash_nil = '<input type="hidden" name="invoice_opd[payment_received_breakups_attributes][' + counter + '][cash]" class="form-control payment_received_breakups_cash" value="">'
+    var card_nil = '<input type="hidden" name="invoice_opd[payment_received_breakups_attributes][' + counter + '][card]" class="form-control payment_received_breakups_card" value=""><input type="hidden" name="invoice_opd[payment_received_breakups_attributes][' + counter + '][card_number]" class="form-control payment_received_breakups_card_number" value="">'
+    var cheque_nil = '<input type="hidden" name="invoice_opd[payment_received_breakups_attributes][' + counter + '][cheque_date]" class="form-control payment_received_breakups_cheque_date" value=""><input type="hidden" name="invoice_opd[payment_received_breakups_attributes][' + counter + '][cheque_note]" class="form-control payment_received_breakups_cheque_note" value="">'
+    var transfer_nil = '<input type="hidden" name="invoice_opd[payment_received_breakups_attributes][' + counter + '][transfer_date]" class="form-control payment_received_breakups_transfer_date" value=""><input type="hidden" name="invoice_opd[payment_received_breakups_attributes][' + counter + '][transfer_note]" class="form-control payment_received_breakups_transfer_note" value="">'
+    var others_nil = '<input type="hidden" name="invoice_opd[payment_received_breakups_attributes][' + counter + '][other_note]" class="form-control payment_received_breakups_other_note" value="">'
+
+    if(mode_of_payment == "Cash"){
+      var mop_nil = card_nil + cheque_nil + transfer_nil + others_nil
+    } else if(mode_of_payment == "Card") {
+      var mop_nil = cash_nil + cheque_nil + transfer_nil + others_nil
+    } else if(mode_of_payment == "Cheque") {
+      var mop_nil = cash_nil + card_nil + transfer_nil + others_nil
+    } else if(mode_of_payment == "Online Transfer") {
+      var mop_nil = cash_nil + card_nil + cheque_nil + others_nil
+    } else if(mode_of_payment == "Others") {
+      var mop_nil = cash_nil + card_nil + cheque_nil + transfer_nil
+    } else {
+      var mop_nil = cash_nil + card_nil + cheque_nil + transfer_nil + others_nil
+    }
+
+    return mop_nil
+  }
+
+  $(".payment_received_breakups_cheque_date").datepicker(datepicker_options)
+  $(".payment_received_breakups_transfer_date").datepicker(datepicker_options)
+
+  // Add PAYMENT
+  $("#add_payment_received").on("click", function(e){
+    e.preventDefault();
+    var counter = $(".payment_received_row").length
+    var counter_visible = $(".payment_received_row:visible").length
+    var received_by = '<input type="hidden" name="invoice_opd[payment_received_breakups_attributes][' + counter + '][received_by]" class="form-control payment_received_breakups_received_by p3_10" value="<%= current_user.id.to_s %>">'
+    var currency_fields = '<input type="hidden" name="invoice_opd[payment_received_breakups_attributes][' + counter + '][currency_symbol]" class="form-control payment_received_breakups_currency_symbol p3_10" value="<%= @currency.symbol %>"><input type="hidden" name="invoice_opd[payment_received_breakups_attributes][' + counter + '][currency_id]" class="form-control payment_received_breakups_currency_id p3_10" value="<%= @currency.id.to_s %>">'
+    var sno = '<div class="col-md-1"><span class="payment_received_breakups_sno">' + (counter_visible + 1) + '.</span></div>'
+    var payee = '<div class="col-md-2"><select class="form-control payment_received_breakups_received_from" name="invoice_opd[payment_received_breakups_attributes][' + counter + '][received_from]" style="height: 25px;padding:3px;"><option value="<%= @invoice.patient_id.to_s %>" selected="selected"><%= @invoice.patient.fullname %></option><% @payer_masters.each do |payer_master| %><option value="<%= payer_master.id %>"><%= payer_master.display_name %> - <%= payer_master.contact_group.try(:name) %></option><% end %></select></div>'
+    var mode_of_payment = '<div class="col-md-2"><% mop_list = Invoice::InvoicesHelper.mop_list(current_facility.country_id)%><select class="form-control payment_received_breakups_mode_of_payment" name="invoice_opd[payment_received_breakups_attributes][' + counter + '][mode_of_payment]" style="height: 25px;padding:3px;" data-index="' + counter + '"><option value=""></option><% mop_list.each do |mop| %><option value="<%= mop %>"><%= mop %></option><% end %></select></div>'
+    var date = '<div class="col-md-2"><input type="text" name="invoice_opd[payment_received_breakups_attributes][' + counter + '][date]" class="form-control payment_received_breakups_date p3_10" value="<%= Date.current.strftime("%d/%m/%Y") %>" readonly="readonly"></div>'
+    var time = '<div class="col-md-2"><div class="bootstrap-timepicker timepicker"><input type="text" name="invoice_opd[payment_received_breakups_attributes][' + counter + '][time]" class="form-control payment_received_breakups_time p3_10" value="<%= Time.current.strftime("%I:%M %p") %>"></div></div>'
+    var amount = '<div class="col-md-2"><div class="input-group"><span class="input-group-addon" style="padding: 5px 10px;font-size:10px;"><%= current_facility.currency_symbol %></span><input type="number" name="invoice_opd[payment_received_breakups_attributes][' + counter + '][amount]" class="form-control payment_received_breakups_amount p3_10" min="0" value="0"></div></div>'
+    var remove_button = '<div class="col-md-1"><button class="btn btn-link btn-xs remove_payment_received">&times;</button></div>'
+    var mop_details = '<div class="col-md-4 col-md-offset-3 mt10 mop_details" style="display: none;border: 1px solid #ccc;padding: 5px;"></div>'
+
+    $("#payment_received_details").append('<div class="row payment_received_row mb10">' + received_by + currency_fields + sno + payee + mode_of_payment + date + time + amount + remove_button + mop_details + '</div>')
+
+    $(".payment_received_breakups_date").datepicker(datepicker_options);
+    $(".payment_received_breakups_time").timepicker({minuteStep: 5});
+  })
+
+  // Add CREDIT PAYMENT
+  $("#add_payment_pending").on("click", function(e){
+    e.preventDefault();
+    var counter = $(".payment_pending_row").length
+    var counter_visible = $(".payment_pending_row:visible").length
+    var currency_fields = '<input type="hidden" name="invoice_opd[payment_pending_breakups_attributes][' + counter + '][currency_symbol]" class="form-control payment_pending_breakups_currency_symbol p3_10" value="<%= @currency.symbol %>"><input type="hidden" name="invoice_opd[payment_pending_breakups_attributes][' + counter + '][currency_id]" class="form-control payment_pending_breakups_currency_id p3_10" value="<%= @currency.id.to_s %>">'
+    var sno = '<div class="col-md-1"><span class="payment_pending_breakups_sno">' + (counter_visible + 1) + '.</span></div>'
+    var payee = '<div class="col-md-2"><select class="form-control payment_pending_breakups_received_from" name="invoice_opd[payment_pending_breakups_attributes][' + counter + '][received_from]" style="height: 25px;padding:3px;"><option value="<%= @invoice.patient_id.to_s %>" selected="selected"><%= @invoice.patient.fullname %></option><% @payer_masters.each do |payer_master| %><option value="<%= payer_master.id %>"><%= payer_master.display_name %> - <%= payer_master.contact_group.try(:name) %></option><% end %></select></div>'
+    var mode_of_payment = '<div class="col-md-2">-</div>'
+    var date = '<div class="col-md-2"><input type="hidden" name="invoice_opd[payment_pending_breakups_attributes][' + counter + '][date]" class="form-control payment_pending_breakups_date p3_10" value="<%= Date.current %>">-</div>'
+    var time = '<div class="col-md-2"><input type="hidden" name="invoice_opd[payment_pending_breakups_attributes][' + counter + '][time]" class="form-control payment_pending_breakups_time p3_10" value="<%= DateTime.current.utc %>">-</div>'
+    var amount = '<div class="col-md-2"><div class="input-group"><span class="input-group-addon" style="padding: 5px 10px;font-size:10px;"><%= current_facility.currency_symbol %></span><input type="number" name="invoice_opd[payment_pending_breakups_attributes][' + counter + '][amount]" class="form-control payment_pending_breakups_amount p3_10" min="0" value="0"></div></div>'
+    var remove_button = '<div class="col-md-1"><button class="btn btn-link btn-xs remove_payment_pending">&times;</button></div>'
+
+    $("#payment_pending_details").append('<div class="row payment_pending_row mb10">' + currency_fields + sno + payee + mode_of_payment + date + time + amount + remove_button + '</div>')
+
+    $(".payment_pending_breakups_date").datepicker(datepicker_options);
+    $(".payment_pending_breakups_time").timepicker({minuteStep: 5});
+  })
+
+  // PAID AMOUNT CHANGE
+  $(".payment-received-details").on('keyup change', '.payment_received_breakups_amount', function(){
+    var payment_received_option = $(this).closest(".payment_received_row")
+    var received_amount = $(this).val()
+    var mode_of_payment = $(payment_received_option).find(".payment_received_breakups_mode_of_payment").val()
+    if(mode_of_payment == "Cash"){
+      $(payment_received_option).find(".payment_received_breakups_cash").val(received_amount)
+    } else if(mode_of_payment == "Card"){
+      $(payment_received_option).find(".payment_received_breakups_card").val(received_amount)
+    }
+
+    calculate_payment_received_total()
+  })
+  if("<%= params[:action] %>" != "edit"){
+    $(".payment_received_breakups_amount").first().val($("#invoice_net_total").val()).trigger('keyup')
+  }
+
+  // UNPAID AMOUNT CHANGE
+  $(".payment-pending-details").on('keyup change', '.payment_pending_breakups_amount', function(){
+    calculate_payment_pending_total()
+  })
+
+  // REMOVE PAYMENT RECEIVED
+  $(".payment-received-details").on('click', '.remove_payment_received', function(e){
+    e.preventDefault();
+    var _destroy = $(this).closest(".payment_received_row").find(".payment_received_breakups_destroy")
+    if(_destroy.length > 0){
+      $(_destroy).val("1")
+      $(this).closest(".payment_received_row").hide()
+    } else {
+      $(this).closest(".payment_received_row").remove()
+    }
+
+    remove_reset_payment_logic("received")
+
+    calculate_payment_received_total()
+  })
+
+  // REMOVE PAYMENT PENDING
+  $(".payment-pending-details").on('click', '.remove_payment_pending', function(e){
+    e.preventDefault();
+    var _destroy = $(this).closest(".payment_pending_row").find(".payment_pending_breakups_destroy")
+    if(_destroy.length > 0){
+      $(_destroy).val("1")
+      $(this).closest(".payment_pending_row").hide()
+    } else {
+      $(this).closest(".payment_pending_row").remove()
+    }
+
+    remove_reset_payment_logic("pending")
+
+    calculate_payment_pending_total()
+  })
+
+  $("#advance_payment_details").on("keyup change", ".advance_payment_breakups_amount", function(){
+    var advance_amount = $(this).closest(".advance_payment_row").find(".advance_payment_breakups_advance_amount").val()
+    if(parseFloat($(this).val()) > parseFloat(advance_amount)){
+      $(this).val(advance_amount)
+    }
+
+    calculate_advance_payment_total()
+  })
+
+
+  function calculate_advance_payment_total(){
+    // Calculate PaymentReceived Total
+    var advance_payment_breakups_amount = $(".advance_payment_breakups_amount")
+    var invoice_advance_payment_total = 0
+    for (var i = advance_payment_breakups_amount.length - 1; i >= 0; i--) {
+      amount = $(advance_payment_breakups_amount[i]).val()
+      if(amount != ""){
+        invoice_advance_payment_total = invoice_advance_payment_total + parseFloat(amount)
+      }
+    }
+    $("#invoice_advance_payment_total").val(invoice_advance_payment_total)
+    change_invoice_total_payment()
+  }
+
+  function calculate_payment_received_total(){
+    // Calculate PaymentReceived Total
+    var payment_received_breakups_amount = $(".payment_received_breakups_amount:visible")
+    var invoice_payment_received_total = 0
+    for (var i = payment_received_breakups_amount.length - 1; i >= 0; i--) {
+      amount = $(payment_received_breakups_amount[i]).val()
+      if(amount != ""){
+        invoice_payment_received_total = invoice_payment_received_total + parseFloat(amount)
+      }
+    }
+    $("#invoice_payment_received_total").val(invoice_payment_received_total)
+    change_invoice_total_payment()
+  }
+
+  function calculate_payment_pending_total(){
+    // Calculate PaymentReceived Total
+    var payment_pending_breakups_amount = $(".payment_pending_breakups_amount:visible")
+    var invoice_payment_pending_total = 0
+    for (var i = payment_pending_breakups_amount.length - 1; i >= 0; i--) {
+      amount = $(payment_pending_breakups_amount[i]).val()
+      if(amount != ""){
+        invoice_payment_pending_total = invoice_payment_pending_total + parseFloat(amount)
+      }
+    }
+    $("#invoice_payment_pending_total").val(invoice_payment_pending_total)
+    change_invoice_total_payment()
+  }
+
+  function change_invoice_total_payment(){
+    var invoice_advance_payment_total = parseFloat($("#invoice_advance_payment_total").val())
+    var invoice_payment_received_total = parseFloat($("#invoice_payment_received_total").val())
+    var invoice_payment_pending_total = parseFloat($("#invoice_payment_pending_total").val())
+    $("#invoice_total_payment").val(invoice_advance_payment_total + invoice_payment_received_total + invoice_payment_pending_total)
+
+    var invoice_total_payment_remaining = parseFloat($("#invoice_net_total").val()) - parseFloat($("#invoice_total_payment").val())
+    $("#invoice_total_payment_remaining").val(invoice_total_payment_remaining)
+  }
+
+  function remove_reset_payment_logic(reset_location){
+    if(reset_location == "received"){
+      var received_counter = $("#payment_received_details").find(".payment_received_row").length
+      var payment_received_row = $("#payment_received_details").find(".payment_received_row")
+      for (var i = payment_received_row.length - 1; i >= 0; i--) {
+        if($(payment_received_row).is(":visible")){
+          $(payment_received_row[i]).find('.payment_received_breakups_sno').html((received_counter - 1) + ".")
+          received_counter = received_counter - 1
+        }
+        $(payment_received_row[i]).find('.payment_received_breakups_id').attr('name', 'invoice_opd[payment_received_breakups_attributes][' + i + '][id]')
+        $(payment_received_row[i]).find('.payment_received_breakups_destroy').attr('name', 'invoice_opd[payment_received_breakups_attributes][' + i + '][_destroy]')
+        $(payment_received_row[i]).find('.payment_received_breakups_received_from').attr('name', 'invoice_opd[payment_received_breakups_attributes][' + i + '][received_from]')
+        $(payment_received_row[i]).find('.payment_received_breakups_currency_symbol').attr('name', 'invoice_opd[payment_received_breakups_attributes][' + i + '][currency_symbol]')
+        $(payment_received_row[i]).find('.payment_received_breakups_currency_id').attr('name', 'invoice_opd[payment_received_breakups_attributes][' + i + '][currency_id]')
+        $(payment_received_row[i]).find('.payment_received_breakups_mode_of_payment').attr('name', 'invoice_opd[payment_received_breakups_attributes][' + i + '][mode_of_payment]').attr("data-index", i)
+        $(payment_received_row[i]).find('.payment_received_breakups_date').attr('name', 'invoice_opd[payment_received_breakups_attributes][' + i + '][date]')
+        $(payment_received_row[i]).find('.payment_received_breakups_time').attr('name', 'invoice_opd[payment_received_breakups_attributes][' + i + '][time]')
+        $(payment_received_row[i]).find('.payment_received_breakups_amount').attr('name', 'invoice_opd[payment_received_breakups_attributes][' + i + '][amount]')
+        $(payment_received_row[i]).find('.payment_received_breakups_cash').attr('name', 'invoice_opd[payment_received_breakups_attributes][' + i + '][cash]')
+        $(payment_received_row[i]).find('.payment_received_breakups_card').attr('name', 'invoice_opd[payment_received_breakups_attributes][' + i + '][card]')
+        $(payment_received_row[i]).find('.payment_received_breakups_amount').attr('name', 'invoice_opd[payment_received_breakups_attributes][' + i + '][amount]')
+        $(payment_received_row[i]).find('.payment_received_breakups_cheque_date').attr('name', 'invoice_opd[payment_received_breakups_attributes][' + i + '][cheque_date]')
+        $(payment_received_row[i]).find('.payment_received_breakups_cheque_note').attr('name', 'invoice_opd[payment_received_breakups_attributes][' + i + '][cheque_note]')
+        $(payment_received_row[i]).find('.payment_received_breakups_transfer_date').attr('name', 'invoice_opd[payment_received_breakups_attributes][' + i + '][transfer_date]')
+        $(payment_received_row[i]).find('.payment_received_breakups_transfer_note').attr('name', 'invoice_opd[payment_received_breakups_attributes][' + i + '][transfer_note]')
+        $(payment_received_row[i]).find('.payment_received_breakups_other_note').attr('name', 'invoice_opd[payment_received_breakups_attributes][' + i + '][other_note]')
+      }
+    } else if(reset_location == "pending"){
+      var pending_counter = $("#payment_pending_details").find(".payment_pending_row").length
+      var payment_pending_row = $("#payment_pending_details").find(".payment_pending_row")
+      for (var i = payment_pending_row.length - 1; i >= 0; i--) {
+        if($(payment_pending_row).is(":visible")){
+          $(payment_pending_row[i]).find('.payment_pending_breakups_sno').html((pending_counter - 1) + ".")
+          pending_counter = pending_counter - 1
+        }
+        $(payment_pending_row[i]).find('.payment_pending_breakups_id').attr('name', 'invoice_opd[payment_pending_breakups_attributes][' + i + '][id]')
+        $(payment_pending_row[i]).find('.payment_pending_breakups_destroy').attr('name', 'invoice_opd[payment_pending_breakups_attributes][' + i + '][_destroy]')
+        $(payment_pending_row[i]).find('.payment_pending_breakups_received_from').attr('name', 'invoice_opd[payment_pending_breakups_attributes][' + i + '][received_from]')
+        $(payment_pending_row[i]).find('.payment_pending_breakups_currency_symbol').attr('name', 'invoice_opd[payment_pending_breakups_attributes][' + i + '][currency_symbol]')
+        $(payment_pending_row[i]).find('.payment_pending_breakups_currency_id').attr('name', 'invoice_opd[payment_pending_breakups_attributes][' + i + '][currency_id]')
+        $(payment_pending_row[i]).find('.payment_pending_breakups_amount').attr('name', 'invoice_opd[payment_pending_breakups_attributes][' + i + '][amount]')
+      }
+    }
+  }
+
+  $(".i_tax_group").on('change', function(){
+    calculate_tax(this)
+  })
+
+  $(".i_tax_inclusive").on('click', function(){
+    calculate_tax(this)
+  })
+
+  $(".i_quantity").on('keyup', function(){
+    calculate_tax(this)
+  })
+
+  $(".i_unit_price").on('keyup', function(){
+    calculate_tax(this)
+  })
+
+  if("<%= (@invoice_setting.tax_enabled_opd || params[:action] == 'edit') && (@invoice.tax_enabled || params[:action] == 'new') %>" == 'true'){
+    function calculate_tax(_this){
+      var this_parent = $(_this).closest('.invoice_service_item_row')
+      var quantity = parseFloat($(this_parent).find('.i_quantity').val())
+      var amount = parseFloat($(this_parent).find('.i_unit_price').val()) * quantity
+      var tax_rate = parseFloat($(this_parent).find(".i_tax_group").find(":selected").attr('data-tax-rate'))
+      var inclusive = $(this_parent).find('.i_tax_inclusive').is(':checked')
+      var tax_group_id = $(this_parent).find(".i_tax_group").val()
+
+      if(inclusive){
+        var taxable_amount = (amount * tax_rate)/(100 + tax_rate)
+        var non_taxable_amount = amount - taxable_amount
+        var total_amount = amount
+      } else {
+        var taxable_amount = (amount * tax_rate)/100
+        var non_taxable_amount = amount
+        var total_amount = amount + taxable_amount
+      }
+      $(this_parent).find('.i_taxable_amount').val(taxable_amount.toFixed(2))
+      $(this_parent).find('.i_non_taxable_amount').val(non_taxable_amount.toFixed(2))
+      $(this_parent).find('.i_price').val(total_amount.toFixed(2))
+      $(this_parent).find('.i_tax_group').attr('data-amount', amount)
+      $(this_parent).find('.i_price').trigger('change')
+      var get_service_count = $(this_parent).find('.i_taxable_amount').attr('name').replace(/[^0-9\.]/g, '')[0]
+      var get_item_count = $(this_parent).find('.i_taxable_amount').attr('name').replace(/[^0-9\.]/g, '')[1]
+
+      $.ajax({
+        type: 'GET',
+        dataType: 'JSON',
+        data: { tax_group_id: tax_group_id, taxable_amount: taxable_amount},
+        url: '/invoice/invoices/tax_breakup',
+        success: function(response){
+          $(this_parent).find('.tax_fields').html("")
+          $.each(response.tax, function(key, value) {
+            $(this_parent).find('.tax_fields').append('<div class="tax_box"><input type="hidden" name="invoice_opd[services][' + get_service_count + '][items][' + get_item_count + '][tax_group][][amount]" value="' + parseFloat(value[2]).toFixed(2) + '" class="i_tax_group_amount"><input type="hidden" name="invoice_opd[services][' + get_service_count + '][items][' + get_item_count + '][tax_group][][name]" value="' + value[1] + '" class="i_tax_group_name"><input type="hidden" name="invoice_opd[services][' + get_service_count + '][items][' + get_item_count + '][tax_group][][_id]" value="' + value[0] + '" class="i_tax_group_id"></div>')
+          });
+
+          $("#invoice_gross_total").trigger('change')
+        }
+      })
+    }
+
+    $("#invoice_gross_total").on('change', function(){
+      $("#tax-cage").html("")
+      var tax_field = $('.tax_fields')
+      var counter = 0
+      for (var j = tax_field.length - 1; j >= 0; j--) {
+
+        var tax_box = $(tax_field[j]).find('.tax_box')
+        for (var i = tax_box.length - 1; i >= 0; i--) {
+          var tax_group_id2 = $(tax_box[i]).find('.i_tax_group_id').val()
+          var tax_group_id = $("#tax-cage").find('.tax_group_' + tax_group_id2)
+          var tax_group_name = $(tax_box[i]).find('.i_tax_group_name').val()
+          var tax_group_amount = $(tax_box[i]).find('.i_tax_group_amount').val()
+          if(tax_group_id.length <= 0){
+            $("#tax-cage").prepend('<div class="row mb5 tax_group_' + tax_group_id2 + '"><div class="col-md-5 text-right"><b>' + tax_group_name + ' :</b></div><div class="col-md-3 text-right"><input style="padding:5px 10px 0;border: none;border-bottom: 1px solid #aaa;" class="form-control text-right tax_group_id_' + tax_group_id2 + '" value="' + tax_group_id2 + '" type="hidden" name="invoice_opd[tax_breakup][][_id]" readonly="readonly"><input style="padding:5px 10px 0;border: none;border-bottom: 1px solid #aaa;" class="form-control text-right tax_group_id_' + tax_group_id2 + '" value="' + tax_group_name + '" type="hidden" name="invoice_opd[tax_breakup][][name]" readonly="readonly"><input style="padding:5px 10px 0;border: none;border-bottom: 1px solid #aaa;" class="form-control text-right tax_group_amount_' + tax_group_id2 + '" value="' + parseFloat(tax_group_amount).toFixed(2) + '" type="text" name="invoice_opd[tax_breakup][][amount]" readonly="readonly"></div></div>')
+          } else {
+            var old_value = $(tax_group_id).find('.tax_group_amount_' + tax_group_id2).val()
+            var new_value = (parseFloat(tax_group_amount) + parseFloat(old_value)).toFixed(2)
+            $(tax_group_id).find('.tax_group_amount_' + tax_group_id2).val(new_value)
+          }
+          if(counter == 0){
+            $("#tax-cage").attr('style', 'background: #eee;padding: 10px;margin-bottom: 10px;')
+          }
+          counter = counter + 1
+        }
+      }
+
+      non_taxable_amount()
+    })
+
+    function non_taxable_amount(){
+      var non_taxable_amount = 0.0
+      var x = $(".i_non_taxable_amount")
+      for (var i = x.length - 1; i >= 0; i--) {
+        non_taxable_amount = (parseFloat(non_taxable_amount) + parseFloat($(x[i]).val())).toFixed(2)
+      }
+      if(non_taxable_amount != 0.00){
+        $("#tax-cage").prepend('<div class="row mb5 non_taxable_amount"><div class="col-md-5 text-right"><b>Non-Taxable Amount :</b></div><div class="col-md-3 text-right"><input style="padding:5px 10px 0;border: none;border-bottom: 1px solid #aaa;" class="form-control text-right non_taxable_amount" value="' + parseFloat(non_taxable_amount).toFixed(2) + '" type="text" name="invoice_opd[non_taxable_amount]" readonly="readonly"></div></div>')
+        $("#tax-cage").attr('style', 'background: #eee;padding: 10px;margin-bottom: 10px;')
+      }
+    }
+
+    non_taxable_amount()
+  } else {
+    function calculate_tax(_this){}
+  }
+
+  // Code for Invoice Type
+  function toggle_payment_pending(invoice_type=""){
+    switch(invoice_type) {
+      case "cash": case "":
+        $("#payment-pending-form").hide();
+        $(".remove_payment_pending").trigger("click");
+        break;
+      case "credit": case "insurance":
+        $("#payment-pending-form").show()
+        $("#add_payment_pending").trigger("click")
+        break;
+    }
+  }
+
+  $(".invoice_type").on("click", function(){
+    let invoice_type = $(this).val()
+    toggle_payment_pending(invoice_type)
+  })
+  // Code for Invoice Type Ends
+
+});

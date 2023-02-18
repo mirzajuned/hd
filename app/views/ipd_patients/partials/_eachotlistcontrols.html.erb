@@ -1,0 +1,73 @@
+<!-- File Of No Use -->
+
+<% if ot.admission.isdischarged == false %>
+  <div class="each-ot-day-controls">
+
+    <div class="row">
+
+      <div class="col-md-12">
+
+        <div class="btn-group">
+          <!-- <button type="button" class="btn btn-xs btn-success">OT</button> -->
+          <button type="button" class="btn btn-xs btn-warning dropdown-toggle hg-tooltip" title="OT" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            <i class="fa fa-heartbeat"></i>
+          </button>
+          <ul class="dropdown-menu">
+            <% ipdrecord_find_otnote = Inpatient::IpdRecord.find_by(:admission_id => ot.admission.id.to_s, :patient_id => ot.patient.id.to_s, :template_type => "operativenote") %>
+              <% if ipdrecord_find_otnote.nil? %>
+                  <li><%= link_to new_inpatient_ipd_record_path(:admission_id => ot.admission.id, :patient_id => ot.patient.id, :templatetype => 'operativenote'), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#ipdrecord-modal'} do %> <i class="fa fa-edit"></i> New OT Note<% end %></li>
+              <% else %>
+                  <li><%= link_to edit_inpatient_ipd_record_path(:ipdrecord_id => ipdrecord_find_otnote.id.to_s, :admission_id => ot.admission.id.to_s, :patient_id => ot.patient.id.to_s, :templatetype => 'operativenote'), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#ipdrecord-modal'} do %> <i class="fa fa-edit"> Edit OT Note</i> <% end %></li>
+              <% end %>
+            <li><%= link_to ipd_patients_editot_path(:admission_id => ot.admission.id, :patient_id => ot.patient.id, :admission_id => ot.admission.id, :otschedule_id => ot.id), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#templates-modal'} do %> <i class="fa fa-edit"></i> Edit OT Schedule <% end %> </li>
+          </ul>
+        </div>
+
+        <div class="btn-group">
+        <!-- <button type="button" class="btn btn-xs btn-warning">Invoice</button> -->
+        <button type="button" class="btn btn-xs btn-success dropdown-toggle hg-tooltip" id="invoice_dropdown_<%= ot.admission.id.to_s %>" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" title="Invoices">
+          <i class="fa fa-rupee"></i>
+          <!-- <span class="sr-only">Toggle Dropdown</span> -->
+        </button>
+        <ul class="dropdown-menu" role="menu" aria-labelledby="invoice-print-dropdown">
+          <% if tpa.is_insured? %>
+            <% @inv_ins_id = Invoice::Insurance.find_by(admission_id: ot.admission.id) %>
+            <% @inv_est_id = Invoice::InsuranceEstimate.find_by(admission_id: ot.admission.id) %>
+            <% if @inv_est_id.nil? %>
+              <li><%= link_to new_invoice_insurance_estimate_path(:tpa_id => tpa.id.to_s, :admission_id => ot.admission.id, :patient_id => ot.admission.patient_id), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#insurance-modal'} do %> Estimate Receipt <% end %></li>
+            <% else %>
+              <li><%= link_to invoice_insurance_estimate_path(id: @inv_est_id.id), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#insurance-modal'} do %> View Estimate Receipt <% end %></li>
+            <% end %>
+            <% if @inv_ins_id.nil? %>
+              <li><%= link_to new_invoice_insurance_path(:tpa_id => tpa.id.to_s, :admission_id => ot.admission.id, :patient_id => ot.admission.patient_id), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#insurance-modal'} do %> New Insurance Receipt <% end %></li>
+            <% else %>
+              <li><%= link_to invoice_insurance_path(id: @inv_ins_id.id), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#insurance-modal'} do %> View Insurance Receipt <% end %></li>
+            <% end %>
+          <% else %>
+            <li><%= link_to new_invoice_ipd_path(:admissionid => ot.admission.id, :patientid => ot.admission.patient.id, :typeid => Global.ehrcommon.ipd.id, :type => Global.ehrcommon.ipd.abbr), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#invoice-modal'} do %> <i class="fa fa-rupee"></i> Free Receipt Template <% end %></li>
+            <li><%= link_to new_cash_register_path(:admissionid => ot.admission.id, :patientid => ot.admission.patient.id, :typeid => Global.ehrcommon.ipd.id, :type => Global.ehrcommon.ipd.abbr), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#cash-register-modal'} do %> <i class="fa fa-rupee"></i> Cash Register <% end %></li>
+            <!-- Old Invoices -->
+            <% patient_pastinvoices = Invoice::Ipd.where(:patient_id => ot.admission.patient_id, :admission_id => ot.admission.id) %>
+            <% if patient_pastinvoices.size > 0 %>
+                <li class="old_invoice_ss" style="text-align: center;font-size: 10px;opacity: 0.6; border-bottom: 1px solid #eee;border-top: 1px solid #eee;margin-top: 5px;"><span>Previous Receipts</span></li>
+                <% patient_pastinvoices.newest_invoice_first.each do |patient_pastinvoice| %>
+                    <li>
+                      <%= link_to edit_invoice_ipd_path(:id => patient_pastinvoice.id), :data => {:remote => true} do %><%= patient_pastinvoice.bill_number %><% end %>
+                    </li>
+                <% end %>
+            <% end %>
+          <% end %>
+        </ul>
+      </div>
+
+
+
+      </div>
+
+
+    </div>
+
+  </div>
+<% else %>
+  <span class="label label-danger">Discharged at <%= ot.admission.dischargetime.strftime('%d/%m/%Y, %I:%M %p') %></span>
+<% end %>

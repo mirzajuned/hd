@@ -1,0 +1,164 @@
+<div class="print-template" style="font-family: '<%= UsersSetting.find_by(user_id: current_user.id).font_style %>';">
+
+  <div class="pcs-entity-title"><span><%= @cash_register.cash_register_type %> Cash register</span></div>
+
+  <div class="patientinfo" id="patientinfo">
+    <table cellpadding="0" cellspacing="0" border="0" style="margin-top: 25px;width: 100%;">
+      <tbody>
+      <tr>
+        <td style="width:50%;vertical-align:top;word-wrap: break-word;line-height: 18px;" valign="top">
+          <div>
+
+
+
+            <span style="font-size:15px;font-weight:bold;"><%= @patient[:fullname] %></span>
+            <span style="font-size:14px;font-weight:bold;"><% if @patient.exact_age.present? %><%=@patient.exact_age.to_s.split("-").join(" ")%><% end %> <% if @patient[:gender] == 'Male' %>/M<% end %><% if @patient[:gender] == 'Female' %>/F<% end %></span><br>
+            <% p_address_counter = 0 %> <% p_address_1 = "" %> <% p_address_2 = "" %> <% p_address_city = "" %> <% p_address_state = "" %> <% p_address_pincode = "" %>
+            <% if @patient[:"address_1"].length > 0 %>
+                <% p_address_counter = p_address_counter + 1 %>
+            <% end %>
+            <% if @patient[:"address_2"].length > 0 %>
+                <% p_address_counter = p_address_counter + 1 %>
+            <% end %>
+            <% if @patient[:"city"].length > 0 %>
+                <% p_address_counter = p_address_counter + 1 %>
+            <% end %>
+            <% if @patient[:"state"].length > 0 %>
+                <% p_address_counter = p_address_counter + 1 %>
+            <% end %>
+            <% if p_address_counter > 0 %>
+              <span id="tmp_billing_address" style="font-size:14px;"><% if @patient[:address_1].length > 0 %><%= @patient[:address_1] %><br><% end %>
+                <% if @patient[:address_2].length > 0 %><%= @patient[:address_2] %><br><% end %>
+                <% if @patient[:city].length > 0 %><%= @patient[:city] %><br><% end %>
+                <% if @patient.try(:state) && @patient.try(:pincode) %><%= @patient[:state]+" - "+@patient[:pincode].to_s %><% end %>
+              </span>
+            <% end %>
+            <% p_mobilenumber_counter = 0 %>
+            <% if @patient[:mobilenumber].length > 0 %>
+                <% p_mobilenumber_counter = p_mobilenumber_counter + 1 %>
+            <% end %>
+            <% if p_mobilenumber_counter > 0 %>
+                <span style="font-size:14px;">+91<%= @patient[:mobilenumber] %></span><br>
+            <% end %>
+            <span style="font-size:14px;">PAT. ID: <%= PatientIdentifier.find_by(:patient_id => @cash_register.patient_id,:organisation_id => current_user.organisation_id).try(:patient_org_id) %></span><br>
+
+
+          </div>
+        </td>
+        <td style="text-align: right;" valign="top">
+          <span style="font-size:14px;">Dr.
+            <% if @cash_register.cash_register_type_id.to_i == 440655000 %>
+              <%= User.find_by(id: @cash_register.appointment.consultant_id).try(:fullname)%>
+            <% elsif @cash_register.cash_register_type_id.to_i == 440654001 %>
+              <%= User.find_by(id: @cash_register.admission.doctor).try(:fullname)%>
+            <% end %>
+          </span><br>
+          <% if @cash_register.appointment != nil %>
+           <% if  User.find_by(:id => @cash_register.appointment.consultant_id).designation.present? %>
+          <span style="font-size:14px;"><%= User.find_by(:id => @cash_register.appointment.consultant_id).designation %></span><br>
+          <% end %>
+          <%elsif @cash_register.admission != nil %>
+          <% if  User.find_by(:id => @cash_register.admission.doctor).designation.present? %>
+          <span style="font-size:14px;"><%=User.find_by(:id => @cash_register.admission.doctor).designation %></span><br>
+          <% end %>
+          <%end%>
+          <span style="font-size:14px;">CSH DATE: <%= Date.current.strftime("%d %B, %Y") %></span><br>
+          <span style="font-size:14px;">CSH ID: <%= @cash_register.bill_number %></span><br>
+          <span style="font-size:14px;"><% if @cash_register.cash_register_type_id.to_i == 440655000 %>OPD NO: <%= @cash_register.appointment.display_id %>
+            <% elsif @cash_register.cash_register_type_id.to_i == 440654001 %>ADMISSION NO: <%= @cash_register.admission.display_id %>
+            <% end %>
+          </span>
+          <br>
+        </td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+
+
+  <div class="row" style="min-height: 9cm; font-family:monospace;">
+
+    <table cellpadding="0" cellspacing="0" border="0" class="pcs-itemtable" style="width:100%;margin-top:30px;table-layout:fixed;border-right-color: transparent;">
+      <thead>
+      <tr>
+        <td class="pcs-itemtable-header" style="padding:5px 5px;word-wrap: break-word;width: 5%;text-align: center;">
+          #
+        </td>
+        <td class="pcs-itemtable-header" style="padding:5px 10px 5px 10px;word-wrap: break-word;">
+          Particulars
+        </td>
+        <td class="pcs-itemtable-header" style="padding:5px 10px 5px 5px;word-wrap: break-word;width: 12%;" align="right">
+          Unit Price
+        </td>
+        <td class="pcs-itemtable-header" style="padding:5px 10px 5px 5px;word-wrap: break-word;width: 13%;" align="right">
+          Total Units
+        </td>
+
+        <td class="pcs-itemtable-header" style="padding:5px 10px 5px 5px;word-wrap: break-word;width:120px;" align="right">
+          Amount
+        </td>
+      </tr>
+      <tr>
+      </thead>
+      <tbody class="itemBody">
+      <% detail_count = 1 %>
+      <% @cash_register.cash_register_details.map do |each_detail| %>
+          <tr>
+            <td class="pcs-item-row" style="padding: 15px 5px;word-wrap: break-word;text-align: center;" valign="top">
+              <%= detail_count %>
+            </td>
+            <td class="pcs-item-row" style="padding: 15px 0px 15px 10px;" valign="top">
+              <span id="tmp_item_description" class="pcs-item-desc" style="white-space: pre-wrap;word-wrap: break-word;"><%= each_detail['label'] %></span>
+            </td>
+            <td class="pcs-item-row" style="padding: 15px 10px 15px 10px;text-align:right;word-wrap: break-word;" valign="top">
+              <span id="tmp_item_qty"><%= each_detail['unit_price'] %></span>
+            </td>
+            <td class="pcs-item-row" style="padding: 15px 10px 15px 10px;text-align:right;word-wrap: break-word;" valign="top">
+              <span id="tmp_item_rate"><%= each_detail['total_units'] %></span>
+            </td>
+            <td class="pcs-item-row" style="text-align:right;padding: 15px 10px 15px 5px;word-wrap: break-word;" valign="top">
+              <span id="tmp_item_amount"><%= each_detail['unit_price'] * each_detail['total_units'].to_i %></span>
+            </td>
+          </tr>
+      <%  detail_count+=1
+          end %>
+
+      </tbody>
+
+    </table>
+
+    <div style="width: 100%;margin-top: 1px;">
+      <div style="width: 60%;float: left;padding-top: 20px;">
+        <div class="pcs-notes" style="white-space: pre-wrap;padding: 3px 10px;word-wrap: break-word;"> </div>
+      </div>
+      <div class="pcs-totals" style="width: 40%;float:right;padding-top: 20px;">
+        <table width="100%" border="0" cellspacing="0" class="pcs-bdr-bottom">
+          <tbody>
+          <tr class="pcs-balance" style="height:40px;">
+            <td class="pcs-bdr-top" style="padding: 5px 10px 5px 0;" align="right" valign="middle"><b>Total</b></td>
+            <td class="pcs-bdr-top" style="width:120px;;padding: 10px 10px 10px 5px;" align="right" valign="middle" id="tmp_total"><b><%= @cash_register.total %></b></td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="col-md-5">
+        <b>Comments:</b>
+        <%= @cash_register.comments %>
+      </div>
+      <div style="clear: both;"></div>
+    </div>
+
+
+
+
+  </div>
+
+
+
+  <div class="row" style="padding-bottom: 1cm">
+    <div>
+      (Authorised Signature)
+    </div>
+  </div>
+
+</div>

@@ -1,0 +1,275 @@
+if("<%= @organisations_setting.mandatory_opd_templates %>" == "true" && $('#opdrecord_templatetype').val()
+ != 'postop'){
+  $(document).ready(() => {
+    check_procedures_status()
+  });
+
+  //toggle no procedure advised checkbox
+  $('#opdrecord_no_procedure_advised').on('click',() => {
+    if($('#opdrecord_no_procedure_advised').is(':checked')){
+      $('.procedure_tab_row').hide()
+      $('.procedure_comment_row').css("margin-top", "116px");
+    } else{
+      $('.procedure_tab_row').show()
+      $('.procedure_comment_row').css("margin-top", "0px");
+    }
+    check_procedures_status()
+  });
+}
+
+jQuery(".opdrecord_ophthal_procedures_label_select").hide();
+
+
+$('#eye_region').on('change', function() {
+    var eye_region = $("#eye_region option:selected").val();
+    $.ajax({
+        dataType: "JSON",
+        type: "GET",
+        url: "/opd_records/populate_ophthalprocedures",
+        data: {
+            procedure_type: 'common_procedures',  //for differentiating query in controller
+            region: eye_region,
+            speciality_id: '309988001',
+            remote: "true"
+        },
+        success: function(response){
+            $(".eyeregion-options").html("")
+            $(".eyeregion-options").append("<option value>Please select</option>")
+            var procedure_type = 'CommonProcedure'
+            $.each(response, function(key, value) {
+                $(".eyeregion-options").append("<option value=" + value[0] + " data-id= "+ procedure_type + ">" + value[1] + "</option>")
+            });
+        }
+    })
+});
+
+$('#eye_region_tab').on('change', function() {
+
+    var eye_region = $("#eye_region_tab option:selected").val();
+    $.ajax({
+        dataType: "JSON",
+        type: "GET",
+        url: "/opd_records/populate_ophthalprocedures",
+        data: {
+            procedure_type: 'common_procedures',  //for differentiating query in controller
+            region: eye_region,
+            speciality_id: '309988001',
+            remote: "true"
+        },
+        success: function(response){
+            $(".eyeregion-options_tab").html("")
+            $(".eyeregion-options_tab").append("<option value>Please select</option>")
+            var procedure_type = 'CommonProcedure'
+            $.each(response, function(key, value) {
+                $(".eyeregion-options_tab").append("<option value=" + value[0] + " data-id= "+ procedure_type + ">" + value[1] + "</option>")
+            });
+        }
+    })
+});
+
+$('#custom_eye_region_tab').on('change', function() {
+    var eye_region = $("#custom_eye_region_tab option:selected").val();
+    $.ajax({
+        dataType: "JSON",
+        type: "GET",
+        url: "/opd_records/populate_ophthalprocedures",
+        data: {
+            procedure_type: 'custom_common_procedures',
+            region: eye_region,
+            speciality_id: '309988001',
+            remote: "true"
+        },
+        success: function(response){
+            $(".custom_eyeregion-options_tab").html("")
+            $(".custom_eyeregion-options_tab").append("<option value>Please select</option>")
+            $.each(response, function(key, value) {
+                $(".custom_eyeregion-options_tab").append("<option value=" + value[0] + " data-id= "+ value[2] + " >" + value[1] + "</option>")
+            });
+        }
+    })
+});
+
+$(".eyeregion-options_tab").on('change', function() {
+    var procedure = $(".eyeregion-options_tab option:selected").val();
+    var procedure_type = $(".eyeregion-options_tab option:selected").attr('data-id');
+    var data = {procedure_type: procedure_type, code: procedure, procedure_code: procedure, flag: 'new', remote: "true"}
+    get_procedure_details('new', data)
+});
+$(".custom_eyeregion-options_tab").on('change', function() {
+    var procedure = $(".custom_eyeregion-options_tab option:selected").val();
+    var procedure_type = $(".custom_eyeregion-options_tab option:selected").attr('data-id');
+    var data = {procedure_type: procedure_type, code: procedure, procedure_code: procedure, flag: 'new', remote: "true"}
+    get_procedure_details('new', data)
+});
+//end
+$('#custom_eye_region').on('change', function() {
+    var eye_region = $("#custom_eye_region option:selected").val();
+    $.ajax({
+        dataType: "JSON",
+        type: "GET",
+        url: "/opd_records/populate_ophthalprocedures",
+        data: {
+            procedure_type: 'custom_common_procedures',
+            region: eye_region,
+            speciality_id: '309988001',
+            remote: "true"
+        },
+        success: function(response){
+            $(".eyeregion-options").html("")
+            $.each(response, function(key, value) {
+                $(".eyeregion-options").append("<option value=" + value[0] + " data-id= "+ value[2] + " >" + value[1] + "</option>")
+            });
+        }
+    })
+});
+
+$("#translated_eye_region").on('change', function() {
+    var eye_region = $("#translated_eye_region option:selected").val();
+    $.ajax({
+        dataType: "JSON",
+        type: "GET",
+        url: "/opd_records/populate_ophthalprocedures",
+        data: {
+            procedure_type: 'translated_common_procedures',
+            region: eye_region,
+            speciality_id: '309988001',
+            remote: 'true'
+        },
+        success :function(response) {
+            $(".eyeregion-options").html("")
+            $.each(response, function(key, value) {
+                $(".eyeregion-options").append("<option value=" + value[0] + " data-id= "+ value[2] + ">" + value[1] + "</option>")
+            });
+        }
+    });
+});
+
+$(".eyeregion-options").on('change', function() {
+    var procedure = $(".eyeregion-options option:selected").val();
+    var procedure_type = $(".eyeregion-options option:selected").attr('data-id');
+    var data = {procedure_type: procedure_type, code: procedure, procedure_code: procedure, flag: 'new', remote: "true"}
+    get_procedure_details('new', data)
+});
+
+$('#search-procedure').autocomplete({
+    minLength: 2,
+    source: function(request, response) {
+        $.ajax({
+            dataType: "json",
+            type: 'get',
+            url: '/common_procedures/search',
+            data: {
+                search: request.term,
+                speciality_id: '309988001',
+                remote: "true" },
+            success: function(data) {
+                response(data);
+            },
+            error: function(data) {
+            }
+        });
+    },
+    select: function( event, ui ) {
+        var data = {code: ui.item['code'], procedure_code: ui.item['code'], procedure_type: ui.item['procedure_type'],  flag: 'new', remote: "true"}
+        get_procedure_details('new', data)
+        setTimeout(function() {
+            $("#search-procedure").val("")
+        }, 50);
+    },
+    create: function () {
+        $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+            return $('<li>')
+                .append('<a>' + item.label  + '&nbsp; &nbsp; &nbsp;' + "<span class=\"badge pull-right\">" + item.procedure_type_label + "</span>" + '</a>')
+                .appendTo(ul);
+        };
+    },
+});
+
+function get_procedure_details(flag, data, _this){
+  $.ajax({
+      dataType: "script",
+      type: 'get',
+      url: '/common_procedures/get_procedure_details',
+      data: data,
+      success: function(response){
+          $(_this).removeAttr("disabled")
+      }
+  });
+}
+//saved procedures edit
+$(".edit-saved-procedure-btn").on('click', function(e){
+    e.preventDefault();
+    var table_row = $(this).closest('.table-row-procedure')
+    var counter = $(this).attr('id').slice(-1)
+    $(this).attr('disabled', 'disabled');
+
+    // Params
+    var id = $(table_row).find('#opdrecord_procedure_attributes_' + counter + '_id').val()
+    var code = $(table_row).find('#opdrecord_procedure_attributes_' + counter + '_procedurefullcode').val()
+    var status = $(table_row).find('#opdrecord_procedure_attributes_' + counter + '_procedurestage').val()
+    var side_id = $(table_row).find('#opdrecord_procedure_attributes_' + counter + '_procedureside').val()
+    var procedure_comment = $(table_row).find('#opdrecord_procedure_attributes_' + counter + '_procedure_comment').val()
+    var users_comment = $(table_row).find('#opdrecord_procedure_attributes_' + counter + '_users_comment').val()
+    var performed_by_id = $(table_row).find('#opdrecord_procedure_attributes_' + counter + '_performed_by_id').val()
+    var performed_datetime = $(table_row).find('#opdrecord_procedure_attributes_' + counter + '_performed_datetime').val()
+    var performed_date = $(table_row).find('#opdrecord_procedure_attributes_' + counter + '_performed_date').val()
+    var performed_time = $(table_row).find('#opdrecord_procedure_attributes_' + counter + '_performed_time').val()
+    var procedure_type = $(table_row).find('#opdrecord_procedure_attributes_' + counter + '_procedure_type').val()
+
+    var data = {procedure_type: procedure_type, id: id, code: code, procedure_code: code, counter: counter, status: status, side_id: side_id, procedure_comment: procedure_comment, users_comment: users_comment, performed_by_id: performed_by_id, performed_datetime: performed_datetime, performed_date: performed_date, performed_time: performed_time, flag: 'edit', remote: true}
+    get_procedure_details('edit', data, $(this))
+})
+
+$('.procedure-added').on('click', "a[name*='removeprocedurebutton']", function(e) {
+    e.preventDefault();
+    var fieldcounter = $(this).attr('id').slice(-1);
+    var procedurelist_tr_array = $(this).parents('.table-row-procedure').find(".id");
+    if (procedurelist_tr_array.length > 0) {
+        $(this).parents('.table-row-procedure').find("input[name*='_destroy']").val("1");
+        var procedurelist_removed_tr_html = $(this).parents('.table-row-procedure').wrap('<p/>').parent().html();
+        $(this).parents('.table-row-procedure').unwrap();
+        $('.procedure-removed').append(procedurelist_removed_tr_html);
+        $(this).parents('.table-row-procedure').remove();
+        _renumber_id_after_remove("tbody.procedure-added", "div.procedure-removed");
+    } else {
+        $(this).parents('.table-row-procedure').remove();
+        _renumber_id_after_remove("tbody.procedure-added", "div.procedure-removed");
+    }
+
+    check_validation_status(
+        $('#procedure-added'),
+        'procedure_is_valid', 'advice_step_procedure'
+    );
+});
+
+if (<%= @disable_default_procedure %>) {
+    jQuery("#commonly_used").hide();
+    jQuery("#translated_made").hide();
+    jQuery("#custom_made").show();
+} else {
+    jQuery("#custom_made").hide();
+    jQuery("#translated_made").hide();
+    jQuery("input[name='custom_procedure_type']").on('click', function () {
+        var custom_type = jQuery("input[name='custom_procedure_type']:checked").val();
+        if (custom_type == 'commonly_used') {
+            jQuery("#commonly_used").show();
+            jQuery("#custom_made").hide();
+            jQuery("#translated_made").hide();
+            $('.eyeregion-options').html('<option></option>')
+            $('.eyeregion-options_tab').html('<option></option>')
+
+        } else if (custom_type == 'custom_made') {
+            jQuery("#commonly_used").hide();
+            jQuery("#translated_made").hide();
+            jQuery("#custom_made").show();
+            $('.eyeregion-options').html('<option></option>')
+            $('.eyeregion-options_tab').html('<option></option>')
+        } else if (custom_type == 'translated_made') {
+            jQuery("#commonly_used").hide();
+            jQuery("#custom_made").hide();
+            jQuery("#translated_made").show();
+            $('.eyeregion-options').html('<option></option>')
+            $('.eyeregion-options_tab').html('<option></option>')
+        }
+    });
+}

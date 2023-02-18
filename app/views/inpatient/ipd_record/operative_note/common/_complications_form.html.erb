@@ -1,0 +1,131 @@
+<div class="row mb20">
+  <div class="col-md-2 col-sm-12">
+    Intraoperative Complications:
+  </div>
+  <div class="col-md-7 col-sm-8">
+      <%= f.input :complication, wrapper_html: { class: 'complication' }, collection: ['No', 'Yes'], as: :hg_radio_button, label: false, required: false, class: 'btn btn-xs btn-white complication_btns', style: 'margin-top:-2px;', input_html: {}, checked: @operative_note.read_attribute(:complication) || 'No' %>
+  </div>
+  <div id="div_complications" class="col-md-12 mb30">
+    <% @ipd_record_procedures = @ipdrecord.procedure.where(has_declined: false, is_removed: false) %>
+    <% not_performed_counter = @ipd_record_procedures.where(is_performed: false, performed_inline: false).count %>
+    <% counter = (not_performed_counter == 0) ? 0 : (not_performed_counter) %>
+    <%= render partial: 'inpatient/ipd_record/operative_note/common/procedure_complications.html.erb', locals: { procedures: @ipd_record_procedures.where(is_performed: true).order(advised_datetime: :asc), ipdrecord: @ipdrecord, operative_note: @operative_note, counter: counter } %>
+  </div>
+  <div class="col-md-12 mb10">
+    <div class="col-md-9 col-sm-9">
+      <% if params[:action] == "new" %>
+        <%= f.text_area :complication_comment, style: 'width:125%;', class: 'form-control compliation_comment', require: true, value: @operative_note.read_attribute(:complication_comment) %>
+      <% elsif params[:action] == "edit" %>
+        <%= f.text_area :complication_comment, style: 'width:125%;', readonly: 'readonly', class: 'form-control compliation_comment', require: true, value: @operative_note.read_attribute(:complication_comment) %>
+        <a href="#" class="btn-x btn edit-complication">EDIT</a>
+      <% end %>
+    </div>
+    <div class="col-md-3 col-sm-3 col-xs-4">
+      <div class="Procedure_perform_details">
+        <%= f.hidden_field :complication_add_by, class: 'add_name_complication' %>
+        <%= f.hidden_field :complication_update_by, class: 'update_name_complication' %>
+        <% if params[:action] == "new" %>
+          <p class="">Complication by: <%= current_user.fullname %></p>
+        <% elsif params[:action] == "edit" %>
+          <% if @operative_note.complication_add_by.present? %>
+            <p class="">Complication created by: <%= User.find(@operative_note.complication_add_by).try(:fullname) %> </p>
+          <% end %>
+          <% if @operative_note.complication_update_by.present? %>
+            <p class="">Complication last update by: <%= User.find(@operative_note.complication_update_by).fullname %> </p>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+    <% if params[:action] == "edit" %>
+      <div class="Procedure_perform_details_update" style="display:none;">
+        <div class="">
+          <p class="">Complication Update by:  <%= current_user.fullname %></p>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<style type="text/css">
+  /*Use of hardcode Classes*/
+    .note-toolbar {
+      background-color: #354670 !important;
+    }
+    .note-editable {
+      height: 300px !important;
+    }
+    .note-editor {
+      box-shadow: 0 6px 12px rgba(0,0,0,.175);
+    }
+    .compliation_comment{
+        display: block;
+        max-width: 100%;
+        min-width: 100%;
+        max-height: 94px;
+        min-height: 94px;
+    }
+      /*Use of hardcode Classes*/
+    .note-toolbar {
+      background-color: #354670 !important;
+    }
+    .note-editable {
+      height: 300px !important;
+    }
+    .note-editor {
+      box-shadow: 0 6px 12px rgba(0,0,0,.175);
+    }
+</style>
+<script type="text/javascript">
+  <%= render partial: 'surgery_form.js.erb' %>
+
+  div_complications_toggle();
+
+  $(".complication").on('change', function(e){
+    div_complications_toggle();
+  })
+
+</script>
+<script>
+  $(".edit-complication").on('click', function(e){
+    e.preventDefault()
+    $(".compliation_comment").attr("readonly", false);
+    $(".update_name_complication").val("<%= current_user.id %>")
+    $(".Procedure_perform_details_update").css("display", "block")
+    $(".edit-complication").css("display", "none")
+  })
+</script>
+
+<script type="text/javascript">
+  $(".procedure_complication").on('click', function(e){
+    e.preventDefault();
+    var name = $(this).html();
+    var c_code = $(this).attr('data-value');
+    var name_cls = name.split(' ').join('_');
+    var procedure_id = $(this).closest('div').attr('target-input-id').split("_").pop(-1);
+    var procedure_code = $(this).closest('div').attr('target-input-id').split("_").slice(-2)[0];
+    create_procedure_complication(name, c_code, name_cls, procedure_id, procedure_code);
+  });
+
+  $('.has_complications_chk_val').click(function(e) {
+    e.preventDefault();
+    var user_name = $('#hdn_by').val();
+    var user_id = $('#hdn_by_id').val();
+    var performed_time = $('#hdn_datetime').val();
+    
+    var procedure_id = $(this).parent().attr('target-input-id').split("_").pop(-1);
+    if($(this).attr("input-value") == 'No') {
+      $('#hdn_has_complication_removed_by_id_'+procedure_id).val(user_id);
+      $('#hdn_has_complication_removed_by_'+procedure_id).val(user_name);
+      $('#hdn_has_complication_removed_by_datetime_'+procedure_id).val(performed_time);
+      
+      toggle_tr(procedure_id);
+    } else {
+      $('#hdn_has_complication_created_by_id_'+procedure_id).val(user_id);
+      $('#hdn_has_complication_created_by_'+procedure_id).val(user_name);
+      $('#hdn_has_complication_created_by_datetime_'+procedure_id).val(performed_time);
+      
+      $("#div_"+procedure_id).show();
+    }
+  });
+
+</script>

@@ -1,0 +1,220 @@
+<!-- This file is not used anymore -- anoop -->
+<!-- File Of No Use -->
+
+<!-- OPD Patient Actions -->
+  <div class="each-appointment-day-controls">
+
+    <% if Date.current.eql?(Date.strptime("#{appointment.appointmentdate}", "%Y-%m-%d")) %>
+      <!-- Case 1: Today's Patient -->
+        <div class="row">
+
+          <div class="col-md-1 mr10">
+            <!-- Change States -->
+                <% if !appointment.arrived || appointment.seen %>
+                  <%= link_to opd_appointments_has_arrived_path(:appointment_id => appointment.id), :class => "btn btn-primary btn-xs hg-tooltip", :id=>"has_arrived_"+appointment.id.to_s, :data => {:remote => true} do %><i class="fa fa-sign-in-alt mr10"></i><% end %>
+                <% end %>
+                <% if !appointment.seen && appointment.arrived %>
+                  <%= link_to opd_appointments_has_seen_path(:appointment_id => appointment.id),:class => "btn btn-primary btn-xs hg-tooltip", :id=>"has_seen_"+appointment.id.to_s, :data => {:remote => true} do %><i class="fa fa-sign-out-alt"></i><% end %>
+                <% end %>
+              </ul>
+            <!-- Change States End -->
+          </div>
+          <div class="col-md-3">
+            <!-- Reschedule Appointment -->
+              <%= link_to opd_appointments_rescheduleappointment_path(:appointment_id => appointment.id), :class => "btn btn-xs btn-warning r-appointment hg-tooltip", :id => "reschedule_"+appointment.id.to_s , :title => "Reschedule Appointment", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#appointment-modal'} do %> <i class="fa fa-edit"></i> <% end %>
+              <!-- Reschedule Appointment End -->
+              <!-- Cancel Appointment -->
+              <%= link_to opd_appointments_cancelappointmentform_path(:appointment_id => appointment.id), :class => "btn btn-xs btn-danger c-appointment hg-tooltip", :id => "cancel_appointment"+appointment.id.to_s , :title => "Cancel Appointment", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#appointment-modal'} do %> <i class="fa fa-trash-alt"></i> <% end %>
+            <!-- Cancel Appointment End -->
+          </div>
+
+
+          <div class="col-md-1" style="margin-left:-20px;">
+            <!-- Invoices -->
+              <button type="button" class="btn btn-xs btn-success c-appointment hg-tooltip" title="Make Invoice" id="invoice-print-dropdown-<%= appointment.id.to_s %>" data-toggle="dropdown">
+                <i class="fa fa-rupee"></i>
+              </button>
+              <ul class="dropdown-menu" role="menu" aria-labelledby="invoice-print-dropdown">
+                <!-- Stored Invoices -->
+                  <% @invoice_templates.each do |invoice_template| %>
+                    <li>
+                      <%= link_to new_invoice_opd_path(:appointmentid => appointment.id, :typeid => Global.ehrcommon.opd.id, :type => Global.ehrcommon.opd.abbr,:invoice_template => invoice_template[:template_details]), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#invoice-modal'} do %><%= invoice_template[:name]%><% end %>
+                    </li>
+                  <% end %>
+                <!-- Free Invoice -->
+                  <li>
+                    <%= link_to new_invoice_opd_path(:appointmentid => appointment.id, :typeid => Global.ehrcommon.opd.id, :type => Global.ehrcommon.opd.abbr), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#invoice-modal'} do %> Free Receipt Template <% end %>
+                  </li>
+                  <% patient = Patient.find_by(:id => appointment.patient_id ) %>
+
+
+                <!-- Old Invoices -->
+                  <% patient_pastinvoices = Invoice::Opd.where(:patient_id => appointment.patient_id) %>
+                  <% if patient_pastinvoices.size > 0 %>
+                    <li class="old_invoice_ss"><span>Previous Receipts</span></li>
+                    <% patient_pastinvoices.newest_invoice_first.each do |patient_pastinvoice| %>
+                        <li>
+                          <%= link_to edit_invoice_opd_path(:id => patient_pastinvoice.id), :data => {:remote => true} do %><%= patient_pastinvoice.bill_number %><% end %>
+                        </li>
+                    <% end %>
+                  <% end %>
+                <!-- All Invoices End -->
+              </ul>
+            <!-- Invoices End -->
+          </div>
+          <!-- <div class="col-md-1 mr5" style="margin-left:-4px;"> -->
+            <!-- Cash Register -->
+            <!-- removed_cash_register_from_here -->
+            <!-- Cash Register End -->
+          <!-- </div> -->
+          <div class="col-md-1">
+          <!-- Comments by doc and nurse -->
+          <% if PatientRecordNote.find_by(:patient_id => appointment.patient_id.to_s, :user_id => appointment.user_id.to_s) %>
+
+          <%= link_to patients_edit_patient_comments_path(:appointment_id => appointment.id), :class => "btn btn-xs btn-warning hg-tooltip", :title => "Patient Comments", :data => {:remote => true, 'toggle' => "modal", 'target' => '#patient-comment'} do %> <i class="glyphicon glyphicon-question-sign"></i> <% end %>
+          <% else %>
+            <%= link_to patients_patient_comments_path(:appointment_id => appointment.id), :class => "btn btn-xs btn-warning hg-tooltip", :title => "Patient Comments", :data => {:remote => true, 'toggle' => "modal", 'target' => '#patient-comment'} do %> <i class="glyphicon glyphicon-question-sign"></i> <% end %>
+            <% end %>
+
+        </div>
+          <div class="col-md-1">
+            <!-- Upload Paper Record -->
+            <%= link_to paperrecords_upload_patient_asset_path(:patientid => appointment.patient.id),:target => '_blank',:class=>"btn btn-danger btn-xs consent_for_patients" do %> <i class="glyphicon glyphicon-cloud-upload"></i>Upload papers<% end %>
+            <!-- Upload Paper Record End -->
+          </div>
+          <div class="col-md-1"></div>
+          <% if current_user.department_id.to_i  == 309988001 %>
+              <% unless appointment.patients_appointment_fees  == nil %>
+                <div class="col-md-2" style="border: solid 1px #ccc;border-radius: 2px;padding: 4px 0px 0px 4px;">
+                  <span><i class="fa fa-rupee"></i><strong><%= appointment.patients_appointment_fees %></strong></span >
+                </div>
+              <%end%>
+
+            <div class="col-md-1">
+              <% if appointment.dilation_start_time != nil && appointment.dilation_end_time == nil%>
+                  <%= link_to opd_appointments_stop_dilation_path(:appointment_id => appointment.id), :class => "btn btn-xs btn-danger", :style => "cursor: inherit; animation: glowing 1500ms infinite", :data => {:remote => true} do %> D <% end %>
+              <% else%>
+                  <%= link_to opd_appointments_dilate_patient_path(:appointment_id => appointment.id), :class => "btn btn-xs btn-success", :data => {:remote => true} do %> D <% end %>
+              <%end%>
+            </div>
+
+
+        <div class="col-md-1"></div>
+            <div class="col-md-1">
+              <%= link_to ipd_patients_scheduleot_path(appointment_id: appointment.id, :patient_id => appointment.patient.id, ottime: "current_time"), class: "btn btn-info btn-xs pull-right", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#templates-modal'} do %> Schedule OT<% end %>
+            </div>
+
+          <% else %>
+              <% unless appointment.patients_appointment_fees  == nil %>
+                <div class="col-md-2" style="border: solid 1px #ccc;border-radius: 2px;padding: 4px 0px 0px 4px;">
+                  <span><i class="fa fa-rupee"></i><strong><%= appointment.patients_appointment_fees %></strong></span >
+                  <!--<span style="margin-left: 10px;background: #999;color: #eee;border-radius: 2px;padding: 1px 2px 0px 2px;"> X </span>-->
+                </div>
+              <%end%>
+          <% end %>
+
+
+
+        </div>
+
+    <% elsif Date.current < (Date.strptime("#{appointment.appointmentdate}", "%Y-%m-%d")) %>
+      <!-- Case 2: Tomorrow Patient -->
+        <div class="row">
+          <div class="col-md-3">
+            <!-- Reschedule Appointment -->
+              <%= link_to opd_appointments_rescheduleappointment_path(:appointment_id => appointment.id), :class => "btn btn-xs btn-warning r-appointment hg-tooltip", :title => "Reschedule Appointment", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#appointment-modal'} do %> <i class="fa fa-edit"></i> <% end %>
+              <!-- Reschedule Appointment End -->
+              <!-- Cancel Appointment -->
+              <%= link_to opd_appointments_cancelappointmentform_path(:appointment_id => appointment.id), :class => "btn btn-xs btn-danger c-appointment hg-tooltip", :title => "Cancel Appointment", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#appointment-modal'} do %> <i class="fa fa-trash-alt"></i> <% end %>
+            <!-- Cancel Appointment End -->
+          </div>
+        </div>
+
+    <% elsif Date.current > (Date.strptime("#{appointment.appointmentdate}", "%Y-%m-%d")) %>
+      <!-- Case 3: Yesterday Patient -->
+        <div class="row">
+
+          <div class="col-md-1">
+            <!-- Invoices -->
+              <button type="button" class="btn btn-xs btn-success c-appointment hg-tooltip" title="Make Invoice" id="invoice-print-dropdown-<%= appointment.id.to_s %>" data-toggle="dropdown">
+                <i class="fa fa-rupee"></i>
+              </button>
+              <ul class="dropdown-menu" role="menu" aria-labelledby="invoice-print-dropdown">
+                <!-- Stored Invoices -->
+                  <% @invoice_templates.each do |invoice_template| %>
+                    <li>
+                      <%= link_to new_invoice_opd_path(:appointmentid => appointment.id, :typeid => Global.ehrcommon.opd.id, :type => Global.ehrcommon.opd.abbr,:invoice_template => invoice_template[:template_details]), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#invoice-modal'} do %><%= invoice_template[:name]%><% end %>
+                    </li>
+                  <% end %>
+                <!-- Free Invoice -->
+                  <li>
+                    <%= link_to new_invoice_opd_path(:appointmentid => appointment.id, :typeid => Global.ehrcommon.opd.id, :type => Global.ehrcommon.opd.abbr), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#invoice-modal'} do %> Free Receipt Template <% end %>
+                  </li>
+                <!-- Old Invoices -->
+                  <% patient_pastinvoices = Invoice::Opd.where(:patient_id => appointment.patient_id) %>
+                  <% if patient_pastinvoices.size > 0 %>
+                    <li class="old_invoice_ss"><span>Previous Receipts</span></li>
+                    <% patient_pastinvoices.newest_invoice_first.each do |patient_pastinvoice| %>
+                        <li>
+                          <%= link_to edit_invoice_opd_path(:id => patient_pastinvoice.id), :data => {:remote => true} do %><%= patient_pastinvoice.bill_number %><% end %>
+                        </li>
+                    <% end %>
+                  <% end %>
+                <!-- All Invoices End -->
+              </ul>
+            <!-- Invoices End -->
+          </div>
+
+
+            <div class="col-md-1">
+              <!-- Upload Paper Record -->
+              <button data-toggle="dropdown" title="Upload Paper" class="hg-tooltip dropdown-toggle btn btn-default btn-xs">
+                <i class="fa fa-list-ol"></i>
+              </button>
+              <ul role="menu" class="dropdown-menu pull-right" style="margin-right:-15px;">
+                <li><%= link_to paperrecords_upload_patient_asset_path(:patientid => appointment.patient.id), :target => '_blank' do %>
+                      <i class="glyphicon glyphicon-cloud-upload"></i> Upload paper records
+                  <% end %></li>
+              </ul>
+              <!-- Upload Paper Record End -->
+          </div>
+          <% if current_user.department_id.to_i  == 309988001 %>
+            <div class="col-md-8"></div>
+            <div class="col-md-1">
+
+            </div>
+          <% end %>
+        </div>
+
+    <% end %>
+
+  </div>
+
+
+  <style type="text/css">
+
+    .c-appointment {
+      margin-left: -2px;
+    }
+
+    .old_invoice_ss {
+      text-align:center;
+      font-size:10px;
+      opacity:0.6;
+      border-bottom:1px solid #eee;
+      border-top:1px solid #eee;
+      margin-top: 5px;
+    }
+
+    .old_invoice_list {
+      font-size: 13px;
+    }
+
+@keyframes glowing {
+  0% { background-color: #B20000; box-shadow: 0 0 3px #B20000; }
+  50% { background-color: #FF0000; box-shadow: 0 0 40px #FF0000; }
+  100% { background-color: #B20000; box-shadow: 0 0 3px #B20000; }
+}
+
+
+  </style>

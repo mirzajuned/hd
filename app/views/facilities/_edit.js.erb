@@ -1,0 +1,263 @@
+<%= render partial: 'form.js.erb' %>
+
+function validate_ip_address(event) {
+  $('.remote-ip-address-text').each(function() {
+    value = $(this).val()
+    var remote_ip_name_id = $(this).closest('.ip-whitelisting-row').find('.remote_ip_name')[0].id
+    var remote_ip_name = $('#'+remote_ip_name_id).val() || ''
+    var ipaddress = /^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$/;
+    var facility_ips = $('.remote-ip-address-text').map((i, e) => e.value).get();
+    if (facility_ips.filter(x => x == value).length > 1) {
+      notice = new PNotify({ text: 'Same IP Address Found multiple times', type: 'error' }); notice.get().click(function(){ notice.remove() });
+      event.preventDefault();
+      return false
+    }
+    else if (ipaddress.test(value) && remote_ip_name.length >= 3) {
+      return true
+    } else {
+      notice = new PNotify({ text: 'Please Check IP Address / Name. You have entered wrong IP Address / Name', type: 'error' }); notice.get().click(function(){ notice.remove() });
+      event.preventDefault();
+      return false
+    }
+  })
+}
+
+function validate_whatsapp_number(event){
+  if($("#communication_number").val() == '' && $('.name').val() != ''){
+    notice = new PNotify({ text: 'Whatsapp Number Required (Step 4: Setting)', type: 'error' }); notice.get().click(function(){ notice.remove() });
+    event.preventDefault();
+    return false;
+  }
+  else{
+    return true
+  }
+}
+
+function validate_specialty_presence(event){
+  var result = false 
+  var a = $("[name='facility[specialty_ids][]']")
+  for (const [index, [, value]] of Object.entries(Object.entries(a))) {
+    // console.log(`${index}: ${value}`);
+    var e = $("[name='facility[specialty_ids][]']")[index]
+    if($(e).is(":checked")){
+      result = true
+    }
+  } 
+  if(result == false && $('.name').val() != ''){
+    notice = new PNotify({ text: 'Please Select Atleast One Speciality (Step 2: Speciality)', type: 'error' }); notice.get().click(function(){ notice.remove() });
+    event.preventDefault();
+
+    return false;
+  }
+  return result
+
+}
+
+function edit_facility(event) {
+  validate_ip_address(event)
+  validate_whatsapp_number(event)
+  validate_specialty_presence(event) // to validate that atleast one speacialty is checked
+
+  $('#edit_facility_<%= @facility.id.to_s %>').validate({
+    rules: {
+      "facility[name]": {
+        required: true,
+      },
+      "facility[display_name]": {
+        required: true,
+        remote: "/facilities/validate_facility?organisation_id=<%= @organisation.id %>&existing_display_name=<%=raw @facility.display_name %>"
+      },
+      "facility[abbreviation]": {
+        required: true,
+        remote: "/facilities/validate_facility?organisation_id=<%= @organisation.id %>&existing_abbreviation=<%=raw @facility.abbreviation %>"
+      },
+      "facility[country_id]": {
+        required: true,
+      },
+      "facility[time_zone]": {
+        required: true,
+      },
+      "facility[currency_id]": {
+        required: true,
+      },
+      "facility[communication_number_id]": {
+        required: true,
+      },
+      "facility[currency_ids][]": {
+        required: true,
+      },
+      "facility[region_master_id]": {
+        required: true,
+      },
+      "facility[address]": {
+        required: true,
+      },
+      "facility[district]": {
+        required: true,
+        minlength: 2,
+        "remote":  {
+          url: '/locations/check_district',
+          type: "get",
+          data: { country_id: function(){ return $('#facility_country_id option:selected').attr('value') } }
+        }
+      },
+      "facility[commune]": {
+        required: true,
+        minlength: 2,
+        "remote":  {
+          url: '/locations/check_commune',
+          type: "get",
+          data: { country_id: function(){ return $('#facility_country_id option:selected').attr('value') } }
+        }
+      },
+      "facility[city]": {
+        required: true,
+        minlength: 3,
+        "remote":  {
+            url: '/locations/check_city',
+            type: "get",
+            data: { country_id: function(){ return $('#facility_country_id option:selected').attr('value') } }
+        }
+      },
+      "facility[state]": {
+        required: true,
+        minlength: 3,
+        "remote":  {
+          url: '/locations/check_state',
+          type: "get",
+          data: { country_id: function(){ return $('#facility_country_id option:selected').attr('value') } }
+        }
+      },
+     "facility[pincode]": {
+        required: true,
+        minlength: 3,
+        "remote":  {
+          url: '/locations/check_pincode',
+          type: "get",
+          data: { country_id: function(){ return $('#facility_country_id option:selected').attr('value') } }
+        }
+      },
+      "facility[email]": {
+        required: true,
+      },
+      "email_local": {
+        required: true,
+      },
+      "email_domain": {
+        required: true,
+      },
+      "facility[sms_contact_number]": {
+        required: true
+      }
+    },
+    messages: {
+      "facility[name]": {
+        required: "Name Required."
+      },
+      "facility[display_name]": {
+        required: "Display Name Required",
+        remote: "Already Taken",
+      },
+      "facility[abbreviation]": {
+        required: "Required",
+        remote: "Already Taken",
+      },
+      "facility[country_id]": {
+        required: "Country Required",
+      },
+      "facility[time_zone]": {
+        required: "Timezone Required",
+      },
+      "facility[currency_id]": {
+        required: "Currency Required",
+      },
+      "facility[communication_number_id]": {
+        required: "Whatsapp Number Required",
+      },
+      "facility[currency_ids][]": {
+        required: "Please add Currencies supported within this Facility",
+      },
+      "facility[region_master_id]": {
+        required: "Please add Regions supported within this Facility",
+      },
+      "facility[address]": {
+        required: "Address Required",
+      },
+      "facility[city]": {
+        required: "City Required",
+        remote: "Search and Select"
+      },
+      "facility[state]": {
+        required: "State Required",
+        remote: "Search and Select"
+      },
+      "facility[pincode]": {
+        required: "Pincode Required",
+        remote: "Search and Select"
+      },
+      "facility[email]": {
+        required: "Email Required",
+      },
+      "email_local": {
+        required: "Email Required",
+      },
+      "email_domain": {
+        required: "Email Domain Required",
+      },
+      "facility[sms_contact_number]": {
+        required: "SMS Contact Number Required"
+      },
+      "facility[district]": {
+        required: "District Required",
+        remote: "Search and Select"
+      },
+      "facility[commune]": {
+        required: "Commune Required",
+        remote: "Search and Select"
+      }
+    },
+    errorPlacement: function (error, element) {
+      var elem = $(element);
+      if(elem.hasClass("select2-hidden-accessible")) {
+        if($(element).attr("id") == "facility_currency_ids"){
+          element = $(".select2-selection--multiple").parent();
+        } else {
+          element = $("#select2-" + elem.attr("id") + "-container").parent();
+        }
+        error.insertAfter(element);
+      } else {
+        error.insertAfter(element);
+      }
+    }
+  });
+
+  $('#edit_facility_<%= @facility.id.to_s %>').valid();
+}
+edit_facility(event)
+
+$.validator.addMethod('checkIpAddress', function(value, element) {
+  var ipaddress = /^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$/;
+  if (ipaddress.test(value)) {
+    return true
+  } else {
+    return false
+  }
+}, 'Invalid IP Address')
+
+$.validator.addMethod('isLocalName', function(value, element) {
+  return !(value.indexOf('@') > 0)
+}, 'Please provide local name only')
+
+$.validator.addMethod('checkIpName', function(value, element) {
+  if (value.length >=3) {
+    return true
+  } else {
+    return false
+  }
+}, 'Name is not valid')
+
+$.validator.addClassRules("remote-ip-address-text", { checkIpAddress: true, required: true });
+$.validator.addClassRules("remote_ip_name", { checkIpName: true, required: true });
+$.validator.addClassRules("ip-address-cidr", { required: true });
+
+$.validator.addClassRules("email_local", { isLocalName: true });

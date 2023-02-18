@@ -1,0 +1,101 @@
+<div class="tab-pane active" id="diagnosis">
+
+  <div class="row">
+    <div class="col-md-12">
+      <%= render partial: "templates/common/soap_assessment_tab_diagnosis_icd_list" , locals: { f: f, diagnosislist: @opdrecord.diagnosislist, record: @opdrecord,  specalityfoldername: @speciality_folder_name, templatetype: @templatetype, opdspeciality: @opdspeciality,source: 'opdrecord' } %>
+    </div>
+  </div>
+
+  <% if @case_sheet.diagnoses.where(:record_id.nin => [@opdrecord.id], is_disabled: false).count > 0 %>
+    <div class="row">
+      <%= render partial: "opd_records/ophthalmology_notes/opd_partials/case_sheet_diagnoses.html.erb" %>
+    </div>
+  <% end %>
+
+  <div class="row">
+
+    <div class="col-sm-10">
+
+      <div class="rdio rdio-primary col-md-4">
+        <div id="search_diagnosis" class="search_diagnosis" style="margin-bottom:15px;">
+
+          <div class="ui-widget">
+            <input type="text" class="form-control" name="search_diagnosis_keyword" id="search_diagnosis_keyword" placeholder="Search by Diagnosis name" style= "width: 80%;" />
+          </div>
+
+        </div>
+      </div>
+
+      <div class="rdio rdio-primary col-md-4">
+        <%= radio_button_tag "diagnosis_icd_type", "recent_diagnosis_icd", false, {:class => 'diagnosis_icd_type', :id => "RecentDiagnosisIcdRadio2"} %>
+        <label for="RecentDiagnosisIcdRadio2">Frequently Used Diagnosis</label>
+      </div>
+
+    </div>
+
+  </div>
+
+ <% @recent_icds = RecentIcd.where(:doctor => @appointment.consultant_id, :counter.gte => 5).order('counter desc') %>
+  <div id="recent_diagnosis_icd">
+    <% if @recent_icds.count >= 3%>
+        <div class="col-md-4">
+          <%= select_tag "recent_diagnosis_icd",options_for_select( @recent_icds.limit(20).collect {|p| [ p.originalname, p.code, 'data-id' => p.icd_type ] }  ,{include_blank: false}), {:class => 'form-control diagnosis_name',:multiple => true, 'data-placeholder' => 'Choose Diagnosis', :style => "min-height: 334px; overflow-y: auto; overflow-x: auto; width: 88%"} %>
+        </div>
+        <% if @recent_icds.count >= 21 %>
+            <div class="col-md-4">
+              <%= select_tag "recent_diagnosis_icd",options_for_select( @recent_icds.limit(20).offset(20).collect {|p| [ p.originalname, p.code, 'data-id' => p.icd_type  ] } ,{include_blank: false}), {:class => 'form-control diagnosis_name',:multiple => true, 'data-placeholder' => 'Choose Diagnosis', :style => "min-height: 334px; overflow-y: auto; overflow-x: auto; width: 88%"} %>
+            </div>
+        <%end%>
+        <% if @recent_icds.count >= 41 %>
+            <div class="col-md-4">
+              <%= select_tag "recent_diagnosis_icd",options_for_select( @recent_icds.limit(20).offset(40).collect {|p| [ p.originalname, p.code, 'data-id' => p.icd_type  ] } ,{include_blank: false}), {:class => 'form-control diagnosis_name',:multiple => true, 'data-placeholder' => 'Choose Diagnosis', :style => "min-height: 334px; overflow-y: auto; overflow-x: auto; width: 88%"} %>
+            </div>
+        <% end %>
+    <% else %>
+        <h3> You don't have enough frequently used diagnosis.  </h3>
+    <% end %>
+  </div>
+
+  <div class="col-md-12 mb30"></div>
+
+  <div class="col-md-12">
+    <div class="col-md-2">Comments:</div>
+    <%= f.input :diagnosiscomments, as: :text, :label => false, :required => false, :input_html => {:class => 'form-control', :rows => 2, :cols => 70, :name => "opdrecord[diagnosiscomments]", :value => @opdrecord.read_attribute(:diagnosiscomments) } %>
+  </div>
+
+</div>
+
+<script>
+  jQuery(document).ready(function() {
+    jQuery("#tree_diagnosis_icd").hide();
+    jQuery("#search_diagnosis_icd").show();
+    jQuery("#recent_diagnosis_icd").hide();
+    jQuery("input[name='diagnosis_icd_type']").on('click', function () {
+      var diagnosis_icd_type = jQuery("input[name='diagnosis_icd_type']:checked").val();
+      if (diagnosis_icd_type == 'search_diagnosis_icd') {
+        jQuery("#search_diagnosis_icd").show();
+        jQuery("#tree_diagnosis_icd").hide();
+        jQuery("#recent_diagnosis_icd").hide();
+//        jQuery.ajax({
+//          type: "GET",
+//          dataType: "script",
+//          url: "/opd_appointments/freshappointmentype?appointment_date=<%=@appointment_date %>&start_time=<%= @start_time %>&end_time=<%= @end_time %>"
+//        });
+      }
+      else if (diagnosis_icd_type == 'tree_diagnosis_icd') {
+        jQuery("#search_diagnosis_icd").hide();
+        jQuery("#tree_diagnosis_icd").show();
+        jQuery("#recent_diagnosis_icd").hide();
+      }
+      else if (diagnosis_icd_type == 'recent_diagnosis_icd') {
+        jQuery("#tree_diagnosis_icd").hide();
+        jQuery("#recent_diagnosis_icd").show();
+        jQuery("#search_diagnosis_icd").hide();
+      }
+    });
+
+
+
+
+  });
+</script>

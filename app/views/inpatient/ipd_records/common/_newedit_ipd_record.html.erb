@@ -1,0 +1,110 @@
+<%= javascript_include_tag "application-loggedin", "data-turbolinks-track" => true %>
+<div class="modal-dialog modal-lg modal_ipdrecord">
+  <!-- Modal content-->
+  <div class="modal-content">
+    <%= simple_form_for @ipdrecord,:format => :js,remote: true,:multipart => true,html: { :class => "ipdrecord_form", :id => "ipdrecord_form" } do |f| %>
+      <div class="modal-header" style="height:60px;">
+        <!-- Patient Info -->
+        <div class="col-md-5">
+          <% unless @template_type == "wardnote" %>
+            <span><b>Name:</b> <%= @patient.fullname %></span>|<span><b>Age/Sex:</b> <%if @patient.calculate_age.present? || @patient.gender.present?%><%= @patient.calculate_age %>/<%= @patient.gender %><% else %> Unavailable<% end %></span>|<span><b>ID No.:</b> <%= PatientIdentifier.find_by(patient_id: @patient.id.to_s).try(:patient_org_id) %></span>
+          <% else %>
+            <span><b>Patient Name:</b> <%= @patient.fullname %></span>
+          <% end %>
+        </div>
+        <!-- Template Type -->
+        <div class="col-md-3 text-center">
+          <% if @action == "New" %>
+            <h4 style="margin-top:2px;color:#000;">New <%= @template_type.split("note")[0].capitalize %> Note</h4>
+          <% else %>
+            <h4 style="margin-top:2px;color:#000;">Edit <%= @template_type.split("note")[0].capitalize %> Note</h4>
+          <% end %>
+        </div>
+        <!-- Action Buttons -->
+        <div class="col-md-4 text-right">
+          <%= f.submit "Save", class: "btn btn-success btn-sm",:onclick => 'ipd_ot_validate()', 'data-disable-with' => "Please wait.." %>
+          <button type="button" class="btn btn-default btn-sm" data-dismiss="modal">Close</button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <!-- Common Fields -->
+          <%= f.hidden_field :template_type, value: @template_type %>
+          <%= f.hidden_field :admission_id, value: @admission.id %>
+          <%= f.hidden_field :patient_id, value: @patient.id %>
+          <%= f.hidden_field :user_id, value: current_user.id %>
+          <%= f.hidden_field :doctor, value: @admission.doctor %>
+          <%= f.hidden_field :facility_id, value: @admission.facility_id %>
+          <%= f.hidden_field :department, value: @department %>
+          <%= f.hidden_field :encountertype, value: "IPD" %>
+          <%= f.hidden_field :encountertypeid, value: "309988001" %>
+          <%= f.hidden_field :specalityname, value: @department %>
+          <%= f.hidden_field :specalityid, value: @department_id %>
+          <%= f.hidden_field :department, value: @department %>
+        <!-- Common Fields -->
+        <% if @template_type == "admissionnote" && @action == "New" && @opd_records.count > 0%>
+          <% screen_width = 10 %>
+          <% sidebar_width = 2 %>
+        <%else%>
+          <% screen_width = 12 %>
+          <% sidebar_width = 0 %>
+        <%end%>
+        <div class="row">
+          <div class="col-md-<%= screen_width %>">
+            <% if @template_type == "admissionnote" %>
+              <%= render partial: 'inpatient/ipd_records/forms/admission_note', locals: { patient: @patient , admission: @admission, tpa: @tpa, f: f, ipdrecord: @ipdrecord, department: @department, template_type: @template_type,procedure: @procedure,opdrecords: @opd_records,opd_data: @opdrecord} %>
+              <%= f.hidden_field :templateid, value: "32485007"  %>
+            <% elsif @template_type == "operativenote" %>
+              <%= render partial: 'inpatient/ipd_records/forms/operative_note', locals: { patient: @patient , admission: @admission, tpa: @tpa, f: f, ipdrecord: @ipdrecord, department: @department, template_type: @template_type,procedure: @ot_procedure} %>
+              <%= f.hidden_field :templateid, value: "448826009"  %>
+            <% elsif @template_type == "dischargenote" %>
+              <%= f.hidden_field :templateid, value: "373942005"  %>
+              <%= render partial: 'inpatient/ipd_records/forms/discharge_note', locals: { patient: @patient , admission: @admission, tpa: @tpa, f: f, ipdrecord: @ipdrecord, department: @department, template_type: @template_type} %>
+            <% elsif @template_type == "wardnote" %>
+              <%= f.hidden_field :templateid, value: "484053116"  %>
+              <%= render partial: 'inpatient/ipd_records/forms/ward_note', locals: { patient: @patient , admission: @admission, tpa: @tpa, f: f, ipdrecord: @ipdrecord, department: @department, template_type: @template_type} %>
+            <% end %>
+          </div>
+          <div class="col-md-<%= sidebar_width %> affix-column hg-sticky" style="padding-left:1px; padding-right:1px;">
+            <div class="panel panel-success affix-panel">
+              <% if  @action == "New" and @template_type == "admissionnote" and @opd_records.count > 0%>
+                <div class="panel-heading affix-panel-heading" style="padding: 2px;">
+                  <h4 class="panel-title affix-panel-title" style="color:#FFF;"> Select the OPD visit to copy clinical Details</h4>
+                </div>
+                <div data-spy="scroll" data-target="#scroll">
+                  <div id="scroll">
+                    <ul id="affixnav" data-spy="affix" class="nav affix-top">
+                      <li data-value="visualacuity">
+                        <select size="10" class=" form-control select-opdrecord" style="overflow:auto;width: 100%;">
+                          <% @opd_records.each do |opdrecord| %>
+                              <option value="<%=  opdrecord.record_id.to_s%>_<%= opdrecord.patient_id.to_s%>" style="word-wrap: break-word;"><%= opdrecord.templatetype.capitalize%>,Dr.<%=opdrecord.doctor_name%>,<%= opdrecord.encounterdate.strftime("%d/%m/%y")  %></option>
+                          <%end%>
+                        </select>
+                      </li>
+
+                    </ul>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+      </div>
+    <% end %>
+
+  </div>
+
+</div>
+
+<style type="text/css">
+  <% unless @template_type == "wardnote" %>
+    .modal_ipdrecord {
+      width: 98%;
+    }
+  <% else %>
+    .modal_ipdrecord {
+      width: 50%;
+    }
+  <% end %>
+</style>

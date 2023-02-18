@@ -1,0 +1,201 @@
+<div class="row mb20" style="margin-top:20px;">
+  <div class="col-md-2 ">
+    Type Of Surgery :
+  </div>
+  <div class="col-md-2">
+    <%if department == "ophthalmology" %>
+        <%= f.input :surgerytype, wrapper_html: {:class=>"routine-emergency"}, collection: ['Elective', 'Emergency'], :as => :hg_radio_button,:label => false, :required => false, :class => 'btn btn-xs btn-white', style: "margin-top:-2px;", :input_html => {:name => "inpatient_ipd_record[surgerytype]" }, :checked => ipdrecord.read_attribute(:surgerytype) %>
+    <% else %>
+        <%= f.input :surgerytype, wrapper_html: {:class=>"routine-emergency"}, collection: ['Routine', 'Emergency'], :as => :hg_radio_button,:label => false, :required => false, :class => 'btn btn-xs btn-white', style: "margin-top:-2px;", :input_html => {:name => "inpatient_ipd_record[surgerytype]" }, :checked => ipdrecord.read_attribute(:surgerytype) %>
+    <% end  %>
+  </div>
+  <div class="col-md-2 ">
+    Anesthesia :
+  </div>
+  <div class="col-md-4">
+    <%= f.input :anesthesia, wrapper_html: {:class=>"anesthesia"}, collection: ['GA', 'EA', 'SA', 'LA', 'Sedation', 'Topical'], :as => :hg_checkbox,:label => false, :required => false, :class => 'btn btn-xs btn-white', style: "margin-top:-2px;", :input_html => {:name => "inpatient_ipd_record[anesthesia]" }, :checked => ipdrecord.checkboxes_checked(ipdrecord.read_attribute(:anesthesia)) %>
+  </div>
+</div>
+<div class="row mb20">
+  <% if ipdrecord.specialty_id == "309988001"%>
+  <div class="col-md-2 ">
+    Pre-Operative Diagnosis<br>(OPD/Admission Note) :
+  </div>
+  <div class="col-md-5">
+    <% if diagnosis_from_opd.try(:length) > 0%>
+    <%= render partial: 'inpatient/ipd_records/common/diagnosis_output',locals: {diagnosis: diagnosis_from_opd} %>
+    <%else%>
+    None
+    <%end%>
+  </div>
+  <%end%>
+  <div class="col-md-2 ">
+    Pre-Operative Diagnosis:
+  </div>
+  <div class="col-md-2">
+    <%= f.text_area :diagnosis, {style: "width:125%;", class: "form-control",value:  ipdrecord.diagnosis } %>
+  </div>
+
+</div>
+<div class="row mb20">
+  <% if ipdrecord.specialty_id == "309988001"%>
+      <div class="col-md-2">
+        Procedure Performed (OPD/Admission Note) :
+        <span id="error_procedure_performed"></span>
+      </div>
+      <div class="col-md-5">
+    <% if procedure.try(:count)>0%>
+          <% procedure.order("created_at DESC").each_with_index do |proc,i|%>
+              <!--<div class="col-md-6">-->
+            <div class="row">
+                <div class="col-md-6 ckbox ckbox-primary mb5">
+                  <% if proc.procedurestatus == "Pre-Operative"%>
+                      <input type="checkbox" class="procedure-checkbox" name="procedure[<%= i%>][status]" id="procedure_<%= i%>" value="Performed">
+                  <% elsif proc.procedurestatus == "Performed"%>
+                      <input type="checkbox" class="procedure-checkbox" name="procedure[<%= i%>][status]" id="procedure_<%= i%>" value="Performed" checked="checked">
+                  <%else%>
+                      <input type="checkbox" class="procedure-checkbox" name="procedure[<%= i%>][status]" id="procedure_<%= i%>" value="Performed">
+                  <%end%>
+                  <label for="procedure_<%= i%>">&emsp;<%= proc.procedurename%></label>
+                </div>
+                <div class="col-md-2">
+                  <%= select_tag("procedure[#{i}][side]",options_for_select([["",""],["R","18944008"],["L","8966001"],["B/E","40638003"]],proc.try(:procedureside)),:class=>" procedureside")%>
+                </div>
+                <div class="col-md-2">
+                  <input type="hidden" name="procedure[<%= i%>][id]" id="procedure_id" value="<%= proc.id%>">
+                  <input type="text" id="surgerydate_<%= i%>" name="procedure[<%= i%>][surgerydate]" class="datepicker" value="<%= proc.surgerydate%>" style="margin-top:-2px;text-align:center;" placeholder="Surgery Date">
+                </div>
+
+              </div>
+          <%end%>
+    <%else%>
+    None
+    <%end%>
+  </div>
+  <%end%>
+  <div class="col-md-2">
+    Procedure Performed:
+  </div>
+  <div class="col-md-2">
+    <%= f.text_area :procedure_performed, {style: "width:125%;",class: "form-control",value: ipdrecord.procedure_performed} %>
+  </div>
+</div>
+<div class="row mb20" style="margin-left: 193px"></div>
+<div class="row mb20 timer_row mb10">
+  <div class='col-md-2 '>
+    Patient Entry Time :
+  </div>
+  <div class='col-md-2 timer_field bootstrap-timepicker timepicker'>
+    <%= f.hidden_field :patient_entry_time, {class: "feed_time patient_entry_time", style: "margin-top:-2px;text-align:center;"} %>
+    <input type="text" class="feed_time_view patient_entry_time timepicker" style="margin-top:-2px;text-align:center;" value="<% unless ipdrecord.patient_entry_time.nil? %><%= ipdrecord.patient_entry_time.strftime("%I:%M %p") %><% end %>" />
+    <button class="btn btn-primary btn-xs set_time" style="padding: 0 7px;"><i class="fa fa-clock-o fa-lg"></i></button>
+  </div>
+  <div class="col-md-2"></div>
+  <div class='col-md-2 '>
+    Patient Exit Time :
+  </div>
+  <div class='col-md-2 timer_field bootstrap-timepicker timepicker'>
+    <%= f.hidden_field :patient_exit_time, {class: "feed_time patient_exit_time", style: "margin-top:-2px;text-align:center;"} %>
+    <input type="text" class="feed_time_view patient_exit_time timepicker" style="margin-top:-2px;text-align:center;" value="<% unless ipdrecord.patient_exit_time.nil? %><%= ipdrecord.patient_exit_time.strftime("%I:%M %p") %><% end %>" />
+    <button class="btn btn-primary btn-xs set_time" style="padding: 0 7px;"><i class="fa fa-clock-o fa-lg"></i></button>
+  </div>
+</div>
+
+<div class="row mb20 timer_row mb10">
+  <div class='col-md-2 '>
+    Anesthesia Start :
+  </div>
+  <div class='col-md-2 timer_field bootstrap-timepicker timepicker'>
+    <%= f.hidden_field :anesthesia_start_time, {class: "feed_time anesthesia_start_time", style: "margin-top:-2px;text-align:center;"} %>
+    <input type="text" class="feed_time_view anesthesia_start_time timepicker" style="margin-top:-2px;text-align:center;" value="<% unless ipdrecord.anesthesia_start_time.nil? %><%= ipdrecord.anesthesia_start_time.try(:strftime, '%I:%M %p') %><% end %>" />
+    <button class="btn btn-primary btn-xs set_time" style="padding: 0 7px;"><i class="fa fa-clock-o fa-lg"></i></button>
+  </div>
+  <div class="col-md-2"></div>
+  <div class='col-md-2 '>
+    Anesthesia End :
+  </div>
+  <div class='col-md-2 timer_field bootstrap-timepicker timepicker'>
+    <%= f.hidden_field :anesthesia_end_time, {class: "feed_time anesthesia_end_time", style: "margin-top:-2px;text-align:center;"} %>
+    <input type="text" class="feed_time_view anesthesia_end_time timepicker" style="margin-top:-2px;text-align:center;" value="<% unless ipdrecord.anesthesia_end_time.nil? %><%= ipdrecord.anesthesia_end_time.strftime("%I:%M %p") %><% end %>" />
+    <button class="btn btn-primary btn-xs set_time" style="padding: 0 7px;"><i class="fa fa-clock-o fa-lg"></i></button>
+  </div>
+</div>
+<div class="row mb20 timer_row mb10">
+  <div class='col-md-2 '>
+    Surgery Start :
+  </div>
+  <div class='col-md-2 timer_field bootstrap-timepicker timepicker'>
+    <%= f.hidden_field :surgery_start_time, {class: "feed_time surgery_start_time", style: "margin-top:-2px;text-align:center;"} %>
+    <input type="text" class="feed_time_view surgery_start_time timepicker" style="margin-top:-2px;text-align:center;" value="<% unless ipdrecord.surgery_start_time.nil? %><%= ipdrecord.surgery_start_time.try(:strftime, '%I:%M %p') %><% end %>" />
+    <button class="btn btn-primary btn-xs set_time" style="padding: 0 7px;"><i class="fa fa-clock-o fa-lg"></i></button>
+  </div>
+  <div class="col-md-2"></div>
+  <div class='col-md-2 '>
+    Surgery End :
+  </div>
+  <div class='col-md-2 timer_field bootstrap-timepicker timepicker'>
+    <%= f.hidden_field :surgery_end_time, {class: "feed_time surgery_end_time", style: "margin-top:-2px;text-align:center;"} %>
+    <input type="text" class="feed_time_view surgery_end_time timepicker" style="margin-top:-2px;text-align:center;" value="<% unless ipdrecord.surgery_end_time.nil? %><%= ipdrecord.surgery_end_time.strftime("%I:%M %p") %><% end %>" />
+    <button class="btn btn-primary btn-xs set_time" style="padding: 0 7px;"><i class="fa fa-clock-o fa-lg"></i></button>
+  </div>
+</div>
+<div class="row mb20">
+  <div class="col-md-2 ">
+    Intraoperative Complications:
+  </div>
+  <div class="col-md-3">
+    <%= f.input :complication, wrapper_html: {:class=>"complication"}, collection: ['No', 'Yes'], :as => :hg_radio_button,:label => false, :required => false, :class => 'btn btn-xs btn-white', style: "margin-top:-2px;", :input_html => {:name => "inpatient_ipd_record[complication]" }, :checked => ipdrecord.read_attribute(:complication) || 'No' %>
+    <%= f.text_field :complication_comment, {style: "width:125%;", class: "form-control compliation_comment"} %>
+  </div>
+</div>
+<div class="row mb20">
+  <div class="col-md-2 ">
+    Implants Used :
+  </div>
+  <div class="col-md-3">
+    <%= f.text_area :implants_used, {style: "width:125%;", class: "form-control"} %>
+  </div>
+  <div class="col-md-2 col-md-offset-1">
+    Post-Op Plan :
+  </div>
+  <div class="col-md-3">
+    <%= f.text_area :post_op_plan, {style: "width:125%;", class: "form-control"} %>
+  </div>
+</div>
+<br>
+
+
+<div class="row">
+  <div class="col-md-12 mb10 proc-note">Surgical Note :</div>
+  <div class="col-md-9 procedurenotetext">
+    <%= f.input :procedure_note, as: :text,  :label => false, :required => false, :input_html => {:class => "form-control", :rows => 15, :cols => 70, :value => ipdrecord.read_attribute(:procedure_note) } %>
+  </div>
+  <div class="col-md-3 search-notes">
+    <%= render partial: "templates/ipd/common/saved_procedure_notes_list"  %>
+  </div>
+</div>
+
+<style type="text/css">
+  /*Use of hardcode Classes*/
+    .note-toolbar {
+      background-color: #354670 !important;
+    }
+    .note-editable {
+      height: 300px !important;
+    }
+    .note-editor {
+      box-shadow: 0 6px 12px rgba(0,0,0,.175);
+    }
+</style>
+<script type="text/javascript">
+  <%= render partial: 'inpatient/ipd_records/common/operative/forms/surgery_form.js.erb' %>
+  $(".complication").on('change', function(){
+      if($(this).find('.btn-brown').text() == "Yes") {
+          $(this).siblings().show();
+      } else {
+          $(this).siblings().hide();
+      }
+  })
+  $('.complication').trigger('change');
+
+</script>

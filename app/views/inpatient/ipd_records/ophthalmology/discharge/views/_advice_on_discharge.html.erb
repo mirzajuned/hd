@@ -1,0 +1,195 @@
+<% aod_counter = 0 %>
+<% if ipdrecord.treatmentmedication.count > 0 || ipdrecord.precautions.present? || ipdrecord.followup_date.present? || ipdrecord.advicemanagementplan.present? %>
+  <% aod_counter = aod_counter + 1 %>
+<% end %>
+
+<% if aod_counter > 0 %>
+  <div class="row mb10">
+    <div class="col-md-12">
+      <div class="row">
+        <strong>Advice On Discharge : Never miss the Post OP Reviews.</strong>
+        <div class="summary-line-border"></div>
+      </div>
+      <% if ipdrecord.treatmentmedication.count > 0 %>
+        <div class="row check_font">
+          <table class="table table-bordered" style="font-size:12px;">
+            <thead>
+              <tr>
+                <th width="5%">S.No.</th>
+                <th width="35%">Name</th>
+                <th width="5%">Quantity</th>
+                <th class="text-center" width="20%">Frequency</th>
+                <th width="10%">Duration</th>
+                <th width="25%">Instruction</th>
+              </tr>
+            </thead>
+            <tbody>
+            <% ipdrecord.treatmentmedication.each.with_index do |medication,i| %>
+              <tr>
+                <td><%= i + 1 %></td>
+                <td><b><%= medication.medicinename %></b><% if medication.medicinetype? %> - <%= medication.medicinetype.to_s.upcase %><% end %></td>
+                <% if medication.taper_id == "0" || medication.taper_id == nil || medication.taper_id == "" %>
+                  <td class="text-right"><%= medication.medicinequantity %></td>
+                  <td class="text-center">
+                    <% unless medication.medicinefrequency == "SOS" %>
+                      <%= medication.medicinefrequency %> times a day
+                    <% else %>
+                      <%= medication.medicinefrequency %>
+                    <% end %>
+                  </td>
+                  <td>
+                    <% unless medication.medicinedurationoption == "F" %>
+                      <% if medication.medicinedurationoption == "W" %>
+                        <%= pluralize(medication.medicineduration, 'Week') %>
+                      <% elsif medication.medicinedurationoption == "M" %>
+                        <%= pluralize(medication.medicineduration, 'Month') %>
+                      <% else medication.medicinedurationoption == "D" %>
+                        <%= pluralize(medication.medicineduration, 'Day') %>
+                      <% end %>
+                    <% else %>
+                      Next Followup
+                    <% end %>
+                  </td>
+                <% else %>
+                  <td colspan="3" class="text-center">
+                    As advised below
+                  </td>
+                <% end %>
+                <td><%= medication.medicineinstructions %></td>
+              </tr>
+                <% unless medication['taper_id'] == "0" || medication['taper_id'] == nil || medication['taper_id'] == "" %>
+                  <tr style="background-color:#bbb">
+                    <td colspan="7" style="padding:5px 10px 2px;">
+                      <% @taper = TaperingKit.find_by(id: medication['taper_id']) %>
+                      <% @tapering_set = @taper.tapering_set %>
+                      <% if @taper.taper_by == "Dosage" %>
+                        <table class="table table-bordered" style="margin: 0 0 5px;">
+                          <thead>
+                            <tr>
+                              <th>Sr No.</th>
+                              <th>No of Days</th>
+                              <th>Start Date</th>
+                              <th>End Date</th>
+                              <th>Start Time</th>
+                              <th>End Time</th>
+                              <th width="16%">Dosage</th>
+                              <th width="16%">Interval</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <% @tapering_set.each.with_index do |taper, i| %>
+                              <tr class="taper_row">
+                                <td>
+                                  <%= i.to_i + 1 %>
+                                </td>
+                                <td>
+                                  <%= taper.number_of_days %>
+                                </td>
+                                <td>
+                                  <%= taper.try(:start_date).try(:strftime, '%d/%m/%Y') %>
+                                </td>
+                                <td>
+                                  <%= taper.try(:end_date).try(:strftime, '%d/%m/%Y') %>
+                                </td>
+                                <td>
+                                  <%= taper.try(:start_time).try(:strftime, '%I:%M %p') %>
+                                </td>
+                                <td>
+                                  <%= taper.try(:end_time).try(:strftime, '%I:%M %p') %>
+                                </td>
+                                <td>
+                                  <%= taper.dosage %>
+                                </td>
+                                <td>
+                                  <%= taper["interval"].to_i > 0 ? 'Every '+ pluralize(taper["interval"], 'hour') : '-'  %>
+                                </td>
+                              </tr>
+                            <% end %>
+                          </tbody>
+                        </table>
+                      <% else %>
+                        <table class="table table-bordered" style="margin: 0 0 5px;">
+                          <thead>
+                            <tr>
+                              <th>Sr No.</th>
+                              <th>Day</th>
+                              <th>Start Date</th>
+                              <th>End Date</th>
+                              <th>Start Time</th>
+                              <th>End Time</th>
+                              <th width="16%">Frequency</th>
+                              <th width="16%">Interval</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <% @tapering_set.each.with_index do |taper, i| %>
+                              <% unless (taper.frequency).to_i == 0 %>
+                                <tr class="taper_row">
+                                  <td>
+                                    <%= i.to_i + 1 %>
+                                  </td>
+                                  <td>
+                                    <%= taper.number_of_days %>
+                                  </td>
+                                  <td>
+                                    <%= taper.try(:start_date).try(:strftime, '%d/%m/%Y') %>
+                                  </td>
+                                  <td>
+                                    <%= taper.try(:end_date).try(:strftime, '%d/%m/%Y') %>
+                                  </td>
+                                  <td>
+                                    <%= taper.start_time.strftime('%I : %M %p') %>
+                                  </td>
+                                  <td>
+                                    <%= taper.end_time.strftime('%I : %M %p') %>
+                                  </td>
+                                  <td>
+                                    <%= pluralize(taper["frequency"], 'time') %> a day
+                                  </td>
+                                  <td>
+                                    <%= taper["interval"].to_i > 0 ? 'Every '+ pluralize(taper["interval"], 'hour') : '-'  %>
+                                  </td>
+                                </tr>
+                              <% end %>
+                            <% end %>
+                          </tbody>
+                        </table>
+                      <% end %>
+                    </td>
+                  </tr>
+                <% end %>
+            <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% end %>
+      <% if ipdrecord.precautions.present? %>
+        <div class="row">
+          <div class="col-md-12">
+            Precautions: <%= ipdrecord.precautions %>
+          </div>
+        </div>
+      <% end %>
+      <% if ipdrecord.followup_date.present? && @followup_doctor.present? %>
+        <div class="row">
+          <div class="col-md-12">
+            For Followup: Visit <%= @followup_doctor.salutation %>  <%= @followup_doctor.fullname %> on <%= ipdrecord.followup_date %>
+          </div>
+        </div>
+      <% end %>
+      <% if ipdrecord.advicemanagementplan.present? %>
+        <div class="row">
+          <div class="col-md-12">
+            Management Plan : <%= ipdrecord.advicemanagementplan %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+<% end %>
+
+<style type="text/css">
+  .table thead tr th, .table tbody tr td {
+    padding: 3px;
+  }
+</style>

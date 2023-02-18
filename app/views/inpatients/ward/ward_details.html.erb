@@ -1,0 +1,166 @@
+<div class="row no_margin" style="padding:0 30px;">
+  <% if @room.beds.where(status: 1669000).count > 0 %>
+    <div class="row no_margin no_padding" style="padding: 10px;">
+      <div class="col-sm-12 no_padding text-center" style="padding: 10px;text-transform: uppercase;border-bottom: 1px solid #aaa;border-top:1px solid #aaa;font-size: 20px;">
+        Occupied Beds
+      </div>
+    </div>  
+    <div class="row no_margin no_padding occupied_bed" style="padding: 5px;">
+      <% @room.beds.where(status: 1669000).each do |bed| %>
+        <% admission = @admission_fields.find { |admission| admission[:bed_id] == bed.id.to_s } %>
+        <% if admission.present? %>
+          <% admission_id = admission[:id] %>
+          <% patient = @patient_fields.find { |patient| patient[:id] == admission[:patient_id] } %>
+          <% user = @user_fields.find { |user| user[:id] == admission[:doctor] } %>
+          <% if patient.present? && user.present? %>
+            <div class="col-sm-3 no_padding text-center popover_settings">
+              <p style="margin:0px;"><%= bed.code %></p>
+              <button type="button" class="btn btn-xs btn-link occupied_bed_popover" data-content="
+                <div class='row'>
+                  <div class='col-md-12 text-center'>
+                    <p>
+                      <b>Patient ID</b><br>
+                      <a href='/patient_summary/<%= admission[:patient_id].to_s %>' class='btn btn-link btn-xs btn-engage-patient-ward' target='_blank' title='Summary Page'><%= patient[:patient_identifier_id] %><%= "/#{patient[:mr_no]}" if patient[:mr_no].present? %></a>
+                    </p>
+                    <p>
+                      <b>Assigned Doctor</b><br>
+                      <%= user[:fullname] %>
+                    </p>
+                    <p>
+                      <b>Admission Date</b><br>
+                      <%= admission[:admission_date].try(:strftime, "%d %b, %Y") %>
+                    </p>
+                  </div>
+                  <div class='col-md-12 text-center'>
+                    <p><b>Ward Notes</b></p>
+                    <% specialty_id = TemplatesHelper.get_speciality_folder_name(admission[:specialty_id]) %>
+                    <a class='btn btn-primary btn-xs btn-wardnote hg-tooltip notes_for_patients' data-remote='true' data-toggle='modal' data-target='#ipdrecord-modal' href='/inpatient/ipd_record/ward_note/<%= specialty_id %>_notes/new?admission_id=<%= admission_id %>' title='Add Ward Note' style=''>New</a>&nbsp;
+                    <% if @ward_notes_count[admission_id].to_i > 0 %>
+                      <a class='btn btn-primary btn-xs notes_for_patients' data-remote='true' data-toggle='modal' data-target='#ipdrecord-modal' href='/inpatient/ipd_record/ward_note/<%= specialty_id %>_notes?admission_id=<%= admission_id %>'> View All</a>
+                    <% end %>
+                  </div>
+                </div>">
+                <i class="fa fa-bed fa-3x"></i>
+              </button>
+              <p><%= patient[:patient_name] %></p>
+            </div>
+          <% end %>
+        <% end %>
+      <% end %>
+    </div>
+  <% end %>
+  <% if @room.beds.where(status: 78848005).count > 0 %>
+    <div class="row no_margin no_padding" style="padding: 5px;">
+      <div class="col-sm-12 no_padding text-center" style="padding: 10px;text-transform: uppercase;border-bottom: 1px solid #aaa;border-top:1px solid #aaa;font-size: 20px;">
+        Unoccupied Beds
+      </div>
+    </div>
+    <div class="row no_margin no_padding unoccupied_bed" style="padding: 5px;">
+      <% @room.beds.where(status: 78848005).each do |bed| %>
+        <% admissions = @admission_fields.select{ |admission| admission[:bed_id].blank? } %>
+        <div class="col-sm-3 no_padding text-center popover_settings">
+          <p style="margin:0px;"><%= bed.code %></p>
+          <button type="button" class="btn btn-xs btn-link unoccupied_bed_popover" data-content="
+            <div class='row'>
+              <div class='col-md-8'>
+                <select class='form-control assign_admission' id='assign_admission'>
+                  <option value='0' selected='selected'>Select Patient</option>
+                  <% admissions.each do |admission| %>
+                    <% patient = @patient_fields.find { |patient| patient[:id] == admission[:patient_id] } %>
+                    <option value='<%= admission[:id].to_s %>'><%= patient[:patient_name] %></option>
+                  <% end %>
+                </select>
+              </div>
+              <div class='col-md-4'>
+                <button class='btn btn-primary btn-xs assign_bed' data-admission-id='0' data-room-id='<%= @room.id.to_s %>' data-bed-id='<%= bed.id.to_s %>' style='padding: 0px 10px;margin-top: -2px;margin-left:-10px;'>Assign</button>
+              </div>
+            </div>">
+            <i class="fa fa-bed fa-3x"></i>
+          </button>
+          <p><i class="fa fa-rupee"></i><%= bed.try(:price) || 0 %></p>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+</div>
+
+<script type="text/javascript">
+  // Occupied Bed Popover
+  $('.occupied_bed_popover').popover({
+    placement: 'bottom',
+    html: true,
+    title: "Patient Details"
+  })
+  .on('show.bs.popover', function()
+  {
+    if (window.activePopover) {
+        $(window.activePopover).popover('hide')
+    }
+    window.activePopover = this;
+  })
+  .on('hide.bs.popover', function() {
+    window.activePopover = null;
+  });
+
+  $(document).on("click", ".btn-wardnote", function(e) {
+    if (window.activePopover) {
+      $(window.activePopover).popover('hide')
+    }
+    window.activePopover = $(this).parent();
+  });
+
+  $(document).on("click", ".notes_for_patients", function(e) {
+    if (window.activePopover) {
+      $(window.activePopover).popover('hide')
+    }
+    window.activePopover = $(this).parent();
+  });
+
+  // Unoccupied Bed Popover
+  $('.unoccupied_bed_popover').popover({
+    placement: 'bottom',
+    html: true,
+    title: "<div class='text-center'>Assign Patient</div><style type='text/css'>.popover-title {padding:5px;}</style>"
+  })
+  .on('show.bs.popover', function()
+  {
+    if (window.activePopover) {
+      $(window.activePopover).popover('hide')
+    }
+    window.activePopover = this;
+  })
+  .on('hide.bs.popover', function() {
+    window.activePopover = null;
+  });
+
+  // Unoccupied Bed Patient Dropdown Trigger
+  $(document).on("change", ".assign_admission", function() {
+    $(".assign_bed").attr("data-admission-id", $(this).val())
+  })
+
+  // Unoccupied Bed <--> Occupied Logic
+  $(document).on("click", ".assign_bed", function() {
+    var admission_id = $(this).attr("data-admission-id")
+    var room_id = $(this).attr("data-room-id") 
+    var bed_id = $(this).attr("data-bed-id") 
+    if(admission_id != "0") {
+      $.ajax({
+        type: "GET",
+        url: "/ipd_patients/assign_bed",
+        data: {
+          admission_id: admission_id,
+          room_id: room_id,
+          bed_id: bed_id
+        },
+        success: function(res){
+          $(".ward_type_content").find("[data-room-id='" + res.room + "']").trigger('click');
+        },
+        error: function(err){
+        }
+      });
+    } else {
+      $(this).closest(".row").find(".warning_message_patient").remove();
+      $(this).closest(".row").append("<div class='col-md-12 text-center warning_message_patient'><label class='label label-danger'>Please Select A Patient</label></div>")
+    }
+  });
+</script>

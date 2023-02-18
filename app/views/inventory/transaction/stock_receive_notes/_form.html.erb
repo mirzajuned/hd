@@ -1,0 +1,109 @@
+<div class="row transaction-title">
+  <div class="col-sm-12 text-center" style="border-bottom:1px solid #ccc;border-top:1px solid #ccc;">
+    <strong>SRN</strong>
+  </div>
+</div>
+<div class="row mb5 transaction-common-fields" style="margin-top:15px;">
+  <div class="col-sm-5">
+    <strong>Note</strong><br>
+    <%= f.text_field :note, { class: 'form-control p7_10 fullname', placeholder: "Transaction Note" } %>
+  </div>
+  <div class="col-sm-3">
+    <strong>Vendor</strong><br>
+    <select class="form-control" name="inventory_transaction_stock_receive_note[vendor_location_id]" id="inventory_transaction_stock_receive_note_vendor_location_id" required="true">
+      <option value="">Select</option>
+      <% @vendor_locations.each do |vendor_location| %>
+        <option value="<%= vendor_location.id %>">
+          <%= po_vendor_format(vendor_location) %>
+        </option>
+      <% end %>
+    </select>
+    <%= f.hidden_field :vendor_name %>
+  </div>  
+  <div class="col-sm-2">
+    <strong>Transaction Date</strong><br>
+    <% unless Authorization::PolicyHelper.verification(current_user.id,"HGP-100-111-104") %>
+      <%= f.text_field :transaction_date, { value: Date.current.strftime("%d/%m/%Y"), class: 'form-control p7_10 fullname', placeholder: "Date of transition", readonly: 'readonly' } %>
+    <% else %>
+      <%= f.text_field :transaction_date, { value: Date.current.strftime("%d/%m/%Y"), class: 'form-control p7_10 fullname transaction-datepicker', placeholder: "Date of transition" } %>
+    <% end %>
+  </div>
+  <div class="col-sm-2">
+    <strong>Transaction Time</strong><br>
+    <% unless Authorization::PolicyHelper.verification(current_user.id,"HGP-100-111-104") %>
+      <%= f.text_field :transaction_time_picker, { value: Time.current.strftime("%I:%M %p"), class: 'form-control p7_10', placeholder: "Time of transition", readonly: 'readonly' } %>
+    <% else %>
+      <%= f.text_field :transaction_time_picker, { value: Time.current.strftime("%I:%M %p"), class: 'form-control p7_10 transaction-timepicker', placeholder: "Time of transition" } %>
+    <% end %>
+    <%= f.hidden_field :transaction_time, { value: Time.current } %>
+  </div>
+  <div class="col-sm-2">
+    <strong>Bill Type</strong>
+    <%= f.select :bill_type, options_for_select(Inventory::Transaction::StockReceiveNote.bill_type.options, @stock_receive_note.bill_type), { include_blank: 'Please Select'}, { class: 'form-control', required: true } %>
+  </div>
+  <div class="col-sm-2 bill-type-details challan_col">
+    <strong>Challan Number</strong>
+    <%= f.text_field :challan_number, { class: 'form-control p7_10', required: true } %>
+  </div>
+  <div class="col-sm-2 bill-type-details challan_col">
+    <strong>Challan Date</strong>
+    <%= f.text_field :challan_date, { value: @stock_receive_note.challan_date&.strftime("%d/%m/%Y"),
+      class: 'form-control p7_10 fullname challan-datepicker', placeholder: "Date of challan", readonly: 'readonly', required: true } %>
+  </div>
+  <div class="col-sm-2 bill-type-details bill_col">
+    <strong>Bill Number</strong>
+    <%= f.text_field :bill_number, { class: 'form-control p7_10', required: true } %>
+  </div>
+  <div class="col-sm-2 bill-type-details bill_col">
+    <strong>Bill Date</strong>
+    <%= f.text_field :bill_date, { value: @stock_receive_note.bill_date&.strftime("%d/%m/%Y"), class: 'form-control p7_10 fullname bill-datepicker', placeholder: "Date of bill", readonly: 'readonly', required: true } %>
+  </div>
+  <%= f.hidden_field :entry_type, { value: "stock_receive_note" } %>
+  <%= f.hidden_field :entered_by, { value: current_user.fullname } %>
+  <%= f.hidden_field :user_id, { value: current_user.id } %>
+  <%= f.hidden_field :store_id, { value: @store_id } %>
+  <%= f.hidden_field :facility_id, { value: current_facility.id } %>
+  <%= f.hidden_field :organisation_id, { value: current_user.organisation_id } %>
+  <%= f.hidden_field :department_id, { value: @inventory_store&.department_id } %>
+  <%= f.hidden_field :department_name, { value: @inventory_store&.department_name } %>
+</div>
+
+<div class="row mb5" style="border-top:1px solid #eee;">
+  <div class="row medication_tab_row" style="overflow-y: auto;">
+    <div class="col-md-12">
+      <table class="table" id="medicationTable">
+        <thead>
+          <tr>
+            <th class="thead-fix col-md-3 col-sm-3 col-xs-3">Name</th>
+            <!-- <th class="thead-fix col-md-1 col-sm-1 col-xs-1">Expiry</th> -->
+            <th class="thead-fix col-md-1 col-sm-1 col-xs-1">MRP</th>
+            <th class="thead-fix col-md-1 col-sm-1 col-xs-1">Unit Cost</th>
+            <th class="thead-fix col-md-1 col-sm-1 col-xs-1">Quantity</th>
+            <th class="thead-fix col-md-1 col-sm-1 col-xs-1">GST %</th>
+            <th class='thead-fix col-md-1 col-sm-1 col-xs-1'>Tax Incl.</th>
+            <th class='thead-fix col-md-1 col-sm-1 col-xs-1'>Taxable Amt.</th>
+            <th class='thead-fix col-md-1 col-sm-1 col-xs-1'>Tax Amt.</th>
+            <th class="thead-fix col-md-1 col-sm-1 col-xs-1">Total Cost</th>
+          </tr>
+        </thead>
+        <tbody class="medication-table-body-added medication_set_body" id="tbody_medication">
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="col-md-12" style="background: white;border-top: 6px solid #e4e7ea;min-height: 65px;">
+    <%= render partial: 'inventory/transaction/stock_receive_notes/other_charges.html.erb', locals: { f: f } %>
+  </div>
+  <div class="col-md-12" style="background: white;border-top: 6px solid #e4e7ea;min-height: 65px; padding: 10px;">
+    <%= render partial: 'inventory/transaction/stock_receive_notes/tax_details.html.erb', locals: { f:f } %>
+  </div>
+</div>
+
+<style>
+  .order-datepicker{
+    cursor: pointer !important;
+  }
+  .indent-datepicker{
+    cursor: pointer !important;
+  }
+</style>

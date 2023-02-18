@@ -1,0 +1,61 @@
+<%= form_for @counselling_record, url: orders_counselling_records_path, :authenticity_token => false do |f| %>
+  <% index = (Time.current.to_f.round(3)*1000).to_i %>
+  <%= f.fields_for :orders_data, :child_index => index do |data| %>
+    <% next unless data.object.order_advised_id.to_s == @order_advised.id.to_s %>
+    <div class="row orders-data" style="margin-top: 5px; font-size: 12px;">
+      <% if @order_advised.type == "procedures" %>
+        <span style="display: none;" class="order-procedures" data-laterality="<%= @order_advised.procedureside %>" data-id="<%= @order_advised.procedure_id %>"></span>
+      <% else %>
+        <span style="display: none;" class="order-investigations" data-laterality="<%= @order_advised.investigationside %>" data-id="<%= @order_advised.investigation_id %>"></span>
+      <% end %>
+      <% if @from == 'counselling_record' %>
+        <% @order_advised.attributes.each do |key, value| %>
+          <%= f.hidden_field "order_attributes[#{index}][#{key}]", value: value %>
+        <% end %>
+        <%= f.hidden_field "order_attributes[#{index}][order_item_advised_id]", value: BSON::ObjectId.new.to_s %>
+      <% end %>
+      <%=data.hidden_field :order_advised_id, value: @order_advised.id.to_s %>
+      <%=data.hidden_field :type, value: @order_advised.type %>
+      <% unless @from == 'counselling_record' %>
+        <%=data.hidden_field :recounselled, value: true %>
+      <% end %>
+      <div class="col-sm-2">
+        <% if @from == 'counselling_record' %>
+          <%name = @order_advised.type == "procedures" ? @order_advised.procedurename : @order_advised.investigationname %>
+          <%side = @order_advised.get_label_for_side(@order_advised.type == "procedures" ? @order_advised.procedureside : @order_advised.investigationside) %>
+          <strong><%= name %> - <%= side %></strong><br/>
+          <%= @order_advised.advised_by %>(<%= @order_advised.advised_datetime.in_time_zone.strftime("%d%b'%y at %I:%M %p") %>)
+        <% end %>
+      </div>
+      <div class="col-sm-2">
+        <%= data.select :status, options_for_select(["Agreed", "Declined", "Payment Taken"], @order_advised.status), {include_blank: false}, { class: 'form-control counselling-status', style: "padding-bottom: 5px;padding-top: 5px;margin-top: 7px;"} %>
+      </div>
+      <div class="col-sm-2">
+        <% status = @order_advised.status != "No Action Taken" ? @order_advised.status : "Advised" %>
+        <% if status == "Advised" || status.blank? %>
+          <strong>Advised - </strong><%= @order_advised.advised_by %><br/>
+          - <%= @order_advised.advised_datetime.in_time_zone.strftime("%d%b'%y at %I:%M %p") %>
+        <% else %>
+          <strong><%= @order_advised.status %> - </strong> <%= @order_advised.counselled_by %><br/>
+          - <%= @order_advised.counselled_datetime.in_time_zone.strftime("%d%b'%y at %I:%M %p") %>
+        <% end %>
+      </div>
+      <div class="col-sm-1 text-center">
+        <%= @order_advised.quantity %>
+      </div>
+      <div class="col-sm-2">
+        <div class="input">
+          <%= data.text_field :patient_comment, label: false, class: "form-control", style: "padding-bottom: 5px;padding-top: 5px;margin-top: 5px;" %>
+        </div>
+      </div>
+      <div class="col-sm-2">
+        <div class="input">
+        <%= data.text_field :counsellor_comment, label: false, class: "form-control", style: "padding-bottom: 5px;padding-top: 5px;margin-top: 5px;" %>
+        </div>
+      </div>
+      <div class="col-sm-1 <%= @from == 'counselling_record' ? 'remove-procedure' : 'remove-recounsel' %>" style="font-size: 30px;color: #ff0000;margin-top: 10px;cursor:pointer;">
+        &times;
+      </div>
+    </div>
+  <% end %>
+<% end %>

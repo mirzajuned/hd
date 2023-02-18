@@ -1,0 +1,131 @@
+<div class="modal-dialog modal-lg" style="width:45%;">
+  <!-- Modal content-->
+  <div class="modal-content">
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal">&times;</button>
+      <h4 class="modal-title">Refund Receipt</h4>
+    </div>
+    <div class="modal-body">
+      <div class="row refund-info mb20">
+        <% if @invoice.present? %>
+          <div class="row mb10">
+            <div class="col-md-12">
+              <div class="col-sm-6">
+                <b>Bill Number: </b>
+                <%= @invoice.try(:bill_number) %>
+              </div>
+              <div class="col-sm-6">
+                <b>Received Amount: </b>
+                <% payment_received = @invoice.try(:amount_received) || 0 %>
+                <% payment_received_with_precision = number_with_precision(payment_received, precision: 2) %>
+                <% payment_received_display = Common::Finance::NumberFormatService.call(@number_format, payment_received_with_precision) %>
+                <%= payment_received_display %>
+              </div>
+            </div>
+          </div>
+        <% end %>
+        <div class="col-md-12">
+          <% amount_with_precision = number_with_precision(@refund_payment.amount, precision: 2) %>
+          <% amount_display = Common::Finance::NumberFormatService.call(@number_format, amount_with_precision) %>
+          <p>Refunded a sum of <b><%= @refund_payment.currency_symbol %> <%= amount_display %></b> to <b><%= @patient.fullname.to_s.upcase %></b> by <b><%= @refund_payment.mode_of_payment.titleize %></b> dated <b><%= @refund_payment.payment_date.strftime("%d/%m/%Y") %></b>.</p>
+          <p>Refund Remark:  <b><%= @refund_payment.reason %></b></p>
+        </div>
+      </div>
+      <% if @refund_payment.refund_history.count > 0 %>
+        <hr/>
+        <div class="row refund-breakup">
+          <div class="col-md-6">
+            <b>Refund History <span style="font-size: 10px;">(Note: This will not be printed)</span></b>
+          </div>
+          <div class="col-md-6 text-right">
+            <b>Amount Remaining : <%= @refund_payment.amount_remaining %></b>
+          </div>
+          <div class="col-md-12">
+            <table class="table table-bordered" style="font-size: 12px;">
+              <thead>
+                <tr>
+                  <th style="padding: 5px;">Invoice</th>
+                  <th style="padding: 5px;">Type</th>
+                  <th style="padding: 5px;">User</th>
+                  <th style="padding: 5px;">Time</th>
+                  <th style="padding: 5px;">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @refund_payment.refund_history.each do |ah| %>
+                  <tr>
+                    <td style="padding: 5px;"><%= ah[:invoice_type] %></td>
+                    <td style="padding: 5px;"><%= ah[:type] %></td>
+                    <td style="padding: 5px;"><%= ah[:user_name] %></td>
+                    <td style="padding: 5px;"><%= ah[:event_time] %></td>
+                    <% amount_with_precision = number_with_precision(ah[:amount], precision: 2) %>
+                    <% amount_display = Common::Finance::NumberFormatService.call(@number_format, amount_with_precision) %>
+                    <td style="padding: 5px;"><%= amount_display %></td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      <% end %>
+    </div>
+    <div class="modal-footer">
+      <div class="col-md-6 text-left">
+        <% if @print_settings.count > 1 %>
+          <div class="btn-group" style="margin-bottom: 0px;">
+            <button type="button" class="btn btn-info btn-sm full_print dropdown-toggle" data-toggle="dropdown"><i class="fa fa-print mr5"></i> Print <i class="fa fa-caret-down"></i></button>
+            <ul class="dropdown-menu dropdown-left-manual" role="menu" aria-labelledby="summary-print-dropdown" style="">
+              <% @print_settings.each do |print_setting| %>
+                <li class="multi-print">
+                  <%= link_to print_invoice_refund_payments_path(id: @refund_payment.id, print_setting_id: print_setting.id, format: 'pdf'), data: { method: :get }, class: "refund_payment_print", target: "_blank", style: "color: #d9534f;" do %> <i class="fa fa-print mr5"></i> <%= print_setting.name %> <% end %>
+                </li>
+              <% end %>
+            </ul>
+          </div>
+        <% else %>
+          <%= link_to print_invoice_refund_payments_path(id: @refund_payment.id, print_setting_id: @print_settings[0].id, format: 'pdf'), class: "btn btn-info btn-sm refund_payment_print", target: "_blank", data: { method: :get } do %> <i class="fa fa-print mr5"></i> Print <% end %>
+        <% end %>
+        <%= link_to new_mail_record_tracker_path(record_name: 'RefundPayment', record_id: @refund_payment.id, record_model: 'RefundPayment', patient_id: @refund_payment.patient_id, speciality_id: @refund_payment.specialty_id, :mode => @mode),  class: "btn btn-sm btn-primary", :id => "record-mail-html", :data => {:remote => true, 'disable-with' =>  "Please Wait..."} do %><i class="glyphicon glyphicon-envelope"></i> Email<% end %>
+      </div>
+      <div class="col-md-6">
+        <%# if @refund_payment.amount_remaining.to_f == @refund_payment.amount.to_f %>
+          <!-- <%#= link_to invoice_refund_payment_path(id: @refund_payment.id), method: :delete, data: { remote: true }, class: "btn btn-danger" do %>Delete<%# end %> -->
+          <!-- <%#= link_to edit_invoice_refund_payment_path(id: @refund_payment.id), class: "btn btn-primary", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#invoice-modal'} do %>Edit<%# end %> -->
+        <%# else %>
+          <%#= link_to refund_invoice_refund_payment_path(id: @refund_payment.id, refunded_amount: @refund_payment.amount_remaining), data: { remote: true }, class: "btn btn-warning" do %><!-- Refund (<%= @refund_payment.currency_symbol %> <%= @refund_payment.amount_remaining %>) --><%# end %>
+        <%# end %>
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style type="text/css">
+  /*input {
+    border: none !important;
+    border-bottom: 1px solid #aaa !important;
+  }*/
+
+  .service_row_count {
+    border: 1px solid #aaa;
+    padding: 21px;
+    margin-bottom: 10px;
+  }
+
+  .patient_info_box {
+    border-bottom: 1px solid #aaa;
+    border-right: 1px solid #aaa;
+    border-left: 1px solid #aaa;
+    padding: 10px 0;
+    margin-bottom: 10px;
+  }
+
+  input.error, select.error {
+    border-color: #b94a48;
+    background-image: none;
+  }
+  input.valid, select.valid {
+    border-color: #468847;
+    background-image: none;
+  }
+</style>

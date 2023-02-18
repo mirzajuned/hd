@@ -1,0 +1,80 @@
+<% free_examination_text_admission = @case_sheet.free_form_examinations[@admission.try(:id).to_s] %>
+<% if @case_sheet.free_form_examinations.count > 0 %>
+  <div class="row view_examination_text" <%= 'style=display:none;' if free_examination_text_admission.present? %>>
+    <div class="col-md-12" style="text-decoration: underline;">
+      <b>EXAMINATION</b>
+      <button class="btn btn-link btn-xs toggle_examination_text"><i class="fa fa-edit"></i></button>
+    </div>
+    <% uniq_array = [] %>
+    <% examination_free_text = '' %>
+    <% examination_counter = 0 %>
+    <% @case_sheet.free_form_examinations.to_a.reverse.to_h.each do |key, examination| %>
+      <% if ["ot_schedule", "admission"].include?(examination[:record_type]) && examination_free_text != "" %>
+        <% internal_flag = false %>
+        <% next %>
+      <% else %>
+        <% internal_flag = true %>
+      <% end %>
+      <% unless uniq_array.include?(examination[:content].to_s.html_safe()) %>
+        <div class="col-md-12">
+          <span><b style="color: #333;"><%= examination[:content].to_s.html_safe %></b></span>
+        </div>
+        <% if examination_counter == 0 %>
+          <% examination_free_text += examination[:content].to_s %>
+        <% else %>
+          <% examination_free_text = examination_free_text + '<br>' + examination[:content].to_s %>
+        <% end %>
+        <% uniq_array << examination[:content].to_s.html_safe %>
+        <% examination_counter += 1 %>
+      <% end %>
+      <% if ["ot_schedule", "admission"].include?(examination[:record_type]) && internal_flag %>
+        <% break %>
+      <% end %>
+    <% end %>
+  </div>
+<% end %>
+
+<div class="row edit_examination_text" <%= 'style=display:none;' if @case_sheet.free_form_examinations.count > 0 && !free_examination_text_admission.present? %>>
+  <div class="col-md-12" style="text-decoration: underline;">
+    <b>EXAMINATION TEXTBOX</b>
+    <!-- <button class="btn btn-link btn-xs reset_examination_value">Reset</button> -->
+  </div>
+  <div class="col-md-12">
+    <% free_examination_text_content = (free_examination_text_admission[:content].to_s.html_safe if params[:controller].include?('clinical_note') && free_examination_text_admission.present?) || examination_free_text.to_s.html_safe %>
+    <%= text_area_tag 'case_sheet[free_examination_text]', free_examination_text_content, class: 'form-control p7_10', id: 'case_sheet_free_examination_text', placeholder: 'Diagnosis Notes' %>
+  </div>
+</div>
+
+<script type="text/javascript">
+  $(".examination-added").on('click', ".btn-remove-examination", function(e){
+    e.preventDefault();
+    $(this).closest(".examinationlist").remove();
+    if($(".examinationlist").length == 0){
+      $(".no-examination").show();
+    }
+  })
+
+  var summernote_options = {
+    toolbar: [],
+    height: 100
+  };
+
+  $('#case_sheet_free_examination_text').summernote(summernote_options);
+
+  $(".toggle_examination_text").on('click', function(e){
+    e.preventDefault();
+    $(".view_examination_text").hide()
+    $(".edit_examination_text").show()
+  })
+
+  // $(".reset_examination_value").on('click', function(e){
+  //   e.preventDefault();
+  //   $('#case_sheet_free_examination_text').code("<%#= examination_free_text.to_s %>")
+  // })
+</script>
+
+<style type="text/css">
+  .note-editable {
+    overflow-y: scroll !important;
+  }
+</style>

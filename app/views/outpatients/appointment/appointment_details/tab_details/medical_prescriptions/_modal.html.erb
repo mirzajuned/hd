@@ -1,0 +1,208 @@
+<div id="medical-<%= location %>-modal-<%= i %>" class="modal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" data-keyboard="false" data-backdrop="static">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+        <h4 class="modal-title">Medical Prescription</h4>
+      </div>
+      <div class="modal-body">
+        <div class="row">
+          <div class="col-md-12">
+            <table class="table table-bordered table-here">
+              <thead>
+                <tr>
+                  <th>S.No.</th>
+                  <th>Name</th>
+                  <th>Quantity</th>
+                  <th class="text-center">Frequency</th>
+                  <th>Duration</th>
+                  <th>Eye</th>
+                  <th>Instruction</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% prescription.medications.each_with_index do |medication, i| %>
+                  <tr>
+                    <td><%= i + 1 %></td>
+                    <td>
+                      <b>
+                        <%= medication[:medicinename].to_s.upcase %>
+                        <% if medication[:medicinetype].present? %>
+                          <%= " - #{medication[:medicinetype].upcase}" %>
+                        <% end %>
+                      </b>
+                    </td>
+                    <% if medication[:taper_id] == '0' || medication[:taper_id] == nil || medication[:taper_id] == '' %>
+                      <td class="text-right"><%= medication[:medicinequantity] %></td>
+                      <td class="text-center">
+                        <% if ['1-1-1', '1-1-0', '1-0-1', '0-1-1', '1-0-0', '0-1-0', '0-0-1', '1-1-1-1'].include?(medication[:medicinefrequency]) %>
+                          <% frequency = medication[:medicinefrequency].split('-') %>
+                          <% if frequency[3] %>
+                            <div class="row">
+                              <div class="col-md-2 text-center"><b><%= frequency[0] %></b><br>Mrng</div>
+                              <div class="col-md-1">-</div>
+                              <div class="col-md-2 text-center"><b><%= frequency[1] %></b><br>Noon</div>
+                              <div class="col-md-1">-</div>
+                              <div class="col-md-2 text-center"><b><%= frequency[2] %></b><br>Evng</div>
+                              <div class="col-md-1">-</div>
+                              <div class="col-md-2 text-center"><b><%= frequency[3] %></b><br>Night</div>
+                            </div>
+                          <% else %>
+                            <div class="row">
+                              <div class="col-md-3 text-center"><b><%= frequency[0] %></b><br>Morning</div>
+                              <div class="col-md-1">-</div>
+                              <div class="col-md-3 text-center"><b><%= frequency[1] %></b><br>Afternoon</div>
+                              <div class="col-md-1">-</div>
+                              <div class="col-md-3 text-center"><b><%= frequency[2] %></b><br>Evening</div>
+                            </div>
+                          <% end %>
+                        <% else %>
+                          <%= medication[:medicinefrequency] %>
+                        <% end %>
+                      </td>
+                      <td>
+                        <% unless medication[:medicinedurationoption] == 'F' %>
+                          <% if medication[:medicinedurationoption] == 'W' %>
+                            <%= pluralize(medication[:medicineduration], 'Week') %>
+                          <% elsif medication[:medicinedurationoption] == 'M' %>
+                            <%= pluralize(medication[:medicineduration], 'Month') %>
+                          <% elsif medication[:medicinedurationoption] == 'D' %>
+                            <%= pluralize(medication[:medicineduration], 'Day') %>
+                          <% end %>
+                        <% else %>
+                          Next Followup
+                        <% end %>
+                      </td>
+                    <% else %>
+                      <td colspan="3" class="text-center">
+                        As advised below
+                      </td>
+                    <% end %>
+                    <td>
+                      <% if medication['eyeside'].present? %>
+                        <% if medication['eyeside'] == 'L' %>
+                          Left
+                        <% elsif medication['eyeside'] == 'R' %>
+                          Right
+                        <% elsif medication['eyeside'] == 'BE' %>
+                          Both Eyes
+                        <% end %>
+                      <% else %>
+                        -
+                      <% end %>
+                    </td>
+                    <td>
+                      <% if medication[:medicineinstructions].present? %>
+                        <%= medication[:medicineinstructions] %>
+                      <% elsif medication[:instruction].present? %>
+                        <% instruction = @medication_instructions.find { |m| m[:id] == medication[:instruction] } %>
+                        <%= instruction.present? ? instruction['en'] : '-' %>
+                      <% end %>
+                    </td>
+                  </tr>
+                  <% unless medication['taper_id'] == '0' || medication['taper_id'] == nil || medication['taper_id'] == '' %>
+                    <tr style="background-color:#bbb">
+                      <td colspan="7" style="padding:5px 10px 2px;">
+                        <% @taper = TaperingKit.find_by(id: medication['taper_id']) %>
+                        <% @tapering_set = @taper.tapering_set %>
+                        <% if @taper.taper_by == 'Dosage' %>
+                          <table class="table table-bordered" style="margin: 0 0 5px;">
+                            <thead>
+                              <tr>
+                                <th>Sr No.</th>
+                                <th>No of Days</th>
+                                <th>Start Date</th>
+                                <th>End Date</th>
+                                <th>Start Time</th>
+                                <th>End Time</th>
+                                <th width="16%">Dosage</th>
+                                <th width="16%">Interval</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <% @tapering_set.each.with_index do |taper, i| %>
+                                <tr class="taper_row">
+                                  <td>
+                                    <%= i.to_i + 1 %>
+                                  </td>
+                                  <td>
+                                    <%= taper.number_of_days %>
+                                  </td>
+                                  <td>
+                                    <%= taper.try(:start_date).try(:strftime, '%d/%m/%Y') %>
+                                  </td>
+                                  <td>
+                                    <%= taper.try(:end_date).try(:strftime, '%d/%m/%Y') %>
+                                  </td>
+                                  <td>
+                                    <%= taper.try(:start_time).try(:strftime, '%I:%M %p') %>
+                                  </td>
+                                  <td>
+                                    <%= taper.try(:end_time).try(:strftime, '%I:%M %p') %>
+                                  </td>
+                                  <td>
+                                    <%= taper.dosage %>
+                                  </td>
+                                  <td>
+                                    <%= taper['interval'].to_i > 0 ? 'Every ' + pluralize(taper['interval'], 'hour') : '-' %>
+                                  </td>
+                                </tr>
+                              <% end %>
+                            </tbody>
+                          </table>
+                        <% else %>
+                          <table class="table table-bordered" style="margin: 0 0 5px;">
+                            <thead>
+                              <tr>
+                                <th>Sr No.</th>
+                                <th>Day</th>
+                                <th>Date</th>
+                                <th>Start Time</th>
+                                <th>End Time</th>
+                                <th width="16%">Frequency</th>
+                                <th width="16%">Interval</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <% @tapering_set.each.with_index do |taper, i| %>
+                                <% unless (taper.frequency).to_i == 0 %>
+                                  <tr class="taper_row">
+                                    <td>
+                                      <%= i.to_i + 1 %>
+                                    </td>
+                                    <td>
+                                      <%= taper.number_of_days %>
+                                    </td>
+                                    <td>
+                                      <%= taper.try(:start_date).try(:strftime, '%d/%m/%Y') %>
+                                    </td>
+                                    <td>
+                                      <%= taper.try(:start_time).try(:strftime, '%I:%M %p') %>
+                                    </td>
+                                    <td>
+                                      <%= taper.try(:end_time).try(:strftime, '%I:%M %p') %>
+                                    </td>
+                                    <td>
+                                      <%= pluralize(taper['frequency'], 'time') %> a day
+                                    </td>
+                                    <td>
+                                      <%= taper['interval'].to_i > 0 ? 'Every ' + pluralize(taper['interval'], 'hour') : '-' %>
+                                    </td>
+                                  </tr>
+                                <% end %>
+                              <% end %>
+                            </tbody>
+                          </table>
+                        <% end %>
+                      </td>
+                    </tr>
+                  <% end %>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

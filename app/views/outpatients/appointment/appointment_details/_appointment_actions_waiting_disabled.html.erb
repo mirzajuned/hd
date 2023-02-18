@@ -1,0 +1,140 @@
+<div class="col-sm-6">
+  <div class="row no_margin">
+    <% if @current_facility.show_finances && @current_facility.invoice_compulsory && @invoices&.size == 0 %>
+      <% if ["doctor","doctor_clinical_auditor","receptionist","floormanager","cashier","nurse","counsellor","optometrist"].include?(@clinical_workflow.state) || @appointment_list_view.current_state == "Waiting" %>
+        <i style="color:#f00;">* Invoice is not created for this Appointment.</i>
+      <% end %>
+    <% end %>
+  </div>
+
+    <% if @current_user.role_ids.any? { |ele| [158965000,158966000, 106292003, 686800945].include?(ele) } %>
+      <div class="dropdown">
+        <button type="button" class="btn btn-xs btn-primary btn-danger" data-toggle="dropdown" id="adverse_event_form">Adverse Event&nbsp;&nbsp;<i class="fa fa-caret-down"></i></button>
+        <ul class="dropdown-menu" role="menu" aria-labelledby="adverse_events-dropdown" style="">
+          <li style="text-align: center;">
+            <%= link_to new_adverse_event_path(patient_id: @patient.id.to_s), id: "adverse-event-btn", data: { remote: true, 'toggle': "modal", 'target': '#adverse-event-modal' } do %>Report Adverse Event<% end %>
+          </li>
+          <strong style="margin-left: 10px">Previously Reported: <%= @adverse_events.length %></strong>
+        </ul>
+      </div>
+    <% end %>
+</div>
+<% unless @clinical_workflow_present %>
+  <!-- Non-Workflow -->
+  <div class="col-sm-6 text-right">
+    <div class="row no_margin">
+      <% if @current_date == Date.current %>
+        <% if @appointment_list_view.current_state == "Scheduled" %>
+          <% if @current_facility.consultancy_type_enabled %>
+            <% past_appointment_ids = @past_appointment.pluck(:id).uniq.join(",") %>
+            <%= link_to consultancy_types_appointments_path(appointment_id: @appointment.id, past_appointment_ids: past_appointment_ids, token_setting_enabled: @token_setting.try(:token_enabled)), data: {remote: true, toggle: 'modal', target: '#appointment-modal'}, class: "btn btn-xs btn-danger p_arrived mb10" do %>Patient Arrived<% end %>
+          <% else %>
+            <% if @token_setting.try(:token_enabled) && @current_date == Date.current %>
+              <%= link_to token_settings_show_tokens_path(token_setting_id: @token_setting.id.to_s, appointment_id: @appointment.id), data: {remote: true, toggle: 'modal', target: '#appointment-modal'}, class: "btn btn-xs btn-danger p_arrived mb10" do %>Mark Patient Arrived<% end %>
+            <% else %>
+              <%= link_to opd_clinical_workflow_mark_as_arrived_path(id: @appointment.id, appointment_id: @appointment.id, patient_arrived: true), data: {remote: true,'disable-with': "Please Wait..."}, class: " btn btn-danger btn-xs" do %>Patient Arrived<% end %>
+            <% end %>
+          <% end %>
+        <% elsif @appointment_list_view.current_state == "Waiting" %>
+          <%= link_to opd_clinical_workflow_mark_as_arrived_path(id: @appointment.id, appointment_id: @appointment.id, patient_arrived: false), data: {remote: true,'disable-with': "Please Wait..."}, class: " btn btn-danger btn-xs" do %>NA<% end %>
+          <% if @current_facility.show_finances && @current_facility.invoice_compulsory && @invoices&.size == 0 %>
+            <button class="btn btn-orange btn-xs" style="cursor: not-allowed;opacity: 0.5;">Mark Engaged</button>
+          <% else %>
+            <%= link_to opd_clinical_workflow_patient_engaged_path(id: @appointment.id, appointment_id: @appointment.id, patient_engaged: true), data: {remote: true,'disable-with': "Please Wait..."}, class: " btn btn-orange btn-xs" do %>Mark Engaged<% end %>
+          <% end %>
+          <%= link_to opd_clinical_workflow_patient_completed_path(id: @appointment.id, appointment_id: @appointment.id, patient_completed: true), data: {remote: true,'disable-with': "Please Wait..."}, class: "btn btn-success btn-xs" do %>Mark Completed<% end %>
+        <% elsif @appointment_list_view.current_state == "Engaged" %>
+          <%= link_to opd_clinical_workflow_patient_engaged_path(id: @appointment.id, appointment_id: @appointment.id, patient_engaged: false), data: {remote: true,'disable-with': "Please Wait..."}, class: "btn btn-warning btn-xs" do %>Undo<% end %>
+          <%= link_to opd_clinical_workflow_patient_completed_path(id: @appointment.id, appointment_id: @appointment.id, patient_completed: true), data: {remote: true,'disable-with': "Please Wait..."}, class: "btn btn-success btn-xs" do %>Mark Completed<% end %>
+        <% elsif @appointment_list_view.current_state == "Completed" %>
+          <%= link_to opd_clinical_workflow_patient_completed_path(id: @appointment.id, appointment_id: @appointment.id, patient_engaged: false), data: {remote: true,'disable-with': "Please Wait..."}, class: "btn btn-success btn-xs" do %><i class="fa fa-check"></i>&nbsp;&nbsp; Completed<% end %>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+<% else %>
+  <!-- Workflow -->
+  <div class="col-sm-6 text-right">
+    <% if @current_date == Date.current %>
+      <% if @clinical_workflow.state == 'not_arrived' %>
+        <div class="row no_margin">
+          <% if @current_facility.consultancy_type_enabled %>
+            <% past_appointment_ids = @past_appointment.pluck(:id).uniq.join(",") %>
+            <%= link_to consultancy_types_appointments_path(appointment_id: @appointment.id, past_appointment_ids: past_appointment_ids, token_setting_enabled: @token_setting.try(:token_enabled)), data: {remote: true, toggle: 'modal', target: '#appointment-modal'}, class: "btn btn-xs btn-danger p_arrived mb10" do %>Mark Patient Arrived<% end %>
+          <% else %>
+            <% if @token_setting.try(:token_enabled) %>
+              <% if Authorization::PolicyHelper.verification(current_user.id, "HGP-102-105-100") %>
+                <%= link_to token_settings_show_tokens_path(token_setting_id: @token_setting.id.to_s, appointment_id: @appointment.id), data: {remote: true, toggle: 'modal', target: '#appointment-modal'}, class: "btn btn-xs btn-danger p_arrived mb10" do %>Mark Patient Arrived<% end %>
+              <% else %>
+                <a class="btn btn-xs btn-danger p_arrived mb10 disabled" style="pointer-events: all" title="Not Authorized">Mark Patient Arrived</a>
+              <% end %>
+            <% else %>
+              <a href="/opd_clinical_workflow/patient_arrived?appointment_id=<%= @appointment.id.to_s%>" data-remote="true" data-disable-with="Please Wait..." class="btn btn-xs btn-danger p_arrived mb10 ">Mark Patient Arrived</a>
+            <% end %>
+          <% end %>
+        </div>
+      <% end %>
+      <% if @clinical_workflow.state != "complete" && ["doctor","doctor_clinical_auditor","receptionist","floormanager", "cashier","nurse","counsellor","optometrist","ar_nct"].include?(@clinical_workflow.state) %>
+        <% if @clinical_workflow_timeline.count == 1 && @appointment.opd_record_count == 0 %>
+          <a href="/opd_clinical_workflow/mark_as_not_arrived?appointment_id=<%= @appointment.id.to_s%>" data-remote="true" data-disable-with="Please Wait..." title="Not Arrived" class="btn btn-xs btn-danger">NA</a>
+        <% end %>
+        <% if @clinical_workflow.try(:user_id) == @current_user.id.to_s %>
+          <% unless @clinical_workflow_timeline.count == 1 %>
+            <a href="/opd_clinical_workflow/mark_as_away?appointment_id=<%= @appointment.id.to_s%>" data-remote="true" data-disable-with="Please Wait..." class="btn btn-xs btn-primary mark-away" >Mark as Away</a>
+          <% end %>
+          <% if Authorization::PolicyHelper.verification(current_user.id, "HGP-102-105-102") %>
+            <a href="/opd_clinical_workflow/patient_complete?appointment_id=<%= @appointment.id.to_s%>" data-remote="true" data-disable-with="Please Wait..." class="btn btn-xs btn-success mark-completed">Mark as Completed</a>
+          <% else %>
+            <a class="btn btn-xs btn-primary mark-completed disabled" style="pointer-events: all" title="Not Authorized">Mark as Completed</a>
+          <% end %>
+        <% end %>
+      <% end %>
+
+      <% if @clinical_workflow.state == "complete" %>
+        <% if @clinical_workflow_timeline_second_last.try(:user_id).to_s == @current_user.id.to_s %>
+          <a href='#' class="btn btn-xs btn-primary undo-state" data-disable-with="Please Wait...">Undo</a>
+        <% end %>
+      <% else %>
+        <% if @clinical_workflow.try(:user_id) != @current_user.id.to_s %>
+          <% if @clinical_workflow_timeline_second_last.try(:user_id).to_s == @current_user.id.to_s %>
+            <a href='#' class="btn btn-xs btn-primary undo-state" data-disable-with="Please Wait...">Undo</a>
+          <% end %>
+        <% end %>
+      <% end %>
+
+      <% unless @clinical_workflow.state == "complete"|| @clinical_workflow.state == "not_arrived" || @clinical_workflow.try(:user_id) == @current_user.id.to_s || @clinical_workflow.state == "away" %>
+        <% if @current_facility.show_finances && @current_facility.invoice_compulsory && @invoices&.size == 0 %>
+          <button class="btn btn-primary btn-xs" style="cursor: not-allowed;opacity: 0.8;">Get Patient</button>
+        <% else %>
+          <a href="/opd_clinical_workflow/get_patient?to=<%= @current_user.primary_role%>&to_user=<%= @current_user.id%>&workflow_id=<%= @clinical_workflow.id%>" data-remote="true" class="btn btn-xs btn-primary get-patient" data-disable-with="Please Wait...">Get Patient</a>
+        <% end %>
+      <% end %>
+      <% if @clinical_workflow.state == "away" %>
+        <a href="/opd_clinical_workflow/get_patient?to=<%= @current_user.primary_role%>&to_user=<%= @current_user.id%>&workflow_id=<%= @clinical_workflow.id%>" data-remote="true" class="btn btn-xs btn-primary get-patient" data-disable-with="Please Wait...">Get Patient</a>
+      <% end %>
+    <% end %>
+  </div>
+<% end %>
+
+<% if @current_user.role_ids[0] == 499992366 && @clinical_workflow_present && @counsellor_workflow.present?#counsellor %>
+  <div class="col-sm-12 mt10">
+    <label class="label label-success" style="margin-left: 16px">
+      <%if @counsellor_workflow.state == 'converted' and @counsellor_workflow.surgerydates.length > 0%>
+        Surgery on <br><%= Date.parse(@counsellor_workflow.surgerydates.last).strftime("%d %b'%y") %>
+      <% elsif  @counsellor_workflow.state == 'converted'%>
+          <%= @counsellor_workflow.converted_state.last %>
+          <% if @investigation_appointment.size > 0 %>
+              Scheduled on <%= @investigation_appointment.last.appointmentdate.strftime("%d %b,%y") %>
+          <% elsif @investigation_appointment.size == 0 %>
+              Today
+          <% else%>
+              Deleted
+          <% end %>
+      <%elsif @counsellor_workflow.state == "followup" %>
+        Followup on <%= @counsellor_workflow.followupdates.last.strftime("%d %b'%y") %>
+      <% else %>
+        <%= @counsellor_workflow.state.titleize %>
+      <% end %>
+    </label>
+  </div>
+<%end%>

@@ -1,0 +1,145 @@
+<!-- Dashboard View -->
+<div class="container-fluid" style="margin:0 5px;">
+  <div class="row mb5">
+
+  </div>
+  <div class="row">
+    <div class="col-md-3">
+      <p style="margin:0px;text-decoration:underline;">DASHBOARD</p>
+    </div>
+    <div class="col-md-4 col-md-offset-2 text-right">
+      <% if current_user.has_role?(:doctor) || current_user.has_role?(:doctor_clinical_auditor) || current_user.has_role?(:nurse) || current_user.has_role?(:cashier) || current_user.has_role?(:floormanager) || current_user.has_role?(:receptionist) || current_user.has_role?(:resident) || current_user.has_role?(:optometrist) || current_user.has_role?(:ar_nct) %>
+        <% if current_user.facilities.count > 1 %>
+            <span style="font-size:10px;">Location:</span>
+            <% fac_array = current_user.facilities.map { |p| [ p.name, p.id.to_s ] } %>
+            <% fac_array =  [["All Facility", "0"]] + fac_array %>
+            <%= select_tag "facilitylistadmission", options_for_select(fac_array,""), { :class=> "facilitylistadmission" } %>
+        <% else %>
+            <%= hidden_field_tag "facilitylistadmission", current_facility.id %>
+        <% end %>
+        <% if current_user.has_role?(:nurse) || current_user.has_role?(:receptionist) %>
+            <span style="font-size:10px;">Users:</span>
+            <%= select_tag "userlistadmission", options_for_select(""), { :class=> "userlistadmission" } %>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-md-9">
+      <% if current_user.has_role?(:doctor) || current_user.has_role?(:doctor_clinical_auditor) ||current_user.has_role?(:nurse) || current_user.has_role?(:cashier) || current_user.has_role?(:floormanager) || current_user.has_role?(:receptionist) || current_user.has_role?(:resident) || current_user.has_role?(:optometrist) || current_user.has_role?(:ar_nct) %>
+
+        <div id="data_list_refresh_dashboard" style="padding: 0 10px;border-right: 1px solid #fff;">
+        </div>
+
+      <% end %>
+      <% if current_user.has_role?(:admin) %>
+        <% current_user.facilities.each do |facility| %>
+          <div class="row">
+            <!-- <div class="col-md-12">
+              <h4 style="text-align:center;margin:0px;text-decoration:underline;">Users of <%= facility.name %></h4>
+            </div> -->
+          </div>
+          <div class="row" id="list_of_user">
+            <!-- All Users -->
+            <%= render partial: "main/dashboard_content/admin_dashboard/list_of_user", locals: {facility: facility} %>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+    <div class="col-md-3">
+      <% if current_user.has_role?(:doctor) %>
+        <div class="row mt10 text-right">
+          <%= link_to holiday_plans_path, data: { remote: 'true', toggle: 'modal', target: '#inpatient-modal'}, class: 'btn btn-primary' do %>Holiday Plans<% end %>
+        </div>
+      <% end %>
+      <% if current_facility.show_finances? %>
+        <div class="row mt10">
+          <%= render partial: "main/dashboard_content/reports/show_reports_box" %>
+        </div>
+      <% end %>
+      <div class="row task_list_dashboard mt10">
+        <%= render partial: "main/dashboard_content/task_list/show_task_list_box" %>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- Dashboard View Ends -->
+
+
+<script type="text/javascript">
+  jQuery(document).ready(function(){
+    jQuery('#facilitylistadmission').on("change",function(){
+      var fac_id = jQuery("#facilitylistadmission").val();
+      //load users
+      jQuery.ajax({
+        type: "GET",
+        dataType: "json",
+        url: "/main/get_user_id_admission_list",
+        data: {facility_id: fac_id},
+        success: function(response){
+          jQuery('#userlistadmission').children().remove();
+          jQuery('#userlistadmission').append(jQuery("<option></option>").attr("value",0).text("All User"));
+          jQuery.each(response, function(key, value) {
+            jQuery('#userlistadmission').append(jQuery("<option></option>").attr("value",value[1]).text(value[0]));
+          });
+          loadFacilityCount(fac_id, jQuery("#userlistadmission").val(),"/main/get_admission_list");
+        }
+      });
+    });
+
+    jQuery('#userlistadmission').on("change",function(){
+      loadFacilityCount(jQuery("#facilitylistadmission").val(), jQuery("#userlistadmission").val(),"/main/get_admission_list");
+    });
+    jQuery('#facilitylistadmission').trigger("change");
+  });
+  function loadFacilityCount(facilityId, userId, url){
+    var current_date = $("#current_date_dashboard").val()
+    jQuery.ajax({
+      type: "GET",
+      dataType: "script",
+      url: url,
+      // data: {facility_id: jQuery("#facilitylistipd option:selected").val()}
+      data: {facility_id: facilityId, user_id: userId, current_date: current_date},
+      success: function(res){
+        $("#facilitylistadmission").addClass("form-control")
+        $("#userlistadmission").addClass("form-control")
+      }
+    });
+  }
+  $(document).ready(function(){
+      $(".hg-tooltip").tipsy({live: true});
+      $(".hg-tooltip-east").tipsy({live: true, gravity: 'e'});
+      // Remove Tipsy on click So it doesnt Stick To screen on JS Navigation
+      $(".hg-tooltip").on('click',function(){
+        $(".tipsy").hide();
+      })
+      $(".hg-tooltip-east").on('click',function(){
+        $(".tipsy").hide();
+      })
+  });
+</script>
+
+
+<% if false %>
+  <div class="col-md-2">
+    <div class="row" id="dashboard_id">
+    <% if current_user.has_role?(:doctor) || current_user.has_role?(:doctor_clinical_auditor) || current_user.has_role?(:nurse) || current_user.has_role?(:receptionist) || current_user.has_role?(:resident) || current_user.has_role?(:optometrist) || current_user.has_role?(:admin) %>
+      <div class="col-sm-12 col-md-12">
+        <!-- OPD Counter -->
+        <%= render partial: "main/dashboard_content/opd_dashboard_counter/opd_counter_box" %>
+      </div>
+
+      <div class="col-sm-12 col-md-12">
+        <!-- IPD Counter -->
+        <%= render partial: "main/dashboard_content/ipd_dashboard_counter/ipd_counter_box" %>
+      </div>
+
+      <div class="col-sm-12 col-md-12">
+        <!-- Other Data Counter -->
+        <%= render partial: "main/dashboard_content/other_data_dashboard_counter/other_data_counter_box" %>
+      </div>
+    <% end %>
+    </div>
+  </div>
+<% end %>

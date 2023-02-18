@@ -1,0 +1,2 @@
+module NewFeaturesHelper
+end

@@ -1,0 +1,80 @@
+<div class="template-header">
+  <div class="head_buttons">
+    <div class="row">
+      <div class="col-md-6 col-sm-6 col-xs-12">
+        <div class="row">
+          <div class="col-md-12 col-sm-12 col-xs-12">
+            <h4 class="template-name">
+              <%= @displayname %>
+              <% if @nabh_setting.try(:enabled) %>
+                <%= ("(Initial Assessment)" if params[:action] == 'new') || "(Re-Assessment)" %>
+              <% end %>
+              <% if @case_sheet.present? %>
+                <label class="label label-primary"><%= "#{@case_sheet.case_name.titleize} - " if @case_sheet.case_name.present? %><%= @case_sheet.case_id %></label>
+              <% end %>
+            </h4>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6 col-sm-6 col-xs-12">
+        <div class="row">
+          <div class="col-md-7 col-sm-6 col-xs-7">
+            <% if @templatetype == "optometrist" %>
+              <% optometrist_array = User.where(facility_ids: @appointment.facility_id, role_ids: 28229004, is_active: true, specialty_ids: @appointment.specialty_id).pluck(:fullname, :id) %>
+              <div class="row">
+                <div class="col-md-4 col-sm-4 col-xs-4"><strong>Optometrist:</strong></div>
+                <div class="col-md-8 col-sm-8 col-xs-8"> 
+                  <% if optometrist_array.length >= 1 %>
+                    <%= select_tag("opdrecord[view_owner_id]", options_for_select(optometrist_array,@opdrecord.optometrist_id ? @opdrecord.optometrist_id : @current_user.id), {:include_blank => '',:class => 'form-control', style: "width: 100%; padding: 8px 0px;"}) %>
+                  <% elsif optometrist_array.length == 1 %>
+                    <%= select_tag("opdrecord[view_owner_id]", options_for_select(optometrist_array,optometrist_array[0][1]), {:class => 'form-control', style: "width: 100%; padding: 8px 0px;"}) %>
+                  <% end %>
+                </div>  
+              </div>
+            <%else%>
+              <% doctors_array = User.where(facility_ids: @appointment.facility_id, role_ids: 158965000, is_active: true, specialty_ids: @appointment.specialty_id).pluck(:fullname, :id) %>
+              <% current_doctor_array =  [[@opdrecord.consultant_name , @opdrecord.consultant_id]]%>
+              <% appointment_opd_records = OpdRecord.where(appointmentid: @appointment.id.to_s, templatetype: @templatetype) %>
+              <% extra_doctors_array = appointment_opd_records.pluck(:consultant_name, :consultant_id) %>
+              <% doctors_array.delete_if {|el| ([el[1].to_s] & extra_doctors_array.map {|el| el[1]}).length > 0} %>
+              <% doctors_array = (doctors_array | current_doctor_array).reject { |ele| ele[0] == nil } %> 
+              <div class="row">
+                <div class="col-md-3 col-sm-3 col-xs-4"><strong>Doctor:</strong></div>
+                <div class="col-md-9 col-sm-9 col-xs-8">
+                  <% if doctors_array.length >= 1 %>
+                      <%= select_tag("opdrecord[view_owner_id]", options_for_select(doctors_array,@opdrecord.consultant_id ? @opdrecord.consultant_id : @current_user.id), { include_blank: true, :class => 'form-control', style: "width: 100%;padding: 8px 0px;"}) %>
+                  <% elsif doctors_array.length == 1 %>
+                      <%= select_tag("opdrecord[view_owner_id]", options_for_select(doctors_array,doctors_array[0][1]), {:class => 'form-control', style: "width: 100%; padding: 8px 0px;"}) %>
+                  <% else %>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          </div>
+          <div class="col-md-5 col-sm-6 col-xs-5">
+            <%= render partial: "templates/common/#{@formbuttons}" %>  <!-- Render common user action buttons template from partial -->
+          </div> 
+        </div>
+      </div>
+    </div>  
+  </div> 
+</div>
+
+<style type="text/css">
+  @media only screen and (max-width: 768px) {
+    .template-name{
+      text-align: center;
+    }
+  }
+
+  .template-name{
+    margin-top:0px;
+  }
+  .template-header{
+    padding-bottom: 0px;
+  }
+</style>
+
+<script type="text/javascript">
+  $('#opdrecord_view_owner_id').select2()
+</script>

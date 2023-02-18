@@ -1,0 +1,90 @@
+<% @followups = @followups.where.not(id: @order_followup.id.to_s) %>
+var followups = "<%=@followups.map{|followup| followup.try(:followup_date).try(:strftime, '%d/%m/%Y')}%>"
+followups = followups.replaceAll('&quot;', '').replaceAll('[','').replaceAll(']','').split(",").map((f)=>f.trim())
+if ($(".orders-procedures:checked").size() > 0){
+  html = 'Orders Selected: ' + $(".orders-procedures:checked").size() + ' Procedures'
+}
+else {
+  html = "No Orders Selected."
+}
+$(".orders-count").html(html)
+
+$(".orders-procedures").click(function(){
+  if ($(".orders-procedures:checked").size() > 0){
+    html = 'Orders Selected: ' + $(".orders-procedures:checked").size() + ' Procedures'
+  }
+  else {
+    html = "No Orders Selected."
+  }
+  $(".orders-count").html(html)
+})
+
+$(".cancel").click(function(){
+  $(".form-container").html("")
+  $(".form-container").hide()
+})
+$('#order_followup_counselling_date').datepicker({
+  dateFormat: "dd/mm/yy"
+});
+$('#order_followup_followup_date').datepicker({
+  dateFormat: "dd/mm/yy",
+  minDate: 0
+});
+<% if @order_followup.new_record? %>
+  $( "#order_followup_followup_time" ).timepicker();
+<% end %>
+$('#order_followup_followup_reasons').select2({multiple: true, minimumInputLength: 0})
+$('#order_followup_followup_reasons').trigger('change')
+
+$(".new_order_followup, .edit_order_followup").submit(function(e){
+  e.preventDefault()
+  var ids = []
+  $(".orders-procedures").each(function(i, obj) {
+    if ($(obj).attr('checked')){
+      ids.push($(obj).attr('data-id'))
+    }
+    });
+  if (ids.length){
+    $("form").append("<input type='hidden' name='order_followup[order_advised_ids][]' value='"+ids+"' />")
+    if (!$('input[name="order_followup[followup_type]"]:checked').val()){
+      if ($('.ui-pnotify').length > 0) {
+        $('.ui-pnotify').remove()
+      }
+      notice = new PNotify({ title: 'Warning', text: 'Please select Followup type.', type: 'warning' });
+      notice.get().click(function(){
+        notice.remove()
+        });
+      return false  
+    }
+    if ($("#order_followup_followup_date").val() == ''){
+      if ($('.ui-pnotify').length > 0) {
+        $('.ui-pnotify').remove()
+      }
+      notice = new PNotify({ title: 'Warning', text: 'Please select a date', type: 'warning' });
+      notice.get().click(function(){
+        notice.remove()
+        });
+      return false
+    }
+    if (followups.length && followups.includes($("#order_followup_followup_date").val())){
+      if ($('.ui-pnotify').length > 0) {
+        $('.ui-pnotify').remove()
+      }
+      notice = new PNotify({ title: 'Warning', text: 'Please select a different date, followup is already created for this day.', type: 'warning' });
+      notice.get().click(function(){
+        notice.remove()
+        });
+      return false  
+    }
+  }
+  else{
+    if ($('.ui-pnotify').length > 0) {
+      $('.ui-pnotify').remove()
+    }
+    notice = new PNotify({ title: 'Warning', text: 'Please select at least one procedure.', type: 'warning' });
+    notice.get().click(function(){
+      notice.remove()
+    });
+    return false
+  }
+})

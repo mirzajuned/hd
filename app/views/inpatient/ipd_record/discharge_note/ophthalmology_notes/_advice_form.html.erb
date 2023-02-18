@@ -1,0 +1,87 @@
+<div class="row mb20" style="margin-top: 20px;">
+  <!-- Medication Set -->
+  <%= render partial: "medication_form.html.erb", locals: {f: f} %>
+  <div class="col-md-2">
+    <div class="btn btn-success save-medication-kit-btn mb10" style="width: 100%;"><i class="fa fa-hand-o-left"></i> Save Medication Set</div>
+    <!-- medication set dropdown -->
+    <div class="medication_set_dropdown_wrapper">
+      <input type="hidden" name="opd_ipd" value="[440654001,0]" id="find_in_set_type" class="find_in_set_type">
+      <input type="hidden" value="<%= @specialty_id %>" class="selected_specialty">
+      <%= render partial: "templates/shared/medication_set_dropdown" %>
+    </div>
+    <div class="mb5" style="border-bottom: solid"></div>
+    <div style="padding:6px;">
+      <label for="medicationsets-label">Medication Sets</label>
+      <input type="text" placeholder="Search" id="search_medication_set"> </input>
+    </div>
+    <div class="medication_kit_refresh">
+      <%= f.input :medicationsets, collection: MedicationKit.where(user_id: current_user.id, specialty_id: @specialty_id.to_i, :set_type.in => [440654001, 0], organisation_id: current_user.organisation.id, level: "user").sort_by{|med_kit| med_kit.name.downcase}, input_html: { multiple: true, :size => '13', :style => 'height: 100%; width:100%', :class => 'form-control option_remover'}, as: :select,  :label => false,  :item_wrapper_class => 'form-control option_remover', :required => false %>
+    </div>
+  </div>
+</div>
+
+<style type="text/css">
+ [data-toggle='tooltip'] + .tooltip > .tooltip-inner {
+    background: black;
+    color:#ffffff;
+    border: 1px solid #000000;
+  }
+</style>
+<script type="text/javascript">
+  // Code For Save Medication Set
+  jQuery(".save-medication-kit-btn").on('click', function(event) {
+    event.preventDefault();
+    jQuery(".save-medication-kit-btn").addClass("disabled");
+    if (jQuery('.popover-save-medication-set').length) {
+      jQuery('.popover-save-medication-set').popover('destroy');
+    }
+    var specialty_id= parseInt($("#ipdrecord_specalityid").val())
+    jQuery(this).popover({
+      placement : 'left',
+      title : 'New Medication Set',
+      html : true,
+      content : function(){
+        jQuery.ajax({
+          type: "GET",
+          url: "/medication_kits/new_medication_kits_popup",
+          data: {specialty_id: specialty_id, remote: "true" }
+        }).done(function( data ) {
+          jQuery('.popover.in .popover-content').empty();
+          jQuery(".popover.in .popover-content").html(data);
+          jQuery(".popover.in").css("top","-30px")
+        });
+      },
+      template : '<div class="popover popover-save-medication-set" role="tooltip" style="width: 700px"><div class="arrow"></div><h5 class="popover-title"></h5><div class="popover-content"></div></div>'
+    }).popover('show');
+  });
+
+  jQuery('#inpatient_ipd_record_discharge_note_attributes_medicationsets').on('click', function() {
+    if (this.value != undefined && this.value != "" ) {
+      var params = { medicationkitid: this.value };
+      jQuery.ajax({
+        type: "GET",
+        url: "/opd_records/fill_ipd_medication_data",
+        data: {ajax: params, remote: "true" }
+      });
+    }
+  });
+
+  $("#search_medication_set").keyup(function(){
+    let search_medication_set = $(this).val().trim().toLowerCase();    
+    let medication_sets = $("#inpatient_ipd_record_discharge_note_attributes_medicationsets option")
+    if(search_medication_set == ""){
+      $("#inpatient_ipd_record_discharge_note_attributes_medicationsets option").show()
+    }else{
+      $("#inpatient_ipd_record_discharge_note_attributes_medicationsets option").hide()
+    }
+
+    $("#inpatient_ipd_record_discharge_note_attributes_medicationsets option").each(function(){
+      let medication_set = $(this).text().toLowerCase();
+      if(medication_set.indexOf(search_medication_set) > -1) {
+        $(this).show()
+      } else {
+        $(this).hide();
+      }
+    })
+  })
+</script>

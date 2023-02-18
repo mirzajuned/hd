@@ -1,0 +1,114 @@
+// Toggle IOL Fields
+$(".patient-procedures").on('click', ".iol_present", function(){
+  if($(this).is(':checked')){
+    $(this).closest(".agreed_declined_row").find(".iol_fields").show()
+  } else {
+    $(this).closest(".agreed_declined_row").find(".iol_fields").hide()
+    $(this).closest(".agreed_declined_row").find(".iol_fields").find(".iol_power_used").val("")
+    $(this).closest(".agreed_declined_row").find(".iol_fields").find(".iol_power").val("")
+  }
+})
+
+if($(".removed-procedures-name").html() != undefined && $(".removed-procedures-name").html().trim() == ""){
+  $(".removed-procedures").hide()
+}
+
+$(".patient-procedures").on('click', ".btn-remove-procedure", function(e){
+  e.preventDefault();
+  if($(this).closest(".patient-procedure").hasClass("new-entry")){
+    $(this).closest(".patient-procedure").remove()
+  } else {
+    // Update Removed Fields
+    $(this).closest(".patient-procedure").find('.is_removed').val("true")
+    $(this).closest(".patient-procedure").find('.removed_by_id').val("<%= current_user.id %>")
+    $(this).closest(".patient-procedure").find('.removed_by').val("<%= current_user.fullname %>")
+    $(this).closest(".patient-procedure").find('.removed_from').val("counsellor_record")
+    $(this).closest(".patient-procedure").find('.removed_at_facility_id').val("<%= current_facility.id %>")
+    $(this).closest(".patient-procedure").find('.removed_at_facility').val("<%= current_facility.name %>")
+    $(this).closest(".patient-procedure").find('.removed_datetime').val("<%= Time.current %>")
+    $(this).closest(".patient-procedure").hide()
+
+    // Update Agreed/Declined Fields
+    if($(this).closest(".patient-procedure").find('.has_agreed').is(':checked')){
+      $(agreed_declined_row).find('.has_agreed').trigger('click')
+    }
+    if($(this).closest(".patient-procedure").find('.has_declined').is(':checked')){
+      $(agreed_declined_row).find('.payment_taken').trigger('click')
+    }
+
+    // Show Removed Procedures
+    var removed_procedures = $(".removed-procedures-name").html()
+    var procedure_name = $(this).closest(".patient-procedure").find('.procedure-name').html()
+    if($(".removed-procedures-name").html().trim() == ""){
+      $(".removed-procedures-name").html(procedure_name.trim())
+    } else {
+      $(".removed-procedures-name").html((removed_procedures + " | " + procedure_name).trim())
+    }
+    $(".removed-procedures").show()
+  }
+
+  if($(".patient-procedure").length == 0){
+    $(".no-procedure").show()
+  }
+})
+
+<% if @counsellor_record.try(:id).present? %>
+  var counsellor_record_id =  "<%= @counsellor_record.try(:id) %>"
+<% end %>
+
+$('.search_procedures').autocomplete({
+  minLength: 2,
+  source: function(request, response) {
+    $.ajax({
+      dataType: "json",
+      type: 'get',
+      url: '/common_procedures/search',
+      data: {
+        search: request.term,
+        speciality_id: '309988001',
+        remote: "true" },
+      success: function(data) {
+        response(data);
+      },
+      error: function(data) {
+      }
+    });
+  },
+  select: function( event, ui ) {
+    var counter = $(".patient-procedure").length
+    var data = {counsellor_record_id: counsellor_record_id, counter: counter, code: ui.item['code'], procedure_code: ui.item['code'], procedure_type: ui.item['procedure_type'], remote: "true"}
+    get_procedure_details(data)
+    setTimeout(function() {
+      $(".search_procedures").val("")
+    }, 50);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+      return $('<li>')
+          .append('<a>' + item.label  + '&nbsp; &nbsp; &nbsp;' + "<span class=\"badge pull-right\">" + item.procedure_type_label + "</span>" + '</a>')
+          .appendTo(ul);
+    };
+ },
+});
+
+function get_procedure_details(data){
+  $.ajax({
+    dataType: "html",
+    type: 'get',
+    url: '/counsellor_records/get_procedure_details',
+    data: data,
+    success: function(response){
+      $("#patient-advised-procedures").append(response)
+      $(".no-procedure").hide()
+
+      datepicker_options = {
+        maxDate: -0,
+        dateFormat: "dd/mm/yy"
+      }
+
+      $(".agreed_datetime").datepicker(datepicker_options)
+      $(".declined_datetime").datepicker(datepicker_options)
+      $(".payment_taken_datetime").datepicker(datepicker_options)
+    }
+  });
+}

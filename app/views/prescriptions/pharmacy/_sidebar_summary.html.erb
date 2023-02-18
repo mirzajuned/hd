@@ -1,0 +1,108 @@
+<div class="row no-margin text-center">
+  <div class="row no_margin pharmacy_tabs" style="width: 98%; margin-top: -15px;margin-left:7px;">
+    <ul class="nav nav-tabs tab_active" role="tablist">
+      <li role="presentation" class="full-width <%= "active" if (params[:active_tab] == 'my_queue' || params[:active_tab] == nil) %>" data-tab-id="my_queue">
+        <a href="#my_queue_list" id="my-queue-list" aria-controls="home" role="tab" data-toggle="tab">
+          <span style="display: block; font-size: 16px;" class="my_queue_list"><%= @my_queue_prescriptions.count %></span>
+          <% if @current_date < Date.current %>
+            Incompleted
+          <% else %>
+            My Queue
+          <% end %>
+        </a>
+      </li>
+
+      <li role="presentation" class="full-width <%= "active" if (params[:active_tab] == 'all') %>" data-tab-id="all">
+        <a href="#all_list" id="my-queue-list" aria-controls="home" role="tab" data-toggle="tab">
+        <span style="display: block; font-size: 16px;" class="all_list_count"><%= @all_prescriptions.count %></span>
+          All
+        </a>
+      </li>
+      <li role="presentation" class="full-width <%= "active" if params[:active_tab] == 'converted' %>" data-tab-id="converted">
+        <a href="#converted_list" id="my-queue-list" aria-controls="home" role="tab" data-toggle="tab">
+        <span style="display: block; font-size: 16px;" class="converted_list_count"><%= @converted_prescriptions.count %></span>
+          Converted
+        </a>
+      </li>
+      <li role="presentation" class="full-width <%= "active" if params[:active_tab] == 'not_converted' %>" data-tab-id="not_converted">
+        <a href="#not_converted_list" id="my-queue-list" aria-controls="home" role="tab" data-toggle="tab">
+        <span style="display: block; font-size: 16px;" class="not_converted_list_count"><%= @not_converted_prescriptions.count %></span>
+          Not Converted
+        </a>
+      </li>
+    </ul>
+  </div>
+
+  <div class="row no_margin  summary_body collapse in" id="summary_pharmacy_today">
+    <div class="pharmacy_today">
+      <div class="tab-content" style="width:95%; margin-left:10px;">
+        <div role="tabpanel" class="pharmacy_content tab-pane <%= "active" if (params[:active_tab] == 'my_queue' || params[:active_tab] == nil) %>" id="my_queue_list">
+          <%= render partial: 'prescriptions/pharmacy/data_rows.html.erb', locals: { prescription_list: @my_queue_prescriptions } %>
+        </div>
+        <div role="tabpanel" class="pharmacy_content tab-pane <%= "active" if (params[:active_tab] == 'all') %>" id="all_list">
+          <%= render partial: 'prescriptions/pharmacy/data_rows.html.erb', locals: { prescription_list: @all_prescriptions } %>
+        </div>
+        <div role="tabpanel" class="pharmacy_content tab-pane <%= "active" if params[:active_tab] == 'converted' %>" id="converted_list">
+          <%= render partial: 'prescriptions/pharmacy/data_rows.html.erb', locals: { prescription_list: @converted_prescriptions } %>
+        </div>
+        <div role="tabpanel" class="pharmacy_content tab-pane <%= "active" if params[:active_tab] == 'not_converted' %>" id="not_converted_list">
+          <%= render partial: 'prescriptions/pharmacy/data_rows.html.erb', locals: { prescription_list: @not_converted_prescriptions } %>
+        </div>
+      </div>
+    </div>
+  </div><!-- summary_body -->
+</div>
+
+<style type="text/css">
+  /*.full-width {
+    width: 25%;
+  }*/
+</style>
+
+<script type="text/javascript">
+  var tab_count = $('.tab_active').find('li').length
+  $(".full-width").css('width',100/tab_count+"%")
+
+  $(".summary_pharmacy_clickable").on('click', function(){
+    $("#pharmacy_summary").html('<div class="loading_dots"> <span></span> <span></span> <span></span></div>').css('background','#fff')
+    $("#summary_pharmacy_today").find(".active-pharmacy").removeClass("active-pharmacy")
+    $(this).addClass("active-pharmacy")
+    $.ajax({
+      type: "GET",
+      dataType: "script",
+      data: {
+        prescription_id: $(this).attr('data-prescription-id'),
+        store_id: $(this).attr('data-store-id'),
+        current_date: "<%= @current_date.strftime('%d/%m/%Y') %>"
+      },
+      url: "/prescriptions/pharmacy_details",
+      success: function(){
+
+      }
+    })
+  })
+
+  // Initialize Trigger on Load
+  var params_prescription = $("#summary_pharmacy_today").find(".active").find("[data-prescription-id='<%= @prescription_id %>']")
+  var js_prescription = $("#summary_pharmacy_today").find(".active").find(".summary_pharmacy_clickable")
+  if(params_prescription.length > 0){
+    params_prescription.trigger('click');
+  } else {
+    if(js_prescription.length > 0){
+      js_prescription.first().trigger('click')
+    } else {
+      $("#pharmacy_summary").html("").css("background-color","transparent")
+    }
+  }
+
+  // Initialize Trigger on Change of Tabs
+  $(".full-width").find('a').on('click', function(){
+    var href = $(this).attr("href")
+    var pharmacy_list = $(href).find(".summary_pharmacy_clickable")
+    if(pharmacy_list.length > 0){
+      pharmacy_list.first().trigger('click')
+    } else {
+      $("#pharmacy_summary").html("").css("background-color","transparent")
+    }
+  })
+</script>

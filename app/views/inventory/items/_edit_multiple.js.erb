@@ -1,0 +1,414 @@
+$('.item_sub_category').on('change',function(){
+  var index = $(this).data('index');
+  var subCategoryName = $(this).find('option:selected').text()
+  $('#inventory_item_'+index+'_sub_category_name').val(subCategoryName)
+})
+
+if ($('.remove-item').length > 1){
+  $('.remove-item').removeAttr('disabled')
+} else {
+  $('.remove-item').attr('disabled', 'disabled')
+}
+
+$("#new-items-form").validate({
+  rules: {
+    "inventory_item[*][description]": {
+      required: true
+    },
+    "inventory_item[*][sub_package_units]": {
+      required: true
+    },
+    "inventory_item[*][item_units]": {
+      required: true
+    },
+    "inventory_item[*][hsn_no]": {
+      required: "<%=current_organisation['inventory_hsn_code_required']%>",
+    },
+    "inventory_item[*][tax_group_id]": {
+      required: true,
+    },
+    
+    "inventory_item[*][expiry_present]": {
+      required: true,
+      dateISO: true
+    },
+  },
+  errorPlacement: function (error, element) {
+    if (element.is('select')) {
+      error.insertAfter(element.parent().find('.selection'))
+    } else {
+      error.insertAfter(element);
+    }
+  }
+});
+function validateItemsForm(){
+  var arr = []
+  $('.inventory_item_description').each(function(){
+    if ($(this).val().length > 2) {
+      arr.push($(this).val());
+    }
+  });
+  var arr = arr.sort();
+  $.ajax({
+    url: "/inventory/items/check_description",
+    data: {
+      from: "bulk_upload",
+      descriptions: arr,
+    },
+    success: function(resp){
+      var duplicates = [];
+      if (resp.existing.length > 0){
+        duplicates = resp.existing;
+      }
+      for (var i = 0; i < arr.length - 1; i++) {
+        if (arr[i + 1] == arr[i]) {
+          duplicates.push(arr[i]);
+        }
+      }
+      var uniqDuplicates = duplicates.filter(function(item, pos){
+        return duplicates.indexOf(item)== pos; 
+      });
+      if (duplicates.length == 0) {
+        $('#new-items-form').submit()
+      } else {
+        $('#new-items-form').valid()
+        $(".inventory_item_description").each(function(){
+          if (uniqDuplicates.includes($(this).val())) {
+            var index = $(this).data('index')
+            error = '<label id="inventory_item_'+index+'_description-error" class="error" for="inventory_item_'+index+'_description">Already in use.</label>'
+            $(error).insertAfter('#inventory_item_'+index+'_description')
+            $(this).addClass('error')
+          }
+        })
+      }
+    }
+  })
+}
+
+$('.item_tax_group_id').change(function(){
+  var index = $(this).data('index');
+  var taxName = $(this).find('option:selected').data('name')
+  var taxRate = $(this).find('option:selected').data('rate')
+  $('#inventory_item_'+index+'_tax_rate').val(taxRate)
+  $('#inventory_item_'+index+'_tax_name').val(taxName)
+})
+
+$('.remove-item').on('click', function(){
+  if ($('.body').length == 1){
+    $('.modal-body').append("<div class='row error-row text-center'>No Data to Display, please upload sheet again.</div>")
+  }
+  $(this).parents('.body').next().remove()
+  $(this).parents('.body').remove()
+  if ($('.remove-item').length > 1){
+    $('.remove-item').removeAttr('disabled')
+  } else {
+    $('.remove-item').attr('disabled', 'disabled')
+  }
+})
+
+var counter = 0
+
+$('.item_category').change(function(){
+  var index = $(this).data('index');
+  if (counter >= $('.item_category').length){
+    $.ajax({
+      type: 'GET',
+      url: "/inventory/items/get_sub_categories",
+      data: { 
+        category_id: $(this).val(),
+        index: index
+      }
+    })
+  
+    $.ajax({
+      type: 'GET',
+      url: "/inventory/items/get_dispensing_units",
+      data: { 
+        category_ids: [$(this).val()],
+        from: 'edit_form',
+        index: index
+      }
+    })
+  
+    var index = $(this).data('index')
+    $.ajax({
+      type: 'POST',
+      url: "/inventory/items/add_possible_variant",
+      data: {
+        index: index,
+        category_id: $(this).val()
+      }
+    })
+  }
+  counter = counter + 1
+
+  var categoryName = $(this).find('option:selected').text()
+  $('#inventory_item_'+index+'_category').val(categoryName)
+  $('#inventory_item_'+index+'_category_name').val(categoryName)
+  var categoryType = $(this).find('option:selected').data('category-type')
+  $(this).parents('.body').find('.item_model_no').hide()
+  $(this).parents('.body').find('.item_pricing_index').hide()
+  $(this).parents('.body').find('.item_expiry_present').hide()
+  $(this).parents('.body').find('.item_prescription_mandatory').hide()
+  
+  $('.generic-compositions-container-' + index).hide()
+  $(this).parents('.body').next().find('.btn-add-item').hide()
+  $(this).parents('.body').find('.btn-add-item').hide()
+  $(this).parents('.body').next().find('.medicine_classes').hide()
+  var stockable = $(this).find('option:selected').data('stockable')
+  if (stockable){
+    $(this).parents('.body').find('.stockable').hide()
+    $(this).parents('.body').find('.stockable').attr("checked", 'checked')
+    $(this).parents('.body').find('.stockable').val("true")
+  } else {
+    $(this).parents('.body').find('.stockable').show()
+  }
+
+  if (categoryType == 'optical'){
+    $(this).parents('.body').find('.item_model_no').show()
+    $(this).parents('.body').find('.item_pricing_index').show()
+  }
+  else {
+    if (categoryType == 'medication'){
+      $(this).parents('.body').find('.item_expiry_present').show()
+      $(this).parents('.body').find('.item_prescription_mandatory').show()
+      $('.generic-compositions-container-' + index).show()
+      $(this).parents('.body').next().find('.btn-add-item').show()
+      $(this).parents('.body').next().find('.medicine_classes').show()
+    }
+    if (categoryType == 'miscellaneous'){
+      $(this).parents('.body').find('.item_expiry_present').show()
+    }
+  }
+})
+$('.item_category').select2();
+$('.item_sub_category').select2();
+$('.item-custom-field-value').select2({
+  tags: true,
+  tokenSeparators: [','],
+  placeholder: "Enter possible values",
+  val: []
+})
+
+$('.item_category').change()
+
+$('.item_package_type').select2();
+$('.item_sub_package_type').select2();
+$('.item_item_type').select2();
+$('.item_tax_group_id').select2();
+
+$('.btn-add-item').unbind().on('click',function(){
+  var index = $(this).data('index')
+  $.ajax({
+    type: 'POST',
+    url: "/inventory/items/add_generic_composition",
+    data: { 
+      index: index
+    }
+  })
+})
+
+$('.btn-add-item-cf').unbind().on('click',function(){
+  var index = $(this).data('index')
+  $.ajax({
+    type: 'POST',
+    url: "/inventory/items/add_possible_variant",
+    data: {
+      index: index,
+    }
+  })
+})
+
+$('.btn-remove-item').unbind().on('click',function(){
+  $(this).parent().parent().remove()
+})
+
+$('.btn-remove-item-cf').unbind().on('click',function(){
+  $(this).parent().parent().remove()
+})
+
+$('.btn-add-item-cf').unbind().on('click',function(){
+  var index = $(this).data('index')
+  $.ajax({
+    type: 'POST',
+    url: "/inventory/items/add_possible_variant",
+    data: {
+      index: index,
+    }
+  })
+})
+
+$('.item_tax_group_id').change();
+
+$(".item_medicine_class").autocomplete({
+  minLength: 2,
+  source: function(request, response) {
+    $.ajax({
+      dataType: "json",
+      type: 'get',
+      url: '/generic_compositions/search_class',
+      data: {
+        q: request.term,
+        category: $($(this)[0].element).parents('tr').find('.AddedCategory').text(),
+        remote: "true"
+      },
+      success: function(data) {
+        response(data);
+      },
+      error: function(data) {}
+    });
+  },
+  select: function(event, ui) {
+    var itemname = ui.item.name;
+    $(this).val(itemname);
+    console.log(ui.item)
+    console.log(ui)
+    var index = $(this).data('index')
+    let counter = $(this).parent().next().find('.item-class-card').length
+    
+    if ($(this).parent().next().find('.item_class_id[value='+ ui.item.class_id +']').length == 0){
+      $(this).parent().next().find('.item_class_section').append(`
+        <div class="alert alert-info col-md-4 item-class-card">
+          <span class='btn-remove-class' aria-hidden="true">&times;</span></button>
+          <p>${itemname}</p>
+          <input type="hidden" name="inventory_item[${index}][medicine_class_name_attributes][${counter}][medicine_class]" class='item_class' readonly='true' value='${itemname}'>
+          <input type="hidden" name="inventory_item[${index}][medicine_class_name_attributes][${counter}][medicine_class_id]" class='item_class_id' readonly='true' value='${ui.item.class_id}'>
+        </div> 
+      `)
+    }
+    else
+    {
+      $(this).parent().next().find('.item_class_id[value='+ ui.item.class_id +']').closest('.item-class-card').toggleClass('alert-danger', 1000).toggleClass('alert-danger', 1000);
+    }
+    $(this).val('');
+    return false;
+  },
+  create: function() {
+    $(this).data('ui-autocomplete')._renderItem = function(ul, item) {
+      return $('<li>')
+        .append('<a style=\"color:#000;text-shadow: 2px\">' + item.name + '&nbsp; &nbsp; &nbsp;' + '</a>')
+        .appendTo(ul);
+    };
+  },
+});
+
+$('.item_class_section').on('click', '.btn-remove-class', function(e){
+  e.preventDefault();
+  $(this).closest('.item-class-card').remove()
+  if ($(this).parents('.row').find('.AddedCategory').text() == '') {
+    $(this).parents('.row').find('.clear-filters-tag').hide()  
+  }
+})
+$('.clear-filters-tag').hide()
+
+$('.category-name').on('click', function(e) {
+  e.preventDefault();
+  generic_class_category = $(this).text()
+  $(this).parents('.medicine_classes').find('.AddedCategory').text(generic_class_category)
+  $(this).parents('.medicine_classes').find('.clear-filters-tag').show()
+  $(this).parents('.medicine_classes').find('.filter_text').show()
+  
+})
+
+$('.clear-filters-tag').on('click', function(e) {
+  e.preventDefault();
+  $(this).parents('.medicine_classes').find('.AddedCategory').empty()
+  $(this).hide()
+  $(this).parents('.filter_text').hide()
+})
+
+$('.item_fixed_threshold').on('click', function(){
+  if ($(this).val() == 'false'){
+    $(this).parents('.body').find('.item_threshold_value').show()
+    
+    $(this).parents('.body').find('.item_threshold').addClass('hidden')
+    $(this).val('true')
+    $(this).attr('checked', 'checked')
+  }else {
+    $(this).val('false')
+    $(this).removeAttr('checked')
+    $(this).parents('.body').find('.item_threshold').removeClass('hidden')
+    $(this).parents('.body').find('.item_threshold_value').hide()
+  }
+})
+
+$('.prescription_mandatory, .expiry_present, .item_unit_level, .tax_inclusive, .stockable').on('click', function(){
+  if ($(this).val() == 'false'){
+    $(this).val('true')
+    $(this).attr('checked', 'checked')
+  }else {
+    $(this).val('false')
+    $(this).removeAttr('checked')
+  }
+})
+
+$('.item_package_type').on('change', function(){
+  $(this).parents('.body').find('.package_type_label').html('/' + $(this).val())
+})
+
+$('.item_sub_package_type').on('change', function(){
+  $(this).parents('.body').find('.sub_package_type_label').html('/' + $(this).val())
+})
+
+$('.clear-generic-tag').hide()
+$('.filter_text').hide()
+
+$('.generic-compositions-sections').on('keyup', '.item_name', function(e) {
+  if ($(this).val().length >= 2) {
+    $(this).autocomplete({
+      minLength: 2,
+      source: function(request, response) {
+        $.ajax({
+          dataType: "json",
+          type: 'get',
+          url: '/generic_compositions/search',
+          data: {
+            q: request.term,
+            remote: "true"
+          },
+          success: function(data) {
+            response(data);
+          },
+          error: function(data) {}
+        });
+      },
+      focus: function(event, ui) {
+      },
+      select: function(event, ui) {
+        var itemname = ui.item.name;
+        if ($(this).parents('.generic-compositions-sections').find('.generic_id[value='+ui.item.generic_id+']').length > 0)
+        {
+          $(this).toggleClass('alert-danger', 1000).toggleClass('alert-danger', 2000);
+        }
+        else
+        {
+          $(this).prop('readonly', true).val(itemname);
+          $(this).next().val(ui.item.generic_id)
+          $(this).parents('.generic-compositions-sections').prev().find('.clear-generic-tag').show()
+        }  
+        return false;
+      },
+      create: function() {
+        $(this).data('ui-autocomplete')._renderItem = function(ul, item) {
+          return $('<li>')
+            .append('<a style=\"color:#000;text-shadow: 2px\">' + item.name + '&nbsp; &nbsp; &nbsp;' + '</a>')
+            .appendTo(ul);
+        };
+      },
+    });
+  }
+})
+
+$('.clear-generic-tag').on('click', function(e){
+  $(this).parent().next().find('.generic-compositios-row:not(:last-child)').remove()
+  $(this).parent().next().find('.generic-compositios-row:last-child').find('.item_name').val('')
+  $(this).parent().next().find('.generic-compositios-row:last-child').find('.generic_id').val('')
+  $(this).parent().next().find('.generic-compositios-row:last-child').find('.generic-qty').val('')
+  $(this).parent().next().find('.generic-compositios-row:last-child').find('.generic-unit').val('')
+  $(this).parent().next().find('.generic-compositios-row:last-child').find('.item_name').removeAttr('readonly')
+  $(this).parent().next().find('.generic-compositios-row:last-child').find('.item_name').removeAttr('disabled')
+  $(this).hide()
+})
+
+$('.item_package_type').change()
+$('.item_sub_package_type').change()

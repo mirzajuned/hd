@@ -1,0 +1,312 @@
+<% @payer_masters = payer_fields if @payer_masters.nil? %>
+<% @refund_payments = refund_payments if @refund_payments.nil? %>
+<% @patient = patient if @patient.nil? %>
+<% precision = (invoice.currency_id == "VND001") ? 0 : 2  %>
+<% @currency_symbol ||= currency_symbol %>
+<% @invoice = invoice %>
+<% @visit_diagnoses = visit_diagnoses %>
+<% @visit_ophthal_investigations = visit_ophthal_investigations %>
+<% @visit_laboratory_investigations = visit_laboratory_investigations %>
+<% @visit_radiology_investigations = visit_radiology_investigations %>
+<% @visit_procedures = visit_procedures %>
+<% @header_title = organisation_settings.custom_invoice_header_title.present? ? organisation_settings.custom_invoice_header_title["ipd_invoices_title"]['invoices'][0]["#{invoice.try(:invoice_type)}_header_title"] : '' %>
+<div class="container-fluid">
+  <div class="row mb5">
+    <span style="font-size:12px;" class="text-center col-md-12"><b><%= Invoice::InvoicesHelper.cancelled_text(@header_title, @invoice&.is_canceled || false, true) %></b></span>
+  </div>
+  <div class="row mb10" id="patient_button">
+    <%= render partial: 'invoice/ipd/overall_info.html.erb', locals: { patient: patient , admission: admission, invoice: invoice, flag: "Invoice", current_user: current_user } %>
+  </div>
+  <% if @invoice.try(:patient_payer_data).present? %>
+    <div class="appointment-patient-details mb10" style="border: 1px solid #666;padding: 2px;">
+      <div class="row" id="" style="">
+        <%= render partial: 'invoice/invoices/patient_payer_data_view.html.erb', locals: { patient: @patient, invoice: @invoice } %>
+      </div>
+    </div>
+  <% end %>
+  <% if @visit_diagnoses.try(:size).to_i > 0 || @visit_procedures.try(:size).to_i > 0 %>
+    <div class="row mb10" id="" style="border-bottom: 1px solid #eee;">
+      <%= render partial: 'invoice/invoices/patient_assessment_data_view.html.erb', locals: { patient: @patient, invoice: @invoice, mail_job: true } %>
+    </div>
+  <% end %>
+
+  <div class="row">
+    <div class="row mb5" style="border-bottom:1px solid #eee;">
+      <div class="col-md-1"><b style="color:#000;">S.No</b></div>
+      <div class="col-md-4"><b style="color:#000;">Item Description</b></div>
+      <div class="col-md-1"><b style="color:#000;">Quantity</b></div>
+      <div class="col-md-2 text-right"><b style="color:#000;">Unit&nbsp;Price(<%=@currency_symbol%>)</b></div>
+      <div class="col-md-2 text-right"><b style="color:#000;">Gross&nbsp;Price(<%=@currency_symbol%>)</b></div>
+      <div class="col-md-2 text-right"><b style="color:#000;">Net&nbsp;Price(<%=@currency_symbol%>)</b></div>
+    </div>
+  </div>
+  <% if @invoice.version == "v20.0" %>
+    <%= render partial: "invoice/ipd/print_service_item_v20.html.erb", locals: { precision: precision, current_user: current_user } %>
+  <% else %>
+    <% @facility_setting = facility_setting %>
+    <%= render partial: "invoice/ipd/print_service_item_v21.html.erb", locals: { precision: precision, current_user: current_user } %>
+  <% end %>
+  <hr>
+  <div class="row mb20 invoice_calculation_list">
+    <div class="col-md-6">
+      <!-- Advance Row -->
+      <% if @invoice.advance_payment_breakups.count > 0 %>
+        <div class="row">
+          <div class="col-md-12">
+            <% if @invoice.advance_payment_breakups.count > 1 %>
+              <p>Advance Settled :
+                <ul style="margin-left: -25px;">
+                  <% @invoice.advance_payment_breakups.try(:each_with_index) do |advance_payment, i| %>
+                    <% advance_payment_amount_with_precision = number_with_precision(advance_payment.amount, precision: precision) %>
+                    <% advance_payment_amount_display = Common::Finance::NumberFormatService.call(@number_format, advance_payment_amount_with_precision) %>
+                    <li><b><%= advance_payment.currency_symbol %> <%= advance_payment_amount_display %></b> (against advance by <b><%= advance_payment.mode_of_payment.titleize %></b> on <b><%= advance_payment.advance_date.strftime("%d/%m/%Y") %>)</b>.</li>
+                  <% end %>
+                </ul>
+              </p>
+            <% else %>
+              <% @invoice.advance_payment_breakups.try(:each_with_index) do |advance_payment, i| %>
+                <% advance_payment_amount_with_precision = number_with_precision(advance_payment.amount, precision: precision) %>
+                <% advance_payment_amount_display = Common::Finance::NumberFormatService.call(@number_format, advance_payment_amount_with_precision) %>
+                <p>Advance Settled  : <b><%= advance_payment.currency_symbol %> <%= advance_payment_amount_display %></b> (against advance by <b><%= advance_payment.mode_of_payment.titleize %></b> on <b><%= advance_payment.advance_date.strftime("%d/%m/%Y") %>)</b>.</p>
+              <% end %>
+            <% end %>
+          </div>
+        </div>
+        <hr style="margin: 5px;" />
+      <% end %>
+      <!-- Received Row -->
+      <% if @invoice.payment_received_breakups.count > 0 %>
+        <div class="row">
+          <div class="col-md-12">
+            <% if @invoice.payment_received_breakups.count > 1 %>
+              <p>Received with thanks a sum of :
+                <ul style="margin-left: -25px;">
+                  <% @invoice.payment_received_breakups.try(:each_with_index) do |payment_received, i| %>
+                    <% if payment_received.try(:amount_received).to_f > 0 %>
+                      <% if payment_received.received_from.to_s == @invoice.patient_id.to_s %>
+                        <% @received_from = @invoice.patient.fullname %>
+                      <% else %>
+                        <% @received_from = @payer_masters.find {|c| c[:id] == payment_received.try(:received_from).to_s }[:display_name] %>
+                      <% end %>
+                      <% receipt_id = payment_received.receipt_id %>
+                      <% payment_received_amount_with_presicion = number_with_precision(payment_received.try(:amount_received), precision: precision) %>
+                      <% payment_received_amount_display = Common::Finance::NumberFormatService.call(@number_format, payment_received_amount_with_presicion) %>
+                      <b><%= receipt_id.split("-").last %>.&nbsp;<%= payment_received.try(:currency_symbol) || @invoice.try(:currency_symbol) %> <%= payment_received_amount_display %></b> from <b><%= @received_from.to_s.upcase %></b> by <b><%= payment_received.mode_of_payment.titleize %></b> on <b><%= payment_received.date.strftime("%d/%m/%Y") %>.</b><br/>
+                    <% end %>
+                  <% end %>
+                </ul>
+              </p>
+            <% else %>
+              <% @invoice.payment_received_breakups.try(:each_with_index) do |payment_received, i| %>
+                <% if payment_received.try(:amount_received).to_f > 0 %>
+                  <% if payment_received.received_from.to_s == @invoice.patient_id.to_s %>
+                    <% @received_from = @invoice.patient.fullname %>
+                  <% else %>
+                    <% @received_from = @payer_masters.find {|c| c[:id] == payment_received.try(:received_from).to_s }[:display_name] %>
+                  <% end %>
+                  <% payment_received_amount_with_presicion = number_with_precision(payment_received.amount, precision: precision) %>
+                  <% payment_received_amount_display = Common::Finance::NumberFormatService.call(@number_format, payment_received_amount_with_presicion) %>
+                  <p>Received with thanks a sum of <b><%= payment_received.currency_symbol %> <%= payment_received_amount_display %></b> from <b><%= @received_from.to_s.upcase %></b> by <b><%= payment_received.mode_of_payment.titleize %></b> on <b><%= payment_received.date.strftime("%d/%m/%Y") %></b>.</p>
+                <% end %>
+              <% end %>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+      <!-- Pending Row -->
+      <% if @invoice.payment_pending_breakups.count > 0 %>
+        <div class="row">
+          <div class="col-md-12">
+            <p><%= Invoice::InvoicesHelper.cancelled_text('Payment Pending', invoice&.is_canceled || false) %> :
+              <ul style="margin-left: -25px;">
+                <% @invoice.payment_pending_breakups.try(:each_with_index) do |payment_pending, i| %>
+                  <% if payment_pending.received_from.to_s == @invoice.patient_id.to_s %>
+                    <% @received_from = @invoice.patient.fullname %>
+                  <% else %>
+                    <% @received_from = @payer_masters.find {|c| c[:id] == payment_pending.try(:received_from).to_s }[:display_name] %>
+                  <% end %>
+                  <% payment_pending_amount_with_presicion = number_with_precision(payment_pending.amount, precision: precision) %>
+                  <% payment_pending_amount_display = Common::Finance::NumberFormatService.call(@number_format, payment_pending_amount_with_presicion) %>
+                  <li><b><%= payment_pending.currency_symbol %> <%= payment_pending_amount_display %></b> from <b><%= @received_from.to_s.upcase %></b>.</li>
+                <% end %>
+              </ul>
+            </p>
+          </div>
+        </div>
+      <% end %>
+      <% if @invoice.patient_comment.present? %>
+        <hr style="margin:5px;">
+        <div class="row">
+          <div class="col-md-12">
+            <b>Remarks :</b> <%= @invoice.patient_comment %>
+          </div>
+        </div>
+      <% end %>
+      <% if @refund_payments.present? %>
+        <hr style="margin:5px;">
+        <div class="row">
+          <% @refund_payments.each do |refund_payment| %>
+            <div class="col-md-12" style="padding-bottom: 10px;">
+              <% amount_with_precision = number_with_precision(refund_payment.amount, precision: precision) %>
+              <% amount_display = Common::Finance::NumberFormatService.call(@number_format, amount_with_precision) %>
+              <p>Refunded a sum of <b><%= refund_payment.currency_symbol %> <%= amount_display %></b> to <b><%= @patient.fullname.to_s.upcase %></b> by <b><%= refund_payment.mode_of_payment.titleize %></b> dated <b><%= refund_payment.try(:refund_time).try(:strftime, '%I:%M %p') || @invoice.try(:refund_time).try(:strftime, '%I:%M %p') %>, <%= refund_payment.try(:refund_date).try(:strftime, '%d/%m/%Y') || @invoice.try(:refund_date).try(:strftime, '%d/%m/%Y') %></b>.</p>
+              <p>Refund Remark:  <b><%= refund_payment.reason || "-" %></b></p>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+    <div class="col-md-6">
+      <div class="row">
+        <div class="col-md-6 col-md-offset-1 text-right">
+          <b>Gross Bill Total :</b>
+        </div>
+        <div class="col-md-5 text-right">
+          <% invoice_total_with_precision =  number_with_precision(invoice.total, precision: precision) %>
+          <% invoice_total_display = Common::Finance::NumberFormatService.call(@number_format, invoice_total_with_precision) %>
+          <b style="color:#000;"><%= invoice_total_display %></b>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-6 col-md-offset-1 text-right">
+          <b>Total Discount on Items :</b>
+        </div>
+        <div class="col-md-5 text-right">
+          <% services_discount_with_precision = number_with_precision(invoice.services_discount, precision: precision) %>
+          <% services_discount_with_display = Common::Finance::NumberFormatService.call(@number_format, services_discount_with_precision) %>
+          <b><%= services_discount_with_display %></b>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-6 col-md-offset-1 text-right">
+          <b>Total offer discount on Items :</b>
+        </div>
+        <div class="col-md-5 text-right">
+          <% services_offer_with_precision = number_with_precision(invoice.offer_on_services, precision: precision) %>
+          <% services_offer = Common::Finance::NumberFormatService.call(@number_format, services_offer_with_precision) %>
+          <b><%= services_offer %></b>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-6 col-md-offset-1 text-right">
+          <b>Additional Discount on Bill :</b>
+        </div>
+        <div class="col-md-5 text-right">
+          <% discount_with_precision = number_with_precision(invoice.additional_discount, precision: precision) %>
+          <% discount_with_display = Common::Finance::NumberFormatService.call(@number_format, discount_with_precision) %>
+          <b><%= discount_with_display %></b>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-6 col-md-offset-1 text-right">
+          <b>Offer Discount on Bill :</b>
+        </div>
+        <div class="col-md-5 text-right">
+          <% offer_on_bill_with_precision = number_with_precision(invoice.offer_on_bill, precision: precision) %>
+          <% offer_on_bill_display = Common::Finance::NumberFormatService.call(@number_format, offer_on_bill_with_precision) %>
+          <b><%= offer_on_bill_display %></b>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-6 col-md-offset-1 text-right">
+          <b>Total of all Discounts :</b>
+        </div>
+        <div class="col-md-5 text-right">
+          <% total_discounts = invoice.total_offer + invoice.total_discount %>
+          <% total_discount_with_precision = number_with_precision(total_discounts, precision: precision) %>
+          <% total_discount_with_display = Common::Finance::NumberFormatService.call(@number_format, total_discount_with_precision) %>
+          <b><%= total_discount_with_display %></b>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-6 col-md-offset-1 text-right">
+          <b>Round :</b>
+        </div>
+        <div class="col-md-5 text-right">
+          <b><%= number_with_precision(invoice.round, precision: precision) %></b>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-6 col-md-offset-1 text-right">
+          <b>Net Bill Total(<%=@currency_symbol%>) :</b>
+        </div>
+        <div class="col-md-5 text-right">
+          <% net_amount_with_precision = number_with_precision(invoice.net_amount, precision: precision) %>
+          <% net_amount_display = Common::Finance::NumberFormatService.call(@number_format, net_amount_with_precision) %>
+          <b style="color:#000;"><%= net_amount_display %></b>
+        </div>
+      </div>
+      <% if invoice.is_refunded == true || invoice.is_canceled == true || invoice.payment_pending > 0 %>
+        <hr style="margin:5px 5px 1px 30%;">
+      <% end %>
+      <% if invoice.payment_pending > 0 %>
+        <div class="row">
+          <div class="col-md-6 col-md-offset-1 text-right">
+            <b><%= Invoice::InvoicesHelper.cancelled_text('Total Pending', invoice&.is_canceled || false) %> :</b>
+          </div>
+          <div class="col-md-5 text-right">
+            <% toal_pending_with_precision = number_with_precision(invoice.payment_pending, precision: precision) %>
+            <% total_pending_display = Common::Finance::NumberFormatService.call(@number_format, toal_pending_with_precision) %>
+            <b style="color:#000;"><%= total_pending_display %></b>
+          </div>
+        </div>
+      <% end %>
+      <% if invoice.is_refunded == true && invoice.refund_amount > 0 %>
+        <div class="row">
+          <div class="col-md-6 col-md-offset-1 text-right">
+            <b>Total Amount Refunded :</b>
+          </div>
+          <div class="col-md-5 text-right">
+            <% toal_refund_with_precision = number_with_precision(invoice.refund_amount, precision: precision) %>
+            <% total_refund_display = Common::Finance::NumberFormatService.call(@number_format, toal_refund_with_precision) %>
+            <b style="color:#000;"><%= total_refund_display %></b>
+          </div>
+        </div>
+      <% end %>
+      <% if invoice.is_refunded == true && invoice.is_canceled == false %>
+        <div class="row">
+          <div class="col-md-6 col-md-offset-1 text-right">
+            <b>Amount after refund :</b>
+          </div>
+          <div class="col-md-5 text-right">
+            <% amount_after_refund = invoice.net_amount.to_f - invoice.refund_amount.to_f %>
+            <% amount_after_refund_with_precision = number_with_precision(amount_after_refund, precision: precision) %>
+            <% amount_after_refund_display = Common::Finance::NumberFormatService.call(@number_format, amount_after_refund_with_precision) %>
+            <b style="color:#000;"><%= amount_after_refund_display %></b>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-md-7">
+      <% if organisation_settings.cin.present? %>
+        <strong>CIN:&nbsp;&nbsp;</strong><%= organisation_settings.cin %><br/>
+      <% end %>
+      <% if invoice.tax_enabled %>
+        <% if invoice_setting.gst_indentification_number.present? %>
+          <strong>GST No.:&nbsp;&nbsp;</strong><%= invoice_setting.gst_indentification_number %>
+        <% end %>
+      <% end %>
+    </div>
+    <!--Signature-->
+      <%= render partial: 'common/user_signature.html.erb',locals: {user_id: invoice.user.try(:id)} %>
+    <!--Signature Ends-->
+  </div>
+  <% if @invoice.is_draft == true %>
+    <br><br>
+    <div class="row">
+      <div class="col-md-12 text-center">
+        <b>Draft copy - This may not represent the final Bill</b>
+      </div>
+    </div>
+  <% end %>
+</div>
+<style type="text/css">
+  .container-fluid {
+    font-size: 8px;
+  }
+  .page_breaker {
+    page-break-after: always;
+  }
+</style>

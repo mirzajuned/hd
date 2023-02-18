@@ -1,0 +1,119 @@
+<% if @tax_invoice.created_against_store_id.to_s == params[:receive_store_id] %>
+  <% @tax_invoice.transfer_ids.each_with_index do |transfer_id, index| %>
+  	<% transfer = Inventory::Transaction::Transfer.find_by(id: transfer_id) %>
+  	<tr class="<%= transfer_id %>-treatmentmedications" style="background-color:#CEECFF;">
+  		<td><b><%= transfer.entry_type %></b></td>
+  		<td><b><%= transfer.transfer_display_id %></b></td>
+  		<td><b><%= transfer.transaction_time&.strftime('%d-%m-%Y') %></b></td>
+  		<td><b><%= transfer.approved_by_name %></b></td>
+  		<td class="col-md-1"><button type="button" class="btn btn-link hg-tooltip delete_empty_item input_focus_none" tabindex="-1" style="padding:0px;" title="Remove From List" id="<%= transfer_id %>"><i class="fa fa-trash-alt" style="color:#000;"></i></button></td>
+      <td class="col-md-1"></td>
+      <td class="col-md-1"></td>
+      <td class="col-md-1"></td>
+      <td class="col-md-1"></td>
+      <td class="col-md-1"></td>
+      <% if @tax_invoice.type == 'tax_invoice' %>
+        <td class="col-md-1"></td>
+        <td class="col-md-1"></td>
+      <% end %>
+  	</tr>
+    <% index_data = (Time.current.to_f.round(3)*1000).to_i + index %>
+  	<% transfer.items.each_with_index do |item, index| %>
+      <tr class="<%= transfer_id %>-treatmentmedications tax-invoice-row" id="<%= transfer_id %>" data="<%= item.id.to_s + "_" + index_data.to_s %>">
+        <% s_no = index %>
+        <% @tax_group = TaxGroup.find(item.tax_group_id) %>
+        <%= hidden_field_tag "inventory_tax_invoice[transfer_id]", transfer_id %>
+        <% @item = Inventory::Item.find_by(id: item.item_id) %>
+        <% variant = Inventory::Item::Variant.find_by(item_id: @item&.id) %>
+    		<td class="col-md-1 col-sm-1 col-xs-1">
+          <b class="serial-number"><%= s_no %></b>
+    		</td>
+        <td class="col-md-1 col-sm-1 col-xs-1">
+          <strong><%= item.description %></strong>
+        </td>
+        <td class="col-md-1 col-sm-1 col-xs-1">
+          <%= item.stock %>
+        </td>
+        <td class="col-md-1 col-sm-1 col-xs-1">
+          <%= item.hsn_no %>
+        </td>
+    		<td class="col-md-1 col-sm-1 col-xs-1">
+          <%= item.dispensing_unit %>
+    		</td>
+        <td class="col-md-1 col-sm-1 col-xs-1">
+          <%= item.batch_no %>
+        </td>
+        <td class="col-md-1 col-sm-1 col-xs-1">
+          <%= item.expiry %>
+        </td>
+        <td class="col-md-1 col-sm-1 col-xs-1">
+          <%# unit_cost_without_tax = item.unit_cost - ((item.unit_cost * item.tax_rate) / (100 + item.tax_rate))&.round(2) %>
+          <%= item.unit_cost_without_tax&.round(2) %>
+        </td>
+        <td class="col-md-1 col-sm-1 col-xs-1">
+          <%= item.list_price&.round(2) %>
+        </td>
+        <% if @tax_invoice.type == 'tax_invoice' %>
+          <td class="col-md-1 col-sm-1 col-xs-1">
+            <% taxable_amount = (item.unit_cost_without_tax.to_f * item.stock.to_f)&.round(2) || 0 %>
+            <%= taxable_amount %>
+            <input type="hidden" name="" class="taxable-amount" value="<%= taxable_amount %>">
+          </td>
+      		<td class="col-md-1 col-sm-1 col-xs-1">
+            <% tax_amount = (item.purchase_tax_amount&.round(2)).to_f %>
+            <%= tax_amount %>
+            <div><%= item.tax_rate %>&nbsp;%</div>
+            <input type="hidden" name="" class="tax-amount" value="<%= tax_amount %>">
+            <input type="hidden" name="" class="tax-rate" value="<%= item.tax_rate %>" readonly>
+            <input type="hidden" name="" class="tax-name" value="<%= item.tax_name %>">
+            <input type="hidden" name="" class="tax-group-id" value="<%= item.tax_group_id.to_s %>">
+      		</td>
+        <% end %>
+        <td class="col-md-1 col-sm-1 col-xs-1">
+          <% if @tax_invoice.type == 'tax_invoice' %>
+            <% net_amount = taxable_amount.to_f + tax_amount %>
+          <% else %>
+            <% net_amount = item.unit_cost_without_tax.to_f * item.stock.to_f %>
+          <% end %>
+          <%= net_amount&.round(2) %>
+          <input type="hidden" name="" class="net-amount" value="<%= net_amount %>">
+        </td>
+        <script>
+          var tax_group = {}
+          <% if @tax_group.type == "GST" %>
+            gst_type = find_gst_type()
+            if (gst_type == "intra_state"){
+              tax_rate_details = generate_intrastate_tax_rate()
+            }else{
+             tax_rate_details = generate_interstate_tax_rate()
+            }
+          <% else %>
+            tax_rate_details = generate_other_tax_rate()
+          <% end %>
+          
+          function generate_intrastate_tax_rate(){
+            <% tax = TaxGroup.find_by(id: item.tax_group_id) %>
+            <% tax_rate_details = tax.intrastate_tax_rate_details.collect{|tax_rate| tax_rate.merge(type: TaxRate.find(tax_rate[:id]).type)} %>
+            return <%= raw tax_rate_details.to_json %>
+          }
+
+          function generate_interstate_tax_rate(){
+            <% tax = TaxGroup.find_by(id: item.tax_group_id) %>
+            <% tax_rate_details = tax.interstate_tax_rate_details.collect{|tax_rate| tax_rate.merge(type: TaxRate.find(tax_rate[:id]).type)} %>
+            return <%= raw tax_rate_details.to_json %>
+          }
+          function generate_other_tax_rate(){
+            <% tax = TaxGroup.find_by(id: item.tax_group_id) %>
+            <% tax_rate_details = tax.tax_rate_details.collect{|tax_rate| tax_rate.merge(type: TaxRate.find(tax_rate[:_id]).type)} %>
+            return <%= raw tax_rate_details.to_json %>
+          }
+
+          tax_group['tax_rates'] = tax_rate_details
+          tax_group['id'] = '<%=@tax_group.id%>'
+          tax_group['group_rate'] = '<%=@tax_group.rate%>'
+          tax_breakup['<%=item.id.to_s + "_" + index_data.to_s%>'] = tax_group
+        </script>
+  	   </tr>
+    <% end %>
+  <% end %>
+<% end %>

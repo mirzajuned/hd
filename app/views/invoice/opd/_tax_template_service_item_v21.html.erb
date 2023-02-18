@@ -1,0 +1,247 @@
+<div class="invoice_types" style="padding: 10px 5px 0;background: #eee;">
+  <%= render partial: 'invoice_types.html.erb', locals: { invoice: @invoice, type: 'opd', form_method: 'new', is_draft: @is_draft } %>
+</div>
+<div class="services_items_invoice_opd" id="services_items_invoice_opd">
+  <!-- Display Once -->
+  <div class="service_row_count mb5 mt5" title="0">
+    <div class="item_name_flag">
+      <div class="row" style="padding-left:20px;">
+        <div class="col-md-12">
+          <!-- <div class="col-md-2 col-md-3-shared">
+            <b>Contact</b>
+          </div> -->
+          <div class="col-md-2">
+            <b>Description</b>
+          </div>
+          <div class="col-md-1">
+            <b>Quantity</b>
+          </div>
+          <div class="col-md-2 col-md-3-shared text-right">
+            <b>Unit Price</b>
+          </div>
+          <div class="col-md-2 col-md-3-shared">
+            <b>Tax Group</b>
+          </div>
+          <div class="col-md-1">
+           <b>Tax Incl.</b>
+          </div>
+          <div class="col-md-1 text-right">
+            <b>Tax</b>
+          </div>
+          <div class="col-md-2 col-md-3-shared text-right">
+            <b>Total Amount</b>
+          </div>
+          <div class="col-md-1">
+            <b>Action</b>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="service_item_row_count mb10" id="service_item_row">
+      <% @template_services.each do |i, service| %>
+        <% if service["entry_type"] == "service" %>
+          <div class="invoice_service_item_row row mt5" id="invoice_service_item_row" style="padding-left:20px;">
+            <div class="col-md-12">
+              <div class="field_for_date">
+                <div class="tax_fields"></div>
+                <input type="hidden" name="invoice_opd[services][<%= i %>][item_entry_date]" class="i_item_entry_date" value="<%= Time.current %>">
+                <input type="hidden" name="invoice_opd[services][<%= i %>][added_by_id]" class="i_added_by_id" value="<%= current_user.id.to_s %>">
+                <input type="hidden" name="invoice_opd[services][<%= i %>][advised_by_id]" class="i_advised_by_id" value="<%= @appointment.try(:doctor) %>">
+                <input type="hidden" name="invoice_opd[services][<%= i %>][counselled_by_id]" class="i_counselled_by_id" value="">
+                <input type="hidden" name="invoice_opd[services][<%= i %>][sub_specialty_id]" class="i_sub_specialty_id" value="">
+                <input type="hidden" name="invoice_opd[services][<%= i %>][entry_type]" class="i_entry_type" value="service">
+                <input type="hidden" name="invoice_opd[services][<%= i %>][exception_id]" class="i_exception_id" value="">
+              </div>
+              <div class="col-md-2 col-md-3-shared" style="display: none;">
+                <select class="form-control i_payer_master_id" name="invoice_opd[services][<%= i %>][payer_master_id]">
+                  <option value="general" selected="selected">General</option>
+                  <% @payer_fields.each do |payer_master| %>
+                    <% if payer_master[:id].to_s == service['payer_master_id'].to_s %>
+                      <option value="<%= payer_master[:id].to_s %>" selected="selected"><%= payer_master[:display_name] %></option>
+                    <%# else %>
+                      <!-- <option value="<%#= payer_master[:id].to_s %>"><%#= payer_master[:display_name] %></option> -->
+                    <% end %>
+                  <% end %>
+                </select>
+              </div>
+              <div class="col-md-2 field_for_description">
+                <select class="form-control i_description" name="invoice_opd[services][<%= i %>][description]" id="invoice_opd_services_<%= i %>_description">
+                  <option value=""></option>
+                  <!-- map all pricing_masters with this service payer_master_id -->
+                  <% pricing_masters = @pricing_masters.map { |_service_master_id, pms| pms.map { |pricing_master| pricing_master if pricing_master[:payer_master_id].to_s.strip == service['payer_master_id'].to_s.strip }.reject(&:nil?) }.flatten %>
+                  <!-- map all service_sub_group for optgroup -->
+                  <% service_sub_group_names = pricing_masters.map { |pm| pm.service_sub_group.name }.uniq %>
+                  <% service_sub_group_names.each do |sgn| %>
+                    <optgroup label="<%= sgn %>">
+                      <!-- Get all pricing within this service group -->
+                      <% sgn_pricing_masters = pricing_masters.select { |pm| (pm if pm.service_sub_group.name == sgn) }.reject(&:nil?) %>
+                      <% sgn_pricing_masters.each do |pricing_master| %>
+                        <% advised_counselled_details = @combined.find { |acd| acd[:advised_by_id] if acd[:code] == pricing_master.service_type_code } || {} %>
+                        <% if pricing_master.id.to_s == service['description'] %>
+                          <option value="<%= pricing_master.id.to_s %>" data-amount="<%= pricing_master.amount %>" data-advised_by_id="<%= advised_counselled_details[:advised_by_id] %>" data-counselled_by_id="<%= advised_counselled_details[:counselled_by_id] %>" data-sub_specialty_id="<%= pricing_master.sub_specialty_id %>" data-service_code="<%= pricing_master.try(:service_code) %>" data-service_name="<%= pricing_master.service_name %>" selected="selected"><%= pricing_master.service_name %></option>
+                        <% else %>
+                          <option value="<%= pricing_master.id.to_s %>" data-amount="<%= pricing_master.amount %>" data-advised_by_id="<%= advised_counselled_details[:advised_by_id] %>" data-counselled_by_id="<%= advised_counselled_details[:counselled_by_id] %>" data-sub_specialty_id="<%= pricing_master.sub_specialty_id %>" data-service_code="<%= pricing_master.try(:service_code) %>" data-service_name="<%= pricing_master.service_name %>"><%= pricing_master.service_name %></option>
+                        <% end %>
+                      <% end %>
+                    </optgroup>
+                  <% end %>
+                </select>
+              </div>
+              <div class="col-md-1 field_for_quantity">
+                <input name="invoice_opd[services][<%= i %>][quantity]" style="padding:5px 10px;" class="form-control i_quantity" placeholder="Quantity" value="<%= service['quantity'] %>" type="text" maxlength="4">
+              </div>
+              <div class="col-md-2 col-md-3-shared field_for_unit_price">
+                <input name="invoice_opd[services][<%= i %>][unit_price]" style="padding:5px 10px;" class="form-control i_unit_price" placeholder="Unit Price" type="text" value="<%= service['unit_price'] %>" maxlength="12">
+              </div>
+              <div class="col-md-2 col-md-3-shared field_for_tax_group_id">
+                <select name="invoice_opd[services][<%= i %>][tax_group_id]" class='form-control i_tax_group'>
+                  <option value="" data-tax-rate='0'> </option>
+                  <% @tax_groups.each do |tax_group| %>
+                    <option value="<%= tax_group.id.to_s %>" data-tax-rate='<%= tax_group.rate %>'><%= tax_group.name %> - <%= tax_group.rate %>%</option>
+                  <% end %>
+                </select>
+              </div>
+              <div class="col-md-1 field_for_tax_inclusive">
+                <input type="hidden" name="invoice_opd[services][<%= i %>][tax_inclusive]" value="false">
+                <div class="ckbox ckbox-primary">
+                  <input type="checkbox" name="invoice_opd[services][<%= i %>][tax_inclusive]" id='tax_inclusive_<%= i %>' class="i_tax_inclusive" value='true'>
+                  <label for='tax_inclusive_<%= i %>'></label>
+                </div>
+              </div>
+              <div class="col-md-1 field_for_taxable_amount">
+                <input name="invoice_opd[services][<%= i %>][non_taxable_amount]" style="padding:5px 10px;" class="form-control i_non_taxable_amount text-right" id="i_non_taxable_amount" placeholder="Total" readonly="readonly" type="hidden" value="<%= service['price'] %>">
+                <input name="invoice_opd[services][<%= i %>][taxable_amount]" style="padding:5px 10px;" class="form-control i_taxable_amount text-right" id="i_taxable_amount" placeholder="Total" readonly="readonly" type="text" value="0">
+              </div>
+              <div class="col-md-2 col-md-3-shared field_for_price">
+                <input name="invoice_opd[services][<%= i %>][price]" style="padding:5px 10px;" class="form-control i_price" id="i_price" placeholder="Total" readonly="readonly" type="text" value="<%= service['price'] %>">
+              </div>
+              <div class="col-md-1">
+                <button class="btn btn-danger btn-xs remove_service" style="padding:0 5px;margin-top:3px;"><i class="fa fa-trash-alt"></i> Remove</button>
+              </div>
+              <div class="col-md-12">
+                <% pricing_master = pricing_masters.find { |pm| pm.id.to_s == service['description'] } %>
+                <% exception = service['exception_id'].present? ? pricing_master.pricing_exceptions.find_by(id: service['exception_id']) : '' %>
+                <% if pricing_master&.has_exceptions %>
+                  <% if exception.present? %>
+                    <span class="exception_details">Exception :
+                      <a class="change-exception" style="cursor: pointer;" data-master-id="<%= pricing_master.id.to_s %>" data-html-id="invoice_opd_services_<%= i %>_description" data-exception-id="<%= service['exception_id'].to_s %>">
+                        <% exception.sequence.each_with_index do |sequence, i| %>
+                          <%= ' | ' if i > 0 %>
+                          <%= exception.send("#{sequence}_exception_name") %>
+                        <% end %>
+                        | <%= exception.amount %>
+                      </a>
+                    </span>
+                  <% else %>
+                    <span class="exception_details">Exception : <a class="change-exception" style="cursor: pointer;" data-master-id="<%= pricing_master.id.to_s %>" data-html-id="invoice_opd_services_<%= i %>_description" data-exception-id="">No Exception | <%= pricing_master.amount %></a></span>
+                  <% end %>
+                <% else %>
+                  <span class="exception_details" style='display:none;'>Exception : <a class="change-exception" style="cursor: pointer;"></a></span>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        <% elsif service["entry_type"] == "surgery_package" %>
+          <div class="invoice_service_item_row row mt5" id="invoice_service_item_row" style="padding-left:20px;">
+            <div class="col-md-12">
+              <div class="field_for_date">
+                <div class="tax_fields"></div>
+                <input type="hidden" name="invoice_opd[services][<%= i %>][item_entry_date]" class="i_item_entry_date" value="<%= Time.current %>">
+                <input type="hidden" name="invoice_opd[services][<%= i %>][added_by_id]" class="i_added_by_id" value="<%= current_user.id.to_s %>">
+                <input type="hidden" name="invoice_opd[services][<%= i %>][advised_by_id]" class="i_advised_by_id" value="<%= @appointment.try(:doctor) %>">
+                <input type="hidden" name="invoice_opd[services][<%= i %>][counselled_by_id]" class="i_counselled_by_id" value="">
+                <input type="hidden" name="invoice_opd[services][<%= i %>][sub_specialty_id]" class="i_sub_specialty_id" value="">
+                <input type="hidden" name="invoice_opd[services][<%= i %>][entry_type]" class="i_entry_type" value="surgery_package">
+                <input type="hidden" name="invoice_opd[services][<%= i %>][exception_id]" class="i_exception_id" value="">
+              </div>
+              <div class="col-md-2 col-md-3-shared" style="display: none;">
+                <select class="form-control i_payer_master_id" name="invoice_opd[services][<%= i %>][payer_master_id]">
+                  <option value="general" selected="selected">General</option>
+                  <% @payer_fields.each do |payer_master| %>
+                    <% if payer_master[:id].to_s == service['payer_master_id'].to_s %>
+                      <option value="<%= payer_master[:id].to_s %>" selected="selected"><%= payer_master[:display_name] %></option>
+                    <%# else %>
+                      <!-- <option value="<%#= payer_master[:id].to_s %>"><%#= payer_master[:display_name] %></option> -->
+                    <% end %>
+                  <% end %>
+                </select>
+              </div>
+              <div class="col-md-2 field_for_description">
+                <select class="form-control i_description" name="invoice_opd[services][<%= i %>][description]">
+                  <option value="">Select Package</option>
+                  <optgroup label="Surgery Packages">
+                    <% @surgery_packages.each do |surgery_package| %>
+                      <% if surgery_package.payer_master_id.to_s.strip == service['payer_master_id'].to_s.strip %>
+                        <% if surgery_package.id.to_s == service['description'].to_s %>
+                          <% @surgery_package = surgery_package %>
+                          <option value="<%= surgery_package.id.to_s %>" data-amount="<%= surgery_package.amount %>" data-sub_specialty_id="<%= surgery_package.sub_specialty_id %>" data-service_name="<%= surgery_package.display_name %>" selected="selected"><%= surgery_package.display_name %></option>
+                        <% else %>
+                          <option value="<%= surgery_package.id.to_s %>" data-amount="<%= surgery_package.amount %>" data-sub_specialty_id="<%= surgery_package.sub_specialty_id %>" data-service_name="<%= surgery_package.display_name %>"><%= surgery_package.display_name %></option>
+                        <% end %>
+                      <% end %>
+                    <% end %>
+                  </optgroup>
+                </select>
+              </div>
+              <div class="col-md-1 field_for_quantity">
+                <input name="invoice_opd[services][<%= i %>][quantity]" style="padding:5px 10px;" class="form-control i_quantity" placeholder="Quantity" value="<%= service['quantity'] %>" type="text" readonly="readonly">
+              </div>
+              <div class="col-md-2 col-md-3-shared field_for_unit_price">
+                <input name="invoice_opd[services][<%= i %>][unit_price]" style="padding:5px 10px;" class="form-control i_unit_price" placeholder="Unit Price" type="text" readonly="readonly" value="<%= service['unit_price'] %>">
+              </div>
+              <div class="col-md-2 col-md-3-shared field_for_tax_group_id">
+                -
+              </div>
+              <div class="col-md-1 field_for_tax_inclusive">
+                -
+              </div>
+              <div class="col-md-1 field_for_taxable_amount">
+                <input name="invoice_opd[services][<%= i %>][non_taxable_amount]" style="padding:5px 10px;" class="form-control i_non_taxable_amount text-right" id="i_non_taxable_amount" placeholder="Total" readonly="readonly" type="hidden" value="<%= service['price'] %>">
+                -
+              </div>
+              <div class="col-md-2 col-md-3-shared field_for_price">
+                <input name="invoice_opd[services][<%= i %>][price]" style="padding:5px 10px;" class="form-control i_price" id="i_price" placeholder="Total" readonly="readonly" type="text" value="<%= service['price'] %>">
+              </div>
+              <div class="col-md-1">
+                <button class="btn btn-danger btn-xs remove_service" style="padding:0 5px;margin-top:3px;"><i class="fa fa-trash-alt"></i> Remove</button>
+              </div>
+            </div>
+            <div class="col-md-12 package-breakup">
+              <% @tax_enabled = 'true' %>
+              <%= render template: 'surgery_packages/set_package_services.html.erb' %>
+            </div>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+    <div class="row service_row mb10" style="padding-left:20px;">
+      <div class='col-md-4'>
+        <button class="btn btn-primary btn-xs add_service_item" style="padding:0 5px;margin-top:3px;"><i class="fa fa-plus"></i> New Item</button>
+        <button class="btn btn-primary btn-xs add_service_package" style="padding:0 5px;margin-top:3px;"><i class="fa fa-plus"></i> New Package</button>
+        <input type="hidden" name="facility_setting[invoice_show_package_breakup]" value="false">
+      </div>
+      <div class="col-md-3 mt5">
+        <div class="ckbox ckbox-primary">
+          <% if @facility_setting.invoice_show_package_breakup %>
+            <input type="checkbox" name="facility_setting[invoice_show_package_breakup]" id='facility_setting_invoice_show_package_breakup' class="i_invoice_show_package_breakup" value='true' checked='checked'>
+          <% else %>
+            <input type="checkbox" name="facility_setting[invoice_show_package_breakup]" id='facility_setting_invoice_show_package_breakup' class="i_invoice_show_package_breakup" value='true'>
+          <% end %>
+          <label for='facility_setting_invoice_show_package_breakup'>Show Package Breakup in Print</label>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <input type="text" style="padding:5px 10px;display:none;" class="form-control service_total text-right" placeholder="Service Total" name="invoice_opd[total]" value="<%= @invoice_template.total %>">
+      </div>
+    </div>
+  </div>
+</div>
+
+<style type="text/css">
+  .select2-results__group {
+    font-size: 11px;
+    padding: 0 2px !important;
+    border-bottom: 1px solid;
+    background: #eee;
+  }
+</style>

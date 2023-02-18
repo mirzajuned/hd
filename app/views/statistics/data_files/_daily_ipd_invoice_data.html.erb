@@ -1,0 +1,71 @@
+<div class="row">
+  <div class="col-md-12 text-center">
+    <% if params[:back] %><button class="btn btn-primary btn-xs pull-left btn-datewise-view"><i class="fa fa-arrow-left"></i> Back</button><% else %><button class="btn btn-primary btn-xs pull-left statistics_parent_link all" data-filter="All"><i class="fa fa-arrow-left"></i> Back to Dashboard</button><% end %>
+    <% if @invoice_ipd.count > 0 %>
+      <%= link_to statistics_print_setting_path(flag: 'ipd_daily_view', start_date: @start_date, end_date: @end_date), data: { remote: true, 'toggle': 'modal', 'target': '#invoice-modal' }, class: 'btn btn-primary btn-xs pull-right' do %><i class="fa fa-print"></i> Print<% end %>
+    <% end %>
+    <h3 style="color:#000;">IPD INVOICES <small>(<%= Date.parse(@start_date).strftime('%d/%m/%Y') %>)</small></h3>
+  </div>
+</div>
+
+<table class="table">
+  <thead style="border-top:1px solid #000;border-bottom:1px solid #000;">
+    <tr>
+      <th style="width:5%;">S No.</th>
+      <th>Patient ID</th>
+      <th>Patient Name</th>
+      <th>Receipt ID</th>
+      <!-- <th class="text-right">Non-Taxable Amount</th> -->
+      <th class="text-right">Total (<%= @currency.symbol %>)</th>
+      <th class="text-right">Tax (<%= @currency.symbol %>)</th>
+      <th class="text-right">Discount (<%= @currency.symbol %>)</th>
+      <th class="text-right">Advance (<%= @currency.symbol %>)</th>
+      <th class="text-right">Amount (<%= @currency.symbol %>)</th>
+      <th class="text-right">Received (<%= @currency.symbol %>)</th>
+      <th class="text-right">Pending (<%= @currency.symbol %>)</th>
+    </tr>
+  </thead>
+  <tbody style="border-top:1px solid #000;border-bottom:1px solid #000;">
+    <% if @invoice_ipd.count > 0 %>
+      <tr>
+        <td class="main-display-row" colspan="4">Total <%= @invoice_ipd.count %> Receipts :</td>
+        <!-- <td class="text-right main-display-row"><%= @currency.symbol %><%#= @invoice_ipd.pluck(:non_taxable_amount).map(&:to_f).sum.round(2) %></td> -->
+        <td class="text-right main-display-row"><%= @currency.symbol %><%= (@invoice_ipd.pluck(:total).map(&:to_f).sum).round(2) %></td>
+        <td class="text-right main-display-row"><span style="color:#1CAF9A"><%= @currency.symbol %><%= (@invoice_ipd.pluck(:tax_breakup).flatten.inject(0){|amount,x| amount += x[:amount].to_f}).round(2) %></span></td>
+        <td class="text-right main-display-row"><span style="color:#f00"><%= @currency.symbol %><%= @invoice_ipd.pluck(:discount).map(&:to_f).sum %></span></td>
+        <td class="text-right main-display-row"><span style="color:#f00"><%= @currency.symbol %><%= @invoice_ipd.pluck(:advance_payment).map(&:to_f).sum %></span></td>
+        <td class="text-right main-display-row"><%= @currency.symbol %><%= @invoice_ipd.pluck(:net_amount).map(&:to_f).sum - @invoice_ipd.pluck(:advance_payment).map(&:to_f).sum %></td>
+        <td class="text-right main-display-row"><%= @currency.symbol %><%= @invoice_ipd.pluck(:payment_received).map(&:to_f).sum %></td>
+        <td class="text-right main-display-row"><%= @currency.symbol %><%= @invoice_ipd.pluck(:payment_pending).map(&:to_f).sum %></td>
+      </tr>
+      <% @invoice_ipd.each.with_index do |invoice_ipd, i| %>
+      <tr>
+        <td style="width:5%;"><%= i+1 %></td>
+        <td>
+          <%= invoice_ipd.patient.patient_identifier_id %><%= "<br>".html_safe + (invoice_ipd.patient.patient_mrn if invoice_ipd.patient.patient_mrn.present?) %>
+        </td>
+        <td><%= invoice_ipd.patient.fullname %></td>
+        <td><%= link_to invoice_ipd_path(:id => invoice_ipd.id), :data => {:remote => true} do %><%= invoice_ipd.bill_number %><% end %></td>
+        <!-- <td class="text-right"><%= @currency.symbol %><%#= (invoice_ipd.non_taxable_amount).round(2) %></td> -->
+        <td class="text-right"><%= @currency.symbol %><%= (invoice_ipd.total).round(2) %></td>
+        <td class="text-right"><span style="color:#1CAF9A"><%= @currency.symbol %><%= (invoice_ipd.tax_breakup.inject(0){|amount,x| amount += x[:amount].to_f}).round(2) %></span></td>
+        <td class="text-right">
+          <span style="color:#f00"><%= @currency.symbol %><%= invoice_ipd.try(:discount).to_f %></span>
+        </td>
+        <td class="text-right">
+          <span style="color:#f00"><%= @currency.symbol %><%= invoice_ipd.try(:advance_payment).to_f %></span>
+        </td>
+        <td class="text-right">
+          <%= @currency.symbol %><%= invoice_ipd.net_amount - invoice_ipd.try(:advance_payment).to_f %>
+        </td>
+        <td class="text-right"><%= @currency.symbol %><%= invoice_ipd.try(:payment_received).to_f %></td>
+        <td class="text-right"><%= @currency.symbol %><%= invoice_ipd.try(:payment_pending).to_f %></td>
+      </tr>
+      <% end %>
+    <% else %>
+      <tr>
+        <td colspan="11" class="text-center">No Data to Display</td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>

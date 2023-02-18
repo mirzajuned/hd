@@ -1,0 +1,70 @@
+<% colspan = 2 # As SNo. and PatientName has no checks %>
+<% colspan += 1 if (@patient_id || @mr_no) %>
+<% colspan += 1 if @invoice_id %>
+<% colspan += 1 if @item %>
+<% colspan += 1 if @item_mrp %>
+
+<div class="row">
+  <div class="col-md-12 text-center">
+    <h3 style="color:#000;">OPTICAL INVOICES <small>(<%= Date.parse(@start_date).strftime('%d/%m/%Y') %>)</small></h3>
+  </div>
+</div>
+
+<table class="table">
+  <thead style="border-top:1px solid #000;border-bottom:1px solid #000;">
+    <tr>
+      <th style="width:10%;">S No.</th>
+      <% if @patient_id || @mr_no %><th class="text-center">Patient ID</th><% end %>
+      <th>Patient Name</th>
+      <% if @invoice_id %><th>Receipt ID</th><% end %>
+      <% if @item %><th style="width:10%">Item</th><% end %>
+      <% if @item_mrp %><th class="text-right">Item MRP</th><% end %>
+      <!-- <th class="text-right">Tax</th> -->
+      <% if @amount %><th class="text-right">Amount</th><% end %>
+    </tr>
+  </thead>
+  <tbody style="border-top:1px solid #000;border-bottom:1px solid #000;">
+    <% if @optical.count > 0 %>
+      <tr>
+        <td class="main-display-row" colspan="<%= colspan %>">Total <%= @optical.count %> Receipts :</td>
+        <% if @amount %><td class="main-display-row text-right">&#8377; <%= @optical.pluck(:total).sum.to_f.round(2) %></td><% end %>
+      </tr>
+      <% @optical.each.with_index do |optical, i| %>
+      <tr>
+        <td style="width:10%;"><%= i+1 %></td>
+        <% if @patient_id || @mr_no %>
+          <td class="text-center">
+            <% if @patient_id %><%= optical.patient.patient_identifier_id %><% end %>
+            <% if @patient_id && @mr_no %><br><% end %>
+            <% if @mr_no %><%= (optical.patient.patient_mrn if optical.patient.patient_mrn.present?) %><% end %>
+          </td>
+        <% end %>
+        <td><%= optical.recipient || "-" %></td>
+        <% if @invoice_id %><td><%= optical.bill_number %></td><% end %>
+        <% if @item %>
+          <td style="width:10%">
+            <% optical.items.each do |item| %>
+              <%= item.description %><br>
+            <% end %>
+          </td>
+        <% end %>
+        <% if @item_mrp %>
+          <td class="text-right">
+            <% optical.items.each do |item| %>
+              &#8377; <%= item.mrp.to_f.round(2) %><br>
+            <% end %>
+          </td>
+        <% end %>
+        <!-- <td class="text-right"> -->
+          <%#= optical.tax_breakup.inject(0){ |amount,x| amount += x[:amount].to_f } %>
+        <!-- </td> -->
+        <% if @amount %><td class="text-right">&#8377; <%= optical.total.to_f.round(2) %></td><% end %>
+      </tr>
+      <% end %>
+    <% else %>
+      <tr>
+        <td colspan="11" class="text-center">No Data to Display</td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>

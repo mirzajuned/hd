@@ -1,0 +1,621 @@
+if ('<%= params[:action] %>' != 'edit') {
+  var tax_breakup = {}
+}
+var vendor_gst_no = "<%= @vendor_location.gst_number if @vendor_location.present? %>"
+var vendor_name = "<%= @vendor.name if @vendor.present? %>"
+$(".vendor_gst_number").val(vendor_gst_no)
+$("#inventory_transaction_purchase_bill_vendor_name").val(vendor_name)
+
+$(window).resize(function() {
+  adjust_height()
+})
+
+adjust_height()
+function adjust_height(){
+  modalContentHeigth = $(window).height() - 130
+  // $(".items-lots").height(modalContentHeigth)
+  itemsVariants = modalContentHeigth - $('.order-header').height()
+  $('.items-variants-body').height(itemsVariants)
+  purchaseInvoiceInfoHeight = $('.purchase-invoice-information').height()
+  orderListHeight = modalContentHeigth - $('.order-title').height() - $('.order-common-fields').height() - purchaseInvoiceInfoHeight - 100
+  $('.order-table-body').height(orderListHeight - $('.order-table-head').height())
+}
+
+function validate_create_button() {
+  let row_count = $('#purchase-bill-table tbody tr').length
+  if (row_count > 0) {
+    $('.validate-create-button').attr('disabled', false)
+  } else {
+    $('.validate-create-button').attr('disabled', true)
+  }
+}
+
+validate_create_button()
+
+$(".mis-date-filter-custom").on("click", function(e){
+  e.preventDefault();
+  $("#mis-modal").html("<%= escape_javascript(render partial: 'custom_dates.html.erb') %>")
+})
+
+function isScrolledIntoLastRow(last_row_elem, scrollable_container) {
+  if (last_row_elem.length == 1) {
+    var top_of_element = $(last_row_elem).offset().top - $(scrollable_container).offset().top ;
+    var table_height = $(scrollable_container).innerHeight()
+    return top_of_element <= table_height
+  }
+}
+
+scrollinventory()
+function scrollinventory(){
+  $(".items-variants-body").scroll(function() {
+    last_row_elem = $('.items-variants-body').find('tr:nth-last-child(1)')
+    scrollable_container = $(".items-variants-body")
+    if (isScrolledIntoLastRow(last_row_elem, scrollable_container)) {
+      $("#show_more_variants").trigger("click")
+      $(".items-variants-body").off('scroll');
+      setTimeout(function() {   //calls click event after a certain time
+        scrollinventory()
+      }, 500);
+    }
+  })
+}
+
+function setInvoiceTime() {
+  let date = $('#inventory_transaction_purchase_bill_invoice_date').val().split('/')
+  let new_date = date[2]+ "/" + date[1] + "/" + date[0]
+  date_time = new_date + " " + $("#inventory_transaction_purchase_bill_invoice_date_timepicker").val()
+  date_time = moment(date_time).format('YYYY-MM-DD HH:mm:ssZ')
+  $('#inventory_transaction_purchase_bill_invoice_date_time').val(date_time)
+}
+
+$('.invoice-datepicker').datepicker({
+  dateFormat: "dd/mm/yy",
+}).on('change', function(e) {
+  setInvoiceTime()
+});
+
+$('#inventory_transaction_purchase_bill_vendor_location_id').select2()
+$('#inventory_transaction_purchase_bill_create_against').select2()
+
+var vendor_name = $('#inventory_order_purchase_vendor_location_id').find(":selected").html()
+
+
+$("#purchase-bill-date-filter-ul").on('click','.mis-date-filter',function(e){
+  e.preventDefault();
+  var time_period = $(this).text();
+  $("#time_period_purchase_bill").text(time_period)
+  purchase_vendor_rule()
+  $("#mis-modal").modal("hide")
+  $("#purchase_bill_search").val("")
+})
+
+$(".search-criteria-list").on('click',function(){
+  var search_criteria = $(this).text();
+  var search_filter = $(this).attr("data-search-filter")
+  $(".purchase-bill-search-criteria ").attr("data-search-filter",search_filter)
+  var placeholder_message = $(this).attr("data-placeholder-message")
+  $(".purchase-bill-search-criteria").find(".criteria-text").text(search_criteria)
+  $("#purchase_bill_search").attr("placeholder",placeholder_message)
+  $("#purchase_bill_search_button").removeAttr("disabled")
+  $("#purchase_bill_search").val("")
+})
+
+$("#purchase_bill_search").on('keyup',function(){
+  if ($(this).val() != ''){
+    $("#purchase_bill_search_button").removeAttr("disabled")
+  }
+})
+
+$("#purchase_bill_search").keypress(function(){
+  var keycode = (event.keyCode ? event.keyCode : event.which);
+  if(keycode == '13'){
+   purchase_vendor_rule()  
+  }
+})
+
+$("#purchase_bill_search_button").on('click',function(){
+  purchase_vendor_rule()
+})
+
+function purchase_vendor_rule() {
+  var time_period = $("#time_period_purchase_bill").text()
+  var filter = time_period.trim().replace(/ /g,'-').toLowerCase()
+  var start_date = $("#purchase-bill-date-filter-ul").find('.'+filter).attr("start-date")
+  var end_date = $("#purchase-bill-date-filter-ul").find('.'+filter).attr("end-date")
+  var vendor_location_id = $('#inventory_transaction_purchase_bill_vendor_location_id').val()
+  var create_against = $('#inventory_transaction_purchase_bill_create_against').val()
+  var search = $("#purchase_bill_search").val();
+  var search_term = $(".purchase-bill-search-criteria ").attr("data-search-filter")
+  var action = "<%= params[:action] == 'new' ? 'new' : 'edit' %>"
+  if (action == 'new'){
+    if (vendor_location_id != '' && create_against != '') {
+      $.ajax({
+        type: "GET",
+        dataType: "script",
+        data: {
+          store_id: "<%= @store_id %>",
+          item_type: 'all_item',
+          vendor_location_id: vendor_location_id,
+          create_against: create_against,
+          start_date: start_date,
+          end_date: end_date,
+          time_period: time_period,
+          search: search,
+          search_term: search_term,
+          q: search,
+        },
+        url: "/inventory/transaction/purchase_bills/new",
+      })
+    }
+  }else if(action == 'edit'){
+    var purchase_bill_id = "<%= @purchase_bill.id %>"
+    if (vendor_location_id != '' && create_against != '') {
+      $.ajax({
+        type: "GET",
+        dataType: "script",
+        data: {
+          store_id: "<%= @store_id %>",
+          item_type: 'all_item',
+          vendor_location_id: vendor_location_id,
+          create_against: create_against,
+          start_date: start_date,
+          end_date: end_date,
+          time_period: time_period,
+          search: search,
+          search_term: search_term,
+          q: search,
+        },
+        url: "/inventory/transaction/purchase_bills/" + purchase_bill_id + '/edit',
+      })
+    }
+  }else if(vendor_location_id != ''){
+    $.ajax({
+      type: "GET",
+      dataType: "json",
+      data: {
+        store_id: "<%= @store_id %>",
+        item_type: 'all_item',
+        vendor_location_id: vendor_location_id,
+        time_period: time_period,
+        search: search,
+        search_term: search_term,
+        q: search
+      },
+      url: "/inventory/transaction/purchase_bills/set_vendor",
+      success: function(response){
+        $(".vendor_gst_number").val(response["vendor_location"]["gst_number"])
+        $("#inventory_transaction_purchase_bill_vendor_name").val(response["vendor_location"]["vendor_name"])
+      }
+    })
+  }
+}
+
+function purchase_bill_rule() {
+  var vendor_name = $('#inventory_transaction_purchase_bill_vendor_location_id').find(":selected").html()
+  var vendor_location_id = $('#inventory_transaction_purchase_bill_vendor_location_id').find(":selected").val()
+  // $("#inventory_transaction_purchase_bill_vendor_gst_number").val(vendor_location_id);
+  var create_against = $('#inventory_transaction_purchase_bill_create_against').val()
+  $("#purchase-bill-table > tbody").html('')
+  calTotalPrice("new")
+  if (vendor_location_id != '') {
+    purchase_vendor_rule()
+  }
+}
+
+function cancel_filter(element, prev){
+  if (prev == '-1')
+  {
+    $('.'+element+' option:eq(1)').attr('selected', 'selected');
+  } else {
+    $('.'+element).val(prev)
+  }
+  $(document).on('hidden.bs.modal', '.modal', function () {
+    $('.modal:visible').length && $(document.body).addClass('modal-open');
+  });
+}
+
+function confirmationModal(method, prev){
+  return `<div class="modal-dialog modal-sm">
+      <div class="modal-content">
+          <div class="modal-header">
+            <div class="row text-center">
+              <h5><b>Confirmation Requird!</b></h5>
+            </div>
+          </div>
+          <div class="modal-body">
+            <p>You are about to change ${prev}</p>
+            <p><span class='text-danger'> All unsaved changes will be lost.</span>
+            Would you still want to change ${prev} ?</p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-info cancel-filter" onclick='cancel_filter("${method}_dropdown", "${prev}")' data-dismiss="modal">No don't change</button>
+            <button type="button" class="btn btn-danger" onclick='${method}()' data-dismiss="modal">Yes change</button>
+          </div>
+      </div>
+    </div>`
+}
+
+$('#inventory_transaction_purchase_bill_vendor_location_id').on('change', function() {
+    if ($('.purchase-transaction').length > 0){
+      $('#confirm-filter')
+          .html(confirmationModal('purchase_bill_rule', 'vendor'))
+          .modal('show')
+          .css('background-color', 'rgba(0,0,0,0.5)')
+    } else {
+      purchase_vendor_rule()
+    }
+})
+
+$('#inventory_transaction_purchase_bill_create_against').on('change', function() {
+ if ($('.purchase-transaction').length > 0){
+      $('#confirm-filter')
+          .html(confirmationModal('purchase_bill_rule', 'create_against'))
+          .modal('show')
+          .css('background-color', 'rgba(0,0,0,0.5)')
+          unset_invoice_data()
+    } else {
+      purchase_vendor_rule()
+    }
+})
+
+function set_purchase_transaction_ids(){
+  var purchase_transaction_ids = []
+  $(".purchase-transaction").each(function(){
+    purchase_transaction_ids.push($(this).attr("data"))
+  })
+  $(".purchase_transaction_ids").val(purchase_transaction_ids)
+}
+
+function set_invoice_data(){
+  if ($(".purchase-transaction").length > 0){
+    var bill_number = $(".purchase-transaction").find(".bill_number").attr("value");
+    var bill_date = $(".purchase-transaction").find(".bill_date").attr("value");
+    $("#inventory_transaction_purchase_bill_invoice_number").val(bill_number)
+    $("#inventory_transaction_purchase_bill_invoice_date").val(bill_date)
+  }
+}
+
+function unset_invoice_data(){ 
+    var bill_number = $(".purchase-transaction").find(".bill_number").attr("");
+    var bill_date = $(".purchase-transaction").find(".bill_date").attr("");
+    $("#inventory_transaction_purchase_bill_invoice_number").val(bill_number)
+    $("#inventory_transaction_purchase_bill_invoice_date").val(bill_date)
+}
+
+
+
+function calTotalPrice(action){
+  var each_item_totals = 0;
+  var each_item_tax_totals = 0;
+  var each_item_net_amount_totals = 0;
+  var each_item_discount = 0;
+  var each_item_other_charges = 0
+  var each_item_amt_before_tax_totals = 0
+  $(".cgst-tax-name-section").html('');
+  $(".cgst-tax-amount-section").html('');
+  $(".sgst-tax-name-section").html('');
+  $(".sgst-tax-amount-section").html('');
+  $(".igst-tax-name-section").html('');
+  $(".igst-tax-amount-section").html('');
+  $(".vat-tax-name-section").html('');
+  $(".vat-tax-amount-section").html('');
+  $(".purchase-bill-log-item").each(function(){
+    var id = $(this).attr("data-id")
+    var unit_cost_without_tax = parseFloat($("#purchase-item-"+id).find(".unit_cost_without_tax").text()) || 0.0
+    var paid_stock = parseFloat($("#purchase-item-"+id).find(".paid_stock").text()) || 0.0
+    var bill_total = unit_cost_without_tax * paid_stock
+    var discount = parseFloat($("#purchase-item-"+id).find(".discount").text()) || 0.0
+    var tax_amount = parseFloat($("#purchase-item-"+id).find(".tax_amount").attr("value"))
+    // var purchase_tax_amount = $("#purchase-item-"+id).find(".purchase_tax_amount").attr("value")
+    var net_amount = parseFloat($("#purchase-item-"+id).find(".net_amount").text())
+    // var amt_before_tax = net_amount - tax_amount
+    var amt_before_tax = bill_total - discount
+    var tax_name = $("#purchase-item-"+id).find(".tax_name").attr("value")
+    var tax_inclusive = $("#purchase-item-"+id).find(".tax_inclusive").attr("value")
+    var tax_group_id = $("#purchase-item-"+id).find(".tax_group_id").attr("value")
+    var get_service_count = $("#purchase-item-"+id).attr("data")
+    var this_parent = $("#purchase-item-"+id)
+    let existing_total
+    let gst_type = $("#inventory_transaction_purchase_bill_gst_type").val();
+    let tax_type = $('#inventory_transaction_purchase_bill_tax_type').val();
+    if (tax_type == 'GST'){
+      if (gst_type == "intrastate"){
+        existing_total = parseFloat($('.cgst-tax-amount-section').find('.'+tax_group_id+'-tax-rate-amount').val()) || 0
+      } else{
+        existing_total = parseFloat($('.igst-tax-amount-section').find('.'+tax_group_id+'-tax-rate-amount').val()) || 0
+      }
+    }else{
+      existing_total = parseFloat($('.vat-tax-amount-section').find('.'+tax_group_id+'-tax-rate-amount').val()) || 0
+    }
+        
+    if (existing_total > 0){
+       adjust_generate_tax_group(this_parent, (tax_amount || 0), get_service_count, gst_type, tax_group_id, existing_total, action)
+    }else if(existing_total >= 0 && tax_amount == 0){
+       adjust_generate_no_tax_group(this_parent, (tax_amount || 0), get_service_count, gst_type, tax_group_id, existing_total, action)
+    }
+    else{
+       generate_tax_group(this_parent, (tax_amount || 0), get_service_count, gst_type,tax_group_id)   
+    }
+
+    each_item_totals += bill_total
+    each_item_tax_totals += tax_amount
+    each_item_net_amount_totals += net_amount
+    each_item_discount += discount
+    each_item_amt_before_tax_totals += amt_before_tax
+   })
+   $(".other_charges").each(function(){
+      var other_charge = parseFloat($(this).attr("value")) || 0.0
+      each_item_other_charges += other_charge
+   })
+   net_total = each_item_net_amount_totals + each_item_other_charges
+  $("#inventory_transaction_purchase_bill_total_cost").val(each_item_totals.toFixed(2))
+  $("#inventory_transaction_purchase_bill_discount").val(each_item_discount.toFixed(2))
+  $("#inventory_transaction_purchase_bill_amt_before_tax").val(each_item_amt_before_tax_totals.toFixed(2))
+  $("#inventory_transaction_purchase_bill_purchase_taxable_amount").val(each_item_tax_totals.toFixed(2))
+  $("#inventory_transaction_purchase_bill_total_other_charges_amount").val(each_item_other_charges.toFixed(2))
+  $("#inventory_transaction_purchase_bill_net_amount").val(net_total.toFixed(2))
+   // claculate_tax_breakup_net_amount()
+}
+
+
+function adjust_generate_tax_group(parent, taxable_amount, count, type, tax_group_id, existing_total, action) {
+  var tax_type = $('#inventory_transaction_purchase_bill_tax_type').val();
+  if (action == "new"){
+    if (tax_type == 'GST'){
+      if (type == "intrastate"){
+        var new_value = parseFloat(existing_total) + parseFloat(taxable_amount/2)
+        var old_taxable_amount = $('.cgst-tax-amount-section').find('.'+tax_group_id+'-taxable-amount').val()
+        var new_taxable_amount = parseFloat(old_taxable_amount) + taxable_amount
+        $('.'+tax_group_id+'-taxable-amount').val(new_taxable_amount.toFixed(2))
+        $('.'+tax_group_id+'-tax-rate-amount').val(new_value.toFixed(2))
+      }else {
+        var new_value = parseFloat(existing_total) + parseFloat(taxable_amount)
+        var old_taxable_amount = $('.igst-tax-amount-section').find('.'+tax_group_id+'-taxable-amount').val()
+        var new_taxable_amount = parseFloat(old_taxable_amount) + taxable_amount
+        $('.'+tax_group_id+'-taxable-amount').val(new_taxable_amount.toFixed(2))
+        $('.'+tax_group_id+'-tax-rate-amount').val(new_value.toFixed(2))
+      }
+    }else{
+      var new_value = parseFloat(existing_total) + parseFloat(taxable_amount)
+      var old_taxable_amount = $('.vat-tax-amount-section').find('.'+tax_group_id+'-taxable-amount').val()
+      var new_taxable_amount = parseFloat(old_taxable_amount) + taxable_amount
+      $('.'+tax_group_id+'-taxable-amount').val(new_taxable_amount.toFixed(2))
+      $('.'+tax_group_id+'-tax-rate-amount').val(new_value.toFixed(2))
+    }  
+  }
+}
+
+function adjust_generate_no_tax_group(parent, taxable_amount, count, type, tax_group_id, existing_total, action) {
+  var tax_type = $('#inventory_transaction_purchase_bill_tax_type').val();
+  if (tax_type == 'GST'){
+    if (gst_type == "intrastate"){
+      gst_zero = parseFloat($('.cgst-tax-amount-section').find('.'+tax_group_id+'-tax-rate-amount').val())
+    } else{
+      gst_zero = parseFloat($('.igst-tax-amount-section').find('.'+tax_group_id+'-tax-rate-amount').val())
+    }
+  }else{
+    gst_zero = parseFloat($('.vat-tax-amount-section').find('.'+tax_group_id+'-tax-rate-amount').val())
+  }
+  if (isNaN(gst_zero)){
+     generate_tax_group(parent, (taxable_amount || 0), count, type,tax_group_id) 
+  }else{
+    adjust_generate_tax_group(parent, taxable_amount, count, type, tax_group_id, existing_total, action)
+  } 
+}
+
+function generate_tax_group(parent, taxable_amount, count, type,tax_group_id) {
+  var tax_type = $('#inventory_transaction_purchase_bill_tax_type').val();
+  var item_id = $(parent).attr('data').trim()
+  var item_tax_group = tax_breakup[item_id]
+  var tax_rate_amount;
+  var tax_group_id
+  var group_rate = parseFloat(item_tax_group['group_rate'])
+  // $(parent).find('.tax_fields').html("")
+  if (tax_type == 'GST'){
+    if (type == "intrastate"){
+      item_tax_group['tax_rates'].forEach(function(item) {
+      if (group_rate != 0.0) {
+        tax_rate_amount = parseFloat(taxable_amount) * parseFloat(item.rate) / group_rate
+      } else {
+        tax_rate_amount = 0.0
+      }
+
+      if (item.type == "SGST"){
+        $(".sgst-tax-name-section").prepend(`
+          <input style="width:150%; background-image: none;" class="fi_input_style text-left ${tax_group_id}-tax-rate" value="${item.rate}%" type="text" name="" readonly="readonly">
+        `)
+
+       $(".sgst-tax-amount-section").prepend(`
+         <input value="${tax_group_id}" type="hidden" name="inventory_transaction_purchase_bill[tax_breakup][][id]">
+         <input value="${item.name}" type="hidden" name="inventory_transaction_purchase_bill[tax_breakup][][name]">
+         <input value="${item.rate}" type="hidden" name="inventory_transaction_purchase_bill[tax_breakup][][rate]">
+         <input value="${item.tax_group}" type="hidden" name="inventory_transaction_purchase_bill[tax_breakup][][tax_group]">
+         <input value="${taxable_amount.toFixed(2)}" type="hidden" class="${tax_group_id}-taxable-amount" name="inventory_transaction_purchase_bill[tax_breakup][][taxable_amount]">
+         <input style="width:150%; background-image: none;" name="inventory_transaction_purchase_bill[tax_breakup][][amount]" class="fi_input_style text-right ${tax_group_id}-tax-rate-amount" value="${tax_rate_amount.toFixed(2)}" type="text"  readonly="readonly">
+       `)
+
+      }else if (item.type = "CGST"){
+        $(".cgst-tax-name-section").prepend(`
+          <input style="width:150%; background-image: none;" class="fi_input_style text-left ${tax_group_id}-tax-rate" value="${item.rate}%" type="text" name="" readonly="readonly">
+        `)
+
+       $(".cgst-tax-amount-section").prepend(`
+         <input value="${tax_group_id}" type="hidden" name="inventory_transaction_purchase_bill[tax_breakup][][id]">
+         <input value="${item.name}" type="hidden" name="inventory_transaction_purchase_bill[tax_breakup][][name]">
+         <input value="${item.rate}" type="hidden" name="inventory_transaction_purchase_bill[tax_breakup][][rate]">
+         <input value="${item.tax_group}" type="hidden" name="inventory_transaction_purchase_bill[tax_breakup][][tax_group]">
+         <input value="${taxable_amount.toFixed(2)}" type="hidden" class="${tax_group_id}-taxable-amount" name="inventory_transaction_purchase_bill[tax_breakup][][taxable_amount]">
+         <input style="width:150%; background-image: none;" name="inventory_transaction_purchase_bill[tax_breakup][][amount]" class="fi_input_style text-right ${tax_group_id}-tax-rate-amount" value="${tax_rate_amount.toFixed(2)}" type="text" readonly="readonly">
+       `)
+      }
+    });
+    }else{
+      item_tax_group['tax_rates'].forEach(function(item) {
+        if (group_rate != 0.0) {
+          tax_rate_amount = parseFloat(taxable_amount)
+        } else {
+          tax_rate_amount = 0.0
+        }
+        if (item.type == "IGST"){
+          $(".igst-tax-name-section").prepend(`
+            <input style="width:150%; background-image: none;" class="fi_input_style text-left ${tax_group_id}-tax-rate" value="${item.rate}%" type="text" name="" readonly="readonly">
+          `)
+
+         $(".igst-tax-amount-section").prepend(`
+           <input value="${tax_group_id}" type="hidden" name="inventory_transaction_purchase_bill[tax_breakup][][id]">
+           <input value="${item.name}" type="hidden" name="inventory_transaction_purchase_bill[tax_breakup][][name]">
+           <input value="${item.rate}" type="hidden" name="inventory_transaction_purchase_bill[tax_breakup][][rate]">
+           <input style="width:150%; background-image: none;" name="inventory_transaction_purchase_bill[tax_breakup][][amount]" class="fi_input_style text-right ${tax_group_id}-tax-rate-amount" value="${tax_rate_amount.toFixed(2)}" type="text" readonly="readonly">
+         `)
+
+        }
+      });
+    }
+  }else{
+    item_tax_group['tax_rates'].forEach(function(item) {
+      if (group_rate != 0.0) {
+        tax_rate_amount = parseFloat(taxable_amount)
+      } else {
+        tax_rate_amount = 0.0
+      }
+      if (item.type == "VAT"){
+        $(".vat-tax-name-section").prepend(`
+          <input style="width:150%; background-image: none;" class="fi_input_style text-left ${tax_group_id}-tax-rate" value="${item.rate}%" type="text" name="" readonly="readonly">
+        `)
+
+       $(".vat-tax-amount-section").prepend(`
+         <input value="${tax_group_id}" type="hidden" name="inventory_transaction_purchase_bill[tax_breakup][][id]">
+         <input value="${item.name}" type="hidden" name="inventory_transaction_purchase_bill[tax_breakup][][name]">
+         <input value="${item.rate}" type="hidden" name="inventory_transaction_purchase_bill[tax_breakup][][rate]">
+         <input value="${taxable_amount.toFixed(2)}" type="hidden" class="${tax_group_id}-taxable-amount" name="inventory_transaction_purchase_bill[tax_breakup][][taxable_amount]">
+         <input style="width:150%; background-image: none;" name="inventory_transaction_purchase_bill[tax_breakup][][amount]" class="fi_input_style text-right ${tax_group_id}-tax-rate-amount" value="${tax_rate_amount.toFixed(2)}" type="text" readonly="readonly">
+       `)
+
+      }
+      });
+  }
+}
+
+function setPurchaseBillTime() {
+  let date = $('#inventory_transaction_purchase_bill_transaction_date').val().split('/')
+  let new_date = date[2]+ "/" + date[1] + "/" + date[0]
+  date_time = new_date + " " + $("#inventory_transaction_purchase_bill_transaction_time_picker").val()
+  date_time = moment(date_time).format('YYYY-MM-DD HH:mm:ssZ')
+  $('#inventory_transaction_purchase_bill_transaction_time').val(date_time)
+}
+
+$('.transaction-datepicker').datepicker({
+    dateFormat: "dd/mm/yy",
+    maxDate: -0
+}).on('change', function(e) {
+  validateMaxTime()
+  setPurchaseBillTime()
+});
+
+function validateMaxTime()
+{
+  var picker_time = moment($('.transaction-timepicker').val(), 'HH:mm a')
+  if ( ($('.transaction-datepicker').val() == "<%= Date.current.strftime("%d/%m/%Y") %>") && (moment().isBefore(picker_time)) )
+  {
+    $('.transaction-timepicker').timepicker('setTime', moment().format('HH:mm a'))
+  }
+}
+
+$('.transaction-timepicker').timepicker({
+  defaultTime: 'current',
+  TimeFormat: 'HH:mm a',
+    minuteStep: 1
+  }).on('changeTime.timepicker', function(e) {  
+    validateMaxTime()
+    setPurchaseBillTime()
+  });
+
+
+function validate_inventory_purchase_bills_form() {
+  $("#inventory_transaction_purchase_bill_transaction_date").prop("disabled",false);
+  $("#inventory_transaction_purchase_bill_transaction_time_picker").prop("disabled",false);
+  $("#inventory_purchase_bills_form").validate({
+    rules: {
+      "inventory_transaction_purchase_bill[vendor_location_id]": {
+        required: true,
+      },
+      "inventory_transaction_purchase_bill[total_cost]": {
+        required: true,
+      },
+      "inventory_transaction_purchase_bill[invoice_number]": {
+        required: true,
+      },
+      "inventory_transaction_purchase_bill[invoice_date]": {
+        required: true,
+      },
+      "inventory_transaction_purchase_bill[net_amount]": {
+        required: true,
+        min: 1,
+        number: true,  
+      },
+    },
+    messages: {
+      "inventory_transaction_purchase_bill[total_cost]": {
+        required: "Required"
+      },
+      "inventory_transaction_purchase_bill[net_amount]": {
+        required: "Required"
+      },
+      "inventory_transaction_purchase_bill[invoice_number]": {
+        required: "Required"
+      },
+      "inventory_transaction_purchase_bill[invoice_date]": {
+        required: "Required"
+      },
+    },
+    errorPlacement: function (error, element) {
+      var elem = $(element);
+      error.insertAfter(element);
+      if(elem.hasClass("select2-hidden-accessible")) {
+        element = $("#select2-" + elem.attr("id") + "-container").parent();
+        error.insertAfter(element);
+      } else {
+        error.insertAfter(element);
+      }
+    }
+  });
+}
+validate_inventory_purchase_bills_form()
+
+$.validator.addMethod("noSpace", function(value, element) { 
+    return value.indexOf(" ") < 0 && value != ""; 
+}, "Please Enter valid data");
+
+$.validator.addClassRules("item_description", { required: true });
+$.validator.addClassRules("item_quantity", { required: true, number: true });
+$.validator.addClassRules("price_including_tax", { required: true, number: true });
+
+jQuery.extend(jQuery.validator.messages, {
+  required: "Required",
+  remote: "Please fix this field.",
+  email: "Please enter a valid email address.",
+  url: "Please enter a valid URL.",
+  date: "Please enter a valid date.",
+  dateISO: "Invalid date.",
+  number: "Invalid No.",
+  digits: "Please enter only digits.",
+  creditcard: "Please enter a valid credit card number.",
+  equalTo: "Please enter the same value again.",
+  accept: "Please enter a value with a valid extension.",
+  maxlength: jQuery.validator.format("Please enter no more than {0} characters."),
+  minlength: jQuery.validator.format("Please enter at least {0} characters."),
+  rangelength: jQuery.validator.format("Please enter a value between {0} and {1} characters long."),
+  range: jQuery.validator.format("Please enter a value between {0} and {1}."),
+  max: jQuery.validator.format("Please enter a value less than or equal to {0}."),
+  min: jQuery.validator.format("Please enter a value greater than or equal to {0}.")
+});
+
+check_tax()
+
+function check_tax(){
+  <% if @inventory_store.nil? %>
+    $('#tax-cage').hide();
+  <% else %>
+    $('#tax-cage').show();
+  <% end %>
+}

@@ -1,0 +1,101 @@
+<%= javascript_include_tag "application-loggedin", "data-turbolinks-track" => true %>
+<div class="modal-dialog modal-lg" style=<%= ("width:99%;" if @invoice_setting.tax_enabled_pharmacy) || "width:80%;" %>>
+  <div class="modal-content">
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+      <h4 style="margin-top: 3px; margin-bottom: 3px; color: #333">Pharmacy Free Receipt</h4>
+    </div>
+    <button type="button" class="btn btn-xs btn-success" id="btnPrintSetting" style="padding: 0px 5px;margin-left: 86.5%; margin-top: 1%; margin-bottom: 1% " data-toggle="collapse" data-target="#changeSettings"><i class="glyphicon glyphicon-cog"></i>Print Out Settings</button>
+    <br>
+    <div class="container-fluid print_settings collapse" style="color:#636e7b; font-size: 12px; padding-top: 3px;" id="changeSettings">
+      <form accept-charset="UTF-8" action="/inventory/upload_print_settings" data-remote="true" enctype="multipart/form-data" method="post">
+        <input type="hidden" class="department_id fi_input_style" name='department_id' id="department_id" value="284748001" />
+        <div class="row">
+          <div class="col-md-2 text-right" style="margin-bottom: 1%" name='shop_name'> Shop Name:</div>
+          <div class="col-md-2">
+            <input type="text" class="shop_name fi_input_style" name="shop_name" />
+          </div>
+          <div class="col-md-1 text-right" style="margin-bottom: 1%" name='dl_no'> DL NO:</div>
+          <div class="col-md-2">
+            <input type="text" class="dl_number fi_input_style" name='dl_number' id="dl_number"/>
+          </div>
+          <div class="col-md-1 text-right" style="margin-bottom: 1%" name='gst'> GST NO:</div>
+          <div class="col-md-2">
+            <input type="text" class="gst fi_input_style" name='gst' id="gst"/>
+          </div>
+          <div class="col-md-2 text-right">
+            <input type="submit" id="inputPrintSettingd" style='margin-top: 6%' value="Upload" class="btn btn-xs btn-primary">
+          </div>
+        </div>
+        <div class="row" style="padding-bottom: 1%; border-bottom: 1px solid #eee">
+          <div class="col-md-2 text-right" style="margin-top: 2%">Upload Logo: </div>
+          <div class="col-md-2">
+            <span class="btn btn-file-logo" style="width: 68%; background: #eee; margin-bottom: 1%">
+              <img width="60" height="60" class="thumb" onclick="$(this).parent().find('.profile_pic').click();" src="/assets/photos/no_picture_available.png" alt="No picture available">
+              <input style="visibility:hidden; height: 0" class="profile_pic" onchange="readURL(this)" type="file" name="print_out_logo" id="printOutLogo">
+            </span>
+          </div>
+          <div class="col-md-1 text-right" name='dl_no'> <p>Pharmacist:</p><p>Contact:</p></div>
+          <div class="col-md-2">
+            <p><input type="text" class="username fi_input_style" name='username' id="username" style="margin-top: 0%" /></p>
+            <p><input type="text" class="contact fi_input_style" name='contact' id="contact" style="margin-top: 0%" maxlength="10" /></p>
+          </div>
+          <div class="col-md-1 text-right"><p>Address:</p><p>Email:</p> </div>
+          <div class="col-md-4">
+            <p><input type="text" class="shop_address fi_input_style" name='shop_address' style="margin-top: 0%; width:90%" id="shop_address"/></p>
+            <p><input type="text" class="email fi_input_style" name='email' style="margin-top: 0%; width:90%" id="email"/></p>
+          </div>
+        </div>
+      </form>
+    </div>
+    <%= form_for(@invoice_inventory_department_pharmacy,:format => :js,:method => :post, :remote => true, :url => invoice_inventories_department_pharmacy_create_path) do |f|%>
+      <%= f.hidden_field :tax_enabled, value: @invoice_setting.tax_enabled_pharmacy %>
+      <%= f.hidden_field :currency_symbol, value: @currency.symbol %>
+      <%= f.hidden_field :currency_id, value: @currency.id %>
+        <div class="modal-body pharmacy-request-log" id="freeInvoice" style="min-height:400px; color:#636e7b; font-size: 12px; padding-top: 3px;">
+          <% if @invoice_setting.tax_enabled_pharmacy %>
+            <%= render partial: 'invoice/inventories/department/pharmacy_invoices/new_tax_enabled.html.erb', locals: { f: f } %>
+          <% else %>
+            <%= render partial: 'invoice/inventories/department/pharmacy_invoices/new_tax_disabled.html.erb', locals: { f: f } %>
+          <% end %>
+        </div>
+        <div class="modal-footer">
+          <div class="btn-group">
+            <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+          </div>
+          <div class="btn-group">
+            <button type="button" id="btnGoBack" class="btn btn-warning" style="display: none;">Edit</button>
+          </div>
+          <div class="btn-group">
+            <%= f.submit "Proceed to Checkout",{:class => 'btn btn-warning tax-invoice-submit pharmacy_invoice', remote: true,'data-disable-with' =>"Please Wait...", :onclick => 'checkStock()'}%>
+            <button id="btnProceedtoCheckoutA4" style="display: none" data-modelId="" data-attr="">Proceed to Checkout</button>
+          </div>
+          <!-- <button type="button" id="btnAddItem" class="btn btn-primary">Save Item to Inventory</button> -->
+          <!-- <button class="btn btn-success btn-sm" id="btnCheckout" data-modelId=""><i class="fa fa-check-circle-o cursor-pointer"></i>&nbsp;&nbsp;Checkout &amp; Print Invoice</button> -->
+        </div>
+    <% end %>
+  </div><!-- /.modal-content -->
+</div><!-- /.modal-dialog -->
+<style type="text/css">
+  .font_size {
+    font-size: 11px;
+  }
+  input[type=number]::-webkit-inner-spin-button,
+  input[type=number]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input.error, select.error {
+    border-color: #b94a48;
+    background-image: none;
+  }
+  input.valid, select.valid {
+    border-color: #468847;
+    background-image: none;
+  }
+  label.error {
+    white-space: nowrap;
+  }
+  
+
+</style>

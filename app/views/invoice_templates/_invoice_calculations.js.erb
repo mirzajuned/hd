@@ -1,0 +1,473 @@
+$(document).ready(function(){
+
+  // Add New Service
+  $("#add_service_invoice_template").on('click', function(e){
+    e.preventDefault()
+    var service_row_count = $('#services_items_invoice_template').children().length
+    $("#services_items_invoice_template").append('<div class="service_row_count mb5 mt5" title="'+ service_row_count +'"><div class="row service_row mb10"><div class="col-md-3"><select class="form-control service_name" name="invoice_template[template_details]['+ service_row_count +'][name]"><% @invoiceservicecard.where(card_deleted: false).each do |servicecard| %><% if servicecard.invoice_item_card.count > 0 %><option value="<%= servicecard.id.to_s %>"><%= servicecard.service_name %></option><% end %><% end %></select></div><div class="col-md-4"><button class="btn btn-primary btn-xs add_service_item" style="padding:0 5px; margin-top:3px;"><i class="fa fa-plus"></i> New Item</button></div><div class="col-md-3"><input style="padding:5px 10px;" class="form-control service_total" placeholder="Service Total" type="text" name="invoice_template[template_details]['+ service_row_count +'][service_total]" readonly="readonly"></div><div class="col-md-2 text-right"><button class="btn btn-danger btn-xs remove_service_item" style="padding:0 5px; margin-top:3px;"><i class="fa fa-trash-alt"></i> Remove Service</button></div></div><div class="service_item_row_count mb10" id="service_item_row"></div></div>');
+    
+    // Create Hook To Add Item Button Of The Newly Created Service
+    $("#services_items_invoice_template").find(".service_row_count").last().find(".add_service_item").on('click', function(e){
+      e.preventDefault();
+      var service_row_counting = parseFloat($(this).closest(".service_row_count").attr('title'))
+      var item_row_count = $(this).closest('.service_row_count').children(".service_item_row_count").children().length
+      $(this).closest('.service_row_count').find(".service_item_row_count").append('<div class="invoice_service_item_row row mt5" id="invoice_service_item_row"><div class="col-md-1 field_for_date"><input name="invoice_template[template_details]['+ service_row_counting +'][items]['+ item_row_count +'][item_entry_date]" style="padding:5px 10px;" class="form-control i_item_entry_date" type="hidden" value="<%= Time.current %>"></div><div class="col-md-3 field_for_description"><select class="form-control i_description" name="invoice_template[template_details]['+ service_row_counting +'][items]['+ item_row_count +'][description]"></select></div><div class="col-md-2 field_for_item"><input name="invoice_template[template_details]['+ service_row_counting +'][items]['+ item_row_count +'][quantity]" style="padding: 5px 10px;" class="form-control i_quantity field_for_quantity" placeholder="Quantity" maxlength="4" value="1" type="text"></div><div class="col-md-2 field_for_unit_price"><input name="invoice_template[template_details]['+ service_row_counting +'][items]['+ item_row_count +'][unit_price]" style="padding: 5px 10px;" class="form-control i_unit_price" placeholder="Unit Price" maxlength="12" type="text"></div><div class="col-md-2 field_for_price"><input name="invoice_template[template_details]['+ service_row_counting +'][items]['+ item_row_count +'][price]" style="padding: 5px 10px;" class="form-control i_price" placeholder="Total" readonly="readonly" type="text"></div><div class="col-md-2"><button class="btn btn-danger btn-xs remove_item" style="padding:0 5px; margin-top:3px;"><i class="fa fa-trash-alt"></i> Remove Item</button></div><input name="invoice_template[template_details]['+ service_row_counting +'][items]['+ item_row_count +'][patient_payed]" style="padding:5px 10px;" class="form-control i_patient_payed text-right" value= "No" placeholder="Total" readonly="readonly" type="hidden"></div>');
+
+      // Calculation For Item Total
+      my_el = $(this).closest(".service_row_count").find(".invoice_service_item_row")
+      calculate_item_total(my_el);
+
+      // Create Hook To Remove Item Button Of The Newly Created Item
+      $("#services_items_invoice_template").find(".service_row_count").find('.invoice_service_item_row').last().find(".remove_item").on('click',function(e){
+        e.preventDefault();
+        // $(this).closest(".invoice_service_item_row").remove();
+        target = $(this).closest('.service_item_row_count');
+        $(this).closest(".invoice_service_item_row").remove();
+        calculation_invoice_total(target);
+
+        // Reset Counter Logic
+        remove_reset_logic();
+      });
+
+      get_item_card_details($("#services_items_invoice_template").find(".service_row_count").find('.invoice_service_item_row').last().find(".i_description"));
+
+      create_item_dropdown(this);
+    });
+
+
+    // Create Hook To Remove Service Button Of The Newly Created Service
+    $("#services_items_invoice_template").find(".service_row_count").last().find(".remove_service_item").on('click', function(e){
+      e.preventDefault();
+      $(this).closest(".service_row_count").remove();
+      // Reset Name Counter Attribute For Service
+      remove_reset_logic();
+      
+    });
+
+    $("#services_items_invoice_template").find(".service_name").last().on('change', function(){
+      var service_id = $(this).val()
+      var _this = this 
+      $.ajax({
+        dataType: "JSON",
+        type: "get",
+        data: {
+          service_id: service_id
+        },
+        url: '/invoice_item_cards/get_items_for_service',
+        success: function(response){
+          $(_this).closest('.service_row_count').find('.service_item_row_count').find('.invoice_service_item_row').find('.i_description').children().remove()
+          $.each(response.invoice_item_card, function(key, value) {
+            if(value[2] === null){
+              $(_this).closest('.service_row_count').find('.service_item_row_count').find('.invoice_service_item_row').find('.i_description').append($("<option></option>").attr("value",value[0]).text(value[1]));
+            } else {
+              $(_this).closest('.service_row_count').find('.service_item_row_count').find('.invoice_service_item_row').find('.i_description').append($("<option></option>").attr("value",value[0]).text(value[1] + ' - ' + value[2]));
+            }
+          });
+          var path = $(_this).closest('.service_row_count').find('.service_item_row_count').find('.invoice_service_item_row')
+          for (var i = path.length - 1; i >= 0; i--) {
+            $(path[i]).find('.i_description').prepend($('<option selected="selected" disabled="disabled"></option>'))
+            $(path[i]).find('.i_description').removeAttr('disabled')
+            $(path[i]).find('.i_quantity').val(1)
+            $(path[i]).find('.i_unit_price').val("")
+            $(path[i]).find('.i_unit_price').trigger('focusout')
+            $(path[i]).find('.i_price').val("")
+          }
+        }
+      })
+    })
+  });
+
+  // Add New Service Item For Default Existing Fields
+  $(".add_service_item").on('click', function(e){
+    e.preventDefault();
+    var service_row_counting = parseFloat($(this).closest(".service_row_count").attr('title'))
+    var item_row_count = $(this).closest('.service_row_count').children(".service_item_row_count").children().length
+    $(this).closest('.service_row_count').children(".service_item_row_count").append('<div class="invoice_service_item_row row mt5" id="invoice_service_item_row"><div class="col-md-1 field_for_date"><input name="invoice_template[template_details]['+ service_row_counting +'][items]['+ item_row_count +'][item_entry_date]" style="padding:5px 10px;" class="form-control i_item_entry_date" type="hidden" value="<%= Time.current %>"></div><div class="col-md-3 field_for_description"><select class="form-control i_description" name="invoice_template[template_details]['+ service_row_counting +'][items]['+ item_row_count +'][description]"></select></div><div class="col-md-2 field_for_quantity"><input name="invoice_template[template_details]['+ service_row_counting +'][items]['+ item_row_count +'][quantity]" style="padding: 5px 10px;" class="form-control i_quantity" placeholder="Quantity" maxlength="4" value="1" type="text"></div><div class="col-md-2 field_for_unit_price"><input name="invoice_template[template_details]['+ service_row_counting +'][items]['+ item_row_count +'][unit_price]" style="padding: 5px 10px;" class="form-control i_unit_price" placeholder="Unit Price" maxlength="12" type="text"></div><div class="col-md-2 field_for_price"><input name="invoice_template[template_details]['+ service_row_counting +'][items]['+ item_row_count +'][price]" style="padding: 5px 10px;" class="form-control i_price" placeholder="Total" readonly="readonly" type="text"></div><div class="col-md-2"><button class="btn btn-danger btn-xs remove_item" style="padding:0 5px; margin-top:3px;"><i class="fa fa-trash-alt"></i> Remove Item</button></div><input name="invoice_template[template_details]['+ service_row_counting +'][items]['+ item_row_count +'][patient_payed]" style="padding:5px 10px;" class="form-control i_patient_payed text-right" value= "No" placeholder="Total" readonly="readonly" type="hidden"></div>')
+
+    // Calculation For Item Total Of Default Existing Fields
+    my_el = $(this).closest(".service_row_count").find(".invoice_service_item_row")
+    calculate_item_total(my_el);
+
+
+    // Create Hook To Remove Item Button Of The Newly Created Item
+
+    $(this).closest('.service_row').siblings('.service_item_row_count').find('.remove_item').last().on('click',function(e){
+      e.preventDefault();
+      target = $(this).closest('.service_item_row_count');
+      $(this).closest(".invoice_service_item_row").remove();
+      calculation_invoice_total(target);
+
+      // Reset Counter Logic
+      remove_reset_logic();
+    });
+    //    
+    
+    get_item_card_details($(this).closest('.service_row').siblings('.service_item_row_count').find('.i_description').last());
+    create_item_dropdown(this);
+    
+  });
+
+
+  // Remove Service Item For Default Existing Field
+  $(".remove_service_item").on('click', function(e){
+    e.preventDefault();
+    $(this).closest(".service_row_count").remove();
+
+    // Reset Name Counter Attribute For Service
+    remove_reset_logic();
+  });
+
+  // Remove Service Item For Default Existing Field
+  $(".remove_item").on('click',function(e){
+    e.preventDefault();
+    target = $(this).closest('.service_item_row_count');
+    $(this).closest(".invoice_service_item_row").remove();
+    calculation_invoice_total(target);
+
+
+    // Reset Counter Logic
+    remove_reset_logic();
+  });
+
+  // Calculate Item Total For Default Existing Field
+  var i_price = 0
+  my_el = $(".invoice_service_item_row")
+  calculate_item_total(my_el);
+
+
+  // Net Amount Calculation
+  $(".discount_amount").on('keyup',function(){
+    if($(this).val().length > 0) {
+      var disc = $(this).val()
+    } else {
+      var disc = 0
+    }
+    var gross_amount =  $(".invoice_gross_total").val()
+    $(".invoice_net_total").val((parseFloat(gross_amount) - parseFloat(disc)).toFixed(2))
+    // if($(".amount_paid_tpa").val().length > 0) {
+    //   var amount_paid_tpa = $(".amount_paid_tpa").val()
+    // } else {
+    //   var amount_paid_tpa = 0
+    // }
+    var net_amount =  $(".invoice_net_total").val()
+    // $(".amount_paid_patient").val((parseFloat(net_amount) - parseFloat(amount_paid_tpa)).toFixed(2))
+  });
+
+  $(".discount_amount").on('focusout',function(){
+    if($(this).val().length > 0) {
+      var disc = $(this).val()
+    } else {
+      var disc = 0
+    }
+    var gross_amount =  $(".invoice_gross_total").val()
+    $(".invoice_net_total").val((parseFloat(gross_amount) - parseFloat(disc)).toFixed(2))
+    // if($(".amount_paid_tpa").val().length > 0) {
+    //   var amount_paid_tpa = $(".amount_paid_tpa").val()
+    // } else {
+    //   var amount_paid_tpa = 0
+    // }
+    var net_amount =  $(".invoice_net_total").val()
+    // $(".amount_paid_patient").val((parseFloat(net_amount) - parseFloat(amount_paid_tpa)).toFixed(2))
+  });
+
+  // $(".amount_paid_tpa").on('keyup',function(){
+  //   if($(this).val().length > 0) {
+  //     var amount_paid_tpa = $(this).val()
+  //   } else {
+  //     var amount_paid_tpa = 0
+  //   }
+  //   var net_amount =  $(".invoice_net_total").val()
+  //   $(".amount_paid_patient").val((parseFloat(net_amount) - parseFloat(amount_paid_tpa)).toFixed(2))
+  // });
+
+  $("#add_patient_info").on('click', function(e){
+    e.preventDefault();
+    $("#patient_button").hide();
+    $(".patient_info_partial").show();
+  })
+
+
+  // Function For Calculating Item Total
+  function calculate_item_total(el) {
+    $(el).find(".i_unit_price").on('keyup', function(){
+      if($(this).val().length > 0) {
+        var i_unit_price = $(this).val();
+      } else {
+        var i_unit_price = 0
+      }
+      if($(this).closest('.field_for_unit_price').siblings().find('.i_quantity').val().length > 0) {
+        var i_quantity = $(this).closest('.field_for_unit_price').siblings().find('.i_quantity').val();
+      } else {
+        var i_quantity = 0
+      }
+
+      var i_price = parseFloat(parseFloat(i_quantity) * parseFloat(i_unit_price)).toFixed(2);
+      $(this).closest('.invoice_service_item_row').find('.i_price').val(i_price);
+      $(this).closest(".invoice_service_item_row").find(".i_price").trigger("change");
+    });
+    $(el).find(".i_quantity").on('keyup', function(){
+      if($(this).val().length > 0) {
+        var i_quantity = $(this).val();
+      } else {
+        var i_quantity = 0
+      }
+      if($(this).closest('.field_for_quantity').siblings().find('.i_unit_price').val().length > 0) {
+        var i_unit_price = $(this).closest('.field_for_quantity').siblings().find('.i_unit_price').val();
+      } else {
+        var i_unit_price = 0
+      }
+      var i_price = parseFloat(parseFloat(i_quantity) * parseFloat(i_unit_price)).toFixed(2);
+      $(this).closest('.invoice_service_item_row').find('.i_price').val(i_price);
+      $(this).closest(".invoice_service_item_row").find(".i_price").trigger("change");
+    });
+
+    $(el).find(".i_price").on('change', function(e){
+      calculation_invoice_total($(e.currentTarget).closest(".service_item_row_count"));
+    });
+    $(el).find(".i_unit_price").on('focusout', function(){
+      if($(this).val().length > 0) {
+        var i_unit_price = $(this).val();
+      } else {
+        var i_unit_price = 0
+      }
+      if($(this).closest('.field_for_unit_price').siblings().find('.i_quantity').val().length > 0) {
+        var i_quantity = $(this).closest('.field_for_unit_price').siblings().find('.i_quantity').val();
+      } else {
+        var i_quantity = 0
+      }
+
+      var i_price = parseFloat(parseFloat(i_quantity) * parseFloat(i_unit_price)).toFixed(2);
+      $(this).closest('.invoice_service_item_row').find('.i_price').val(i_price);
+      $(this).closest(".invoice_service_item_row").find(".i_price").trigger("change");
+    });
+    $(el).find(".i_quantity").on('focusout', function(){
+      if($(this).val().length > 0) {
+        var i_quantity = $(this).val();
+      } else {
+        var i_quantity = 0
+      }
+      if($(this).closest('.field_for_quantity').siblings().find('.i_unit_price').val().length > 0) {
+        var i_unit_price = $(this).closest('.field_for_quantity').siblings().find('.i_unit_price').val();
+      } else {
+        var i_unit_price = 0
+      }
+      var i_price = parseFloat(parseFloat(i_quantity) * parseFloat(i_unit_price)).toFixed(2);
+      $(this).closest('.invoice_service_item_row').find('.i_price').val(i_price);
+      $(this).closest(".invoice_service_item_row").find(".i_price").trigger("change");
+    });
+
+    $(el).find(".i_price").on('change', function(e){
+      calculation_invoice_total($(e.currentTarget).closest(".service_item_row_count"));
+    });
+  }
+
+  
+  // Function For Calculating Invoice Based Total
+  function calculation_invoice_total(el) {
+    // Service Total Calculation
+    prices = $(el).find(".i_price")
+    total = 0
+    for (var i = prices.length - 1; i >= 0; i--) {
+      total += parseFloat($(prices[i]).val())
+    };
+    $(el).closest(".service_row_count").find(".service_total").val(total)
+
+    // Gross Amount Calculation
+    service_prices = $("#services_items_invoice_template").find(".service_total")
+    total_gross = 0
+    for (var i = service_prices.length - 1; i >= 0; i--) {
+      total_gross += parseFloat($(service_prices[i]).val())
+    };
+    $(el).closest(".container-fluid").find(".invoice_gross_total").val(total_gross)
+
+    // Net Amount Calculation
+    var gross_amount_in =  total_gross
+    if($(".discount_amount").val() != "") {
+      var disc_in = $(".discount_amount").val()
+    } else {
+      var disc_in = 0
+    }
+    $(".invoice_net_total").val((parseFloat(gross_amount_in) - parseFloat(disc_in)).toFixed(2))
+
+    // Amount TPA Total
+    var net_amount =  $(".invoice_net_total").val()
+    if($(".amount_paid_tpa").val() != "") {
+      var amount_paid_tpa =  $(".amount_paid_tpa").val()
+    } else {
+      var amount_paid_tpa = 0
+    }
+    $(".amount_paid_patient").val((parseFloat(net_amount) - parseFloat(amount_paid_tpa)).toFixed(2))
+  }
+
+  // Logic For Remove Reset
+  function remove_reset_logic() {
+    var x = $("#services_items_invoice_template").find(".service_row_count")
+    for (var i = 0; i < x.length; i++) {
+      $(x[i]).find(".service_name").attr('name','invoice_template[template_details][' + i + '][name]')
+      $(x[i]).find(".service_total").attr('name','invoice_template[template_details]['+ i +'][service_total]')
+      $(x[i]).attr('title',i)
+
+      var y = $(x[i]).find('.invoice_service_item_row')
+      for (var j = 0; j < y.length; j++){
+        $(y[j]).find('.i_description').attr('name', 'invoice_template[template_details]['+ i +'][items]['+ j +'][description]')
+        $(y[j]).find('.i_quantity').attr('name', 'invoice_template[template_details]['+ i +'][items]['+ j +'][quantity]')
+        $(y[j]).find('.i_unit_price').attr('name', 'invoice_template[template_details]['+ i +'][items]['+ j +'][unit_price]')
+        $(y[j]).find('.i_price').attr('name', 'invoice_template[template_details]['+ i +'][items]['+ j +'][price]')
+        $(y[j]).find('.i_patient_payed').attr('name', 'invoice_template[template_details]['+ i +'][items]['+ j +'][patient_payed]')
+        $(y[j]).find('.i_item_entry_date').attr('name', 'invoice_template[template_details]['+ i +'][items]['+ j +'][item_entry_date]')
+      }
+    };
+  }
+
+  $("#services_items_invoice_template").find(".service_name").on('change', function(){
+    var service_id = $(this).val()
+    var _this = this 
+    $.ajax({
+      dataType: "JSON",
+      type: "get",
+      data: {
+        service_id: service_id
+      },
+      url: '/invoice_item_cards/get_items_for_service',
+      success: function(response){
+        $(_this).closest('.service_row_count').find('.service_item_row_count').find('.invoice_service_item_row').find('.i_description').children().remove()
+
+        $.each(response.invoice_item_card, function(key, value) {
+          if(value[2] === null){
+            $(_this).closest('.service_row_count').find('.service_item_row_count').find('.invoice_service_item_row').find('.i_description').append($("<option></option>").attr("value",value[0]).text(value[1]));
+          } else {
+            $(_this).closest('.service_row_count').find('.service_item_row_count').find('.invoice_service_item_row').find('.i_description').append($("<option></option>").attr("value",value[0]).text(value[1] + ' - ' + value[2]));
+          }
+        });
+        // var item = $(_this).closest('.service_row_count').find('.service_item_row_count').find('.invoice_service_item_row').find('.i_description')
+        var path = $(_this).closest('.service_row_count').find('.service_item_row_count').find('.invoice_service_item_row')
+        for (var i = path.length - 1; i >= 0; i--) {
+          $(path[i]).find('.i_description').prepend($('<option selected="selected" disabled="disabled"></option>'))
+          $(path[i]).find('.i_description').removeAttr('disabled')
+          $(path[i]).find('.i_quantity').val(1)
+          $(path[i]).find('.i_unit_price').val("")
+          $(path[i]).find('.i_unit_price').trigger('focusout')
+          $(path[i]).find('.i_price').val("")
+        }
+      }
+    })
+  })
+  if($('.path_for_change').val() == "new"){
+    $("#services_items_invoice_template").find(".service_name").first().trigger('change')
+  }
+    
+  function get_item_card_details(link){
+    $(link).on('change', function(){
+      // console.log('abc')
+      var item_id = $(this).val()
+      console.log(item_id)
+      var _this = this
+      $.ajax({
+        dataType: "JSON",
+        type: "get",
+        data: {
+          item_id: item_id
+        },
+        url: '/invoice_item_cards/get_item_card_details',
+        success: function(response){
+          console.log(response)
+          $(_this).closest('.invoice_service_item_row').find('.i_quantity').val(response.invoice_item_card.quantity)
+          $(_this).closest('.invoice_service_item_row').find('.i_unit_price').val((response.invoice_item_card.item_price)/(response.invoice_item_card.quantity))
+          $(_this).closest('.invoice_service_item_row').find('.i_unit_price').trigger('focusout')
+        }
+      })
+    })
+  }
+
+  get_item_card_details($("#services_items_invoice_template").find(".i_description"))
+
+  function create_item_dropdown(abc){
+    var service_id = $(abc).closest('.service_row').find('.service_name').val()
+    
+    var dl = $(abc).closest('.service_row').siblings('.service_item_row_count').find('.i_description').last()
+    $.ajax({
+      dataType: "JSON",
+      type: "get",
+      data: {
+        service_id: service_id
+      },
+      url: '/invoice_item_cards/get_items_for_service',
+      success: function(response){
+        console.log(response.invoice_item_card)
+        $(dl).children().remove()
+
+        $.each(response.invoice_item_card, function(key, value) {
+          if(value[2] === null){
+            $(dl).append($("<option></option>").attr("value",value[0]).text(value[1]));
+          } else {
+            $(dl).append($("<option></option>").attr("value",value[0]).text(value[1] + ' - ' + value[2]));
+          }
+        });
+        $(dl).prepend($('<option selected="selected" disabled="disabled"></option>'))
+        $(dl).removeAttr('disabled')
+      }
+    })
+  }
+
+
+
+
+
+
+
+  function invoice_page() {
+    $("#new_invoice_template").validate({
+
+      errorElement: 'div',
+      errorPlacement: function (error, element) {
+        error.insertAfter(element);
+      }
+    });
+
+    $("#edit_invoice_template").validate({
+
+      errorElement: 'div',
+      errorPlacement: function (error, element) {
+        error.insertAfter(element);
+      }
+    });
+
+  }
+  invoice_page()
+
+  $.validator.addMethod("ServiceName", $.validator.methods.required,
+    "Service Name cannot be blank");
+
+  $.validator.addMethod("ServiceTotal", $.validator.methods.number,
+    "Amount Should be Number");
+
+  $.validator.addMethod("ServiceTotalPresence", $.validator.methods.required,
+    "Amount cannot be blank");
+
+  $.validator.addMethod("ItemDescription", $.validator.methods.required,
+    "Description cannot be blank");
+
+  $.validator.addMethod("ItemQuantity", $.validator.methods.number,
+    "Quantity Should be Number");
+
+  $.validator.addMethod("ItemQuantityPresence", $.validator.methods.required,
+    "Quantity cannot be blank");
+
+  $.validator.addMethod("ItemUnitPrice", $.validator.methods.number,
+    "Unit Price Should be Number");
+
+  $.validator.addMethod("ItemUnitPricePresence", $.validator.methods.required,
+    "Unit Price cannot be blank");
+
+  $.validator.addMethod("NameRequired", $.validator.methods.required,
+    "Name cannot be blank");
+
+  $.validator.addClassRules("service_name", { ServiceName: true});
+  $.validator.addClassRules("service_total", { ServiceTotal: true, ServiceTotalPresence: true});
+  $.validator.addClassRules("i_description", { ItemDescription: true});
+  $.validator.addClassRules("i_quantity", { ItemQuantity: true, ItemQuantityPresence: true});
+  $.validator.addClassRules("i_unit_price", { ItemUnitPrice: true, ItemUnitPricePresence: true});
+  $.validator.addClassRules("Invoice-name-validation", { NameRequired: true});
+});
+
+// Documentation Here

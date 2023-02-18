@@ -1,0 +1,156 @@
+<%= javascript_include_tag "application-loggedin", "data-turbolinks-track" => true %>
+<div class="modal-dialog modal-md">
+  <div class="modal-content">
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal">&times;</button>
+      <h4 class="modal-title">Assign Bed</h4>
+    </div>
+    <%= form_for @admission, format: :js, remote: true, url: admission_save_bed_path, html: { class: "assign-bed-form", id: "assign-bed-form" } do |f|%>
+      <%= hidden_field_tag "id", @admission.id %>
+      <%= f.hidden_field :daycare, value: false %>
+      <div class="modal-body">
+        <div class="row">
+          <div class="col-md-2">
+            <b>Ward :</b>
+          </div>
+          <div class="col-md-4">
+            <%= f.select :ward_id, options_for_select(@wards.map { |ward| [ward.name, ward.id] }, @admission.ward_id.to_s), {include_blank: "Select Ward"}, {:class => "form-control"} %>
+          </div>
+          <div class="col-md-2">
+            <b>Room :</b>
+          </div>
+          <div class="col-md-4">
+            <%= f.select :room_id, options_for_select(""), {include_blank: "Select Room"}, {:class => "form-control"} %>
+          </div>
+        </div>
+        <hr>
+        <div class="row">
+          <div class="col-md-6">
+            <b>Select Bed : <span class="bed-error"></span></b>
+          </div>
+          <div class="col-md-6 text-right">
+            <b style="color:#f00"><% unless @admission.daycare %>Existing Bed: <%= @bed.try(:name) %> ( <%= @bed.try(:code) %> )<% end %></b>
+          </div>
+        </div>
+        <div class="row show-beds">
+          
+        </div>
+      </div>
+      <div class="modal-footer">
+        <%= f.submit "Save Bed", class: "btn btn-success", id: "save_bed", remote: true, 'data-disable-with' => "Please wait..", onclick: "ward_form()" %>
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<script type="text/javascript">
+  // Ward Change
+  $("#admission_ward_id").on('change', function(){
+    var ward_id = $(this).val()
+    if(ward_id !== ""){
+      $.ajax({
+        type: "GET",
+        dataType: "json",
+        url: "/admissions/get_rooms_from_ward",
+        data: {
+          ward_id: ward_id
+        },
+        success: function(response){
+          $('#admission_room_id').children().remove();
+          $('#admission_room_id').append($("<option></option>").attr("value", "").text('Select Room'));
+          $.each(response, function(key, value) {
+            if("<%= @admission.room_id.to_s %>" == value[1]){
+              $('#admission_room_id').append($("<option></option>").attr("value",value[1]).attr("selected", "selected").text(value[0]));
+            } else {
+              $('#admission_room_id').append($("<option></option>").attr("value",value[1]).text(value[0]));
+            }
+          });
+          $("#admission_room_id").trigger('change')
+        }
+      })
+    } else {
+      $('#admission_room_id').children().remove();
+      $('#admission_room_id').append($("<option></option>").attr("value", "").text('Select Room'));
+      $("#admission_room_id").trigger("change")
+    }
+  })
+  $("#admission_ward_id").trigger('change')
+
+  // Room Change
+  $("#admission_room_id").on('change', function(){
+    var room_id = $(this).val()
+    if(room_id !== ""){
+      $.ajax({
+        type: "GET",
+        dataType: "json",
+        url: "/admissions/get_beds_from_room",
+        data: {
+          room_id: room_id,
+          id: "<%= @admission.id %>"
+        },
+        success: function(response){
+          $(".show-beds").html("")
+          var x = response[0][0]
+          var initial = true
+          $.each(response, function(key, value) {
+            if(initial == true){
+              $(".show-beds").append("<div class='col-md-12 text-center' style='margin-top: 10px;margin-bottom: 10px;background: #354670;color: #fff;padding: 0px;'><b>" + response[0][0] + " - <i class='fa fa-rupee'></i> " + response[0][3].toString() + "</b></div>")
+              initial = false
+            }
+            if(x != value[0]){
+              $(".show-beds").append("<div class='col-md-12 text-center' style='margin-top: 10px;margin-bottom: 10px;background: #354670;color: #fff;padding: 0px;'><b>" + value[0] + " - <i class='fa fa-rupee'></i> " + value[3].toString() + "</b></div>")
+              x = value[0]
+            }
+            $(".show-beds").append("<div class='rdio rdio-primary col-md-2'><input type='radio' name='admission[bed_id]' class = 'bed-id' id='" + value[2] + "' value='" + value[1] + "'/><label for='" + value[2] + "'> " + value[2] + "</label></div>")
+
+            $('.show-beds').find("input[value=" + value[1] + "]").on('click', function(){
+              $("#save_bed").show()
+              $(".dummy-save-btn").hide()
+            })
+          });
+        }
+      })
+    } else {
+      $(".show-beds").html("")
+    }
+  })
+
+  // Validation
+  function ward_form(){
+    $(".assign-bed-form").validate({
+      rules: {
+        "admission[ward_id]": {
+          required: true,
+        },
+        "admission[room_id]": {
+          required: true,
+        },
+        "admission[bed_id]": {
+          required: true
+        }
+      },
+      messages: {
+        "admission[ward_id]": {
+          required: "Ward Required",
+        },
+        "admission[room_id]": {
+          required: "Room Required",
+        },
+        "admission[bed_id]": {
+          required: "Bed Required"
+        }
+      },
+      errorPlacement: function (error, element) {
+        var name = $(element).attr('name')
+        if((name == "admission[bed_id]")) {
+          element = $(".bed-error");
+          error.appendTo(element);
+          $(".show-beds").find("label").css('text-shadow','red 0px 0px 10px')
+        } else {
+          error.insertAfter(element);
+        }
+      }
+    });
+  }
+</script>

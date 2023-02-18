@@ -1,0 +1,2 @@
+module PatientReferralTypesHelper
+end

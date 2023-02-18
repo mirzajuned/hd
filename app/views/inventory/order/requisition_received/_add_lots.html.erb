@@ -1,0 +1,97 @@
+<%= form_for transfer_transaction, :url => inventory_transaction_transfers_path, :authenticity_token => false do |f| %>
+  <table width="100%" class="transfer-transaction-log-item lot-table-<%=@variant.id%>">
+    <%= f.fields_for :items, :child_index => (Time.current.to_f.round(3)*1000).to_i do |builder| %>
+      <% item = builder.object %>
+      <% next if item.stock < 1 %>
+      <tr class="treatmentmedications">
+       <% lot = Inventory::Item::Lot.find_by(id: builder.object.lot_id) %>
+        <%= builder.hidden_field :item_code %>
+        <%= builder.hidden_field :variant_code %>
+        <%= builder.hidden_field :item_id %>
+        <%= builder.hidden_field :lot_id %>
+        <%= builder.hidden_field :variant_id %>
+        <%= builder.hidden_field :category%>
+        <%= builder.hidden_field :barcode %>
+        <%= builder.hidden_field :barcode_present %>
+        <%= builder.hidden_field :variant_reference_id %>
+        <%= builder.hidden_field :item_reference_id %>
+        <%= builder.hidden_field :lot_reference_id %>
+        <%= builder.hidden_field :facility_id %>
+        <%= builder.hidden_field :store_id%>
+        <%= builder.hidden_field :organisation_id %>
+        <%= builder.hidden_field :search %>
+        <%= builder.hidden_field :variant_identifier%>
+        <%= builder.hidden_field :mark_up %>
+        <%= builder.hidden_field :mrp%>
+        <%= builder.hidden_field :list_price%>
+        <%= builder.hidden_field :unit_non_taxable_amount %>
+        <%= builder.hidden_field :unit_taxable_amount %>
+        <%= builder.hidden_field :tax_rate, class: "tax_rate" %>
+        <%= builder.hidden_field :tax_name%>
+        <%= builder.hidden_field :tax_group_id %>
+        <%= builder.hidden_field :tax_inclusive%>
+        <%= builder.hidden_field :vendor_name%>
+        <%= builder.hidden_field :vendor_id%>
+        <%= builder.hidden_field :model_no %>
+        <%= builder.hidden_field :department_id %>
+        <%= builder.hidden_field :department_name %>
+        <%= builder.hidden_field :unit_purchase_tax_amount, { value: "", class: "unit_purchase_tax_amount" } %>
+        <%= builder.hidden_field :item_cost_without_tax, value: "", :class => "item_cost_without_tax"%>
+        <%= builder.hidden_field :purchase_tax_amount, value: "" , :class => "purchase_tax_amount"%>
+        <%= builder.hidden_field :unit_cost_without_tax, value: lot.unit_cost_without_tax, :class => "unit_cost_without_tax modalRequest_input_style"%>
+        <%= builder.hidden_field :requisition_item_id %>
+        <% item_detail = Inventory::Item.find_by(id: lot.item_id) %>
+        <%= builder.hidden_field :dispensing_unit, value: item_detail.dispensing_unit %>
+        <%= builder.hidden_field :hsn_no, value: item_detail.hsn_no %>
+        <% if item.custom_field_data.present? %>
+          <% item.custom_field_data.each do |k,v| %>
+            <%= builder.hidden_field :custom_field_data, {value: v,name: "inventory_transaction_transfer[items_attributes][#{builder.options[:child_index] }][custom_field_data][#{k}]"} %>
+          <% end %>
+        <% end %>
+        <td class="font_size set_s_no"style="padding: 0px;width:1%"></td>
+        <%= builder.select :custom_field_tags,options_for_select(item.custom_field_tags,item.custom_field_tags),{include_hidden: false}, {multiple:true, style: "display: none;"} %>
+        <td class=" font_size"style="width:10%">
+         <%= item.description %>
+          <%= builder.hidden_field :description,readonly: true, :class => "item_description modalRequest_input_style", :placeholder=>"Description" %>
+          <%= builder.hidden_field :_destroy,  {value: 0 ,class: 'form-control' } %>
+        </td>
+        <td class=" font_size"style="width:16%;"></td>
+        <td class=" font_size" style="width:17%;">
+          <%= lot.transaction_display_id&.present? ? lot.transaction_display_id : 'NA' %>
+        </td>
+         <td class="font_size" style="width:8%">
+            <% if lot.transaction_date&.present? %>
+                  <%= lot.transaction_date.try(:strftime,"%d/%m/%Y") %>
+            <% else %>
+                  <%= 'NA' %>
+            <% end %>
+         </td>
+        <td class=" font_size" style="width:10%">
+          <%= item.batch_no %>
+          <%= builder.hidden_field :batch_no,value: item.batch_no,readonly: true, :class => "item_batch modalRequest_input_style", :placeholder=>"Batch" %>
+          <%= builder.hidden_field :self_batched,value: item.self_batched %>
+        </td>
+         <td  style="width:9%">
+          <% if item.expiry_present %>
+            <%= item.expiry %>
+          <%else %>
+             <%= 'NA' %>
+          <%end %>
+          <%= builder.hidden_field :expiry_present, value: item.expiry_present,readonly: true, :class => "exp_datepicker item_expiry modalRequest_input_style", :placeholder=>"Expiry" %>
+          <%= builder.hidden_field :expiry, value: item.expiry,readonly: true, :class => "exp_datepicker item_expiry modalRequest_input_style", :placeholder=>"Expiry" %>
+        </td>
+        <td class=" font_size" style="width:5%;"><%=lot.list_price&.round(2)%></td>
+        <td class=" font_size" style="width:5%;"><%= lot.unit_cost_without_tax&.present? ? lot.unit_cost_without_tax&.round(2) : 'NA' %></td>
+         <td class="font_size" style="width:5%">
+          <%= builder.number_field :stock, :class => "item_quantity modalRequest_input_style", :style=>"width:50%;text-align:left; background-image: none", readonly: true%>
+          <input type="hidden" value= "<%= item.available_stock %>" class="item_max_quantity modalRequest_input_style" placeholder="" style="width:90%;text-align:left" />
+        </td>
+        <td class=" font_size" style="width:5%">
+          <%= builder.text_field :total_cost, readonly: true,:class => "price_including_tax modalRequest_input_style", :placeholder=>"Total Cost Price", :style=>"width:100%;text-align:left"%>
+          <%= builder.hidden_field :unit_cost, value: item.unit_cost, :class => "item_unit_cost modalRequest_input_style"%>
+        </td>
+        <td></td>
+      </tr>
+    <% end %>
+  </table>
+<% end %>

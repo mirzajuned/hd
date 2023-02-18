@@ -1,0 +1,207 @@
+function _timeoutfn() {
+}
+
+function _savefn() {
+  jQuery('.soapnote').submit();
+}
+
+//var stack_bottomleft = {"dir1": "right", "dir2": "up", "push": "top"};
+function toggle_save_button(){
+  if("<%= @specalityid %>" == '309988001' && "<%= @organisations_setting.mandatory_opd_templates %>" == "true"){
+    //let msg = ''
+    let is_history_present =  $('#history_is_valid').hasClass('my-success')
+    let is_vision_present =  $('#vision_is_valid').hasClass('my-success')
+    let is_iop_present =  $('#iop_is_valid').hasClass('my-success')
+    let is_inv_present =  $('#investigation_is_valid').hasClass('my-success')
+    let is_diagnosis_present =  $('#diagnosis_is_valid').hasClass('my-success')
+    let is_procedure_present =  $('#procedure_is_valid').hasClass('my-success')
+    let is_medication_present =  $('#medications_is_valid').hasClass('my-success')
+    let templatename = $('#opdrecord_templatetype').val()
+    if(templatename == "optometrist"){
+      if(is_history_present && is_iop_present && is_vision_present) {
+        //$('.saveopdrecord').prop("disabled", false);
+        check_doc_selected()
+      } else {
+        //$('.saveopdrecord').prop("disabled", true);
+        save_toaster_msg()
+      }
+    } else if(templatename == "postop"){
+      if("<%=current_facility.country_id%>" == "VN_254"){
+        if(is_vision_present) {
+          //$('.saveopdrecord').prop("disabled", false);
+          check_doc_selected()
+        } else {
+          //$('.saveopdrecord').prop("disabled", true);
+          save_toaster_msg()
+        }
+      } else {
+        if(is_vision_present && is_iop_present) {
+          //$('.saveopdrecord').prop("disabled", false);
+          check_doc_selected()
+        } else {
+          //$('.saveopdrecord').prop("disabled", true);
+          save_toaster_msg()
+        }
+      }
+    } else if(templatename == "pmt"){
+       if("<%=current_facility.country_id%>" == "VN_254"){
+        if(is_vision_present && is_diagnosis_present && is_procedure_present && is_medication_present) {
+          //$('.saveopdrecord').prop("disabled", false);
+          check_doc_selected()
+        } else {
+          //$('.saveopdrecord').prop("disabled", true);
+          save_toaster_msg()
+        }
+      } else {
+        if(is_vision_present && is_iop_present && is_diagnosis_present && is_procedure_present && is_medication_present) {
+          //$('.saveopdrecord').prop("disabled", false);
+          check_doc_selected()
+        } else {
+          //$('.saveopdrecord').prop("disabled", true);
+          save_toaster_msg()
+        }
+      }
+    } else if(templatename == "express" || templatename == "freeform"){
+      if(is_inv_present && is_diagnosis_present && is_procedure_present && is_medication_present) {
+        //$('.saveopdrecord').prop("disabled", false);
+        check_doc_selected()
+      } else {
+        //$('.saveopdrecord').prop("disabled", true);
+        save_toaster_msg()
+      }
+    } else if(templatename == "refraction"){
+      if(is_vision_present) {
+        //$('.saveopdrecord').prop("disabled", false);
+        check_doc_selected()
+      } else {
+        //$('.saveopdrecord').prop("disabled", true);
+        save_toaster_msg()
+      }
+    } else if(templatename == "ar_nct"){
+      if(is_iop_present) {
+        //$('.saveopdrecord').prop("disabled", false);
+        check_doc_selected()
+      } else {
+        //$('.saveopdrecord').prop("disabled", true);
+        save_toaster_msg()
+      }
+    } else if(templatename == "nursing"){
+      if(is_history_present && is_iop_present) {
+        //$('.saveopdrecord').prop("disabled", false);
+        check_doc_selected()
+      } else {
+        //$('.saveopdrecord').prop("disabled", true);
+        save_toaster_msg()
+      }
+    } else if(templatename == "eye" || templatename == "lens" || templatename == "quickeye" || templatename == "paediatrics" || templatename == "orthoptics" || templatename == "trauma" )  {
+      if(is_history_present && is_vision_present && is_iop_present && is_inv_present && is_diagnosis_present && is_procedure_present && is_medication_present) {
+        //$('.saveopdrecord').prop("disabled", false);
+        check_doc_selected()
+      } else {
+        save_toaster_msg()
+      }
+    } else {
+      //$('.saveopdrecord').prop("disabled", false);
+      check_doc_selected()
+    }
+  }
+}
+
+jQuery(document).ready(function() {
+  jQuery(".saveopdrecord").on("click", function() {
+    if("<%= @organisations_setting.mandatory_opd_templates %>" == "true"){
+      toggle_save_button()
+    } else {
+      check_doc_selected()
+    }
+  });
+});
+
+function check_doc_selected(){
+  if ($("#opdrecord_view_owner_id").val()){
+    $('#opdrecord_view_pharmacy_store_id').prop('disabled', false)
+    $(".saveopdrecord").attr('disabled','disabled')
+    $(".btn-delete-clone").attr('disabled', 'disabled')
+    $(".saveopdrecord").html("Please Wait...")
+    _savefn();
+
+    setTimeout(function() {
+      jQuery(".saveopdrecord").removeAttr('disabled','disabled')
+      jQuery(".saveopdrecord").html("Retry")
+      $(".saveopdrecord").removeClass('btn-success')
+      $(".saveopdrecord").addClass('btn-warning')
+    }, 20000);
+  } else {
+    $("#opdrecord_view_owner_id").addClass("glow-animation")
+
+    var msg = "Please select the " + $(".user_type").text().replace(":","") + " from the dropdown on top right to to save the template"
+    notice = new PNotify({
+      title: 'Error',
+      text: msg,
+      icon: 'fa fa-error',
+      type: 'error',
+      width: "300px",
+      addclass: 'stack-topleft',
+    })
+    notice.get().click(function(){ notice.remove() });
+  }
+}
+
+function save_toaster_msg(){
+  let not_filled_fields = []
+  if($('#history_is_valid').hasClass('my-danger')){
+    not_filled_fields.push('History')
+  }
+  if($('#vision_is_valid').hasClass('my-danger')){
+    not_filled_fields.push(' Vision')
+  }
+  if(("<%=current_facility.country_id%>" == "VN_254") && ($('#opdrecord_templatetype').val() == 'pmt' || $('#opdrecord_templatetype').val() == 'postop')){
+  } else {
+    if($('#iop_is_valid').hasClass('my-danger')){
+      not_filled_fields.push(' IOP')
+    }
+  }
+  if($('#investigation_is_valid').hasClass('my-danger')){
+    not_filled_fields.push(' Investigation')
+  }
+  if($('#diagnosis_is_valid').hasClass('my-danger')){
+    not_filled_fields.push(' Diagnosis')
+  }
+  if($('#medications_is_valid').hasClass('my-danger')){
+    not_filled_fields.push(' Medications')
+  }
+  if($('#procedure_is_valid').hasClass('my-danger')){
+    not_filled_fields.push(' Procedures')
+  }
+
+  let msg = not_filled_fields + ' field(s) are mandatory. Please fill them to proceed.'
+  notice = new PNotify({
+    title: 'Error',
+    text: msg,
+    icon: 'fa fa-error',
+    type: 'error',
+    width: "500px",
+    addclass: 'stack-topleft'
+  });
+  notice.get().click(function(){ notice.remove() });
+}
+
+$(".anthropometry_height, .anthropometry_weight").on('keyup change', function() {
+    if (($(".anthropometry_height").val().length > 0) && ($(".anthropometry_weight").val().length > 0)) {
+        var height = $(".anthropometry_height").val() / 100;
+        var weight = $(".anthropometry_weight").val();
+        var bmi = "";
+        bmi = weight / Math.pow(height, 2);
+        $(".anthropometry_bmi").val(bmi.toFixed(1));
+    } else {
+        $(".anthropometry_bmi").val("");
+    }
+});
+
+
+$('#opdrecord_vital_signs_spo2').on('keyup change', function() {
+  var pattern = new RegExp('^[0-9]$|^[1-9][0-9]$|^(100)$');
+  if(!$(this).val().match(pattern)){
+    $(this).val('')
+  }
+});

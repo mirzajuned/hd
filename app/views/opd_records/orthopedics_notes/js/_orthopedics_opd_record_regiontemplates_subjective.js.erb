@@ -1,0 +1,883 @@
+$("#diagnosis").on('click', '.tree-default-submit', function(event) {
+  event.preventDefault();
+  return false;
+});
+
+$("#diagnosis").on('selected.fu.tree', '.tree-default-submit', function(event) {
+  event.preventDefault();
+  return false;
+});
+
+$('#search_diagnosis_keyword').autocomplete({
+  minLength: 2,
+
+  source: function(request, response) {
+    var template_id = $("#opdrecord_templateid").val()
+    var speciality_id = $("#opdrecord_specalityid").val()
+    $.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/icdtree/searchdiagnosis',
+      data: {q: request.term,template_id: template_id,speciality_id: speciality_id,  remote: "true" },
+      success: function(data) {
+        response( data);
+      },
+      error: function(data) {
+      }
+    });
+  },
+  select: function( event, ui ) {
+    params = ui.item["code"]
+    name = ui.item["code"]
+    icd_type = ui.item["icd_type"]
+    modal_diagnosis_icd();
+    setTimeout(function() {
+      $("#search_diagnosis_keyword").val("")
+    }, 50);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+      return $('<li>')
+          .append('<a>' + item.label  + '&nbsp; &nbsp; &nbsp;' + "<span class=\"badge pull-right\">" + item.icd_type_label + "</span>" + '</a>')
+          .appendTo(ul);
+  };
+ },
+  close: function() {
+  }
+
+});
+
+$('#recent_diagnosis_icd').on('click', function() {
+  if ($("#recent_diagnosis_icd option:selected").val() == undefined) {
+    return
+  }
+  else{
+    params = $("#recent_diagnosis_icd option:selected").val()
+    icd_type = $("#recent_diagnosis_icd option:selected").attr('data-id');
+    modal_diagnosis_icd();
+  }
+});
+
+$('#opdrecord_topicd_list').on('click', function() {
+  if ($("#opdrecord_topicd_list option:selected").val() == undefined) {
+    return
+  }
+  else{
+    params = $("#opdrecord_topicd_list option:selected").val()
+    icd_type = 'IcdDiagnosis'
+    modal_diagnosis_icd();
+  }
+});
+
+function modal_diagnosis_icd(){
+  event.preventDefault();
+  $.ajax({
+    type: "GET",
+    url: "/icdtree/modal_diagnosis_icd",
+    data: {ajax: params,  icd_type: icd_type, remote: "true" },
+
+  })
+}
+
+function build_topicd_list_from_array_and_populate(array, fieldname) {
+  var topicd_list = [];
+  $.each(array, function(index, object) {
+    var topicd_listoption;
+    topicd_listoption = $("<option value=" + "\"" + object.code + "\"" + ">" + object.name + "</option>");
+    topicd_list[index + 1] = topicd_listoption;
+  });
+  $("#"+fieldname).empty();
+  $("#"+fieldname).empty().append(topicd_list);
+}
+
+function populate_topicd_list (array, config) {
+  var topicd_listfieldname = config['opdrecord_topicd_list'];
+  build_topicd_list_from_array_and_populate(array, topicd_listfieldname);
+}
+
+$(".opdrecord_topicd_list_select").hide();
+
+$('#opdrecord_topicd_name').on('click', function() {
+  event.preventDefault();
+  var topicd_name_selected_option_text = $("#opdrecord_topicd_name option:selected").text();
+  var topicd_name_selected_option_value = $("#opdrecord_topicd_name option:selected").val();
+
+  var params = { topicd_name: topicd_name_selected_option_value };
+  var topicd_list_config = { opdrecord_topicd_list: "opdrecord_topicd_list" };
+  _jquery_ajax_get_params_config("/opd_records/populate_topicd_list.json", params, "populate_topicd_list", topicd_list_config);
+
+  $(".opdrecord_topicd_list_select").show();
+
+  return false;
+});
+
+
+
+////////////////////top icd code ends////////////////////
+
+function _radiology_attributes(array) {
+  var radiologyattributes = [];
+  $.each(array, function(index, value) {
+    var radiologyoption;
+    radiologyoption = $("<option value=" + "\"" + value[1] + "\"" + ">" + value[0] + "</option>");
+    radiologyattributes[index] = radiologyoption;
+  });
+  return radiologyattributes;
+}
+
+function _get_icd_field_name(icdcodeattrposition0) {
+  var icddiagnosis_field_name = "";
+  icddiagnosis_field_name = POSITION + UNDERSCORE + icdcodeattrposition0;
+  return icddiagnosis_field_name;
+}
+
+//function _recalculate_fullicode(diagnosisfullcodeid, elememtthis) {
+//  var diagnosisfullcodeid = diagnosisfullcodeid;
+//  var elememtthis = elememtthis;
+//  var parenttrobject = $(elememtthis).parent().parent();
+//  var parenttdindex = $(elememtthis).parent().index();
+//  if (parenttdindex == 1) {
+//    ICDCODEARRAY.splice(parenttdindex, (ICDCODEARRAY.length - 1));
+//    $(parenttrobject).find("td").eq(2).html("");
+//    $(parenttrobject).find("td").eq(3).html("");
+//  } else if (parenttdindex == 2) {
+//    ICDCODEARRAY.splice(parenttdindex, (ICDCODEARRAY.length - 1));
+//    $(parenttrobject).find("td").eq(3).html("");
+//  } else if (parenttdindex == 3) {
+//    //console.log("do nothing in this case");
+//  }
+//}
+
+//function _add_attributes_for_selected_diagnosisname(data, config) {
+//  var fieldcounter = config['fieldcounter'];
+//  var selected_icddiagnosis_value = config['selected_icddiagnosiscode'];
+//  var diagnosisname_attr_id = config['diagnosisname_attr_id'];
+//  var diagnosisname_attr_name = config['diagnosisname_attr_name'];
+//  ICDCODE = config['selected_icddiagnosiscode'];
+//  var laterality_position = config['laterality_position'];
+//  var icddiagnosis_object = data[selected_icddiagnosis_value];
+//  var icddiagnosis_field_counter = 0;
+//
+//  $.each(icddiagnosis_object, function(icdpositionattr, icdpositionattrvalue) {
+//    var icdcode_array = icdpositionattr.split(DOUBLEHASH);
+//    var icdcodeattrposition0 = icdcode_array[0];
+//    var icdcodeattrposition1 = icdcode_array[1];
+//    var icdcodeattrposition2 = icdcode_array[2];
+//    var icdcodeattrposition3 = icdcode_array[3];
+//
+//    var icddiagnosis_field_name = _get_icd_field_name(icdcodeattrposition0);
+//
+//    var diagnosis_attributes_qualifier_select;
+//    var diagnosis_attributes_qualifier_text_hidden;
+//
+//    var icddiagnosiscodeattrposition_attr_id = _contruct_id_attr_common(ROOT, DIAGNOSISLIST, ATTRIBUTES, fieldcounter, "icddiagnosiscodeattrposition" + "_" + icdcodeattrposition0);
+//    var icddiagnosiscodeattrdisplayrule_attr_id = _contruct_id_attr_common(ROOT, DIAGNOSISLIST, ATTRIBUTES, fieldcounter, "icddiagnosiscodeattrdisplayrule" + "_" + icdcodeattrposition0);
+//    var icddiagnosiscodeattrisselected_attr_id = _contruct_id_attr_common(ROOT, DIAGNOSISLIST, ATTRIBUTES, fieldcounter, "icddiagnosiscodeattrisselected" + "_" + icdcodeattrposition0);
+//    var icddiagnosiscodeislaterality_attr_id = _contruct_id_attr_common(ROOT, DIAGNOSISLIST, ATTRIBUTES, fieldcounter, "icddiagnosiscodeislaterality" + "_" + icdcodeattrposition0);
+//    var icddiagnosiscodeattriscustom_attr_id = _contruct_id_attr_common(ROOT, DIAGNOSISLIST, ATTRIBUTES, fieldcounter, "icddiagnosiscodeattriscustom" + "_" + icdcodeattrposition0);
+//
+//    var select_class_name = "form-control " + icddiagnosis_field_name;
+//
+//    if (icdcode_array[1] == 'Y') {
+//      diagnosis_attributes_qualifier_select = _select_field_contructor("select", select_class_name, diagnosisname_attr_id, icddiagnosis_field_name);
+//
+//      if (icdcode_array[2] == 'Y') {
+//        diagnosis_attributes_qualifier_select.append(_icd_select_options_array_each_iterator(icdpositionattrvalue));
+//
+//        $("#"+diagnosisname_attr_id).closest('tr').find("td").each( function() {
+//          td = $(this);
+//          if (td.is(':empty')) {
+//            td.append([diagnosis_attributes_qualifier_select, _text_field_contructor("input", "form-control", diagnosisname_attr_id, "icddiagnosiscodeattrposition" + "_" + icdcodeattrposition0, "hidden", fieldcounter), _text_field_contructor("input", "form-control", diagnosisname_attr_id, "icddiagnosiscodeattrdisplayrule" + "_" + icdcodeattrposition0, "hidden", fieldcounter), _text_field_contructor("input", "form-control", diagnosisname_attr_id, "icddiagnosiscodeattrisselected" + "_" + icdcodeattrposition0, "hidden", fieldcounter), _text_field_contructor("input", "form-control", diagnosisname_attr_id, "icddiagnosiscodeislaterality" + "_" + icdcodeattrposition0, "hidden", fieldcounter), _text_field_contructor("input", "form-control", diagnosisname_attr_id, "icddiagnosiscodeattriscustom" + "_" + icdcodeattrposition0, "hidden", fieldcounter)]);
+//            return false;
+//          }
+//        });
+//
+//        $("#"+icddiagnosiscodeattrposition_attr_id).val(icdcodeattrposition0);
+//        $("#"+icddiagnosiscodeattrdisplayrule_attr_id).val(icdcodeattrposition1);
+//        $("#"+icddiagnosiscodeattrisselected_attr_id).val(icdcodeattrposition2);
+//        $("#"+icddiagnosiscodeattriscustom_attr_id).val("N");
+//        $("#"+icddiagnosiscodeislaterality_attr_id).val("Y");
+//
+//      } else if (icdcode_array[2] == 'N') {
+//
+//        if (icdcodeattrposition0 === "7") {
+//          diagnosis_attributes_qualifier_select.append(_select_noblank_options_array_each_iterator(icdpositionattrvalue));
+//        } else {
+//          diagnosis_attributes_qualifier_select.append(_select_options_array_each_iterator(icdpositionattrvalue));
+//        }
+//
+//        $("#"+diagnosisname_attr_id).closest('tr').find("td").each( function() {
+//          td = $(this);
+//          if (td.is(':empty')) {
+//            td.append([diagnosis_attributes_qualifier_select, _text_field_contructor("input", "form-control", diagnosisname_attr_id, "icddiagnosiscodeattrposition" + "_" + icdcodeattrposition0, "hidden", fieldcounter), _text_field_contructor("input", "form-control", diagnosisname_attr_id, "icddiagnosiscodeattrdisplayrule" + "_" + icdcodeattrposition0, "hidden", fieldcounter), _text_field_contructor("input", "form-control", diagnosisname_attr_id, "icddiagnosiscodeattrisselected" + "_" + icdcodeattrposition0, "hidden", fieldcounter), _text_field_contructor("input", "form-control", diagnosisname_attr_id, "icddiagnosiscodeislaterality" + "_" + icdcodeattrposition0, "hidden", fieldcounter), _text_field_contructor("input", "form-control", diagnosisname_attr_id, "icddiagnosiscodeattriscustom" + "_" + icdcodeattrposition0, "hidden", fieldcounter)]);
+//            return false;
+//          }
+//        });
+//
+//        $("#"+icddiagnosiscodeattrposition_attr_id).val(icdcodeattrposition0);
+//        $("#"+icddiagnosiscodeattrdisplayrule_attr_id).val(icdcodeattrposition1);
+//        $("#"+icddiagnosiscodeattrisselected_attr_id).val(icdcodeattrposition2);
+//        $("#"+icddiagnosiscodeattriscustom_attr_id).val("N");
+//        $("#"+icddiagnosiscodeislaterality_attr_id).val("N");
+//      }
+//    }
+//
+//    if (icdcode_array[1] == 'N') {
+//      var icddiagnosis_field_name_x = POSITION + UNDERSCORE + "x";
+//      diagnosis_attributes_qualifier_text_hidden = _text_field_contructor("input", "form-control " + icddiagnosis_field_name_x, diagnosisname_attr_id, icddiagnosis_field_name, "hidden", _text_options_array_each_iterator(icdpositionattrvalue));
+//
+//      $("#"+diagnosisname_attr_id).closest('tr').find("td").each( function() {
+//        td = $(this);
+//        if (td.is(':empty')) {
+//          td.append([diagnosis_attributes_qualifier_text_hidden, _text_field_contructor("input", "form-control", diagnosisname_attr_id, "icddiagnosiscodeattrposition"  + "_" + icdcodeattrposition0, "hidden", fieldcounter), _text_field_contructor("input", "form-control", diagnosisname_attr_id, "icddiagnosiscodeattrdisplayrule"  + "_" + icdcodeattrposition0, "hidden", fieldcounter), _text_field_contructor("input", "form-control", diagnosisname_attr_id, "icddiagnosiscodeattrisselected"  + "_" + icdcodeattrposition0, "hidden", fieldcounter), _text_field_contructor("input", "form-control", diagnosisname_attr_id, "icddiagnosiscodeislaterality"  + "_" + icdcodeattrposition0, "hidden", fieldcounter), _text_field_contructor("input", "form-control", diagnosisname_attr_id, "icddiagnosiscodeattriscustom"  + "_" + icdcodeattrposition0, "hidden", fieldcounter)]);
+//          return false;
+//        }
+//      });
+//
+//      $("."+icddiagnosis_field_name_x).trigger("change", [ICDCODE, _text_options_array_each_iterator(icdpositionattrvalue)]);
+//      $("#"+icddiagnosiscodeattrposition_attr_id).val(icdcodeattrposition0);
+//      $("#"+icddiagnosiscodeattrdisplayrule_attr_id).val(icdcodeattrposition1);
+//      $("#"+icddiagnosiscodeattrisselected_attr_id).val(icdcodeattrposition2);
+//      $("#"+icddiagnosiscodeattriscustom_attr_id).val("N");
+//      $("#"+icddiagnosiscodeislaterality_attr_id).val("N");
+//    }
+//
+//    icddiagnosis_field_counter++;
+//  });
+//}
+
+function _add_attributes_for_selected_radiology_investigation(data, config) {
+  var fieldcounter = config['fieldcounter'];
+  var investigationid = config['investigationid'];
+  var investigationlist_investigationname_id = config['investigationlist_investigationname_id'];
+  var investigationlist_investigationname_name = config['investigationlist_investigationname_name'];
+  var laterality = config['laterality'];
+  var investigation_type_id = config['investigation_type_id'];
+  var radiology_object = data;
+  var radiology_field_counter = 0;
+  var radiology_is_spine = "is_spine";
+  var radiology_attributes_qualifier_checkbox = _controls_empty_field_contructor();
+  var radiology_field_name = "loinccode";
+  //var radiology_field_name = "position" + UNDERSCORE + fieldcounter;
+  //console.log(radiology_object[0]['laterality']);
+
+  if (laterality == "Y") {
+    var radiology_attributes_qualifier_select_loinc_code = _select_field_contructor("select", "form-control loinccode", investigationlist_investigationname_id, radiology_field_name);
+    var radiology_attributes_qualifier_text_laterality = _text_field_contructor("input", "form-control", investigationlist_investigationname_id, "laterality", "hidden", "");  //empty values for radiology option if an option is selected but laterallity not selected value should be empty - prabhat
+    var radiology_attributes_qualifier_text_hidden = _text_field_contructor("input", "form-control", investigationlist_investigationname_id, radiology_is_spine, "hidden", fieldcounter);
+    var radiology_attributes_is_spine_attr_id = _contruct_id_attr_common(ROOT, INVESTIGATIONLIST, ATTRIBUTES, fieldcounter, radiology_is_spine);
+    var lateralityoptions = [];
+    lateralityoptions[0] = $("<option value=\" \"></option>");
+    $.each(radiology_object, function(radiologypositionattr, radiologypositionattrvalue) {
+      lateralityoptions[radiologypositionattr + 1] = _options_for_select_field_no_data_attr(radiologypositionattrvalue['laterality'], radiologypositionattrvalue['loinc_code'] );
+    });
+    radiology_attributes_qualifier_select_loinc_code.append(lateralityoptions);
+    $("#"+investigationlist_investigationname_id).closest('tr').append(_td_empty_field_contructor().append([radiology_attributes_qualifier_select_loinc_code, radiology_attributes_qualifier_text_laterality, radiology_attributes_qualifier_text_hidden]));
+    $("#"+radiology_attributes_is_spine_attr_id).val("N");
+  } else if (laterality == "N") {
+    var radiology_attributes_qualifier_text_loinc_code = _text_field_contructor("input", "form-control", investigationlist_investigationname_id, radiology_field_name, "hidden", radiology_object[0]['loinc_code']);
+    var radiology_attributes_qualifier_text_laterality = _text_field_contructor("input", "form-control", investigationlist_investigationname_id, "laterality", "hidden", radiology_object[0]['laterality']);
+    var radiology_attributes_qualifier_text_hidden = _text_field_contructor("input", "form-control", investigationlist_investigationname_id, radiology_is_spine, "hidden", fieldcounter);
+    var radiology_attributes_is_spine_attr_id = _contruct_id_attr_common(ROOT, INVESTIGATIONLIST, ATTRIBUTES, fieldcounter, radiology_is_spine);
+    $("#"+investigationlist_investigationname_id).closest('tr').append(_td_empty_field_contructor().append([ radiology_attributes_qualifier_text_loinc_code,  radiology_attributes_qualifier_text_laterality, radiology_attributes_qualifier_text_hidden ]));
+    $("#"+radiology_attributes_is_spine_attr_id).val("Y");
+    RADIOLOGYARRAY.push(radiology_object[0]['laterality']);
+    RADIOLOGYARRAY.push(radiology_object[0]['loinc_code']);
+  }
+
+  if (investigation_type_id === "113091000" || investigation_type_id === "77477000") {
+    var radiologyattributes = _td_empty_field_contructor().append(_form_group_field_contructor("form-group", "form-group").append(_input_group_field_contructor("input-group mb15", "input-group mb15").append(_select_field_contructor_radiologyoptions("select", "form-control radiologyoptions", fieldcounter, ROOT, INVESTIGATIONLIST, ATTRIBUTES, RADIOLOGYOPTIONS).append(_radiology_attributes(RADIOLOGYATTRIBUTES)))));
+    $("#"+investigationlist_investigationname_id).closest('tr').append(radiologyattributes);
+  } else {
+    $("#"+investigationlist_investigationname_id).closest('tr').append(_td_empty_field_contructor());
+  }
+
+  // var radiologyattributesoptions = [];
+  // $.each(RADIOLOGYATTRIBUTES, function(radiologypositionattr, radiologypositionattrvalue) {
+  //     //console.log(radiologypositionattrvalue);
+  //     radiologyattributesoptions[radiologypositionattr] = _checkbox_options_array_each_iterator_attributes(radiologypositionattrvalue, "input", "check_boxes optional", fieldcounter, ROOT, INVESTIGATIONLIST, ATTRIBUTES, "checkbox", radiology_field_name, RADIOLOGYOPTIONS);
+  // });
+  // radiology_attributes_qualifier_checkbox.append(radiologyattributesoptions);
+  // radiology_attributes_qualifier_checkbox.append(_text_checkbox_hidden_field_contructor("input", fieldcounter, ROOT, INVESTIGATIONLIST, ATTRIBUTES, "hidden", radiology_field_name, RADIOLOGYOPTIONS));
+  // $("#"+investigationlist_investigationname_id).closest('tr').append(_td_empty_field_contructor());
+  //$("#"+investigationlist_investigationname_id).closest('tr').append(_td_empty_field_contructor().append(radiology_attributes_qualifier_checkbox));
+
+  if ($("#"+investigationlist_investigationname_id).closest('tr').find('td').length < 3) {
+    $("#"+investigationlist_investigationname_id).closest('tr').append(_td_empty_field_contructor());
+  }
+  var investigationlist_investigationadviseddate_id = _contruct_id_attr_common(ROOT, INVESTIGATIONLIST, ATTRIBUTES, fieldcounter, "investigationadviseddate");
+  var investigationlist_investigationfullcode_id = _contruct_id_attr_common(ROOT, INVESTIGATIONLIST, ATTRIBUTES, fieldcounter, "investigationfullcode");
+  var investigationlist_investigationadviseddate = _text_field_contructor("input", "form-control", investigationlist_investigationname_id, "investigationadviseddate", "hidden", fieldcounter);
+  var investigationlist_investigationfullcode = _text_field_contructor("input", "form-control", investigationlist_investigationname_id, "investigationfullcode", "hidden", fieldcounter);
+  var investigationlist_investigationdeletebutton = _td_empty_field_contructor().append(_form_group_field_contructor("form-group", "form-group").append([_remove_button_field_contructor("investigationdeletebutton", fieldcounter), investigationlist_investigationadviseddate, investigationlist_investigationfullcode]));
+  $("#"+investigationlist_investigationname_id).closest('tr').append(investigationlist_investigationdeletebutton);
+  $("#"+investigationlist_investigationadviseddate_id).val(moment(new Date()).format('DD/MM/YYYY'));
+  $("#"+investigationlist_investigationfullcode_id).val(RADIOLOGYARRAY.join().replace(/,/g,"###"));
+}
+
+function add_laboratory_investigation(laboratorysetname, laboratorysetid) {
+  var params = { laboratorysetname: laboratorysetname, laboratorysetid: laboratorysetid };
+  $.ajax({
+    type: "GET",
+    url: "/icdtree/fetchlaboratorytests.json",
+    data: {laboratory: params, remote: "true" }
+  }).done(function( data ) {
+
+    for(i=0; i<data.length; i++) {
+      var whitespaceinput = " ";
+      var tropen = $("<tr class=\"addedlaboratoryinvestigationlist\">");
+      var tdopen1st = $("<td style=\"padding-left:1px;padding-top:1px;padding-bottom:1px;padding:0px;\">");
+      var tdopen4th = $("<td style=\"padding-left:1px;padding-top:1px;padding-bottom:1px;padding:0px;\">");
+      var formgroup1 = $("<div class=\"form-group\">");
+      var formgroup4 = $("<div class=\"form-group\">");
+      var inputgroup1 = $("<div class=\"input-group mb15\">");
+      var intId = 0;
+      if ($(".addedlaboratoryinvestigationlist").length == 0){
+        intId = 0;
+      }
+      else {
+        intId = $(".addedlaboratoryinvestigationlist").length;
+      }
+
+      //var addedlaboratoryinvestigationlist_investigationname_id = "#" + "opdrecord_addedlaboratoryinvestigationlist_attributes_" + intId + "_investigationname";
+      var addedlaboratoryinvestigationlist_investigationname_id = _contruct_id_attr_common(ROOT, ADDEDLABORATORYINVESTIGATIONLIST, ATTRIBUTES, intId, "investigationname");
+
+      var addedlaboratoryinvestigationlist_investigationname = $("<input class=\"string optional form-control\" id=\"opdrecord_addedlaboratoryinvestigationlist_attributes_" + intId + "_investigationname\" maxlength=\"50\" name=\"opdrecord[addedlaboratoryinvestigationlist_attributes][" + intId + "][investigationname]\" size=\"50\" type=\"text\">");
+      var addedlaboratoryinvestigationlist_loincclass_hidden = $("<input id=\"opdrecord_addedlaboratoryinvestigationlist_attributes_" + intId + "_loinc_class\" name=\"opdrecord[addedlaboratoryinvestigationlist_attributes][" + intId + "][loinc_class]\" type=\"hidden\" value=" + data[i]['loinc_class'] + ">");
+      var addedlaboratoryinvestigationlist_loinccode_hidden = $("<input id=\"opdrecord_addedlaboratoryinvestigationlist_attributes_" + intId + "_loinc_code\" name=\"opdrecord[addedlaboratoryinvestigationlist_attributes][" + intId + "][loinc_code]\" type=\"hidden\" value=" + data[i]['loinc_code'] + ">");
+      var addedlaboratoryinvestigationlist_laboratorytestid_hidden = $("<input id=\"opdrecord_addedlaboratoryinvestigationlist_attributes_" + intId + "_investigation_id\" name=\"opdrecord[addedlaboratoryinvestigationlist_attributes][" + intId + "][investigation_id]\" type=\"hidden\" value=" + data[i]['investigation_id'] + ">");
+      $(inputgroup1).append(addedlaboratoryinvestigationlist_investigationname);
+      $(inputgroup1).append(addedlaboratoryinvestigationlist_loincclass_hidden);
+      $(inputgroup1).append(addedlaboratoryinvestigationlist_loinccode_hidden);
+      $(inputgroup1).append(addedlaboratoryinvestigationlist_laboratorytestid_hidden);
+      $(formgroup1).append(inputgroup1);
+      $(tdopen1st).append(formgroup1);
+      $(tropen).append(tdopen1st);
+
+      var addedlaboratoryinvestigationlist_investigationadviseddate_id = _contruct_id_attr_common(ROOT, ADDEDLABORATORYINVESTIGATIONLIST, ATTRIBUTES, intId, "investigationadviseddate");
+      var addedlaboratoryinvestigationlist_investigationfullcode_id = _contruct_id_attr_common(ROOT, ADDEDLABORATORYINVESTIGATIONLIST, ATTRIBUTES, intId, "investigationfullcode");
+      var addedlaboratoryinvestigationlist_investigationadviseddate = _text_field_contructor("input", "form-control", addedlaboratoryinvestigationlist_investigationname_id, "investigationadviseddate", "hidden", intId);
+      var addedlaboratoryinvestigationlist_investigationfullcode = _text_field_contructor("input", "form-control", addedlaboratoryinvestigationlist_investigationname_id, "investigationfullcode", "hidden", intId);
+
+      var addedlaboratoryinvestigationlist_investigationdeletebutton = $("<a id=\"addedlaboratoryinvestigationdeletebutton" + intId + "\" class=\"btn btn-sm btn-primary btn-danger\" href=\"javascript:;\" name=\"addedlaboratoryinvestigationdeletebutton\"><span class=\"glyphicon glyphicon-remove\"></span></a>");
+
+      $(formgroup4).append([ addedlaboratoryinvestigationlist_investigationdeletebutton, addedlaboratoryinvestigationlist_investigationadviseddate, addedlaboratoryinvestigationlist_investigationfullcode ]);
+      $(tdopen4th).append(formgroup4);
+      $(tropen).append(tdopen4th);
+
+      if ($(".addedlaboratoryinvestigationlist").length == 0){
+        $(".laboratoryinvestigations").append(tropen);
+        $("#"+addedlaboratoryinvestigationlist_investigationname_id).val(data[i]['investigation_name']);
+        $("#"+addedlaboratoryinvestigationlist_investigationadviseddate_id).val(moment(new Date()).format('DD/MM/YYYY'));
+        $("#"+addedlaboratoryinvestigationlist_investigationfullcode_id).val("N");
+      }
+      else {
+        $(".addedlaboratoryinvestigationlist:last").after(tropen);
+        $("#"+addedlaboratoryinvestigationlist_investigationname_id).val(data[i]['investigation_name']);
+        $("#"+addedlaboratoryinvestigationlist_investigationadviseddate_id).val(moment(new Date()).format('DD/MM/YYYY'));
+        $("#"+addedlaboratoryinvestigationlist_investigationfullcode_id).val("N");
+      }
+
+    }
+  });
+}
+
+function build_xraysinvestigations_from_array_and_populate(array, fieldname) {
+  var xraysinvestigations = [];
+  $.each(array, function(index, object) {
+    var xraysinvestigationoption;
+    xraysinvestigationoption = $("<option value=" + "\"" + object.investigation_id + "\"" + " data-investigation_type=" + "\"" + object.investigation_type + "\"" + " data-has_laterality=" + "\"" + object.has_laterality + "\"" + " data-investigation_type_id=" + "\"" + object.investigation_type_id + "\"" + " data-investigation_id=" + "\"" + object.investigation_id + "\"" + " data-specialty_id=" + "\"" + object.specialty_id + "\"" + " data-template_id=" + "\"" + object.template_id + "\"" + ">" + object.investigation_type + "," + object.investigation_name + "</option>");
+    xraysinvestigations[index + 1] = xraysinvestigationoption;
+  });
+  $("#"+fieldname).empty();
+  $("#"+fieldname).empty().append(xraysinvestigations);
+}
+
+function build_ctmriinvestigations_from_array_and_populate(array, fieldname) {
+  var ctmriinvestigations = [];
+  $.each(array, function(index, object) {
+    var ctmriinvestigationoption;
+    ctmriinvestigationoption = $("<option value=" + "\"" + object.investigation_id + "\"" + " data-investigation_type=" + "\"" + object.investigation_type + "\"" + " data-has_laterality=" + "\"" + object.has_laterality + "\"" + " data-investigation_type_id=" + "\"" + object.investigation_type_id + "\"" + " data-investigation_id=" + "\"" + object.investigation_id + "\"" + " data-specialty_id=" + "\"" + object.specialty_id + "\"" + " data-template_id=" + "\"" + object.template_id + "\"" + ">" + object.investigation_type + "," + object.investigation_name + "</option>");
+    ctmriinvestigations[index + 1] = ctmriinvestigationoption;
+  });
+  $("#"+fieldname).empty();
+  $("#"+fieldname).empty().append(ctmriinvestigations);
+}
+
+//function populate_radiology_investigations (data, config) {
+//  var xraysinvestigationsfieldname = config['opdrecord_xraysinvestigations'];
+//  var ctmriinvestigationsfieldname = config['opdrecord_ctmriinvestigations'];
+//  var xraysinvestigationsfieldnamewithid = xraysinvestigationsfieldname;
+//  var ctmriinvestigationsfieldnamewithid = ctmriinvestigationsfieldname;
+//  var xraysinvestigationsarray = data['radiologydata']['xrayinvestigations'];
+//  var ctmriinvestigationsarray = data['radiologydata']['ctmriinvestigations'];
+//  build_xraysinvestigations_from_array_and_populate(xraysinvestigationsarray, xraysinvestigationsfieldnamewithid);
+//  build_ctmriinvestigations_from_array_and_populate(ctmriinvestigationsarray, ctmriinvestigationsfieldnamewithid);
+//}
+
+var children  = { data: [] };
+var children1 = { data: [] };
+var children2 = { data: [] };
+
+function add_root_tree(treename, data) {
+  $('#'+ treename).tree({
+    dataSource: function(options, callback){
+      setTimeout(function () {
+        callback(data);
+      }, 400);
+    },
+    multiSelect: false,
+    cacheItems: false,
+    folderSelect: false
+  });
+}
+
+function add_new_tree(treename, data) {
+  $('#'+ treename).tree({
+    dataSource: function(options, callback){
+      setTimeout(function () {
+        callback(data);
+      }, 400);
+    },
+    multiSelect: false,
+    cacheItems: false,
+    folderSelect: false
+  });
+}
+
+function new_tags_unique_id() {
+  var uniqueid = Math.floor(Math.random() * 26) + Date.now();
+  return uniqueid;
+}
+
+function new_tags_mongo_id() {
+  var id = "";
+  $.ajax({
+    async: false,
+    type: "GET",
+    url: "/out_patient_templates_tags/new_id.json",
+    data: {remote: "true" }
+  }).done(function(data) {
+    id = data["_id"];
+  });
+  return id;
+}
+
+var addChildren = function(specialty_id, template_id, code, name, code_position, tree_node, tree_level, tree_location, has_attributes, has_laterality, laterality_position, type) {
+  children.data.push({
+    specialty_id: specialty_id,
+    template_id: template_id,
+    code: code,
+    name: name,
+    code_position: code_position,
+    tree_node: tree_node,
+    tree_level: tree_level,
+    tree_location: tree_location,
+    has_attributes: has_attributes,
+    has_laterality: has_laterality,
+    laterality_position: laterality_position,
+    type: type
+  });
+}
+
+var addChildren1 = function(specialty_id, template_id, code, name, code_position, tree_node, tree_level, tree_location, has_attributes, has_laterality, laterality_position, type) {
+  children1.data.push({
+    specialty_id: specialty_id,
+    template_id: template_id,
+    code: code,
+    name: name,
+    code_position: code_position,
+    tree_node: tree_node,
+    tree_level: tree_level,
+    tree_location: tree_location,
+    has_attributes: has_attributes,
+    has_laterality: has_laterality,
+    laterality_position: laterality_position,
+    type: type
+  });
+}
+
+var addChildren2 = function(specialty_id, template_id, code, name, code_position, tree_node, tree_level, tree_location, has_attributes, has_laterality, laterality_position, type) {
+  children2.data.push({
+    specialty_id: specialty_id,
+    template_id: template_id,
+    code: code,
+    name: name,
+    code_position: code_position,
+    tree_node: tree_node,
+    tree_level: tree_level,
+    tree_location: tree_location,
+    has_attributes: has_attributes,
+    has_laterality: has_laterality,
+    laterality_position: laterality_position,
+    type: type
+  });
+}
+
+
+$('#myTree').tree({
+  dataSource: function(options, callback){
+    setTimeout(function () {
+      callback(children);
+    }, 400);
+  },
+  multiSelect: false,
+  cacheItems: true,
+  folderSelect: false
+});
+
+function _load_radiology_investigations() {
+
+}
+
+$(document).ready(function() {
+
+  //$(".opdrecord_xraysinvestigations_label_select").hide();
+  //$(".opdrecord_ctmriinvestigations_label_select").hide();
+
+  $(".search_laboratoryinvestigation").autocomplete({
+    minLength: 2,
+    source: function(request, response) {
+      $.ajax({
+        dataType: "json",
+        type : 'get',
+        url: '/icdtree/search_laboratory_list',
+        data: {q: request.term, remote: "true" },
+        success: function(data) {
+          response(data);
+        },
+        error: function(data) {
+          //$('#searchpatientkeyword').removeClass('ui-autocomplete-loading');
+        }
+      });
+    },
+    focus: function(event, ui) {
+      //return false;
+    },
+    select: function( event, ui ) {
+      add_laboratory_investigation(ui.item.value['investigation_name'], ui.item.value['investigation_id'])
+      return false;
+    },
+    close : function (event, ui) {
+      //$(".search_laboratoryinvestigation").autocomplete("search", $(".search_laboratoryinvestigation").val()); //keep autocomplete open by
+      //searching the same input again
+      //$(".search_laboratoryinvestigation").focus(); //set the focus back to search laboratory investigation list.
+      return false;
+    }
+  });
+  $(".search_laboratoryinvestigation").autocomplete( "option", "appendTo", ".form-inline" );
+
+  $('#opdrecord_toplaboratoryinvestigation').on('click', function (event) {
+    var laboratoryinvestigationname = $("#opdrecord_toplaboratoryinvestigation option:selected").text();
+    if (laboratoryinvestigationname.length > 0) {
+      var row_count = $(".laboratoryinvestigations-added").find('.addedlaboratoryinvestigationlist').length
+      var loinc_code = $("#opdrecord_toplaboratoryinvestigation option:selected").val()
+      var consultant_id = $("#opdrecord_view_owner_id").val()
+
+      var vals = $('.laboratoryinvestigation_id').map(function(){
+        return $(this).val()
+      }).get();
+
+      if(vals.indexOf(loinc_code) == -1) {
+        $.ajax({
+          dataType: "script",
+          type: "GET",
+          url: "/opd_records/append_laboratory_investigation",
+          data: {loinc_code: loinc_code, consultant_id: consultant_id, row_count: row_count},
+          success: function(response){
+            // $("#opdrecord_toplaboratoryinvestigation option:selected").prop("selected", false);
+          },
+          complete: function (data) {
+            _renumber_id_after_remove("tbody.laboratoryinvestigations-added", "div.laboratoryinvestigations-removed");
+          }
+        });
+      }
+      $("#opdrecord_toplaboratoryinvestigation option:selected").prop("selected", false);
+    }
+    return false;
+  });
+
+  $('.diagnosis-added').on('click', "a[name*='removediagnosisbutton']", function() {
+    event.preventDefault();
+    var diagnosislist_removed_tr_html;
+    var fieldcounter;
+    fieldcounter = $(this).attr('id').slice(-1);
+    var diagnosislist_tr_array = $(this).parents('.diagnosislist').find(".id");
+    if (diagnosislist_tr_array.length > 0) {
+      $(this).parents('.diagnosislist').find("input[name*='_destroy']").val("1");
+      diagnosislist_removed_tr_html = $(this).parents('.diagnosislist').wrap('<p/>').parent().html();
+      $(this).parents('.diagnosislist').unwrap();
+      $('.diagnosis-removed').append(diagnosislist_removed_tr_html);
+      $(this).parents('.diagnosislist').remove();
+      _renumber_id_after_remove("tbody.diagnosis-added", "div.diagnosis-removed");
+    } else {
+      $(this).parents('.diagnosislist').remove();
+      _renumber_id_after_remove("tbody.diagnosis-added", "div.diagnosis-removed");
+    }
+  });
+
+  $(".opdrecord_radiologyregion").on("click", function() {
+    //var selected_radiologyregionid = $('option:selected', this).val();
+    var clicked_button_input_value = $(this).attr("input-value");
+    var clicked_button_input_array = clicked_button_input_value.split("###");
+    var selected_diagnosisregionname = clicked_button_input_array[0];
+    var selected_diagnosisregionfile = clicked_button_input_array[1];
+    var selected_diagnosisregionid = clicked_button_input_array[2];
+
+    var params = { templatetype: "<%= @templatetype %>", specalityfoldername: "<%= @speciality_folder_name %>", speciality_id: "<%= @specalityid %>" };
+    var radiologyregion_config = { opdrecord_ctmriinvestigations: "opdrecord_ctmriinvestigations", opdrecord_xraysinvestigations: "opdrecord_xraysinvestigations", templatetype: selected_diagnosisregionid };
+    _jquery_ajax_get_params_config("/opd_records/populate_radiology_investigations.json", params, "populate_radiology_investigations", radiologyregion_config);
+    $(".opdrecord_xraysinvestigations_label_select").show();
+    $(".opdrecord_ctmriinvestigations_label_select").show();
+  });
+
+  $('#opdrecord_xraysinvestigations').on('click', function() {
+    event.preventDefault();
+    var fieldcounter = $(".investigations-added > .investigationlist").length;
+    var investigation_name = $("#opdrecord_xraysinvestigations option:selected").text();
+    var investigation_id = $("#opdrecord_xraysinvestigations option:selected").val();
+    var radiology_type = investigation_name.split(",")[0]
+    if (investigation_name.length > 0) {
+      // Some Hack to create loinc fullcode
+      if (RADIOLOGYARRAY.length > 0) {
+        RADIOLOGYARRAY = [];
+      }
+      RADIOLOGYARRAY.push($("#opdrecord_xraysinvestigations option:selected").val());
+      var vals = $('.radiologyinvestigation_id').map(function(){
+        return $(this).val()
+      }).get();
+
+      if(vals.indexOf(investigation_id) == -1) {
+        $.ajax({
+          dataType: "script",
+          type: "GET",
+          url: "/opd_records/append_radiology_investigation",
+          data: {investigation_id: investigation_id, radiology_type: radiology_type, row_count: fieldcounter},
+          success: function(response){
+            // $('#opdrecord_xraysinvestigations option:selected').removeAttr('selected');
+          },
+          complete: function (data) {
+            _renumber_id_after_remove("tbody.investigations-added", "div.investigations-removed");
+          }
+        });
+      }
+      $('#opdrecord_xraysinvestigations option:selected').removeAttr('selected');
+      return false;
+    }
+  });
+
+  $('.investigations-added').on("change", ".loinccode" ,function() {
+    event.preventDefault();
+    var fieldcounter;
+    fieldcounter = _split_underscore_from_id_attr($(this).attr('id'), 3); //$(this).attr('id').split("_")[3];
+    var investigationlist_qualifier_text_laterality_id = _contruct_id_attr_common(ROOT, INVESTIGATIONLIST, ATTRIBUTES, fieldcounter, "laterality");
+    var investigationlist_investigationfullcode_id = _contruct_id_attr_common(ROOT, INVESTIGATIONLIST, ATTRIBUTES, fieldcounter, "investigationfullcode");
+    $("#"+investigationlist_qualifier_text_laterality_id).val($("option:selected", this).text());
+    RADIOLOGYARRAY.push($("option:selected", this).text());
+    RADIOLOGYARRAY.push($("option:selected", this).val());
+    $("#"+investigationlist_investigationfullcode_id).val(RADIOLOGYARRAY.join().replace(/,/g,"###"));
+  });
+
+  $("#radiology_set").on('change', function(){
+    var row_count = $(".investigations-added").find('.investigationlist').length
+    var radiology_set_id = $("#radiology_set option:selected").val();
+    var consultant_id = $("#opdrecord_view_owner_id").val()
+    $.ajax({
+      dataType: "script",
+      type: "GET",
+      url: "/opd_records/append_radiology_set",
+      data: {id: radiology_set_id, consultant_id: consultant_id, row_count: row_count},
+      success: function(response){
+        $('#radiology_set option:selected').removeAttr('selected');
+      }
+    })
+  })
+
+  $('#opdrecord_ctmriinvestigations').on('click', function() {
+    event.preventDefault();
+    var fieldcounter = $(".investigations-added > .investigationlist").length;
+    var investigation_name = $("#opdrecord_ctmriinvestigations option:selected").text();
+    var investigation_id = $("#opdrecord_ctmriinvestigations option:selected").val();
+    var radiology_type = investigation_name.split(",")[0]
+    if (investigation_name.length > 0) {
+      // Some Hack to create loinc fullcode
+      if (RADIOLOGYARRAY.length > 0) {
+        RADIOLOGYARRAY = [];
+      }
+      RADIOLOGYARRAY.push($("#opdrecord_ctmriinvestigations option:selected").val());
+      var vals = $('.radiologyinvestigation_id').map(function(){
+        return $(this).val()
+      }).get();
+
+      if(vals.indexOf(investigation_id) == -1) {
+        $.ajax({
+          dataType: "script",
+          type: "GET",
+          url: "/opd_records/append_radiology_investigation",
+          data: {investigation_id: investigation_id, radiology_type: radiology_type, row_count: fieldcounter},
+          success: function(response){
+            // $('#opdrecord_ctmriinvestigations option:selected').removeAttr('selected');
+          },
+          complete: function (data) {
+            _renumber_id_after_remove("tbody.investigations-added", "div.investigations-removed");
+          }
+        });
+      }
+      $('#opdrecord_ctmriinvestigations option:selected').removeAttr('selected');
+    }
+    return false;
+  });
+
+  $(".opdrecord_traumaregion").on("click", function() {
+    children.data = [];
+    children1.data = [];
+    children2.data = [];
+    var tree_level_parent_html = "";
+    var tree_level_html = "";
+    var tree_root_level_html = "";
+    var clicked_button_input_value = $(this).attr("input-value");
+    var clicked_button_input_array = clicked_button_input_value.split("###");
+    var selectedtraumaregionname = clicked_button_input_array[0];
+    var selected_diagnosisregionfile = clicked_button_input_array[1];
+    var selected_diagnosisregionid = clicked_button_input_array[2];
+    var params = { templatetype: selected_diagnosisregionfile, specalityfoldername: "<%= @speciality_folder_name %>" };
+    $.ajax({
+      type: "GET",
+      url: "/icdtree/icdtraumatree.json",
+      data: {ajax: params, remote: "true" }
+    }).done(function( data ) {
+      for(i=0; i<data.length; i++) {
+        addChildren(data[i]['specialty_id'], data[i]['template_id'], data[i]['code'], data[i]['name'], data[i]['code_position'], data[i]['tree_node'], data[i]['tree_level'], data[i]['tree_location'], data[i]['has_attributes'], data[i]['has_laterality'], data[i]['laterality_position'], "folder");
+      }
+    });
+    tree_root_level_html = $("#myTree").tree('destroy');
+    $(".myTree_html").html(tree_root_level_html);
+    add_root_tree("myTree", children);
+
+    tree_level_html = $("#myTree1").tree('destroy');
+    $(".myTree1_html").html(tree_level_html);
+    tree_level_parent_html = $("#myTree2").tree('destroy');
+    $(".myTree2_html").html(tree_level_parent_html);
+  });
+
+  $('.investigations-added').on('click', "a[name*='investigationdeletebutton']", function() {
+    event.preventDefault();
+    var investigations_removed_tr_html;
+    var fieldcounter;
+    fieldcounter = $(this).attr('id').slice(-1);
+    var investigations_tr_array = $(this).parents('.investigationlist').find(".id");
+    $(this).parents('.investigationlist').find("input[class*='radiologyinvestigation_id']").removeClass('radiologyinvestigation_id');
+    if (investigations_tr_array.length > 0) {
+      $(this).parents('.investigationlist').find("input[name*='_destroy']").val("1");
+      investigations_removed_tr_html = $(this).parents('.investigationlist').wrap('<p/>').parent().html();
+      $(this).parents('.investigationlist').unwrap();
+      $('.investigations-removed').append(investigations_removed_tr_html);
+      $(this).parents('.investigationlist').remove();
+      _renumber_id_after_remove("tbody.investigations-added", "div.investigations-removed");
+    } else {
+      $(this).parents('.investigationlist').remove();
+      _renumber_id_after_remove("tbody.investigations-added", "div.investigations-removed");
+    }
+    check_validation_status(
+      $('#investigations-added'), 
+       'investigation_is_valid', 'assesment_step',
+      true, 'laboratoryinvestigations-added'
+    );
+  });
+
+  $('.laboratoryinvestigations-added').on('click', "a[name*='addedlaboratoryinvestigationdeletebutton']", function() {
+    event.preventDefault();
+    var laboratoryinvestigations_removed_tr_html;
+    var fieldcounter;
+    fieldcounter = $(this).attr('id').slice(-1);
+    var addedlaboratoryinvestigationlist_tr_array = $(this).parents('.addedlaboratoryinvestigationlist').find(".id");
+    $(this).parents('.addedlaboratoryinvestigationlist').find("input[class*='laboratoryinvestigation_id']").removeClass('laboratoryinvestigation_id');
+    if (addedlaboratoryinvestigationlist_tr_array.length > 0) {
+      $(this).parents('.addedlaboratoryinvestigationlist').find("input[name*='_destroy']").val("1");
+      laboratoryinvestigations_removed_tr_html = $(this).parents('.addedlaboratoryinvestigationlist').wrap('<p/>').parent().html();
+      $(this).parents('.addedlaboratoryinvestigationlist').unwrap();  //console.log(laboratoryinvestigations_removed_tr_html.html());
+      $('.laboratoryinvestigations-removed').append(laboratoryinvestigations_removed_tr_html);
+      $(this).parents('.addedlaboratoryinvestigationlist').remove(); // delete if button being removed is equal to number of tr elements.
+      _renumber_id_after_remove("tbody.laboratoryinvestigations-added", "div.laboratoryinvestigations-removed");
+    } else {
+      $(this).parents('.addedlaboratoryinvestigationlist').remove(); // delete if button being removed is equal to number of tr elements.
+      _renumber_id_after_remove("tbody.laboratoryinvestigations-added", "div.laboratoryinvestigations-removed");
+    }
+    check_validation_status(
+      $('#laboratoryinvestigations-added'), 
+       'investigation_is_valid', 'assesment_step',
+      true, 'investigations-added'
+    );
+  });
+
+  $('.laboratoryinvestigations-added').on('click', ".investigationstage", function() {
+    if ($(this).val() == 'P') {
+      $(this).parent().parent().find('.label-findings').remove()
+      $(this).parent().parent().append("<div class='label-findings' style='font-weight: bold; text-align: center'>Findings</div>");
+      $(this).parents('.addedlaboratoryinvestigationlist').children().children().children().children('.opdrecord_investigation_performed').attr('type', 'text').css('margin-top', '3%');
+
+      // Update Performed Fields
+      var laboratory_investigation = $(this).closest('.addedlaboratoryinvestigationlist')
+      advised_by_id = $(laboratory_investigation).find('.advised_by_id').val()
+      advised_by = $(laboratory_investigation).find('.advised_by').val()
+      advised_at_facility_id = $(laboratory_investigation).find('.advised_at_facility_id').val()
+      advised_at_facility = $(laboratory_investigation).find('.advised_at_facility').val()
+      advised_datetime = $(laboratory_investigation).find('.advised_datetime').val()
+
+      $(laboratory_investigation).find('.is_performed').val(true)
+      $(laboratory_investigation).find('.performed_by_id').val(advised_by_id)
+      $(laboratory_investigation).find('.performed_by').val(advised_by)
+      $(laboratory_investigation).find('.performed_at_facility_id').val(advised_at_facility_id)
+      $(laboratory_investigation).find('.performed_at_facility').val(advised_at_facility)
+      $(laboratory_investigation).find('.performed_datetime').val(advised_datetime)
+    } else {
+      $(this).parent().parent().children('.label-findings').remove();
+      $(this).parents('.addedlaboratoryinvestigationlist').children().children().children().children('.opdrecord_investigation_performed').attr('type', 'hidden').css('margin-top', '0%').val('');
+
+      // Update Performed Fields
+      var laboratory_investigation = $(this).closest('.addedlaboratoryinvestigationlist')
+      $(laboratory_investigation).find('.is_performed').val(false)
+      $(laboratory_investigation).find('.performed_by_id').val("")
+      $(laboratory_investigation).find('.performed_by').val("")
+      $(laboratory_investigation).find('.performed_at_facility_id').val("")
+      $(laboratory_investigation).find('.performed_at_facility').val("")
+      $(laboratory_investigation).find('.performed_datetime').val("")
+    }
+  });
+
+  $('.investigations-added').on('click', ".investigationstage", function() {
+    if ($(this).val() == 'P') {
+      $(this).parent().parent().find('.label-findings').remove()
+      $(this).parent().parent().append("<div class='label-findings' style='font-weight: bold; text-align: center'>Findings</div>");
+      $(this).closest('.investigationlist').find('.opdrecord_investigation_performed').attr('type', 'text').css('margin-top', '5px');
+
+      // Update Performed Fields
+      var radiology_investigation = $(this).closest('.investigationlist')
+      advised_by_id = $(radiology_investigation).find('.advised_by_id').val()
+      advised_by = $(radiology_investigation).find('.advised_by').val()
+      advised_at_facility_id = $(radiology_investigation).find('.advised_at_facility_id').val()
+      advised_at_facility = $(radiology_investigation).find('.advised_at_facility').val()
+      advised_datetime = $(radiology_investigation).find('.advised_datetime').val()
+
+      $(radiology_investigation).find('.is_performed').val(true)
+      $(radiology_investigation).find('.performed_by_id').val(advised_by_id)
+      $(radiology_investigation).find('.performed_by').val(advised_by)
+      $(radiology_investigation).find('.performed_at_facility_id').val(advised_at_facility_id)
+      $(radiology_investigation).find('.performed_at_facility').val(advised_at_facility)
+      $(radiology_investigation).find('.performed_datetime').val(advised_datetime)
+    } else {
+      $(this).parent().parent().children('.label-findings').remove();
+      $(this).parents('.investigationlist').find('.opdrecord_investigation_performed').attr('type', 'hidden').css('margin-top', '0%').val('');
+
+      // Update Performed Fields
+      var radiology_investigation = $(this).closest('.investigationlist')
+      $(radiology_investigation).find('.is_performed').val(false)
+      $(radiology_investigation).find('.performed_by_id').val("")
+      $(radiology_investigation).find('.performed_by').val("")
+      $(radiology_investigation).find('.performed_at_facility_id').val("")
+      $(radiology_investigation).find('.performed_at_facility').val("")
+      $(radiology_investigation).find('.performed_datetime').val("")
+    }
+  });
+
+});

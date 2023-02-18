@@ -1,0 +1,306 @@
+<div style="border:1px solid #ccc;">
+  <div class="row" style="border-bottom:1px solid #ccc;">
+    <div class="col-sm-4">
+      <% if @organisation.logo_url %>
+        <% image_url = @organisation.logo_url %>
+      <% else %>
+        <% image_url = '/assets/medical.png' %>
+      <% end %>
+    </div>
+    <div class="col-sm-4 text-center">
+      <h3 style="margin:0px"><%= @organisation.name %></h3>
+      <p><%= @organisation.tagline %></p>
+    </div>
+    <div class="col-sm-4 font_size">
+      <p style="text-align:right;font-size:11px;"><%= @organisation.address1 %><% if @organisation.address1? && @organisation.address2? %>,<%end%></p>
+      <p style="text-align:right;font-size:11px;"><%= @organisation.address2 %><% if @organisation.address1? && @organisation.address2? %>,<%end%></p>
+      <p style="text-align:right;font-size:11px;"><%= @organisation.city %><% if @organisation.city? && @organisation.state? %>,<%end%><%= @organisation.state %><% if (@organisation.city? || @organisation.state?) && @organisation.pincode? %>-<%end%><%= @organisation.pincode %></p>
+    </div>
+  </div>
+  <div class="row mb5">
+    <div class="col-lg-2 font_size">
+      Patient Name:
+    </div>
+    <div class="col-lg-2 font_size">
+      <%= @optical_log.recipient %>
+    </div>
+    <div class="col-lg-2 font_size">
+      Patient ID:
+    </div>
+    <div class="col-lg-2 font_size">
+      <% if PatientIdentifier.find_by(patient_id: @optical_log.patient_id) %>
+        <%= PatientIdentifier.find_by(patient_id: @optical_log.patient_id).try(:patient_org_id) %>
+      <% else %>
+        <%= @optical_log.patient_id %>
+      <% end %>
+    </div>
+    <div class="col-lg-2 font_size">
+      Bill No.
+    </div>
+    <div class="col-lg-2 font_size">
+      <% if @optical_log.bill_number %>
+        <%= @optical_log.bill_number %>
+      <% end %> 
+    </div>
+  </div>
+  <div class="row mb5">
+    <div class="col-lg-2 font_size">
+      Doctor: 
+    </div>
+    <div class="col-lg-2 font_size">
+      <%= @optical_log.doctor_name %>
+    </div>
+    <div class="col-lg-2 font_size">
+      Total Items:
+    </div>
+    <div class="col-lg-2 font_size">
+      <%= @optical_log.items.count %>
+    </div>
+    <div class="col-lg-2 font_size">
+      Date & Time
+    </div>
+    <div class="col-lg-2 font_size">
+      <%= Time.current.strftime("%H:%M %p on %d %b %y") %>
+    </div>
+
+  </div><!-- row -->
+  <div class="row" style="border-bottom:1px solid #ccc;border-top:1px solid #ccc;">
+    <div class="col-sm-6">
+      <div class="col-sm-2 font_size">
+        <b>S.No</b>
+      </div>
+      <div class="col-sm-3 font_size">
+        <b>Code</b>
+      </div>
+      <div class="col-sm-4 font_size">
+        <b>Description</b>
+      </div>
+      <div class="col-sm-3 font_size">
+        <b>Brand</b>
+      </div>
+    </div>
+    <div class="col-sm-6">
+      <div class="col-sm-2 font_size">
+        <b>Color</b>
+      </div>
+      <div class="col-sm-2 font_size">
+        <b>Quantity</b>
+      </div>
+      <div class="col-sm-2 font_size text-right">
+        <b>U.Price</b>
+      </div>
+      <div class="col-sm-2 font_size text-right">
+        <b>Tax(%)</b>
+      </div>
+      <div class="col-sm-2 font_size text-right">
+        <b>Tax(&#8377;)</b>
+      </div>
+      <div class="col-sm-2 font_size text-right">
+        <b>Total(&#8377;)</b>
+      </div>
+    </div>
+  </div><!--row-->
+  <div id="optical_items">
+    <% wo_grand_total_price = 0 %>
+    <% grand_total_tax = 0 %>
+    
+    <% if @optical_log.discount %> 
+      <% discount = @optical_log.discount %>
+    <% else %>
+      <% discount = 0 %>
+    <% end %>
+
+    <% if @optical_log.advance_payment %> 
+      <% advance_payment = @optical_log.advance_payment %>
+    <% else %>
+      <% advance_payment = 0 %>
+    <% end %>
+
+
+
+    <% @optical_log.items.each.with_index do |item, i| %>
+      <% unless item.service %>
+        <div class="row">
+          <div class="col-sm-6">
+            <div class="col-sm-2 font_size">
+              <%= i+1 %>
+            </div>
+            <div class="col-sm-3 font_size">
+              <%= item.barcode %>
+            </div>
+            <div class="col-sm-4 font_size">
+              <%= item.description %>
+            </div>
+            <div class="col-sm-3 font_size">
+              <% unless item.brand.nil? %>
+                <%= item.brand %>
+              <% end %>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="col-sm-2 font_size">
+              <% unless item.color.nil? %>
+                <%= item.color %>
+              <% end %>
+            </div>
+            <div class="col-sm-2 font_size text-center">
+              <%= item.quantity %>
+            </div>
+            <div class="col-sm-2 font_size text-right">
+              <%= item.mrp.to_f %>
+            </div>
+            <div class="col-sm-2 font_size text-right">
+              <%= item.vat %>
+            </div>
+            <div class="col-sm-2 font_size text-right">
+              <%= total_tax = ((item.mrp.to_f * item.quantity.to_i * item.vat)/100).round(2) %>
+              <!-- For Total Tax -->
+              <% grand_total_tax = grand_total_tax + total_tax %>
+            </div>
+            <div class="col-sm-2 font_size text-right">
+              <%= total_wo_tx = item.quantity.to_i * item.mrp.to_f %>
+              <!-- For Total Amount W/O Tax -->
+              <% wo_grand_total_price = wo_grand_total_price + total_wo_tx %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+
+  <div class="row mb5" style="border-bottom:1px solid #ccc;">
+  </div>
+  <div class="row mb5">
+    <div class="col-sm-offset-7 col-sm-5 text-right">
+      <div class="col-sm-6 font_size">
+        <b>Total Amt Excluding Tax</b>
+      </div>
+      <div class="col-sm-3 text-center font_size">
+        :
+      </div>
+      <div class="col-sm-3 font_size">
+        <%= (wo_grand_total_price).round(2) %>
+      </div>
+      <div class="col-sm-6 font_size">
+        <b>Tax</b>
+      </div>
+      <div class="col-sm-3 text-center font_size">
+        :
+      </div>
+      <div class="col-sm-3 font_size">
+        <%= (grand_total_tax).round(2) %>
+      </div>
+      <div class="col-sm-6 font_size" style="border-bottom: 1px solid #ccc">
+        <b>Total Amt Including Tax</b>
+      </div>
+      <div class="col-sm-3 text-center font_size" style="border-bottom: 1px solid #ccc">
+        :
+      </div>
+      <div class="col-sm-3 font_size" style="border-bottom: 1px solid #ccc">
+        <%= (wo_grand_total_price + grand_total_tax).round(2) %>
+      </div>
+
+      <% @optical_log.items.each do |item| %>
+        <% if item.service %>
+
+          <% wo_grand_total_price = wo_grand_total_price + (item.mrp).to_f %>
+          <div class="col-sm-6 font_size">
+            <b><%= item.description %></b>
+          </div>
+          <div class="col-sm-3 text-center font_size">
+            :
+          </div>
+          <div class="col-sm-3 font_size">
+            <%= item.mrp.round(2) %>
+          </div>
+        <% end %>
+      <% end %>
+
+      <div class="col-sm-6 font_size">
+        <b>Discount</b>
+      </div>
+      <div class="col-sm-3 text-center font_size">
+        :
+        </div>
+      <div class="col-sm-3 font_size">
+        <%= discount.round(2) %>
+      </div>
+      <div class="col-sm-6 font_size">
+        <b>Net Amount</b>
+      </div>
+      <div class="col-sm-3 text-center font_size">
+        :
+      </div>
+      <div class="col-sm-3 font_size">
+        <%= (wo_grand_total_price + grand_total_tax - discount).round(2) %>
+      </div>
+      <div class="col-sm-6 font_size">
+        <b>Advance Amount</b>
+      </div>
+      <div class="col-sm-3 text-center font_size">
+        :
+      </div>
+      <div class="col-sm-3 font_size">
+        <%= advance_payment.round(2) %>
+      </div>
+      <div class="col-sm-6 font_size">
+        <b>Remaining Amount</b>
+      </div>
+      <div class="col-sm-3 text-center font_size">
+        :
+      </div>
+      <div class="col-sm-3 font_size">
+        <%= ((wo_grand_total_price + grand_total_tax  - discount) - advance_payment).round(2) %>
+      </div>
+    </div>
+    <% unless @optical_log.delivery_date.nil?  %>
+      <div class="col-md-12 text-center mt10" style="background-color:#eee;padding:0 auto">
+        <span style="font-size:11px;"><b>Delivery Date:</b> <%= @optical_log.delivery_date.strftime("%d %b %Y") %></span>
+      </div>
+    <% end %>
+    <% unless @optical_log.note.nil? or @optical_log.note.empty? %>
+      <div class="col-md-12 text-center mt10" style="background-color:#eee;padding:0 auto">
+        <span style="font-size:11px;"><b>Additional Note:</b> <%= @optical_log.note %></span>
+      </div>
+    <% end %>
+  </div><!--row-->
+
+  <div class="row" style="">
+    <div class="col-sm-offset col-sm-2 font_size text-center">
+    <b>Optical Shop</b>
+    </div>
+  </div>
+</div>
+<div>
+  <div class="row" style="border-bottom:1px solid #ccc;">
+    <div class="col-md-4 font_size">
+      <p>USERNAME : <b><%= current_user.fullname %></b></p>
+    </div>
+    <div class="col-md-4 font_size text-center">
+      <p>DL NO : <b>__-___-_______,______,______</b></p>
+    </div>
+    <div class="col-md-4 font_size text-center">
+      <p>TIN NO : <b>_________</b></p>
+    </div>
+  </div>
+  <div clas="row">
+    <div class="col-md-12">
+      <ul class="med_rules">
+        <!-- <li>MEDICINES SHOULD BE RETURNED IN PROPER CONDITION AND FULL STRIP WITHIN 15 DAYS FROM THE DATE OF BILL</li> -->
+        <!-- <li>ORIGINAL COPY OF THE BILL SHOULD BE PROVIDED AT THE TIME OF RETURN</li>
+        <li>CONTROLLED TEMPERATURE ITEMS WILL NOT BE TAKEN BACK*SURGICAL AND CONSUMABLE ITEMS WILL NOT BE TAKEN BACK</li>
+        <li>THE SALE COVERS FROM OPTICAL IS SUBJECT TO INDIA JURSIDICTION ONLY</li>
+        <li>ANY EXCESS COLLECTION BY OVERSIGHT WILL BE REFUNDED,AS PER DRUGS(PRICE CONTROL ORDER 1970)</li> -->
+      </ul>
+    </div>
+  </div>
+</div>
+
+<style type="text/css">
+  .font_size {
+    font-size: 10px;
+  }
+  .med_rules {
+    font-size: 7px;
+  }
+</style>

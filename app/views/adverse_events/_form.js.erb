@@ -1,0 +1,442 @@
+$('.adverse-event-datepicker').datepicker({
+  dateFormat: "dd/mm/yy"
+});
+$('.adverse-event-timepicker').timepicker({minuteStep: 5});
+$('.adverse-event-concerned-person').select2();
+<% if @adverse_event.errors.full_messages_for(:sub_speciality).join(', ').present? %>
+  $('#adverse_event_sub_speciality').css('border-color', 'red')
+<% else %>
+  $('#adverse_event_sub_speciality').css('border-color', '')
+<% end %>
+// This Code to Set Date for Time as Date Selected
+$(".adverse-event-datepicker").on('change', function(){
+  var timestamp = $(this).val() + " " + $(".adverse-event-timepicker").val()
+  $("#adverse_event_occured_date_time").attr("value", timestamp)
+}).trigger('change')
+
+$(".adverse-event-timepicker").on('change', function(){
+  var timestamp = $(".adverse-event-datepicker").val() + " " + $(this).val()
+  $("#adverse_event_occured_date_time").attr("value", timestamp)
+}).trigger('change')
+
+let concerned_person_name = $("#adverse_event_concerned_person :selected").text();
+$('#concerned_person_name').val(concerned_person_name)
+$("#adverse_event_concerned_person").on('change', function() {
+  let concerned_person_name = $("#adverse_event_concerned_person :selected").text();
+  $('#concerned_person_name').val(concerned_person_name)
+})
+
+let type = '<%= @adverse_event.type %>'
+let subSpeciality = '<%= @adverse_event.sub_speciality%>'
+if(type && subSpeciality) {
+  if (type == "critical") {
+    $('.critical-adverse-event').show();
+    $('.major-adverse-event').hide();
+    $('.minor-adverse-event').hide();
+  } else if (type == "major") {
+    $('.major-adverse-event').show();
+    $('.critical-adverse-event').hide();
+    $('.minor-adverse-event').hide();
+  } else if (type == "minor") {
+    $('.minor-adverse-event').show();
+    $('.critical-adverse-event').hide();
+    $('.major-adverse-event').hide();
+  } else {
+    $('.critical-adverse-event').show();
+    $('.major-adverse-event').hide();
+    $('.minor-adverse-event').hide();
+  }
+} else {
+  $('.critical-adverse-event').hide();
+  $('.major-adverse-event').hide();
+  $('.minor-adverse-event').hide();
+}
+
+$('.adverse-check').on('click', function() {
+  let event_description_key = $(this).attr('id');
+  $('#adverse_event_event_description').val(event_description_key)
+});
+
+function setAdverseDetails(){
+  $('.adverse-check').val('false');
+  let type = $("input[name='adverse_event[type]']:checked").val();
+  let subSpeciality = $('#adverse_event_sub_speciality').val().toLowerCase().replaceAll(/\s/g,'_');
+  if(subSpeciality){
+    $('#adverse_event_sub_speciality').css('border-color', '')
+    $('.adverse_event_sub_speciality_error').hide()
+    if(type){
+      $('.adverse_event_type_error').hide()
+    }
+    if (type == 'critical') {
+      $('.critical-adverse-event').hide();
+      $('.critical-adverse-event.'+subSpeciality).show();
+      $('.major-adverse-event').hide();
+      $('.minor-adverse-event').hide();
+      $('.minor-adverse-event').find('.adverse-text').val('');
+      $('.minor-adverse-event').find('.adverse-text').hide();
+      $('.major-adverse-event').find('.adverse-text').val('');
+      $('.major-adverse-event').find('.adverse-text').hide();
+      $("input[name='adverse_event[major-adverse-event]']:checked").removeAttr('checked')
+      $("input[name='adverse_event[minor-adverse-event]']:checked").removeAttr('checked')
+    } else if (type == 'major') {
+      $('.major-adverse-event').hide();
+      $('.major-adverse-event.'+subSpeciality).show();
+      $('.critical-adverse-event').hide();
+      $('.minor-adverse-event').hide();
+      $('.critical-adverse-event').find('.adverse-text').val('');
+      $('.critical-adverse-event').find('.adverse-text').hide();
+      $('.minor-adverse-event').find('.adverse-text').val('');
+      $('.minor-adverse-event').find('.adverse-text').hide();
+      $("input[name='adverse_event[minor-adverse-event]']:checked").removeAttr('checked')
+      $("input[name='adverse_event[critical-adverse-event]']:checked").removeAttr('checked')
+    } else if (type == 'minor') {
+      $('.minor-adverse-event').hide();
+      $('.minor-adverse-event.'+subSpeciality).show();
+      $('.critical-adverse-event').hide();
+      $('.major-adverse-event').hide();
+      $('.critical-adverse-event').find('.adverse-text').val('');
+      $('.critical-adverse-event').find('.adverse-text').hide();
+      $('.major-adverse-event').find('.adverse-text').val('');
+      $('.major-adverse-event').find('.adverse-text').hide();
+      $("input[name='adverse_event[major-adverse-event]']:checked").removeAttr('checked')
+      $("input[name='adverse_event[critical-adverse-event]']:checked").removeAttr('checked')
+    }
+  } else {
+    $('.critical-adverse-event').hide();
+    $('.major-adverse-event').hide();
+    $('.minor-adverse-event').hide();
+  }
+}
+
+$("#adverse_event_sub_speciality").on('change', function(){
+  empty_secondstage()
+  setAdverseDetails()
+});
+
+$("input[name='adverse_event[type]']").on('click', function () {
+  empty_secondstage()
+  setAdverseDetails()
+});
+
+setAdverseDetails()
+
+
+$("input[name='adverse_event[critical-adverse-event]']").on('click', function() {
+  let critical_id = $("input[name='adverse_event[critical-adverse-event]']:checked").attr('id');
+  if($("input[name='adverse_event[critical-adverse-event]']").is(':checked')){
+    $('.adverse_critical_hidden').val('false');
+    $('.critical-adverse-event').find('.adverse-text').val('');
+    $('.critical-adverse-event').find('.adverse-text').hide();
+    $('#' + critical_id + '_comment').show();
+    $(`input[name='adverse_event[${critical_id}]']`).val('true');
+  }
+});
+
+$("input[name='adverse_event[minor-adverse-event]']").on('click', function() {
+  let minor_id = $("input[name='adverse_event[minor-adverse-event]']:checked").attr('id');
+  if($("input[name='adverse_event[minor-adverse-event]']").is(':checked')){
+    $('.adverse_minor_hidden').val('false');
+    $('.minor-adverse-event').find('.adverse-text').val('');
+    $('.minor-adverse-event').find('.adverse-text').hide();
+    $('#' + minor_id + '_comment').show();
+    $(`input[name='adverse_event[${minor_id}]']`).val('true');
+  }
+});
+
+$("input[name='adverse_event[major-adverse-event]']").on('click', function() {
+  empty_secondstage()
+  let major_id = $("input[name='adverse_event[major-adverse-event]']:checked").attr('id');
+  if(major_id === 'patient_distress'){
+    $('.adverse_major_hidden').val('false');
+    $('.second_stage').hide();
+    $('.third_stage').hide();
+    $('.major-adverse-event').find('.adverse-text').val('');
+    $('.major-adverse-event').find('.adverse-text').hide();
+    $('#patient_distress_list').show();
+    $(`input[name='adverse_event[${major_id}]']`).val('true');
+  } else if(major_id === 'postop_inflammation'){
+    $('.adverse_major_hidden').val('false');
+    $('.second_stage').hide();
+    $('.third_stage').hide();
+    $('.major-adverse-event').find('.adverse-text').val('');
+    $('.major-adverse-event').find('.adverse-text').hide();
+    $('#postop_inflammation_list').show();
+    $(`input[name='adverse_event[${major_id}]']`).val('true');
+  } else if(major_id === 'aqueous_meets_vitreous'){
+    $('.adverse_major_hidden').val('false');
+    $('.second_stage').hide();
+    $('.third_stage').hide();
+    $('.major-adverse-event').find('.adverse-text').val('');
+    $('.major-adverse-event').find('.adverse-text').hide();
+    $('#aqueous_meets_vitreous_list').show();
+    $(`input[name='adverse_event[${major_id}]']`).val('true');
+  } else if(major_id === 'wrong_iol_power'){
+    $('.adverse_major_hidden').val('false');
+    $('.second_stage').hide();
+    $('.third_stage').hide();
+    $('.major-adverse-event').find('.adverse-text').val('');
+    $('.major-adverse-event').find('.adverse-text').hide();
+    $('#wrong_iol_power_list').show();
+    $(`input[name='adverse_event[${major_id}]']`).val('true');
+  } else if(major_id === 'rescheduling_cancelling_surgery'){
+    $('.adverse_major_hidden').val('false');
+    $('.second_stage').hide();
+    $('.third_stage').hide();
+    $('.major-adverse-event').find('.adverse-text').val('');
+    $('.major-adverse-event').find('.adverse-text').hide();
+    $('#rescheduling_cancelling_surgery_list').show();
+    $(`input[name='adverse_event[${major_id}]']`).val('true');
+  } else if(major_id === 'optical_related'){
+    $('.adverse_major_hidden').val('false');
+    $('.second_stage').hide();
+    $('.third_stage').hide();
+    $('.major-adverse-event').find('.adverse-text').val('');
+    $('.major-adverse-event').find('.adverse-text').hide();
+    $('#optical_related_list').show();
+    $(`input[name='adverse_event[${major_id}]']`).val('true');
+  } else if(major_id === 'surgical_complications_repeat_surgeries'){
+    $('.adverse_major_hidden').val('false');
+    $('.second_stage').hide();
+    $('.third_stage').hide();
+    $('.major-adverse-event').find('.adverse-text').val('');
+    $('.major-adverse-event').find('.adverse-text').hide();
+    $('#surgical_complications_repeat_surgeries_second_stage').show();
+    $(`input[name='adverse_event[${major_id}]']`).val('true');
+  } else{
+    $('.adverse_major_hidden').val('false');
+    $('.second_stage').hide();
+    $('.third_stage').hide();
+    $('.major-adverse-event').find('.adverse-text').val('');
+    $('.major-adverse-event').find('.adverse-text').hide();
+    $('#' + major_id + '_comment').show();
+    $(`input[name='adverse_event[${major_id}]']`).val('true');
+  }
+  validate_major()
+});
+
+$("#patient_distress_list").on('click', function() {
+  $('.adverse_event_button').prop("disabled", false);
+  $('.patient_distress_msg').hide();
+  $('#patient_distress_comment').show();
+});
+
+$('#postop_inflammation_list').on('click', function() {
+  $('.adverse_event_button').prop("disabled", false);
+  $('.postop_inflammation_msg').hide();
+  $('#postop_inflammation_comment').show();
+});
+
+$('#aqueous_meets_vitreous_list').on('click', function() {
+  $('.adverse_event_button').prop("disabled", false);
+  $('.aqueous_meets_vitreous_msg').hide();
+  $('#aqueous_meets_vitreous_comment').show();
+});
+
+$('#wrong_iol_power_list').on('click', function() {
+  $('.adverse_event_button').prop("disabled", false);
+  $('.wrong_iol_power_msg').hide();
+  $('#wrong_iol_power_comment').show();
+});
+
+$('#rescheduling_cancelling_surgery_list').on('click', function() {
+  $('.adverse_event_button').prop("disabled", false);
+  $('.rescheduling_cancelling_surgery_msg').hide();
+  $('#rescheduling_cancelling_surgery_comment').show();
+});
+
+$('#optical_related_list').on('click', function() {
+  $('.adverse_event_button').prop("disabled", false);
+  $('.optical_related_msg').hide();
+  $('#optical_related_comment').show();
+});
+
+$('.surgical_complications_repeat_surgeries_one_button').on('click', function() {
+  $('.adverse_event_button').prop("disabled", false);
+  $('.surgical_complications_msg').hide();
+  $('.third_stage').hide();
+  jQuery('button').removeClass("btn-darkblue");
+  $('#adverse_event_major_cornea').val("");
+  $('#adverse_event_major_cataract').val("");
+  $('#adverse_event_major_glaucoma').val("");
+  $('#adverse_event_major_squint').val("");
+  $('#adverse_event_major_retina').val("");
+  $('#adverse_event_major_refractive').val("");
+  let second_stage_val = $(this).attr('input-value')
+  if(second_stage_val == "cornea"){
+    $('#major_cornea_list').show()
+    validate_major()
+  } else if(second_stage_val == "cataract"){
+    $('#major_cataract_list').show()
+    validate_major()
+  } else if(second_stage_val == "refractive"){
+    $('#major_refractive_list').show()
+    validate_major()
+  } else if(second_stage_val == "retina"){
+    $('#major_retina_list').show()
+    validate_major()
+  } else if(second_stage_val == "squint"){
+    $('#major_squint_list').show()
+    validate_major()
+  } else if(second_stage_val == "glaucoma"){
+    $('#major_glaucoma_list').show()
+    validate_major()
+  }
+});
+
+$('#major_cornea_list').on('click', function() {
+  $('.adverse_event_button').prop("disabled", false);
+  $('.surgical_complications_msg2').hide();
+  $('#surgical_complications_repeat_surgeries_comment').show();
+});
+
+$('#major_cataract_list').on('click', function() {
+  $('.adverse_event_button').prop("disabled", false);
+  $('.surgical_complications_msg2').hide();
+  $('#surgical_complications_repeat_surgeries_comment').show();
+});
+
+$('#major_refractive_list').on('click', function() {
+  $('.adverse_event_button').prop("disabled", false);
+  $('.surgical_complications_msg2').hide();
+  $('#surgical_complications_repeat_surgeries_comment').show();
+});
+
+$('#major_retina_list').on('click', function() {
+  $('.adverse_event_button').prop("disabled", false);
+  $('.surgical_complications_msg2').hide();
+  $('#surgical_complications_repeat_surgeries_comment').show();
+});
+
+$('#major_squint_list').on('click', function() {
+  $('.adverse_event_button').prop("disabled", false);
+  $('.surgical_complications_msg2').hide();
+  $('#surgical_complications_repeat_surgeries_comment').show();
+});
+
+$('#major_glaucoma_list').on('click', function() {
+  $('.adverse_event_button').prop("disabled", false);
+  $('.surgical_complications_msg2').hide();
+  $('#surgical_complications_repeat_surgeries_comment').show();
+});
+
+validate_major()
+function validate_major(){
+  //e.preventDefault();
+  let major_id = $("input[name='adverse_event[major-adverse-event]']:checked").attr('id');
+  if(major_id === 'patient_distress'){
+    if($('#adverse_event_patient_distress_one').val() == ""){
+      $('.adverse_event_button').prop("disabled", true);
+      $('.patient_distress_msg').show();
+    }
+  } else if(major_id === 'postop_inflammation'){
+      if($('#adverse_event_postop_inflammation_one').val() == ""){
+        $('.adverse_event_button').prop("disabled", true);
+        $('.postop_inflammation_msg').show();
+      }
+  } else if(major_id === 'aqueous_meets_vitreous'){
+    if($('#adverse_event_aqueous_meets_vitreous_one').val() == ""){
+      $('.adverse_event_button').prop("disabled", true);
+      $('.aqueous_meets_vitreous_msg').show();
+    }
+  } else if(major_id === 'wrong_iol_power'){
+    if($('#adverse_event_wrong_iol_power_one').val() == ""){
+      $('.adverse_event_button').prop("disabled", true);
+      $('.wrong_iol_power_msg').show();
+    }
+  } else if(major_id === 'rescheduling_cancelling_surgery'){
+    if($('#adverse_event_rescheduling_cancelling_surgery_one').val() == ""){
+      $('.adverse_event_button').prop("disabled", true);
+      $('.rescheduling_cancelling_surgery_msg').show();
+    }
+  } else if(major_id === 'optical_related'){
+    if($('#adverse_event_optical_related_one').val() == ""){
+      $('.adverse_event_button').prop("disabled", true);
+      $('.optical_related_msg').show();
+    }
+  } else if(major_id === 'surgical_complications_repeat_surgeries'){
+    let stage_two = $('#adverse_event_surgical_complications_repeat_surgeries_one').val()
+    if(stage_two == ""){
+      $('.adverse_event_button').prop("disabled", true);
+      $('.surgical_complications_msg').show();
+    } else{
+      if(stage_two == "cornea" ){
+        if($('#adverse_event_major_cornea').val() == ""){
+          $('.adverse_event_button').prop("disabled", true);
+          $('.surgical_complications_msg2').show();
+        }
+      } else if(stage_two == "cataract"){
+        if($('#adverse_event_major_cataract').val() == ""){
+          $('.adverse_event_button').prop("disabled", true);
+          $('.surgical_complications_msg2').show();
+        }
+      } else if(stage_two == "refractive"){
+        if($('#adverse_event_major_refractive').val() == ""){
+          $('.adverse_event_button').prop("disabled", true);
+          $('.surgical_complications_msg2').show();
+        }
+      } else if(stage_two == "retina"){
+        if($('#adverse_event_major_retina').val() == ""){
+          $('.adverse_event_button').prop("disabled", true);
+          $('.surgical_complications_msg2').show();
+        }
+      } else if(stage_two == "squint"){
+        if($('#adverse_event_major_squint').val() == ""){
+          $('.adverse_event_button').prop("disabled", true);
+          $('.surgical_complications_msg2').show();
+        }
+      } else if(stage_two == "glaucoma"){
+        if($('#adverse_event_major_glaucoma').val() == ""){
+          $('.adverse_event_button').prop("disabled", true);
+          $('.surgical_complications_msg2').show();
+        }
+      }
+    }
+  }
+}
+
+function adverse_text_fn(_this) {
+  let adverse_text = $(_this).closest('.adverse-event-class').find('.adverse-text');
+  if ($(_this).is(':checked')) {
+    $(adverse_text).show();
+    $(_this).val('true');
+  } else {
+    $(adverse_text).hide();
+    $(adverse_text).val('');
+    $('.adverse-check').val('false');
+  }
+}
+
+let adverse_check = $('.adverse-check')
+for (var i = adverse_check.length - 1; i >= 0; i--) {
+  adverse_text_fn(adverse_check[i]);
+}
+
+function empty_secondstage(){
+  $('.second_stage').hide();
+  jQuery('button').removeClass("btn-brown");
+  jQuery('button').removeClass("btn-darkblue");
+  $("#adverse_event_patient_distress_one").val("");
+  $('.patient_distress_msg').hide();
+  $("#adverse_event_postop_inflammation_one").val("");
+  $('.postop_inflammation_msg').hide();
+  $('#adverse_event_aqueous_meets_vitreous_one').val("");
+  $('.aqueous_meets_vitreous_msg').hide();
+  $('#adverse_event_surgical_complications_repeat_surgeries_one').val("");
+  $('.surgical_complications_msg').hide();
+  $('#adverse_event_major_cornea').val("");
+  $('#adverse_event_major_cataract').val("");
+  $('#adverse_event_major_glaucoma').val("");
+  $('#adverse_event_major_squint').val("");
+  $('#adverse_event_major_retina').val("");
+  $('#adverse_event_major_refractive').val("");
+  $('.surgical_complications_msg2').hide();
+  $('#adverse_event_wrong_iol_power_one').val("");
+  $('.wrong_iol_power_msg').hide();
+  $('#adverse_event_rescheduling_cancelling_surgery_one').val("");
+  $('.rescheduling_cancelling_surgery_msg').hide();
+  $('#adverse_event_optical_related_one').val("");
+  $('.optical_related_msg').hide();
+  $('.major-adverse-event').find('.adverse-text').val('');
+  $('.major-adverse-event').find('.adverse-text').hide();
+  $('.adverse_event_button').prop("disabled", false);
+}

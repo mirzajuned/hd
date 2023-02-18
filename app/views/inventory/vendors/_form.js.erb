@@ -1,0 +1,372 @@
+// Validation
+function validate_inventory_vendor_form() {
+  $('#inventory_vendor_form').validate({
+    rules: {
+      "inventory_vendor[name]": {
+        required: true,
+      },
+      "inventory_vendor[mobile_number]": {
+        required: true,
+      },
+      "inventory_vendor[country_id]": {
+        required: true,
+      },
+      "inventory_vendor[address]": {
+        required: true,
+      },
+    },
+    messages: {
+      "inventory_vendor[name]": {
+        required: "Required."
+      },
+      "inventory_vendor[mobile_number]": {
+        required: "Required."
+      },
+      "inventory_vendor[country_id]": {
+        required: "Required."
+      },
+      "inventory_vendor[address]": {
+        required: "Required."
+      },
+    },
+    errorPlacement: function (error, element) {
+      error.insertAfter(element);
+    }
+  });
+}
+validate_inventory_vendor_form()
+
+// $(".cancel-inventory-vendor").on("click",function(){
+//   $(".vendor-form").html("")
+// })
+
+
+$("#inventory_vendor_country_id").select2();
+$("#inventory_vendor_vendor_group_id").select2();
+
+$('.vietnam-facility').hide();
+$("#inventory_vendor_country_id").on('change', function() {
+  var country_id = $('option:selected', this).attr('value');
+  check_address();
+  autocomplete_check(country_id);
+});
+
+
+
+//store_state
+jQuery('#inventory_vendor_state').autocomplete({
+  minLength: 3,
+  source: function(request, response) {
+    var country_id = jQuery("#inventory_vendor_country_id").val()
+    jQuery.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/locations/search_state',
+      data: {q: request.term, country_id: country_id, remote: "true" },
+      success: function(data) {
+        response(data);
+      },
+      error: function(data) {
+      }
+    });
+  },
+  select: function( event, ui ) {
+    name = ui.item["state"]
+    setTimeout(function() {
+      jQuery("#inventory_vendor_state").val(name)
+      jQuery('#inventory_vendor_state').blur()
+    }, 20);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+      return $('<li>')
+          .append('<a style=\"color:#000;text-shadow: 2px\">' + item.state  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+          .appendTo(ul);
+    };
+  }
+});
+
+//store_city
+jQuery('#inventory_vendor_city').autocomplete({
+  minLength: 3,
+  source: function(request,response){
+    var state = jQuery('#inventory_vendor_state').val();
+    var country_id = jQuery("#inventory_vendor_country_id").val();
+    jQuery.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/locations/search_city',
+      data: {q: request.term, state: state, country_id: country_id, remote: "true"},
+      success: function(data){
+        response(data);
+      },
+      error: function(data){
+
+      }
+    });
+  },
+  select: function( event, ui ) {
+    city  = ui.item["city"]
+    state = ui.item["state"]
+    setTimeout(function() {
+      jQuery("#inventory_vendor_city").val(city)
+      jQuery("#inventory_vendor_state").val(state)
+      jQuery('#inventory_vendor_city').blur()
+    }, 20);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+      return $('<li>')
+          .append('<a style=\"color:#000;text-shadow: 2px\">' + item.city  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+          .appendTo(ul);
+    };
+  }
+});
+
+//store_pincode
+jQuery('#inventory_vendor_pincode').autocomplete({
+  minLength: 3,
+  source: function(request,response){
+    var state = jQuery('#inventory_vendor_state').val();
+    var city = jQuery('#inventory_vendor_city').val();
+    var country_id = jQuery("#inventory_vendor_country_id").val();
+    jQuery.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/locations/search_pincode',
+      data: { q: request.term, state: state, city: city, country_id: country_id, remote: "true" },
+      success: function(data){
+        response(data);
+      },
+      error: function(data){
+
+      }
+    });
+  },
+  select: function( event, ui ) {
+    pincode = ui.item["pincode"]
+    city  = ui.item["city"]
+    state = ui.item["state"]
+    setTimeout(function() {
+      jQuery("#inventory_vendor_pincode").prop('readonly',true).val(pincode)
+      jQuery("#inventory_vendor_state").prop('readonly', true).val(state)
+      jQuery("#inventory_vendor_city").prop('readonly', true).val(city)
+      jQuery(".clear-pincode").show()
+      jQuery('#inventory_vendor_pincode').blur()
+    }, 20);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+      return $('<li>')
+          .append('<a style=\"color:#000;text-shadow: 2px; text-align: center;\">' + item.pincode  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+          .appendTo(ul);
+    };
+  }
+});
+
+//store_commune
+jQuery('#inventory_vendor_commune').autocomplete({
+  minLength: 2,
+  source: function(request, response) {
+    var city = jQuery('#inventory_vendor_city').val();
+    var district = jQuery('#inventory_vendor_district').val();
+    var country_id = jQuery("#inventory_vendor_country_id").val();
+    jQuery.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/locations/search_commune',
+      data: { q: request.term, city: city, district: district, country_id: country_id, remote: "true" },
+      success: function(data) {
+        response(data);
+      },
+      error: function(data) {
+      }
+    });
+  },
+  select: function( event, ui ) {
+    commune = ui.item["commune"]
+    district  = ui.item["district"]
+    city = ui.item["city"]
+    setTimeout(function() {
+      jQuery("#inventory_vendor_commune").prop('readonly',true).val(commune)
+      jQuery(".vietnam-city").prop('readonly', true).val(city)
+      jQuery("#inventory_vendor_district").prop('readonly', true).val(district)
+      jQuery(".clear-commune").show()
+      jQuery('#inventory_vendor_commune').blur()
+    }, 20);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+      return $('<li>')
+          .append('<a style=\"color:#000;text-shadow: 2px\">' + item.commune  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+          .appendTo(ul);
+    };
+  }
+});
+
+//store_city
+jQuery('.vietnam-city').autocomplete({
+  minLength: 2,
+  source: function(request,response){
+    var country_id = jQuery("#inventory_vendor_country_id").val()
+    jQuery.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/locations/search_city',
+      data: { q: request.term, country_id: country_id, remote: "true" },
+      success: function(data){
+        response(data);
+      },
+      error: function(data){
+
+      }
+    });
+  },
+  select: function( event, ui ) {
+    city  = ui.item["city"]
+    setTimeout(function() {
+      jQuery(".vietnam-city").val(city)
+      jQuery('.vietnam-city').blur()
+    }, 20);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+      return $('<li>')
+          .append('<a style=\"color:#000;text-shadow: 2px\">' + item.city  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+          .appendTo(ul);
+    };
+  }
+});
+
+//store_pincode
+jQuery('#inventory_vendor_district').autocomplete({
+  minLength: 2,
+  source: function(request,response){
+    var city = jQuery('.vietnam-city').val();
+    var country_id = jQuery("#inventory_vendor_country_id").val();
+    jQuery.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/locations/search_district',
+      data: { q: request.term, country_id: country_id, city: city, remote: "true" },
+      success: function(data){
+        response(data);
+      },
+      error: function(data){
+
+      }
+    });
+  },
+  select: function( event, ui ) {
+    district = ui.item["district"]
+    city  = ui.item["city"]
+    setTimeout(function() {
+      jQuery("#inventory_vendor_district").val(district);
+      jQuery(".vietnam-city").val(city);
+      jQuery("#inventory_vendor_district").blur();
+    }, 20);
+  },
+  create: function () {
+    $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+      return $('<li>')
+          .append('<a style=\"color:#000;text-shadow: 2px; text-align: center;\">' + item.district  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+          .appendTo(ul);
+    };
+  }
+});
+
+// Clear pincode
+$(".clear-pincode").on('click', function(e){
+  e.preventDefault()
+  $("#inventory_vendor_pincode").prop('readonly',false).val("")
+  $("#inventory_vendor_state").prop('readonly', false).val("")
+  $("#inventory_vendor_city").prop('readonly', false).val("")
+  $(".clear-pincode").hide()
+});
+
+// Clear pincode
+$(".clear-commune").on('click', function(e){
+  e.preventDefault()
+  $("#inventory_vendor_commune").prop('readonly',false).val("")
+  $("#inventory_vendor_district").prop('readonly', false).val("")
+  $(".vietnam-city").prop('readonly', false).val("")
+  $(".clear-commune").hide()
+});
+
+//inventory_vendor country id check_
+function autocomplete_check(country_id){
+  if (country_id == 'IN_108') {
+    $('#inventory_vendor_state').autocomplete("enable");
+    $('#inventory_vendor_city').autocomplete("enable");
+    $('#inventory_vendor_pincode').autocomplete("enable");
+  } else if (country_id == 'VN_254') {
+    $('#inventory_vendor_district').autocomplete("enable");
+    $('.vietnam-city').autocomplete("enable");
+    $('#inventory_vendor_commune').autocomplete("enable");
+  } else {
+    $('#inventory_vendor_state').autocomplete("disable");
+    $('#inventory_vendor_city').autocomplete("disable");
+    $('#inventory_vendor_pincode').autocomplete("disable");
+    $('.vietnam-city').autocomplete("disable");
+  }
+}
+
+// Get autocomplete status
+$("#inventory_vendor_country_id").on('change', function(){
+  var country_id = $('option:selected', this).attr('value');
+  autocomplete_check(country_id)
+  $('#inventory_vendor_state').val('');
+  $('#inventory_vendor_pincode').val('');
+  $('#inventory_vendor_district').val('');
+  $('#inventory_vendor_commune').val('');
+  $('#inventory_vendor_address').val('');
+  $('.city').val('');
+  $('.vietnam-city').val('');
+})
+
+var country_id = $('#inventory_vendor_country_id option:selected').attr('value');
+autocomplete_check(country_id)
+
+check_address();
+
+
+function check_address() {
+  var country_id = $('#inventory_vendor_country_id').val();
+  if (country_id == "") {
+    $('.other-facility').hide();
+    $('.vietnam-facility').hide();
+  } else if (country_id == 'VN_254') {
+    $('.other-facility').hide();
+    $('.vietnam-facility').show();
+    $('.vietnam-city').prop('disabled', false);
+    $('.city').prop('disabled', true);
+  } else {
+    $('.vietnam-facility').hide();
+    $('.other-facility').show();
+    $('.city').prop('disabled', false);
+    $('.vietnam-city').prop('disabled', true);
+  }
+}
+
+$.validator.addMethod("checkFullName", function(value) {
+  if (value.trim() == '') {
+    return false
+  } else {
+    return true
+  }
+}, "Required");
+
+$.validator.addClassRules("fullname", { required: true, checkFullName: true});
+
+$('#inventory_vendor_vendor_group_id').on('change', function() {
+  let vendor_group_name = $('#inventory_vendor_vendor_group_id').find(":selected").html()
+  $('#inventory_vendor_vendor_group_name').val(vendor_group_name)
+})
+
+$('#is_filtter_show').click(function() {
+  if ($('#inventory_vendor_is_fitter').prop('checked')) {
+    $('.fitting_charges_show').show()
+  } else {
+    $('.fitting_charges_show').hide()
+  }
+});

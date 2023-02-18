@@ -1,0 +1,2 @@
+module QueueManagement::ScreensHelper
+end

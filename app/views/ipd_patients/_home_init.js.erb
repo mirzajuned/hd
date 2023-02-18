@@ -1,0 +1,300 @@
+var current_date = "<%= @datepicker_date %>"
+var organisation_id = "<%= current_user.organisation.id.to_s %>"
+var title_icons = "<span class='refresh-data glyphicon glyphicon-refresh' title='Refresh Admissions List' style='margin-top:10px;cursor:hand;cursor:pointer;padding-right:10px;border-right:1px solid;'></span>"
+var refresh_icons_ot = "<span class='refresh-data-ot glyphicon glyphicon-refresh' title='Refresh OT List' style='margin-top:10px;cursor:hand;cursor:pointer;padding-right:10px;border-right:1px solid;'></span>"
+var refresh_icons_beds = "<span class='refresh-data-beds glyphicon glyphicon-refresh' title='Refresh Beds List' style='margin-top:10px;cursor:hand;cursor:pointer;padding-right:10px;border-right:1px solid;'></span>"
+
+var day_schedule = jQuery('#ipd-schedule-table').dataTable({
+    "bDestroy": true,
+    "sPaginationType": "full_numbers",
+    "bServerSide": true,
+    "sAjaxSource": "/ipd_patients/home_data.json?current_date=" + current_date + "&department_id=<%= @departments.first.id %>&doctor=<%= @users_array[0][1] %>&facility_id=<%= current_facility.id %>",
+    "sDom": '<"top"<"buttonPlaceholder row admission_ipd"><"clear"><"table-filters row admissiontable"<"filter-title col-md-1"><"facility-filter col-md-2"><"department-filter"><"user-filter col-md-2"><"status-filter col-md-3">f><"clear">>rt<"bottom"ip<"clear">>',
+    "aoColumns": [
+        {"sTitle":'S.No',"sWidth": "5%", "bSortable": false},
+        {"sTitle":'Admission ID',"sWidth": "10%", "bSortable": false},
+        {"sTitle":"Patient ID","sWidth": "10%", "sClass": "patient_identifier", "bSortable": false},
+        {"sTitle":"Patient Name","showidth": "12%","sClass": "patient_name", "bSortable": false},
+        {"sTitle":"Sex/Age","sWidth": "5%", "bSortable": false},
+        {"sTitle":"Reason for Admission","sWidth": "15%", "bSortable": false},
+        {"sTitle":"Admitted at","sWidth": "10%", "bSortable": false},
+        {"sTitle":"Actions","sWidth": "25%", "bSortable": false}
+    ],
+    "oLanguage": {
+        "sZeroRecords": "No Admissions found",
+        "sLoadingRecords": "Please wait - loading Admissions...",
+        "sSearch": '_INPUT_<span class="input-group-addon"><i class="glyphicon glyphicon-search"></i></span>'
+    },
+    "bPaginate": false
+})
+var ot_schedule = jQuery('#ot-schedule-table').dataTable({
+    "bDestroy": true,
+    "sPaginationType": "full_numbers",
+    "bServerSide": true,
+  "sAjaxSource": "/ipd_patients/ot_schedule.json?current_date=" + current_date + "&department_id=<%= @departments.first.id %>&surgeonname=<%= @users_array[0][1] %>&facility_id=<%= current_facility.id %>",
+    "sDom": '<"top"<"buttonPlaceholderOT row ot_ipd"><"clear"><"table-filters-ot row"<"filter-title-ot col-md-1"><"facility-filter-ot col-md-2"><"department-filter-ot"><"user-filter-ot col-md-2"><"status-filter-ot col-md-3">f><"clear">>rt<"bottom"ip<"clear">>',
+    "aoColumns": [
+        {"sTitle":'S.No',"sWidth": "5%", "bSortable": false},
+        {"sTitle":'Admission ID',"sWidth": "10%", "bSortable": false},
+        {"sTitle":"Patient ID","sWidth": "10%", "sClass": "patient_identifier", "bSortable": false},
+        {"sTitle":"Patient Name","sWidth": "15%","sClass": "patient_name", "bSortable": false},
+        {"sTitle":"Gender","sWidth": "5%", "bSortable": false},
+        {"sTitle":"Age","sWidth": "5%", "bSortable": false},
+        {"sTitle":"OT Date & Time","sWidth": "15%", "bSortable": false},
+        {"sTitle":"Actions","sWidth": "25%", "bSortable": false}
+    ],
+    "oLanguage": {
+        "sZeroRecords": "No OT Scheduled",
+        "sLoadingRecords": "Please wait - loading OTs...",
+        "sSearch": '_INPUT_<span class="input-group-addon"><i class="glyphicon glyphicon-search"></i></span>'
+    },
+    "bPaginate": false
+})
+
+var bedmanagement_schedule = jQuery('#bedmanagement-schedule-table').dataTable({
+    "bDestroy": true,
+    "sPaginationType": "full_numbers",
+    "bServerSide": true,
+    "sAjaxSource":"/ipd_patients/bedsmanagement_schedule.json?facility_id=<%= @facilities.first.id %>&organisation_id=<%= current_user.organisation.id.to_s %>",
+    "sDom": '<"top"<"buttonPlaceholderBeds row"><"clear"><"table-filters-beds row"<"filter-title-beds col-md-1"><"facility-filter-beds col-md-2"><"department-filter-beds"><"user-filter-beds col-md-2"><"status-filter-beds col-md-3">f><"clear">>rt<"bottom"ip<"clear">>',
+    "aoColumns": [
+          { "sTitle": "" ,"sWidth":"100%","bSortable": false,"bSearchable":false }
+//        { "sTitle": "Ward Info" ,"sWidth":"10%","bSortable": false,"bSearchable":false },
+//        { "sTitle": "Bed Allocation" ,"sWidth":"90%","bSortable": false,"bSearchable":false }
+    ],
+    "oLanguage": {
+        "sZeroRecords": "No Bed Bookings found",
+        "sLoadingRecords": "Please wait - loading Beds...",
+        "sSearch": '_INPUT_<span class="input-group-addon"><i class="glyphicon glyphicon-search"></i></span>'
+    },
+    "bPaginate": false
+})
+
+jQuery('#ipd-schedule-table').removeClass('display').addClass('table table-primary table-striped table-bordered')
+jQuery('#ot-schedule-table').removeClass('display').addClass('table table-primary table-striped table-bordered')
+jQuery('#bedmanagement-schedule-table').removeClass('display').addClass('table table-primary table-striped table-bordered')
+jQuery("div.buttonPlaceholder").append("<%= escape_javascript(render 'admission_controls') %>")
+jQuery("div.buttonPlaceholderOT").append("<%= escape_javascript(render 'ot_controls') %>")
+//jQuery("div.buttonPlaceholderBeds").append("<%= escape_javascript(render 'beds_controls') %>")
+jQuery(".department-filter").html("<%= escape_javascript(render 'ipd_patients/partials/departments_dropdown_admissions') %>")
+jQuery(".user-filter").html("<%= escape_javascript(render 'ipd_patients/partials/users_dropdown_admissions') %>")
+//jQuery(".facility-filter").html("<%= escape_javascript(render 'ipd_patients/partials/facilities_dropdown_admissions') %>")
+jQuery(".filter-title").html(title_icons)
+jQuery(".department-filter-ot").html("<%= escape_javascript(render 'ipd_patients/partials/departments_dropdown_ot') %>")
+jQuery(".user-filter-ot").html("<%= escape_javascript(render 'ipd_patients/partials/users_dropdown_ot') %>")
+//jQuery(".facility-filter-ot").html("<%= escape_javascript(render 'ipd_patients/partials/facilities_dropdown_ot') %>")
+jQuery(".filter-title-ot").html(refresh_icons_ot)
+jQuery(".department-filter-beds").html("<%= escape_javascript(render 'ipd_patients/partials/departments_dropdown_beds') %>")
+jQuery(".user-filter-beds").html("<%= escape_javascript(render 'ipd_patients/partials/users_dropdown_beds') %>")
+//jQuery(".facility-filter-beds").html("<%= escape_javascript(render 'ipd_patients/partials/facilities_dropdown_beds') %>")
+jQuery(".filter-title-beds").html(refresh_icons_beds)
+
+// jQuery( "<hr style='margin-top: 7px;margin-bottom: 7px;'>" ).insertBefore( ".dataTables_wrapper>.top>.table-filters" );
+// jQuery( "<hr style='margin-top: 7px;margin-bottom: 7px;'>" ).insertAfter( ".dataTables_wrapper>.top>.table-filters" );
+// jQuery( "<hr style='margin-top: 7px;margin-bottom: 7px;'>" ).insertBefore( ".dataTables_wrapper>.top>.table-filters-ot" );
+// jQuery( "<hr style='margin-top: 7px;margin-bottom: 7px;'>" ).insertAfter( ".dataTables_wrapper>.top>.table-filters-ot" );
+jQuery( "<hr style='margin-top: 7px;margin-bottom: 7px;'>" ).insertBefore( ".dataTables_wrapper>.top>.table-filters-beds" );
+jQuery( "<hr style='margin-top: 7px;margin-bottom: 7px;'>" ).insertAfter( ".dataTables_wrapper>.top>.table-filters-beds" );
+
+jQuery(".dataTables_filter input").unwrap()
+jQuery(".dataTables_filter").wrapInner("<div class='input-group'></div>")
+jQuery(".dataTables_filter input").addClass("form-control")
+jQuery(".dataTables_filter").css({width: '180px'})
+
+jQuery(".refresh-data").on("click",function(){
+    jQuery('#ipd-schedule-table').dataTable().fnDraw()
+})
+
+jQuery(".refresh-data-ot").on("click",function(){
+    jQuery('#ot-schedule-table').dataTable().fnDraw()
+})
+
+jQuery(".refresh-data-beds").on("click",function(){
+    jQuery('#bedmanagement-schedule-table').dataTable().fnDraw()
+})
+
+
+
+jQuery(".dataTables_length").addClass("col-md-3")
+jQuery('#admission-datepicker-inline').datepicker({
+    dateFormat: "dd/mm/yy",
+    //showButtonPanel: true,
+    showOn: "button",
+    buttonText: '<i class="fa fa-calendar"></i>',
+    onSelect: function (dateText, obj) {
+        jQuery.ajax({
+            type: "GET",
+            dataType: "script",
+            url: "/ipd_patients/admissionschedule?admission_day="+moment(dateText, "DD/MM/YYYY").format('DD-MMMM-YYYY')
+        })
+    }
+})
+
+jQuery('#ot-datepicker-inline').datepicker({
+    dateFormat: "dd/mm/yy",
+    //showButtonPanel: true,
+    showOn: "button",
+    buttonText: '<i class="fa fa-calendar"></i>',
+    onSelect: function (dateText, obj) {
+        jQuery.ajax({
+            type: "GET",
+            dataType: "script",
+            url: "/ipd_patients/otschedule?admission_day="+moment(dateText, "DD/MM/YYYY").format('DD-MMMM-YYYY')
+        })
+    }
+})
+
+// To load the OT Schedule table
+jQuery("#ot-table").on('click',function(){
+      jQuery.ajax({
+            type: "GET",
+            dataType: "script",
+            url: "/ipd_patients/otschedule"
+        })
+    jQuery('#ot-schedule-table').dataTable().fnDraw()
+})
+
+jQuery('#beds-datepicker-inline').datepicker({
+    dateFormat: "dd/mm/yy",
+    //showButtonPanel: true,
+    showOn: "button",
+    buttonText: '<i class="fa fa-calendar"></i>',
+    onSelect: function (dateText, obj) {
+        jQuery.ajax({
+            type: "GET",
+            dataType: "script",
+            url: "/ipd_patients/otschedule?admission_day="+moment(dateText, "DD/MM/YYYY").format('DD-MMMM-YYYY')
+        })
+    }
+})
+
+jQuery(".ui-datepicker-trigger").addClass("btn btn-success")
+jQuery("a.ui-state-default").addClass("datepicker-ps")
+jQuery.datepicker._gotoToday = function(id) {
+    jQuery(id).datepicker('setDate', new Date())
+    jQuery.ajax({
+        type: "GET",
+        dataType: "script",
+        url: "/ipd_patients/otschedule?admission_day="+moment(dateText, "DD/MM/YYYY").format('DD-MMMM-YYYY')
+    })
+}
+
+jQuery('.print-admission-list').on("click", function() {
+    <%= render partial: 'ipd_patients/partials/print_admission_day_logic.js' %>
+})
+
+jQuery('#facility-filter').on("change",function(){
+    jQuery.ajax({
+        type: "GET",
+        dataType: "html",
+        url: "/departments/get_departments_for_facility",
+        data: {facility_id: jQuery("#facility-filter").val()},
+        success: function(data) {
+            jQuery("#department-filter").html(data)
+            jQuery("#department-filter").trigger("change")
+        }
+    })
+})
+
+jQuery('#department-filter').on("change",function(){
+    //refresh the user list
+    jQuery.ajax({
+        type: "GET",
+        dataType: "html",
+        url: "/users/get_users_for_department",
+        data: {department_id: jQuery("#department-filter").val(),facility_id: "<%=current_facility.id%>"},
+        success: function(data) {
+            jQuery("#user-filter").html(data)
+        }
+    })
+    var settings = day_schedule.fnSettings()
+  settings.sAjaxSource = "/ipd_patients/home_data.json?current_date=" + current_date + "&department_id=<%= @departments.first.id %>&doctor=<%= @users_array[0][1] %>&facility_id=" + "<%=current_facility.id%>"
+    day_schedule.fnDraw()
+})
+jQuery('#user-filter').on("change",function(){
+    var settings = day_schedule.fnSettings()
+    settings.sAjaxSource = "/ipd_patients/home_data.json?current_date=" + current_date + "&department_id=" + jQuery("#department-filter").val() + "&doctor=" + jQuery("#user-filter").val() + "&facility_id="+ "<%=current_facility.id%>"
+    day_schedule.fnDraw()
+})
+jQuery("#status-filter").on("change",function(){
+    var settings = day_schedule.fnSettings()
+    settings.sAjaxSource = "/ipd_patients/home_data.json?current_date=" + current_date + "&department_id=" + jQuery("#department-filter").val() + "&doctor=" + jQuery("#user-filter").val() + "&facility_id=" + "<%=current_facility.id%>" + "&status=" + jQuery("#status-filter").val()
+    day_schedule.fnDraw()
+})
+
+jQuery('.print-ot-list').on("click", function() {
+    var url = "/ipd_patients/printotlist";
+    window.open(url, "","toolbar=0,status=0");
+    event.preventDefault();
+})
+jQuery('#facility-filter-ot').on("change",function(){
+    jQuery.ajax({
+        type: "GET",
+        dataType: "html",
+        url: "/departments/get_departments_for_facility",
+        data: {facility_id: jQuery("#facility-filter-ot").val()},
+        success: function(data) {
+            jQuery("#department-filter-ot").html(data)
+            jQuery("#department-filter-ot").trigger("change")
+        }
+    })
+})
+jQuery('#department-filter-ot').on("change",function(){
+    jQuery.ajax({
+        type: "GET",
+        dataType: "html",
+        url: "/users/get_users_for_department",
+        data: {department_id: jQuery("#department-filter-ot").val(),facility_id: "<%=current_facility.id%>"},
+        success: function(data) {
+            jQuery("#user-filter-ot").html(data)
+        }
+    })
+    var settings = ot_schedule.fnSettings()
+  settings.sAjaxSource = "/ipd_patients/ot_schedule.json?current_date=" + current_date + "&department_id=" + jQuery("#department-filter-ot").val() + "&surgeonname=<%= @users_array[0][1] %>&facility_id=" + "<%=current_facility.id%>"
+    ot_schedule.fnDraw()
+})
+jQuery('#user-filter-ot').on("change",function(){
+    var settings = ot_schedule.fnSettings()
+    settings.sAjaxSource = "/ipd_patients/ot_schedule.json?current_date="+current_date+"&department_id="+jQuery("#department-filter-ot").val()+"&surgeonname="+jQuery("#user-filter-ot").val()+"&facility_id="+"<%=current_facility.id%>"+"&status="+jQuery("#status-filter-ot").val()
+    ot_schedule.fnDraw()
+})
+jQuery("#status-filter-ot").on("change",function(){
+    var settings = ot_schedule.fnSettings()
+    settings.sAjaxSource = "/ipd_patients/ot_schedule.json?current_date="+current_date+"&department_id="+jQuery("#department-filter-ot").val()+"&facility_id="+"<%=current_facility.id%>"+"&status="+jQuery("#status-filter-ot").val()
+    ot_schedule.fnDraw()
+})
+
+jQuery("#ipd-schedule-table").on('click',"#patient_identifier",function(e) {
+    e.preventDefault()
+    var i = jQuery(this);
+    jQuery(this).popover({
+        placement : 'right',
+        title : 'Patient Details',
+        html : true,
+        content : function(){
+            jQuery.ajax({
+                type: "GET",
+                url: "/patients/details",
+                data: {patient_id: jQuery(this).attr('p_id')}
+            }).done(function( data ) {
+                jQuery('.popover.in .popover-content').empty();
+                jQuery(".popover.in .popover-content").html(data);
+                jQuery(".popover.in").css("top","-185.5px")
+            });
+        },
+        trigger : 'focus',
+        template : '<div class="popover" role="tooltip" style="min-width: 370px"><div class="arrow"></div><h3 class="popover-title"></h3><div class="popover-content"></div></div>'
+
+    }).popover('show');
+})
+jQuery('#facility-filter-beds').on("change",function(){
+    var settings = bedmanagement_schedule.fnSettings()
+    settings.sAjaxSource = "/ipd_patients/bedsmanagement_schedule.json?facility_id="+jQuery("#facility-filter-beds").val()+"&organisation_id="+organisation_id
+    bedmanagement_schedule.fnDraw()
+})
+jQuery("#bedmanagement-schedule-table").on("hover", ".ward_room_bed_booked_on_hover", function() {
+});
+
+$(document).ready(function(){
+    $(".hg-tooltip").tipsy({live: true});
+});

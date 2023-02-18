@@ -1,0 +1,242 @@
+
+<!-- Hidden Fields For New Patient -->
+<div class="row mb30">
+
+        <span class="col-md-2 col-sm-2 col-xs-12">
+          <%= select_tag :patient_search,options_for_select(["MR No","Mobile No.", "Name", "Patient ID"], current_facility.try(:search_type)),{:class => 'form-control search-box-patient select_start_name', :style=>"width:95px;" } %>
+        </span>
+
+
+  <div class="col-md-8 col-sm-8 col-xs-12">
+    <input type="text" name="search_patient" id="search-patient" class="form-control" placeholder="Type Atleast 5 Characters" maxlength="50">
+    <div class="patient-search-error-msg"></div>
+  </div>
+  <span class="col-md-2 col-sm-2 col-xs-12 search_btn_position"><button class="btn btn-success search-patient-button" style="padding: 8px 15px;" disabled="disabled">Search</button>  </span>
+
+</div>
+
+<div class="row patient-search-results ">
+
+</div>
+
+<div class="row">
+  <div class='col-md-12'>
+    <center>
+      <% unless params[:show_patient].present? %>
+        <button class="btn btn-info form-control text-center add-new-patient new_patinet_add">Add New Patient</button>
+      <% end %>
+    </center>
+  </div>
+</div>
+<style>
+  .patient-search-error-msg{
+    color: red;
+  }
+  .select_start_name{
+    height: 40px;
+  }
+  .search-result{
+    position: relative;
+    top: 10px;
+  }
+  .add_new_patient_modal{
+    border-radius: 8px !important;
+  }
+
+  @media screen and (max-width: 767px) {
+    .search-box-patient{
+      margin-bottom: 10px;
+    }
+    .search-patient-button{
+      margin-top: 10px;
+    }
+  }
+
+  .search_btn_position{
+    text-align: center !important;
+  }
+</style>
+
+<script type="text/javascript">
+  $("#search-patient").trigger("focus")
+
+  $(".add-new-patient").on('click', function(event){
+    <% facility_id = current_facility.id%>
+    <%= @doc_count = User.where(:role_ids.in => current_facility['consultant_role_ids']).count %>
+    <% puts @doc_count %>
+    <% if @doc_count == 0 %>
+    event.preventDefault();
+    $(".no_doc_error").css("display", "block")
+    <% else %>
+    add_new_visit("<%= @url %>")
+    <% end %>
+  })
+
+
+  $("#search-patient").on('keyup', function(){
+    validate_search_box()
+  })
+
+  $(".search-box-patient").on('change',function(){
+    validate_search_box()
+    $(".search-result").remove()
+    $("#search-patient").val("")
+    $(".search-patient-button").attr("disabled", "disabled")
+  })
+
+
+  function validate_search_box() {
+    var search_filter = $(".search-box-patient").val()
+
+    var search_query = $("#search-patient").val()
+
+    if (search_filter == "Mobile No.") {
+      if (isNaN(search_query)) {
+        $(".search-patient-button").attr("disabled", "disabled")
+
+        $(".patient-search-error-msg").text("Please enter digits in mobile no.")
+
+      } else {
+        if (search_query.trim().length > 5 && search_query.trim().length < 11)  {
+          $(".search-patient-button").removeAttr("disabled", "disabled")
+          $(".patient-search-error-msg").text("")
+        } else {
+          $(".search-patient-button").attr("disabled", "disabled")
+          $(".patient-search-error-msg").text("Enter between 6-10 digits.")
+        }
+      }
+    } else {
+      if(search_query.trim().length > 4) {
+        $(".search-patient-button").removeAttr("disabled","disabled")
+        $(".patient-search-error-msg").text("")
+      } else{
+        $(".search-patient-button").attr("disabled","disabled")
+        $(".patient-search-error-msg").text("Enter atleast 5 characters.")
+      }
+    }
+  }
+
+
+  $(".search-patient-button").on('click', function(){
+
+    var btn = $(this);
+    btn.prop('disabled', true);
+
+    btn.text("Searching")
+
+    var search_filter = $(".search-box-patient").val()
+
+// Need to think about foriegn branches too
+//    var paramlength
+//
+//    if (search_filter == "Mobile No."){
+//      if ($("#search-patient").val().trim().length != 10){
+//        notice = new PNotify({ title: 'Error', text: 'Enter 10 digit No.', type: 'error' });
+//        notice.get().click(function(){ notice.remove() })
+//        return
+//      }
+//      paramlength = 9
+//    } else{
+//      paramlength = 5
+//    }
+
+    if($("#search-patient").val().trim().length > 4){
+      var search_url
+      var search_type
+      if (search_filter == "MR No") {
+        search_url = "/patients/search_patient_mr_no"
+        search_type = "MR No"
+      }
+      else if (search_filter == "Mobile No.") {
+        search_url = "/patients/search_patient_mobile_no"
+        search_type = "Mobile No."
+      }
+      else if (search_filter == "Name") {
+        search_url = "/patients/search_patient_name"
+        search_type = "Name"
+      }
+      else if (search_filter == "Patient ID") {
+        search_url = "/patients/search_patient_identifier"
+        search_type = "Patient ID"
+      }
+
+      $.ajax({
+        type: "GET",
+        dataType: "json",
+        url: search_url,
+        data: {search: $("#search-patient").val().replace(/[^\w\s]/gi, '').toLowerCase(), user_id: "<%= current_user.try(:id) %>", search_type: search_type},
+        success: function(response){
+          setTimeout(function(){
+            btn.prop('disabled', false);
+            btn.text("Search")
+          }, 300);
+          $(".search-result").remove()
+
+          if(response.length > 0){
+            $('.patient-search-results').prepend("<div class='col-md-12 mb10 search-result'>Select Patient</div>")
+            $.each(response, function(key, value) {
+              if(value[4]){
+                $('.patient-search-results').append("<div class='col-md-12 mb10 search-result'><button class='btn btn-default form-control patient-list-btn' data-patient-id='" + value[0] + "'><div class='col-sm-6 text-left'><b>" + value[1] + " | " + value[2] + "</b></div><div class='col-sm-6 text-right'><b>" + value[4] + " | " + value[3] + "</b></div></button></div>")
+              } else {
+                $('.patient-search-results').append("<div class='col-md-12 mb10 search-result'><button class='btn btn-default form-control patient-list-btn' data-patient-id='" + value[0] + "'><div class='col-sm-6 text-left'><b>" + value[1] + " | " + value[2] + "</b></div><div class='col-sm-6 text-right'><b>" + value[3] + "</b></div></button></div>")
+              }
+
+            });
+
+            // Hook for On Click
+            $('.patient-list-btn').on('click', function(){
+              if('<%= @store_id %>'.length == 0){
+                add_new_visit("<%= @url %>",$(this).attr('data-patient-id'))
+              } else {
+                inventory_form($(this).attr('data-patient-id'))
+              }
+            })
+
+            $('.patient-search-results').append("<div class='col-md-12 mb10 search-result'>Or Add New</div>")
+
+          } else {
+            $('.patient-search-results').prepend("<div class='col-md-12 mb10 search-result'>No Results Found</div>")
+          }
+        }
+      })
+    } else {
+      $(".search-result").remove()
+    }
+  })
+
+  $("#search-patient").keypress(function(e){
+    if($(".search-patient-button").attr("disabled") == undefined){
+      if(e.which == 13){
+        $(".search-patient-button").click()
+      }
+    }
+  })
+
+  function add_new_visit(url,patient_id=null){
+    $.ajax({
+      type: "GET",
+      dataType: "script",
+      url: url,
+      data: {
+        patient_id: patient_id,
+        date: "<%= @date %>",
+        time: "<%= @time %>",
+        type: "<%= @type %>",
+        store_id: "<%= @store_id %>" // Inventory
+      }
+    })
+  }
+
+  function inventory_form(patient_id){
+    $.ajax({
+      type: "GET",
+      dataType: "script",
+      url: "<%= @url_store %>",
+      data: {
+        patient_id: patient_id,
+        store_id: "<%= @store_id %>" // Inventory
+      }
+    })
+  }
+
+</script>

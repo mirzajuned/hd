@@ -1,0 +1,47 @@
+<% unless params[:from].present? %>
+  <div class="row no_margin no_padding" style="padding: 5px;">
+    <div class="row no_margin no_padding" style="padding: 0 15px;margin-top: 3px;">
+      <% actions = Global.send('inventory_workflow_dropdowns')["#{@inventory_order.state}"] %>
+      <% if actions.present? || @state_transitions.count > 1 %>
+        <div class="col-xs-2 no_padding">Actions</div>
+      <% end %>
+      <div class="col-xs-10 no_padding">
+        <% actions.each do |action| %>
+          <% if @inventory_order.is_canceled || @inventory_order.is_invoice_cancelled %>
+            <% disabled = true %>
+          <% end %>
+          <% if action[:to] == "delivered" && @inventory_order.is_invoice_created == false %>
+            <% disabled = true %>
+          <% end %>
+            <%= link_to change_state_invoice_inventory_orders_path(to: action[:to], id: @inventory_order.id ) , data: { remote: true }, class: "btn btn-primary btn-xs #{action[:to]}", disabled: disabled || false, id: action[:to] do %> <i class="fa <%= action[:icon] %>"></i> <%= action[:to]&.capitalize %><% end %>
+        <% end %>
+        <% if @state_transitions.count > 1 %>
+          <% if @inventory_order.is_canceled || @inventory_order.is_invoice_cancelled %>
+            <% disabled = true %>
+          <% end %>
+          <%= link_to undo_state_invoice_inventory_orders_path(id: @inventory_order.id ) , data: { remote: true }, class: "btn btn-warning btn-xs undo-invoice-state", disabled: disabled || false do %> <i class="fa fa-backward"></i> Undo<% end %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+<% end %>
+<div class="row no_margin no_padding invoice-workflow-timeline" style="margin: 0 auto;">
+  <div class="col-xs-12 text-center" style="line-height: 2;">
+    <label style="font-size:12px;border-radius: 12px;" class="label label-danger" title="<%= @inventory_order.created_at.strftime("%d/%m/%Y") %>">Placed</label>
+    <% @state_transitions.each do |transition| %>
+      <i class="fa fa-long-arrow-alt-right"></i>
+      <label style="font-size:12px;border-radius: 12px;" <% if transition.to == "delivered" %> class="label label-success"<%else%>class="label label-warning"  <% end %> title="<%= transition.created_at.strftime("%d/%m/%Y") %>"><%= transition.to&.capitalize %></label>
+    <% end %>
+  </div>
+</div>
+
+<hr width="100%">
+
+<style>
+  .invoice-workflow-timeline {
+    padding: 5px 5px;
+    margin-top: 10px;
+    border: 1px solid #aaa;
+    box-shadow: inset 0 0 10px 0 #333;
+  }
+</style>

@@ -1,0 +1,114 @@
+<!-- working section -->
+<% if opdrecord.xrays_mri_ct_investigations_text.present? && opdrecord.xrays_mri_ct_investigations_text != "<br>" %>
+  <div class="row">
+    <strong style="<%= heading_font_size %>">RADIOLOGY INVESTIGATIONS:</strong>
+    <div class="summary-line-border"></div>
+  </div>
+
+  <div class="row <%= 'print_text_font_size' if  @print_setting %>" style="<%= text_font_size %>">
+    <li><%= opdrecord.xrays_mri_ct_investigations_text.html_safe() %></li>
+  </div>
+<% end %>
+<!-- END -->
+
+<% if opdrecord.has_investigationlist? || opdrecord.radiologycomments.present? %>
+  <div class="radiologyinvestigations mb5 <%= 'print_text_font_size' if  @print_setting %>" id="radiologyinvestigations" style="<%= heading_font_size %>">
+    <% radiologyinvestigations_counter = opdrecord.investigationlist.size %>
+    <% advised_counter = 0%>
+    <% performed_counter = 0%>
+    <% advised_total = 0%>
+    <% performed_total = 0%>
+
+    <% opdrecord.investigationlist.each_with_index do |elem, i| %>
+      <%if elem.investigationstage == "A"%>
+        <% advised_total = advised_total+1 %>
+      <%else%>
+        <% performed_total = performed_total+1 %>
+      <%end%>
+    <%end%>
+
+    <% if radiologyinvestigations_counter > 0 %>
+        <div class="row">
+          <strong>RADIOLOGY INVESTIGATIONS :</strong>
+          <div class="summary-line-border"></div>
+        </div>
+
+        <div class="row">
+          <%if advised_total>0%>
+              <div class="col-md-2 col-sm-2">
+                <strong>Advised:</strong>
+              </div>
+          <%end%>
+          <div class="col-md-10 col-sm-10">
+            <% opdrecord.investigationlist.each_with_index do |elem, i| %>
+              <% advised_counter = advised_counter+1 %>
+              <strong><%= advised_counter%>. </strong><%= elem.investigationname %>&nbsp;
+              <% if elem.is_spine == 'N' %>
+                  <%= elem.laterality %>&nbsp;
+              <% end %>
+              <% if elem.radiologyoptions? %>
+                  <%= opdrecord.get_label_for_radiology_option(elem.radiologyoptions) %>
+              <% end %>
+              <%if advised_counter < advised_total%><%else%><%end%> &nbsp;
+            <%end%>
+          </div>
+        </div>
+
+        <div class="row">
+          <!--  performed_datetime: opdrecord.created_at.to_date.beginning_of_day..opdrecord.created_at.to_date.end_of_day, -->
+          <% performed_radiology = @case_sheet.radiology_investigations.where(is_performed: true, record_id: @opdrecord.id.to_s, performed_from: "add_investigation_details") %>
+          <% performed_template_radiology = opdrecord.investigationlist.where(investigationstage: 'P')  %>
+          <% if performed_radiology.count > 0 || performed_template_radiology.count > 0 %>
+            <div class="col-md-2 col-sm-2">
+              <strong>Performed:</strong>
+            </div>
+            <div class="col-md-10 col-sm-10">
+              <%# if elem.template_created %>
+                <table class="table table-bordered" style="margin:0px;">
+                  <thead>
+                    <tr>
+                      <th style="padding:0px;text-align:center;">Investigation</th>
+                      <th style="padding:0px;text-align:center;">Findings</th>
+                      <th style="padding:0px;text-align:center;">Remark</th>
+                      <th style="padding:0px;text-align:center;">Doctor's Remark</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% performed_template_radiology.each_with_index do |elem, i| %>
+                      <tr>
+                        <td style="padding:0px;text-align:center;"><%= elem.investigationname %> <% if elem.radiologyoptions %>(<%= opdrecord.get_label_for_radiology_option(elem.radiologyoptions) %>)<% end %></td>
+                        <td style="padding:0px;text-align:center;"><%= (elem.investigation_performed if elem.investigation_performed.present?) || "-" %></td>
+                        <td style="padding:0px;text-align:center;">-</td>
+                        <td style="padding:0px;text-align:center;">-</td>
+                      </tr>
+                    <% end %>
+                    <% performed_radiology.each_with_index do |elem, i| %>
+                      <tr>
+                        <td style="padding:0px;text-align:center;"><%= elem.investigationname %> <% if elem.radiologyoptions %>(<%= opdrecord.get_label_for_radiology_option(elem.radiologyoptions) %>)<% end %></td>
+                        <td style="padding:0px;text-align:center;"><%= elem.investigation_val || "-" %></td>
+                        <td style="padding:0px;text-align:center;"><%= elem.investigation_comment || "-" %></td>
+                        <td style="padding:0px;text-align:center;"><%= elem.doctors_remark || "-" %></td>
+                      </tr>
+                    <% end %>
+                  </tbody>
+                </table>
+              <%# end %>
+            </div>
+          <% end %>
+        </div>
+    <% end %>
+
+    <% if radiologyinvestigations_counter == 0 %>
+      <div class="row">
+        <strong style="<%= heading_font_size %>">RADIOLOGY INVESTIGATIONS</strong>
+        <div class="summary-line-border"></div>
+      </div>
+    <% end %>
+
+    <div class="">
+      <% if opdrecord.radiologycomments.present? %>
+          <span style="white-space: pre-line"> <%= opdrecord.radiologycomments %> </span>
+      <% end %>
+    </div>
+  </div>
+<% end %>

@@ -1,0 +1,201 @@
+<div class="modal-dialog modal-hg-save-record-template" style="width:100%;">
+  <div class="modal-content">
+    <% if @mode == "tabview" %>
+      <% close = "showAndroidClose('hi')" %>
+    <% else %>
+      <% close %>
+    <% end %>
+    <div class="modal-header">
+      <div class="pull-right"> <!-- Action Buttons starts -->
+        <button aria-hidden="true" class="btn btn-success" id="savepatientadvice">Update Advice</button>
+        <button aria-hidden="true" class="btn btn-info" data-dismiss="modal" onClick=<%= close %>>Close</button>
+      </div>
+      <div class="text-center">
+        <h4 class="nomargin"><%= @patient.fullname %>'s Prescription History</h4>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div class="row">
+        <div class="col-md-12 col-sm-12 col-xs-12">
+          <% @patient_prescriptions.each_with_index do |pp, cnt| %>
+            <table class="table table-bordered table-here">
+              <thead>
+                <tr>
+                  <th class="text-center" colspan="9">Adviced on <b><%= pp.created_at.to_s(:hg_date_format) %></b>, by <b><%= pp.consultant_name %></b>, at <b><%= pp.facility.name %></b></th>
+                </tr>
+                <tr>
+                  <th><%= LanguageHelper.translation('sr_no', @translated_language) %></th>
+                  <th><%= LanguageHelper.translation('name', @translated_language) %></th>
+                  <th><%= LanguageHelper.translation('quantity', @translated_language) %></th>
+                  <th class="text-center"><%= LanguageHelper.translation('frequency', @translated_language) %></th>
+                  <th><%= LanguageHelper.translation('duration', @translated_language) %></th>
+                  <th><%= LanguageHelper.translation('eye', @translated_language) %></th>
+                  <th><%= LanguageHelper.translation('instruction', @translated_language) %></th>
+                  <th><%= LanguageHelper.translation('c_d_heading', @translated_language) %></th>
+                  <th><%= LanguageHelper.translation('status', @translated_language) %></th>
+                </tr>
+              </thead>
+              <tbody id="tbody_medication1">
+                <% pp.medications.each_with_index do |elem, i| %>
+                  <tr class="treatmentmedications">
+                    <td><%= i + 1 %></td>
+                    <td>
+                      <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{i}][id]", pp.id, class: 'form-control id' %>
+                      <%= hidden_field_tag "opdrecord[treatmentmedication_attributes][#{i}][position]", elem['position'], class: 'form-control position' %>
+                      <%= elem['medicinename'].to_s.upcase %><% if elem['medicinetype'] %> - <%= elem['medicinetype'].to_s.upcase %><% end %>
+                    </td>
+                    <% if elem['taper_id'] == "0" || elem['taper_id'] == nil || elem['taper_id'] == "" %>
+                      <td class="text-right">
+                        <%= elem['medicinequantity'] %>
+                      </td>
+                      <td class="text-center">
+                        <%= OpdRecordsHelper.medicine_frequency(elem['medicinefrequency']) %>
+                      </td>
+                      <td>
+                        <%= OpdRecordsHelper.medicine_duration(elem['medicinedurationoption'], elem['medicineduration']) %>
+                      </td>
+                    <% else %>
+                      <td colspan="3" class="text-center">
+                        As advised below
+                      </td>
+                    <% end %>
+                    <td>
+                      <%= OpdRecordsHelper.medicine_eyeside(elem['eyeside']) %>
+                    </td>
+                    <td>
+                      <%= OpdRecordsHelper.medical_instructions(elem, @medication_set_arr, current_facility.country_id) %>
+                    </td>
+                    <td>
+                      <% unless pp.updated_at.to_s(:hg_date_format) == Time.current.to_s(:hg_date_format) %>
+                        <%= simple_fields_for :other do |o| %>
+                          <%= o.input "hdn_medication_actions_#{pp.id}_#{elem['position']}", collection: [['Not Applicable', ''], ['Continue', 'C'], ['Discontinue', 'D']], as: :hg_radio_button, label: false, required: false, class: 'btn btn-xs btn-white medication_actions', input_html: { name: 'hdn_medication_actions' }, checked: 'Not Applicable' %>
+                        <% end %>
+                      <% end %>
+                    </td>
+                    <td>
+                      <% if elem['status'].present? %>
+                        <% btn_cls = if elem['status'] == 'C'
+                                       'btn-info'
+                                     elsif elem['status'] == 'D'
+                                       'btn-warning'
+                                     end %>
+                        <a class="btn btn-xs <%= btn_cls %>" name="statusbutton"><%= elem['status'] %></a>
+                      <% end %>
+                    </td>
+                  </tr>
+                  <!-- Tapering code -->
+                  <% unless elem['taper_id'] == "0" || elem['taper_id'] == nil || elem['taper_id'] == "" %>
+                    <tr style="background-color:#bbb">
+                      <td colspan="9" style="padding:5px 10px 2px;">
+                        <% @taper = TaperingKit.find_by(id: elem['taper_id']) %>
+                        <% @tapering_set = @taper.tapering_set %>
+                        <% if @taper.taper_by == "Dosage" %>
+                          <table class="table table-bordered" style="margin: 0 0 5px;">
+                            <thead>
+                              <tr>
+                                <th><%= LanguageHelper.translation('sr_no', @translated_language) %></th>
+                                <th><%= LanguageHelper.translation('no_of_days', @translated_language) %></th>
+                                <th><%= LanguageHelper.translation('start_date', @translated_language) %></th>
+                                <th><%= LanguageHelper.translation('end_date', @translated_language) %></th>
+                                <th><%= LanguageHelper.translation('start_time', @translated_language) %></th>
+                                <th><%= LanguageHelper.translation('end_time', @translated_language) %></th>
+                                <th width="16%"><%= LanguageHelper.translation('dosage', @translated_language) %></th>
+                                <th width="16%"><%= LanguageHelper.translation('interval', @translated_language) %></th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <% @tapering_set.each.with_index do |taper, j| %>
+                                <tr class="taper_row">
+                                  <td>
+                                    <%= j.to_i + 1 %>
+                                  </td>
+                                  <td>
+                                    <%= taper.number_of_days %>
+                                  </td>
+                                  <td>
+                                    <%= taper.try(:start_date).try(:strftime, '%d/%m/%Y') %>
+                                  </td>
+                                  <td>
+                                    <%= taper.try(:end_date).try(:strftime, '%d/%m/%Y') %>
+                                  </td>
+                                  <td>
+                                    <%= taper.try(:start_time).try(:strftime, '%I:%M %p') %>
+                                  </td>
+                                  <td>
+                                    <%= taper.try(:end_time).try(:strftime, '%I:%M %p') %>
+                                  </td>
+                                  <td>
+                                    <%= taper.dosage %>
+                                  </td>
+                                  <td>
+                                    <%= taper['interval'].to_i > 0 ? 'Every ' + pluralize(taper['interval'], 'hour') : '-' %>
+                                  </td>
+                                </tr>
+                              <% end %>
+                            </tbody>
+                          </table>
+                        <% else %>
+                          <table class="table table-bordered" style="margin: 0 0 5px;">
+                            <thead>
+                              <tr>
+                                <th><%= LanguageHelper.translation('sr_no', @translated_language) %></th>
+                                <th><%= LanguageHelper.translation('day', @translated_language) %></th>
+                                <th><%= LanguageHelper.translation('start_date', @translated_language) %></th>
+                                <th><%= LanguageHelper.translation('end_date', @translated_language) %></th>
+                                <th><%= LanguageHelper.translation('start_time', @translated_language) %></th>
+                                <th><%= LanguageHelper.translation('end_time', @translated_language) %></th>
+                                <th width="16%"><%= LanguageHelper.translation('frequency', @translated_language) %></th>
+                                <th width="16%"><%= LanguageHelper.translation('interval', @translated_language) %></th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <% @tapering_set.each.with_index do |taper, k| %>
+                                <% unless (taper.frequency).to_i == 0 %>
+                                  <tr class="taper_row">
+                                    <td>
+                                      <%= k.to_i + 1 %>
+                                    </td>
+                                    <td>
+                                      <%= taper.number_of_days %>
+                                    </td>
+                                    <td>
+                                    <%= taper.try(:start_date).try(:strftime, '%d/%m/%Y') %>
+                                    </td>
+                                    <td>
+                                      <%= taper.try(:end_date).try(:strftime, '%d/%m/%Y') %>
+                                    </td>
+                                    <td>
+                                      <%= taper.try(:start_time).try(:strftime, '%I:%M %p') %>
+                                    </td>
+                                    <td>
+                                      <%= taper.try(:end_time).try(:strftime, '%I:%M %p') %>
+                                    </td>
+                                    <td>
+                                      <%= pluralize(taper['frequency'], 'time') %> a day
+                                    </td>
+                                    <td>
+                                      <%= taper['interval'].to_i > 0 ? 'Every ' + pluralize(taper['interval'], 'hour') : '-' %>
+                                    </td>
+                                  </tr>
+                                <% end %>
+                              <% end %>
+                            </tbody>
+                          </table>
+                        <% end %>
+                      </td>
+                    </tr>
+                  <% end %>
+                  <!-- EOF tapeting code -->
+                <% end %>
+              </tbody>
+            </table>
+          <% end %>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button aria-hidden="true" class="btn btn-success" id="savepatientadvice_bottom">Update Advice</button>
+      <button aria-hidden="true" class="btn btn-info" data-dismiss="modal" onClick=<%= close %>>Close</button>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,52 @@
+$(".ipd-modal-close").hide()
+$(".signuppatientform").html("<%= escape_javascript(render 'ipd_patients/new_patient_form') %>")
+$('#basicWizard').bootstrapWizard()
+$('#patientdob-datepicker-inline').datepicker({
+    dateFormat: "dd/mm/yy",
+    changeMonth: true,
+    changeYear: true,
+    yearRange: "c-120:c",
+    onClose: function(){
+        //workaround to trigger javascript validation
+        $(this).focusout();
+    }
+})
+
+$(".patientdob").on('change', calculate_age_fromdob)
+
+function calculate_age_fromdob() {
+    var patientdobday, patientdobmonth, patientdobyear
+    if ($(".patientdob").val().length > 9) {
+        patientdobday = "0" + moment($(".patientdob").val(), "DD/MM/YYYY").date()
+        patientdobmonth = "0" + moment($(".patientdob").val(), "DD/MM/YYYY").month()
+        patientdobyear = moment($(".patientdob").val(), "DD/MM/YYYY").year()
+        var todaydate = new Date()
+        var birthdate = new Date (patientdobyear, patientdobmonth, patientdobday)
+        var age = (todaydate - birthdate) / (365.25 * 24 * 60 * 60 * 1000)
+        var computed_age = Math.floor(age)
+        var computed_age_month = Math.floor((age - computed_age) * 12.175 ) // 365.35/30
+        $("#patient_age").val(computed_age)
+        $("#patient_age").prop('readonly', true)
+        $(".patientage_month").val(computed_age_month)
+        $(".patientage_month").prop('readonly', true)
+        $(".clear-date").show()
+    }
+}
+
+$(".clear-date").on('click', function(e){
+    e.preventDefault()
+    $(".patientdob").val("")
+    $("#patient_age").prop('readonly', false).val("")
+    $(".patientage_month").prop('readonly', false).val("")
+    $(".clear-date").hide()
+})
+
+//validations
+$("#new_patient").enableClientSideValidations();
+
+$("#patient_patient_history_attributes_patientpersonalhistory_attributes_problems, #patient_patient_history_attributes_patientallergyhistory_attributes_antimicrobialagents, #patient_patient_history_attributes_patientallergyhistory_attributes_antifungalagents, #patient_patient_history_attributes_patientallergyhistory_attributes_antiviralagents, #patient_patient_history_attributes_patientallergyhistory_attributes_contact, #patient_patient_history_attributes_patientallergyhistory_attributes_food,#patient_patient_history_attributes_patientallergyhistory_attributes_nsaids,#patient_patient_history_attributes_patientallergyhistory_attributes_eyedrops").select2({
+    tags: true,
+    tokenSeparators: [',', ';'],
+    theme: "bootstrap",
+    multiple: true
+});

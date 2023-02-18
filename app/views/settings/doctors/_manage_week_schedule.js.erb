@@ -1,0 +1,235 @@
+jQuery(".schedule-time").timepicker({defaultTime: false});
+function overlap_reporting(){
+    schedule_overlap = false;
+    $.each(day_ids, function( index, value ) {
+        var total_rows = jQuery("tr[day-id="+value+"]").attr('total_sessions');
+
+        for(var count = 0;count<total_rows;count++){
+            findErrors(count,value)
+        }
+
+    })
+    if(schedule_overlap) {
+
+        jQuery('#schedule-alert-messages').html("Please check. Either your timings are overlapping or you have left some fields empty.")
+        jQuery('#schedule-alert-messages').removeClass("alert alert-success")
+        jQuery('#schedule-alert-messages').addClass("alert alert-danger")
+        jQuery('#schedule-alert-messages').show()
+        return false
+    } else {
+        jQuery('#schedule-alert-messages').hide()
+        return true
+    }
+
+}
+function findErrors(row_id,day_id){
+
+    if(jQuery("#schedule_"+day_id+"_"+row_id+"_from").val()!= ''&& jQuery("#schedule_"+day_id+"_"+row_id+"_to").val()!= ''){
+
+        var from_time = moment(jQuery("#schedule_"+day_id+"_"+row_id+"_from").val(),"hh:mm a");
+        var to_time = moment(jQuery("#schedule_"+day_id+"_"+row_id+"_to").val(),"hh:mm a");
+
+        var total_rows = jQuery("tr[day-id="+day_id+"]").attr('total_sessions');
+
+        for(var count = 0;count<total_rows;count++){
+
+            from_row_id = "schedule_"+day_id+"_"+count+"_from";
+            to_row_id = "schedule_"+day_id+"_"+count+"_to";
+
+            if(count!=row_id && jQuery("#schedule_"+day_id+"_"+count+"_from").length > 0 && jQuery("#schedule_"+day_id+"_"+count+"_to").length > 0){
+
+                var from_row_time = moment(jQuery("#"+from_row_id).val(),"hh:mm a");
+                var to_row_time = moment(jQuery("#"+to_row_id).val(),"hh:mm a");
+
+                if(intervalsOverlap(from_row_time.format("HH:mm"),to_row_time.format("HH:mm"),from_time.format("HH:mm"),to_time.format("HH:mm"))){
+                    schedule_overlap = true
+                }
+            }
+        }
+
+    }else {
+        schedule_overlap = true
+    }
+
+
+}
+function save_schedule(facility_id){
+    var everyday_same_schedule = false
+    if(jQuery('[name=schedule_type]:checked').val()=='everyday_same'){
+        everyday_same_schedule = true
+    }
+    var schedule_details = $("[id^=schedule_][id$=_from]").serialize()+'&'+$("[id^=schedule_][id$=_to]").serialize()+'&facility_id='+facility_id+'&everyday_same_schedule='+everyday_same_schedule
+    var url = '/doctors/save_week_schedule?'+schedule_details
+    jQuery.ajax({
+        type : 'get',
+        url: url,
+    })
+}
+
+jQuery("#save_opd_timings").on("click", function(event) {
+
+    if(!overlap_reporting()){
+        event.preventDefault()
+        return false;
+    } else {
+        event.preventDefault()
+        save_schedule($("#facility-filter").val())
+        return false;
+    }
+});
+
+$(".day-schedule").on("click",".add-schedule-col",function(e){
+    e.preventDefault()
+    if(jQuery('[name=schedule_type]:checked').val()=='everyday_same'){
+        $.each(day_ids, function( index, day_id ) {
+            var total_rows = jQuery("tr[day-id="+day_id+"]").attr('total_sessions')
+
+            var single_row_html = '<td><div><div class="bootstrap-timepicker timepicker"><input type="text" name="schedule[hg_day_id][row_count][from]" id="schedule_hg_day_id_row_count_from"  class="schedule-time form-control" style="width: 70px"></div><div style="width: 17px">to</div><div class="bootstrap-timepicker timepicker"><input type="text" name="schedule[hg_day_id][row_count][to]" id="schedule_hg_day_id_row_count_to"  class="schedule-time form-control" style="width: 70px"></div></div><button class="btn btn-xs btn-danger remove-schedule-col" style="margin-left: 10px;"><span class="fa fa-times"></span></button></td>';
+
+            single_row_html = single_row_html.replace(/row_count/g,total_rows);
+            single_row_html = single_row_html.replace(/hg_day_id/g,day_id);
+
+            jQuery(single_row_html).appendTo("tr[day-id="+day_id+"]");
+            if(index!='Sunday'){
+                $("#schedule_"+day_id+"_"+total_rows+"_from").prop('readonly', true);
+                $("#schedule_"+day_id+"_"+total_rows+"_to").prop('readonly', true);
+                jQuery("tr[day-id="+day_id+"] .remove-schedule-col").attr('disabled',true)
+            }
+            jQuery("tr[day-id="+day_id+"]").attr('total_sessions',+total_rows+1);
+
+        })
+    } else {
+        var day_id = $(this).attr("day-id")
+        var total_rows = jQuery("tr[day-id="+day_id+"]").attr('total_sessions')
+
+        var single_row_html = '<td><div><div class="bootstrap-timepicker timepicker"><input type="text" name="schedule[hg_day_id][row_count][from]" id="schedule_hg_day_id_row_count_from"  class="schedule-time form-control" style="width: 70px"></div><div style="width: 17px">to</div><div class="bootstrap-timepicker timepicker"><input type="text" name="schedule[hg_day_id][row_count][to]" id="schedule_hg_day_id_row_count_to"  class="schedule-time form-control" style="width: 70px"></div></div><button class="btn btn-xs btn-danger remove-schedule-col" style="margin-left: 10px;"><span class="fa fa-times"></span></button></td>';
+
+        single_row_html = single_row_html.replace(/row_count/g,total_rows);
+        single_row_html = single_row_html.replace(/hg_day_id/g,day_id);
+        jQuery("tr[day-id="+day_id+"]").attr('total_sessions',+total_rows+1);
+
+        jQuery(single_row_html).appendTo("tr[day-id="+day_id+"]");
+    }
+
+    jQuery(".schedule-time").timepicker({defaultTime: '12:00 AM'});
+
+})
+$(".day-schedule").on("click",".remove-schedule-col",function(e){
+    e.preventDefault()
+    if(jQuery('[name=schedule_type]:checked').val()=='everyday_same'){
+        var count = $(this).prev()[0].children[0].children[0].id
+        count = count.replace(/schedule_/g,'');
+        count = count.replace(/_from/g,'');
+        count = count.replace(/404684003_/g,'');
+        $.each(day_ids, function( index, day_id ) {
+            $("#schedule_"+day_id+"_"+count+"_from").parent().parent().parent().remove()
+        })
+    } else {
+        $(this).parent().remove()
+    }
+
+
+
+})
+function intervalsOverlap(from1, to1, from2, to2) {
+    return (to2 === null || from1 < to2) && (to1 === null || to1 > from2);
+}
+var from_row_id;
+var to_row_id;
+var day_ids = <%= Global.weekdays.to_hash.to_json.html_safe%>
+
+$('#general-settings #facility-filter').focus(function(e){
+    $(this).val()
+    $(this).attr('previous-val',$(this).val());
+});
+jQuery("#general-settings #facility-filter").on('change',function(evt){
+
+    $(this).blur()
+    if(!overlap_reporting()){
+        $(this).val($(this).attr('previous-val'))
+    } else {
+        //save_schedule($(this).attr('previous-val'))
+        var everyday_same = false
+        if(jQuery('[name=schedule_type]:checked').val()=='everyday_same'){
+            everyday_same = true
+        }
+        jQuery.ajax({
+            type : 'get',
+            url: '/doctors/fetch_week_schedule',
+            data: {facility_id:jQuery("#general-settings #facility-filter").val(),everyday_same:everyday_same ,remote:"true"}
+        })
+    }
+
+})
+jQuery('[name=schedule_type]').on('change',function(e){
+    if(jQuery('[name=schedule_type]:checked').val()=='everyday_same'){
+        if(jQuery("tr[day-id=404684003]").children().length == 1){
+            var single_row_html = '<td><div><div class="bootstrap-timepicker timepicker"><input type="text" name="schedule[hg_day_id][row_count][from]" id="schedule_hg_day_id_row_count_from" value="from_value" class="schedule-time form-control" style="width: 70px"></div><div style="width: 17px">to</div><div class="bootstrap-timepicker timepicker"><input type="text" name="schedule[hg_day_id][row_count][to]" id="schedule_hg_day_id_row_count_to" value="to_value" class="schedule-time form-control" style="width: 70px"></div></div><button class="btn btn-xs btn-danger remove-schedule-col" style="margin-left: 10px;"><span class="fa fa-times"></span></button></td>';
+
+            single_row_html = single_row_html.replace(/row_count/g,'0');
+            single_row_html = single_row_html.replace(/hg_day_id/g,'404684003');
+            single_row_html = single_row_html.replace(/from_value/g,'');
+            single_row_html = single_row_html.replace(/to_value/g,'');
+            jQuery("tr[day-id=404684003]").attr('total_sessions','1');
+            jQuery(single_row_html).appendTo("tr[day-id=404684003]");
+        }
+        var total_rows = jQuery("tr[day-id=404684003]").attr('total_sessions');
+        $.each(day_ids, function( index, value ) {
+
+            if(index!='Sunday'){
+                $("tr[day-id="+value+"]>td").remove()
+                jQuery("tr[day-id="+value+"]").attr('total_sessions',total_rows);
+                for(var count = 0;count<total_rows;count++){
+                    if($("#schedule_404684003_"+count+"_from").length>0){
+                        var single_row_html = '<td><div><div class="bootstrap-timepicker timepicker"><input type="text" name="schedule[hg_day_id][row_count][from]" id="schedule_hg_day_id_row_count_from" value="from_value" class="schedule-time form-control" style="width: 70px"></div><div style="width: 17px">to</div><div class="bootstrap-timepicker timepicker"><input type="text" name="schedule[hg_day_id][row_count][to]" id="schedule_hg_day_id_row_count_to" value="to_value" class="schedule-time form-control" style="width: 70px"></div></div><button class="btn btn-xs btn-danger remove-schedule-col" style="margin-left: 10px;"><span class="fa fa-times"></span></button></td>';
+
+                        single_row_html = single_row_html.replace(/row_count/g,count);
+                        single_row_html = single_row_html.replace(/hg_day_id/g,value);
+                        single_row_html = single_row_html.replace(/from_value/g,$("#schedule_404684003_"+count+"_from").val());
+                        single_row_html = single_row_html.replace(/to_value/g,$("#schedule_404684003_"+count+"_to").val());
+                        jQuery("tr[day-id="+value+"]").attr('total_sessions',jQuery("tr[day-id=404684003]").attr('total_sessions'));
+                        jQuery(single_row_html).appendTo("tr[day-id="+value+"]");
+                        $("#schedule_"+value+"_"+count+"_from").prop('readonly', true);
+                        $("#schedule_"+value+"_"+count+"_to").prop('readonly', true);
+                        jQuery("tr[day-id="+value+"] .add-schedule-col").attr('disabled',true)
+                        jQuery("tr[day-id="+value+"] .remove-schedule-col").attr('disabled',true)
+                    }
+
+                }
+            }
+
+        })
+        jQuery(".schedule-time").timepicker({defaultTime: false});
+    } else if(jQuery('[name=schedule_type]:checked').val()=='everyday_different'){
+        $.each(day_ids, function( index, value ) {
+            if(index!='Sunday'){
+                var total_rows = jQuery("tr[day-id="+value+"]").attr('total_sessions');
+
+                for(var count = 0;count<total_rows;count++){
+                    $("#schedule_"+value+"_"+count+"_from").prop('readonly', false);
+                    $("#schedule_"+value+"_"+count+"_to").prop('readonly', false);
+                }
+                jQuery("tr[day-id="+value+"] .add-schedule-col").attr('disabled',false)
+                jQuery("tr[day-id="+value+"] .remove-schedule-col").attr('disabled',false)
+            }
+        })
+    }
+})
+$(".day-schedule").on("change","[id^=schedule_][id$=_from]",function(){
+    if(jQuery('[name=schedule_type]:checked').val()=='everyday_same'){
+        var count = $(this).attr('id')
+        count = count.replace(/schedule_/g,'');
+        count = count.replace(/_from/g,'');
+        count = count.replace(/404684003_/g,'');
+        $("[id^=schedule_][id$=_"+count+"_from]").val($(this).val())
+    }
+})
+$(".day-schedule").on("change","[id^=schedule_][id$=_to]",function(){
+    if(jQuery('[name=schedule_type]:checked').val()=='everyday_same'){
+        var count = $(this).attr('id')
+        count = count.replace(/schedule_/g,'');
+        count = count.replace(/_to/g,'');
+        count = count.replace(/404684003_/g,'');
+        $("[id^=schedule_][id$=_"+count+"_to]").val($(this).val())
+    }
+})

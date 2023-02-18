@@ -1,0 +1,148 @@
+<div class="col-sm-12">
+  <% if @invoice.present? %>
+    <div class="row mb10">
+      <div class="col-sm-6">
+        <b>Bill Number: </b>
+        <%= @invoice.try(:bill_number) %>
+      </div>
+      <div class="col-sm-6">
+        <b><%= Invoice::InvoicesHelper.amount_caption(@is_first_refund) %></b>
+        <% payment_received_advance_with_precision = number_with_precision(@amount_remaining, precision: 2) %>
+        <% payment_received_advance_display = Common::Finance::NumberFormatService.call(@number_format, payment_received_advance_with_precision) %>
+        <%= payment_received_advance_display %>
+      </div>
+    </div>
+  <% end %>
+
+  <% if @advance_payment.present? %>
+    <div class="row mb10">
+      <div class="col-sm-6">
+        <b>Adv. Receipt No.: </b>
+        <%= @advance_payment.try(:advance_display_id) %>
+      </div>
+      <div class="col-sm-6">
+        <b>Remaining Amount: </b>
+        <%# amount_remaining_with_precision = number_with_precision(@advance_payment.try(:amount_remaining), precision: 2) %>
+        <% amount_remaining_with_precision = number_with_precision(@amount_remaining, precision: 2) %>
+        <% amount_remaining_display = Common::Finance::NumberFormatService.call(@number_format, amount_remaining_with_precision) %>
+        <%= amount_remaining_display %>
+      </div>
+    </div>
+  <% end %>
+
+  <div class="row mb10">
+    <div class="col-sm-12">
+      <b>Reason</b>
+      <%= f.text_field :reason, class: "form-control p7_10" %>
+    </div>
+  </div>
+  <div class="row mb10">
+    <div class="col-sm-6">
+      <b>Date</b>
+      <%= f.text_field :dummy_payment_time, class: "form-control p7_10 payment-datepicker", readonly: 'readonly', value: Date.current.strftime("%d/%m/%Y") %>
+    </div>
+    <div class="col-sm-6">
+      <b>Time</b>
+      <%= text_field_tag :dummy_payment_time, Time.current.strftime("%I:%M %p"), class: "form-control p7_10 payment-timepicker" %>
+    </div>
+  </div>
+  <div class="row mb10">
+    <div class="col-sm-6">
+      <b>Mode of Payment</b>
+      <% @mop_list = Invoice::InvoicesHelper.mop_list(current_facility.country_id) %>
+      <% if @refund_type == 'Cancellation' %>
+        <%= f.select :mode_of_payment, options_for_select(@mop_list, "Cash"), { include_blank: "Please Select" }, { class: "form-control p7_10", style: "height:34px;" } %>
+      <% else %>
+        <%= f.select :mode_of_payment, options_for_select(@mop_list, @refund_payment.mode_of_payment), { include_blank: "Please Select" }, { class: "form-control p7_10", style: "height:34px;" } %>
+      <% end %>
+    </div>
+    <div class="col-sm-6">
+      <b>Amount (Refunded)</b>
+      <%= f.hidden_field :invoice_id, value: @invoice_id %>
+      <%= f.hidden_field :advance_payment_id, value: @advance_payment_id %>
+
+      <%= f.hidden_field :refund_type, value: @refund_type %>
+      <%= f.hidden_field :bill_number, value: @invoice.try(:bill_number) %>
+      <%#= f.hidden_field :invoice_received_amount, class: "form-control p7_10", readonly: "readonly", value: @invoice.try(:payment_received).to_f %>
+      <%= f.hidden_field :invoice_received_amount, class: "form-control p7_10", readonly: "readonly", value: @amount_remaining.to_f %>
+      <%= f.hidden_field :invoice_settled_amount, class: "form-control p7_10", readonly: "readonly", value: @invoice.try(:advance_payment).to_f %>
+      <%= f.hidden_field :invoice_total_amount, class: "form-control p7_10", readonly: "readonly", value: @invoice.try(:total).to_f %>
+
+      <%= f.hidden_field :advance_display_id, value: @advance_payment.try(:advance_display_id) %>
+      <%= f.hidden_field :advance_remaining_amount, class: "form-control p7_10", readonly: "readonly", value: @advance_payment.try(:amount_remaining).to_f %>
+      <%= f.hidden_field :advance_total_amount, class: "form-control p7_10", readonly: "readonly", value: @advance_payment.try(:amount).to_f %>
+      <%= f.hidden_field :store_id, value: @advance_payment.try(:store_id) %>
+
+      <% if @advance_payment.present? %>
+        <%= f.number_field :amount, class: "form-control p7_10", readonly: "readonly", value: @advance_payment.try(:amount_remaining).to_f %>
+      <% else %>
+        <% if @refund_type == 'Cancellation' %>
+          <%= f.number_field :amount, class: "form-control p7_10", readonly: "readonly", value: ( @amount_remaining.to_f ) %>
+          <%= f.hidden_field :canceled_by_id, value: current_user.id %>
+          <%= f.hidden_field :canceled_by, value: current_user.try(:fullname) %>
+          <%= f.hidden_field :cancel_date, value: Date.current %>
+        <% else %>
+          <%= f.number_field :amount, class: "form-control p7_10", maxlength: 12%>
+        <% end %>
+      <% end %>
+      <% refund_payment_type = @invoice.present? ? 'Refund Against Bill' : 'Refund Against Patient' %>
+      <%= f.hidden_field :refund_payment_type, value: refund_payment_type %>
+      <%= f.hidden_field :is_canceled, value: @is_canceled %>
+      <%= f.hidden_field :refunded_by, value: current_user.try(:fullname) %>
+      <%= f.hidden_field :refunded_by_id, value: current_user.try(:id) %>
+      <%= f.hidden_field :is_refunded, value: true %>
+      <%= f.hidden_field :refund_date, value: Time.current.strftime('%d/%m/%Y') %>
+      <%= f.hidden_field :refund_time, value: Time.current.strftime('%I:%M %p, %d/%m/%Y') %>
+    </div>
+  </div>
+  <div class="mode_of_payment_details mb10">
+    <% if @refund_payment.mode_of_payment == "Cash" %>
+      <input type="hidden" name="refund_payment[cash]" id="refund_payment_cash" class="form-control" value="<%= @refund_payment.cash %>">
+    <% elsif @refund_payment.mode_of_payment == "Card" %>
+      <div class="row">
+        <div class="card_details">
+          <div class="col-md-6">
+            <b>Card Number</b>
+            <input type="hidden" name="refund_payment[card]" id="refund_payment_card" class="form-control" value="<%= @refund_payment.card %>">
+            <input type="text" name="refund_payment[card_number]" id="refund_payment_card_number" class="form-control p7_10" minlength="4" maxlength="4" onKeyPress="return event.charCode >= 48 && event.charCode <= 57" value="<%= @refund_payment.card_number %>" placeholder="Card Number">
+          </div>
+        </div>
+      </div>
+    <% elsif @refund_payment.mode_of_payment == "Cheque" %>
+      <div class="row">
+        <div class="cheque_details">
+          <div class="col-md-6">
+            <b>Cheque Date</b>
+            <input type="text" name="refund_payment[cheque_date]" id="refund_payment_cheque_date" class="form-control p7_10" placeholder="Cheque Date" readonly="readonly" value="<%= @refund_payment.cheque_date %>">
+          </div>
+          <div class="col-md-6">
+            <b>Cheque Note</b>
+            <input type="text" name="refund_payment[cheque_note]" id="refund_payment_cheque_note" class="form-control p7_10" value="<%= @refund_payment.cheque_note %>" placeholder="Cheque Note">
+          </div>
+        </div>
+      </div>
+    <% elsif @refund_payment.mode_of_payment == "Online Transfer" %>
+      <div class="row">
+        <div class="transfer_details">
+          <div class="col-md-6">
+            <b>Tranfer Date</b>
+            <input type="text" name="refund_payment[transfer_date]" id="refund_payment_transfer_date" class="form-control p7_10" placeholder="Transfer Date" readonly="readonly" value="<%= @refund_payment.transfer_date %>">
+          </div>
+          <div class="col-md-6">
+            <b>Transfer Note</b>
+            <input type="text" name="refund_payment[transfer_note]" id="refund_payment_transfer_note" class="form-control p7_10" value="<%= @refund_payment.transfer_note %>" placeholder="Transfer Note">
+          </div>
+        </div>
+      </div>
+    <% elsif @refund_payment.mode_of_payment == "Others" %>
+      <div class="row">
+        <div class="other_details">
+          <div class="col-md-6">
+            <b>Note</b>
+            <input type="text" name="refund_payment[other_note]" id="refund_payment_other_note" class="form-control p7_10" value="<%= @refund_payment.other_note %>" placeholder="Note">
+          </div>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>

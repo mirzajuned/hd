@@ -1,0 +1,87 @@
+<div class="modal-dialog modal-md">
+  <div class="modal-content">
+    <div class="modal-body mis-custom-datepicker-body">
+      <div class="row">
+        <div class="col-md-12">
+          <b>Select Date Range</b>
+          <div class="input-group">
+            <span class="input-group-addon" style="padding: 5px 10px;"><i class="glyphicon glyphicon-calendar"></i></span>
+            <input type="text" name="start_date" data-start_date="<%=@start_date%>" id="custom_start_date" class="form-control" readonly="readonly" style="cursor:pointer;background-color:#fff;" style="display: none;">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="text/javascript">
+  $(".mis-custom-datepicker-body").height($(window).height() - 250)
+  <% if @inventory_store.department_id == '50121007' && !defined?(immediate) %>
+    let startDate = moment($('#mis-date-filter').attr("start-date"), "DD/MM/YYYY")
+    let endDate = moment($('#mis-date-filter').attr("end-date"), "DD/MM/YYYY")
+  <% else %>
+    let startDate = moment("<%=@start_date%>", "DD/MM/YYYY")
+    let endDate =  moment("<%=@end_date%>", "DD/MM/YYYY")
+  <% end %>
+  //moment().subtract(30, 'day')
+  daterangepicker_options = {
+    linkedCalendars: false,
+    maxSpan: {
+        years: 1
+    },
+    maxDate: moment(),
+    minDate: moment("1/1/1999", "DD/MM/YYYY"),
+    startDate: startDate,
+    endDate: endDate,
+    showDropdowns: true,
+    locale: {
+      format: 'DD/MM/YYYY'
+    }
+  }
+
+  $("#custom_start_date").daterangepicker(daterangepicker_options);
+  <% if @inventory_store.department_id == '50121007' && !defined?(immediate) %>
+    $('#custom_start_date').on('apply.daterangepicker', function(ev, picker) {
+      var start_date = picker.startDate.format('DD/MM/YYYY')
+      var end_date = picker.endDate.format('DD/MM/YYYY')
+      $('#date_range_field').val(start_date + " To " + end_date)
+      $('#mis-date-filter').attr("start-date", start_date)
+      $('#mis-date-filter').attr("end-date", end_date)    
+      $('#mis-date-filter').text("Custom")
+      $("#mis-modal").modal("hide")
+    });
+  <%else%>
+    $('#custom_start_date').on('apply.daterangepicker', function(ev, picker) {
+      var start_date = picker.startDate.format('DD-MM-YYYY')
+      var end_date = picker.endDate.format('DD-MM-YYYY')
+      var store_id = '<%= @store_id %>'
+      var fitter_name = $('#inventory_fitter_name').text()
+      var fitter_id = '<%= @fitter_id %>'
+      var state_name = '<%= @state_name %>'
+
+      $("#mis-modal").modal("hide")
+
+      jQuery.ajax({
+        type: 'get',
+        dataType: 'script',
+        data: {
+          store_id: store_id,
+          start_date: start_date,
+          end_date: end_date,
+          time_period: 'Custom',
+          fitter_name: fitter_name,
+          fitter_id: fitter_id,
+          state_name: state_name,
+          remote: true
+        },
+        url: '/invoice/inventory_orders'
+      });
+    });
+  <%end%>
+  $('#custom_start_date').on('cancel.daterangepicker', function(ev, picker) {
+    $("#mis-modal").modal("hide")
+  });
+
+
+  setTimeout(function(){ $("#custom_start_date").trigger("click"); }, 100);
+</script>

@@ -1,0 +1,99 @@
+<div class="row no-margin text-center">
+  <div class="row no_margin patient_tabs" style="width: 98%; margin-top: -15px;margin-left:7px;">
+    <ul class="nav nav-tabs tab_active" role="tablist">
+
+      <li role="presentation" class="full-width <%= "active" if (params[:active_tab] == 'all' || params[:active_tab] == nil) %>" data-tab-id="all">
+        <a href="#all_list" id="my-queue-list" aria-controls="home" role="tab" data-toggle="tab">
+          <span style="display: block; font-size: 16px;" class="all_list_count"><%= @patients_list.count %></span>
+          All
+        </a>
+      </li>
+    </ul>
+  </div>
+
+  <div class="row no_margin  summary_body collapse in" id="summary_patient_today">
+    <div class="patient_today">
+      <div class="tab-content" style="width:95%; margin-left:10px;">
+
+          <div role="tabpanel" class="patient_type_content tab-pane active" id="patient_all_list">
+            <%= render partial: "patients/data_rows", locals: { patients_list: @patients_list, tab: 'all' } %>
+          </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<style type="text/css">
+  #footer_notice {
+    position: fixed;
+    bottom: 0;
+    width: 47.5%;
+    background-color: #fff;
+    height: 30px;
+    color: #354670;
+  }
+
+  .full-width{
+    width: <%= eval("100/" + 1.to_f.to_s) %>%;
+  }
+</style>
+
+<script type="text/javascript">
+
+
+  $(".summary_patient_clickable").on('click', function(){
+    $("#patient_summary").html('<div class="loading_dots"> <span></span> <span></span> <span></span></div>').css('background','#fff')
+    $("#summary_patient_today").find(".active-patient").removeClass("active-patient")
+    $(this).addClass("active-patient")
+    $.ajax({
+      type: "GET",
+      dataType: "script",
+      data: {
+        patient_id: $(this).attr('data-patient-id'),
+        data_from: $(this).attr('data-from'),
+        current_date: "<%= @current_date.strftime('%d/%m/%Y') %>"
+      },
+      url: "/patients/patient_details",
+      success: function(){
+      }
+    })
+  })
+
+
+  // Initialize Trigger on Load
+  var params_patient = $("#summary_patient_today").find(".active").find("[data-patient-id='<%= @patient_id %>']")
+  var js_patient = $("#summary_patient_today").find(".active").find(".summary_patient_clickable")
+  if(params_patient.length > 0){
+    params_patient.trigger('click');
+  } else {
+    if(js_patient.length > 0){
+      js_patient.first().trigger('click')
+    } else {
+      $("#patient_summary").html("").css("background-color","transparent")
+    }
+  }
+
+  // Initialize Trigger on Change of Tabs
+  $(".full-width").find('a').on('click', function(){
+    var href = $(this).attr("href")
+    var data_tab_id = $(this).parent().attr("data-tab-id")
+    if(data_tab_id == 'converted') {
+      $(this).parent(".full-width").removeClass("councellor_"+data_tab_id)
+      $('.full-width[data-tab-id="cancelled"]').addClass('councellor_cancelled');
+    } else if(data_tab_id == 'cancelled') {
+      $(this).parent(".full-width").removeClass("councellor_"+data_tab_id)
+      $('.full-width[data-tab-id="converted"]').addClass('councellor_converted');
+    } else {
+      $('.full-width[data-tab-id="converted"]').addClass('councellor_converted');
+      $('.full-width[data-tab-id="cancelled"]').addClass('councellor_cancelled');
+    }
+    var patient_list = $(href).find(".summary_patient_clickable")
+    if(patient_list.length > 0){
+      patient_list.first().trigger('click')
+    } else {
+      $("#patient_summary").html("").css("background-color","transparent")
+    }
+  })
+
+</script>

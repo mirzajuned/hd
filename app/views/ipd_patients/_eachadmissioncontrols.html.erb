@@ -1,0 +1,161 @@
+<div class="each-admission-day-controls">
+  <div class="row">
+    <div class="col-md-12">
+      <% if !admission.isdischarged? %>
+          <div class="btn-group">
+            <!-- <button type="button" class="btn btn-xs btn-success"></button> -->
+            <button type="button" class="btn btn-xs btn-primary dropdown-toggle hg-tooltip" id="admission_dropdown_<%= admission.id.to_s %>"  data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="padding-top:2px;" title="Admission">
+              <i class="fa fa-sign-in-alt"></i>
+            </button>
+            <ul class="dropdown-menu">
+              <% ipdrecord_find_admissionnote = Inpatient::IpdRecord.find_by(:admission_id => admission.id.to_s, :patient_id => admission.patient.id.to_s, :template_type => "admissionnote") %>
+              <% if ipdrecord_find_admissionnote.nil? %>
+                  <li><%= link_to new_inpatient_ipd_record_path(:admission_id => admission.id.to_s,:templatetype => 'admissionnote'), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#ipdrecord-modal'} do %> <i class="fa fa-edit"></i> Admission Note<% end %></li>
+              <% else %>
+                  <li><%= link_to edit_inpatient_ipd_record_path(:id => ipdrecord_find_admissionnote.id.to_s, :admission_id => admission.id.to_s, :templatetype => 'admissionnote'), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#ipdrecord-modal'} do %> <i class="fa fa-edit"></i> Edit Admission Note<% end %></li>
+              <% end %>
+              <li><%= link_to ipd_patients_print_admissionconsent_path(:admission_id => admission.id, :patient_id => admission.patient.id, :format => :pdf), :target => "_blank" do %> <i class="fa fa-edit"></i> Admission Consent<% end %></li>
+            </ul>
+          </div>
+      <% end %>
+
+      <% if !admission.isdischarged? %>
+          <div class="btn-group">
+            <!-- <button type="button" class="btn btn-xs btn-success">OT</button> -->
+            <button type="button" class="btn btn-xs btn-warning dropdown-toggle hg-tooltip" id="ot_dropdown_<%= admission.id.to_s %>" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" title="OT">
+              <i class="fa fa-heartbeat"></i>
+              <!-- <span class="sr-only">Toggle Dropdown</span> -->
+            </button>
+            <ul class="dropdown-menu">
+              <li><%= link_to inpatient_ipd_records_consent_note_path(:admission_id => admission.id, :patient_id => admission.patient.id),:remote => true do %><i class="fa fa-print"></i> OT Consent <% end %></li>
+              <% ipdrecord_find_otnote = Inpatient::IpdRecord.find_by(:admission_id => admission.id.to_s, :patient_id => admission.patient.id.to_s, :template_type => "operativenote") %>
+              <% if ipdrecord_find_otnote.nil? %>
+                  <li><%= link_to new_inpatient_ipd_record_path(:admission_id => admission.id, :templatetype => 'operativenote'), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#ipdrecord-modal'} do %> <i class="fa fa-edit"></i> OT Note<% end %></li>
+              <% else %>
+                  <li><%= link_to edit_inpatient_ipd_record_path(:id => ipdrecord_find_otnote.id.to_s, :admission_id => admission.id.to_s, :templatetype => 'operativenote'), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#ipdrecord-modal'} do %> <i class="fa fa-edit"></i> Edit OT Note<% end %></li>
+              <% end %>
+              <% ipdrecord_find_otschedule = OtSchedule.find_by(:admission_id => admission.id.to_s) %>
+              <% if ipdrecord_find_otschedule.nil? %>
+                <li><%= link_to ipd_patients_scheduleot_path(:admission_id => admission.id, :patient_id => admission.patient.id, :admission_id => admission.id), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#templates-modal'} do %> <i class="fa fa-edit"></i> Schedule OT<% end %> </li>
+              <% else %>
+                <li><%= link_to ipd_patients_editot_path(:admission_id => admission.id, :patient_id => admission.patient.id, :otschedule_id => ipdrecord_find_otschedule.id), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#templates-modal'} do %> <i class="fa fa-edit"></i> Edit OT Schedule<% end %> </li>
+              <% end %>
+            </ul>
+          </div>
+      <% end %>
+
+      <div class="btn-group">
+        <!-- <button type="button" class="btn btn-xs btn-warning">Invoice</button> -->
+        <button type="button" class="btn btn-xs btn-success dropdown-toggle hg-tooltip" id="invoice_dropdown_<%= admission.id.to_s %>" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" title="Invoices">
+          <i class="fa fa-rupee"></i>
+          <!-- <span class="sr-only">Toggle Dropdown</span> -->
+        </button>
+        <ul class="dropdown-menu" role="menu" aria-labelledby="invoice-print-dropdown">
+          <% if tpa.is_insured? %>
+            <% @inv_ins_id = Invoice::Insurance.find_by(admission_id: admission.id) %>
+            <% @inv_est_id = Invoice::InsuranceEstimate.find_by(admission_id: admission.id) %>
+            <% if @inv_est_id.nil? %>
+              <li><%= link_to new_invoice_insurance_estimate_path(:tpa_id => tpa.id.to_s, :admission_id => admission.id, :patient_id => admission.patient_id), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#insurance-modal'} do %> Estimate Receipt <% end %></li>
+            <% else %>
+              <li><%= link_to invoice_insurance_estimate_path(id: @inv_est_id.id), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#insurance-modal'} do %> View Estimate Receipt <% end %></li>
+            <% end %>
+            <% if @inv_ins_id.nil? %>
+              <li><%= link_to new_invoice_insurance_path(:tpa_id => tpa.id.to_s, :admission_id => admission.id, :patient_id => admission.patient_id), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#insurance-modal'} do %> New Insurance Receipt <% end %></li>
+            <% else %>
+              <li><%= link_to invoice_insurance_path(id: @inv_ins_id.id), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#insurance-modal'} do %> View Insurance Receipt <% end %></li>
+            <% end %>
+          <% else %>
+            <li><%= link_to new_invoice_ipd_path(:admissionid => admission.id, :patientid => admission.patient.id, :typeid => Global.ehrcommon.ipd.id, :type => Global.ehrcommon.ipd.abbr), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#invoice-modal'} do %> <i class="fa fa-rupee"></i> Free Receipt Template <% end %></li>
+            <li><%= link_to new_cash_register_path(:admissionid => admission.id, :patientid => admission.patient.id, :typeid => Global.ehrcommon.ipd.id, :type => Global.ehrcommon.ipd.abbr), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#cash-register-modal'} do %> <i class="fa fa-rupee"></i> Cash Register <% end %></li>
+            <!-- Old Invoices -->
+            <% patient_pastinvoices = Invoice::Ipd.where(:patient_id => admission.patient_id, :admission_id => admission.id) %>
+            <% if patient_pastinvoices.size > 0 %>
+                <li class="old_invoice_ss" style="text-align: center;font-size: 10px;opacity: 0.6; border-bottom: 1px solid #eee;border-top: 1px solid #eee;margin-top: 5px;"><span>Previous Receipts</span></li>
+                <% patient_pastinvoices.newest_invoice_first.each do |patient_pastinvoice| %>
+                    <li>
+                      <%= link_to edit_invoice_ipd_path(:id => patient_pastinvoice.id), :data => {:remote => true} do %><%= patient_pastinvoice.bill_number %><% end %>
+                    </li>
+                <% end %>
+            <% end %>
+          <% end %>
+        </ul>
+      </div>
+
+      <div class="btn-group">
+        <!-- <button type="button" class="btn btn-xs btn-success">Discharge</button> -->
+        <% if !admission.isdischarged? %>
+          <button type="button" class="btn btn-xs btn-danger dropdown-toggle hg-tooltip" id="discharge_dropdown_<%= admission.id.to_s %>" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" title="Discharge">
+            <i class="fa fa-sign-out-alt"></i>
+          </button>
+        <% else %>
+          <button type="button" class="btn btn-xs btn-info dropdown-toggle hg-tooltip" id="discharge_dropdown_<%= admission.id.to_s %>" title="All Notes" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            <i class="fa fa-file-alt"></i>
+          </button>
+        <% end %>
+        <ul class="dropdown-menu">
+          <% if !admission.isdischarged? %>
+              <% ipdrecord_find_dcnote = Inpatient::IpdRecord.find_by(:admission_id => admission.id.to_s, :patient_id => admission.patient.id.to_s, :template_type => "dischargenote") %>
+              <% if ipdrecord_find_dcnote.nil? %>
+                  <li><%= link_to new_inpatient_ipd_record_path(:admission_id => admission.id, :templatetype => 'dischargenote'), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#ipdrecord-modal'} do %> <i class="fa fa-edit"></i> Discharge Note<% end %></li>
+              <% else %>
+                  <li><%= link_to edit_inpatient_ipd_record_path(:id => ipdrecord_find_dcnote.id.to_s, :admission_id => admission.id.to_s, :templatetype => 'dischargenote'), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#ipdrecord-modal'} do %> <i class="fa fa-edit"></i> Edit Discharge Note<% end %></li>
+              <% end %>
+              <li><%= link_to ipd_patients_discharge_path(:admission_id => admission.id, :patient_id => admission.patient.id), :title => "Are you sure that you want to discharge -- #{admission.patient.fullname} ?", :data => {:remote => true, :confirm => "<h4>Discharge this patient ?</h4>".html_safe, :commit => 'Discharge ' + admission.patient.fullname } do %> <i class="fa fa-sign-out-alt"></i> Discharge Patient<% end %></li>
+          <% end %>
+            <li><%= link_to ipd_patients_view_all_discharge_notes_path(:admission_id => admission.id, :patient_id => admission.patient.id), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#templates-modal'} do %> <i class="fa fa-print"></i> Notes to Patient <% end %></li>
+        </ul>
+      </div>
+
+      <% if admission.isdischarged? %>
+        <!-- "%d/%m/%Y, " -->
+          <span class="label label-danger">Discharged at <%= admission.dischargetime.strftime('%I:%M %p') %></span>
+      <% end %>
+
+      <div class="btn-group" style="margin-left:10%;">
+        
+        <% if tpa.is_insured? %>
+          <!-- Upload Paper Record -->
+            <button data-toggle="dropdown" title="Insurance Docs" id="upload_paper_<%= admission.id.to_s %>" class="dropdown-toggle btn btn-xs btn-default hg-tooltip">
+              <i class="fa fa-info"><b>n</b></i>
+            </button>
+            <ul role="menu" class="dropdown-menu pull-right">
+              <% @courier_save = Inpatient::Insurance::Courier.find_by(admission_id: admission.id) %>
+              <% if @courier_save.nil? %>
+                <li><%= link_to new_inpatient_courier_path(:tpa_id => tpa.id.to_s, :admission_id => admission.id, :patient_id => admission.patient_id), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#insurance-modal'} do %><i class="fa fa-envelope"></i> Fill Courier Details <% end %></li>
+              <% else %>
+                <li><%= link_to inpatient_courier_path(id: @courier_save.id), :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#insurance-modal'} do %> Show Courier Details <% end %></li>
+              <% end %>
+              <li><%= link_to paperrecords_upload_patient_asset_path(:patientid => admission.patient.id, :category => "insurance"),:target => '_blank' do %> <i class="glyphicon glyphicon-cloud-upload"></i> Insurance Uploads <% end %></li>
+              <% @insurance_assets = PatientSummaryAssetUpload.where(parent_folder_id: "560cc6f72b2e26135d000004", patient_id:admission.patient.id, is_deleted: false) %>
+              <% if @insurance_assets.count > 0 %>
+                <li class="old_invoice_ss" style="text-align: center;font-size: 10px;opacity: 0.6; border-bottom: 1px solid #eee;border-top: 1px solid #eee;margin-top: 5px;"><span>Uploaded Documents</span></li>
+                <% @insurance_assets.each do |psau| %>
+                  <li style="text-align:center;"><a href=<%= psau.asset_path.url %> target="_blank"><%= psau.name %></a></li>
+                <% end %>
+              <% end %>
+            </ul>
+          <!-- Upload Paper Record End -->
+        <% end %>
+      </div>
+      <div class="btn-group pull-right">
+        <% if admission.bed_id.nil? && admission.isdischarged  == false && Ward.where(:organisation_id => current_user.organisation_id).count > 0 %>
+          <%= link_to ipd_patients_new_bed_path(:admissionid => admission.id, :patientid => admission.patient.id),:class => "btn btn-info btn-xs hg-tooltip",:title => "Assign Bed", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#inpatient-modal'} do %> <i class="fa fa-bed"></i><% end %>
+        <% elsif !admission.bed_id.nil? && admission.isdischarged  == false && Ward.where(:organisation_id => current_user.organisation_id).count > 0 %>
+          <% @bed_room = "(" + Room.find_by(:id => admission.room_id).code + "/" + Room.find_by(:id => admission.room_id).beds.find_by(:id => admission.bed_id).code + ")" %>
+          <%= link_to ipd_patients_new_bed_path(:admissionid => admission.id, :patientid => admission.patient.id),:class => "btn btn-default btn-xs hg-tooltip",:title => @bed_room, :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#inpatient-modal'} do %> <i class="fa fa-bed"></i><% end %>
+        <% end %>
+      </div>
+
+    </div>
+
+
+  </div>
+
+</div>
+
+<script type="text/javascript">
+  $(".hg-tooltip").tipsy();
+  $(".hg-tooltip").click(function(){
+    $(".tipsy").hide();
+  });
+</script>

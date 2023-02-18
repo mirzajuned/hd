@@ -1,0 +1,186 @@
+$("#search-radiology_investigation").on('keyup', function(){
+  radiology_investigation_list = $(".main-radiology_investigation-list");
+  search = $(this).val().toUpperCase().trim();
+  count = 0
+  for (var i = radiology_investigation_list.length - 1; i >= 0; i--) {
+    radiology_investigation_name = $(radiology_investigation_list[i]).find(".radiology_investigation_name")
+    if($(radiology_investigation_name).html().toUpperCase().indexOf(search) > -1) {
+      $(radiology_investigation_list[i]).css("display", "");
+      count += 1
+    } else {
+      $(radiology_investigation_list[i]).css("display", "none");
+    }
+  }
+  if (count > 0){
+    $('input[id="save-multiple-radiology-investigations"]').show()
+  } else {
+    $('input[id="save-multiple-radiology-investigations"]').hide()
+  }
+})
+
+$(".radiology_investigation-service-body").on("click", ".btn-add-radiology_investigation-service", function(e){
+  e.preventDefault();
+  var add_radiology_investigation_service = $(this).closest(".add-radiology_investigation-service")
+  var service_type_code = $(this).closest(".radiology_investigation-service-details").find('.service_type_code').val()
+  var service_type_code_name = $(this).closest(".radiology_investigation-service-details").find('.service_type_code_name').val()
+  var service_type_code_type = $(this).closest(".radiology_investigation-service-details").find('.service_type_code_type').val()
+
+  var counter = $(".radiology_investigation-service-details").length
+
+  var radiology_investigation_service = `
+    <div class="row radiology_investigation-service-details mb10">
+      <input type='hidden' name='service_master[${counter}][is_updated]' value='false' class='is_updated'>
+      <input type='hidden' name='service_master[${counter}][service_type]' value='Radiology Investigation' class='service_type'>
+      <input type='hidden' name='service_master[${counter}][service_type_code]' value='${service_type_code}' class='service_type_code'>
+      <input type='hidden' name='service_master[${counter}][service_type_code_name]' value='${service_type_code_name}' class='service_type_code_name'>
+      <input type='hidden' name='service_master[${counter}][service_type_code_type]' value='${service_type_code_type}' class='service_type_code_type'>
+      <div class="col-md-2">
+        <select name='service_master[${counter}][service_group_id]' class='form-control service_group_list p5_10' style='height:30px;'>
+          <option value=''>Select Group</option>
+          <% @service_groups_attributes.each do |service_group| %>
+            <option value='<%= service_group[:id].to_s %>'>
+              <%= service_group[:name].to_s %>
+            </option>
+          <% end %>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <select name='service_master[${counter}][service_sub_group_id]' class='form-control service_sub_group_list p5_10' style='height:30px;'>
+          <option value=''>Select Sub Group</option>
+          <% @service_sub_groups_attributes.each do |service_sub_group| %>
+            <option value='<%= service_sub_group[:id].to_s %>'>
+              <%= service_sub_group[:name].to_s %>
+            </option>
+          <% end %>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <input type='text' name='service_master[${counter}][service_name]' class='form-control service_name p5_10'>
+      </div>
+      <div class="col-md-2 col-md-3-shared">
+        <input type='text' name='service_master[${counter}][organisation_service_code]' class='form-control organisation_service_code p5_10'>
+      </div>
+      <div class="col-md-2 col-md-3-shared">
+        <input type='text' name='service_master[${counter}][service_amount]' class='form-control service_amount p5_10' onKeyPress='return event.charCode >= 46 && event.charCode <= 57'>
+      </div>
+      <div class="col-md-2">
+        <select name='service_master[${counter}][department_ids]' class='form-control department_dropdown' multiple=true>
+          <option value='485396012'>OPD</option>
+          <option value='486546481'>IPD</option>
+        </select>
+      </div>
+      <div class="col-md-1">
+        <button class='btn btn-danger btn-remove-radiology_investigation-service btn-xs' style='display:inline-block;'>&times;</button>
+        <button class='btn btn-primary btn-xs btn-add-radiology_investigation-service' style='display:inline-block;'><i class='fa fa-plus'></i></button>
+      </div>
+    </div>
+  `
+
+  $(add_radiology_investigation_service).append(radiology_investigation_service)
+  $(add_radiology_investigation_service).find('.department_dropdown').select2();
+
+  _renumber_service_row()
+  add_remove_button(add_radiology_investigation_service)
+})
+
+$(".radiology_investigation-service-body").on("click", ".btn-remove-radiology_investigation-service", function(e){
+  e.preventDefault();
+  var add_radiology_investigation_service = $(this).closest(".add-radiology_investigation-service")
+  var radiology_investigation_service_details = $(this).closest(".radiology_investigation-service-details")
+  var is_active = $(radiology_investigation_service_details).find(".is_active")
+
+  $(radiology_investigation_service_details).find(".is_updated").val('true')
+  if(is_active.length > 0){
+    is_active.val("false")
+    $(this).hide();
+    $(radiology_investigation_service_details).find(".btn-activate-radiology_investigation-service").show()
+  } else {
+    $(radiology_investigation_service_details).remove()
+  }
+
+  _renumber_service_row()
+  add_remove_button(add_radiology_investigation_service)
+})
+
+$(".radiology_investigation-service-body").on("click", ".btn-activate-radiology_investigation-service", function(e){
+  e.preventDefault();
+  var radiology_investigation_service_details = $(this).closest(".radiology_investigation-service-details")
+  $(radiology_investigation_service_details).find(".is_active").val("true")
+  $(radiology_investigation_service_details).find(".is_updated").val('true')
+
+  $(this).hide();
+  $(radiology_investigation_service_details).find(".btn-remove-radiology_investigation-service").show()
+})
+
+$(".radiology_investigation-service-body").on("change", ".service_group_list", function(){
+  change_is_update(this)
+})
+
+$(".radiology_investigation-service-body").on("change", ".service_sub_group_list", function(){
+  change_is_update(this)
+})
+
+$(".radiology_investigation-service-body").on("keyup", ".service_name", function(){
+  change_is_update(this)
+})
+
+$(".radiology_investigation-service-body").on("keyup", ".organisation_service_code", function(){
+  change_is_update(this)
+})
+
+$(".radiology_investigation-service-body").on("keyup", ".service_amount", function(){
+  change_is_update(this)
+})
+
+$(".radiology_investigation-service-body").on("change", ".department_dropdown", function(){
+  change_is_update(this)
+})
+
+function change_is_update(_this){
+  $(_this).closest(".radiology_investigation-service-details").find(".is_updated").val("true")
+}
+
+var add_radiology_investigation_service = $(".add-radiology_investigation-service")
+for (var i = add_radiology_investigation_service.length - 1; i >= 0; i--) {
+  add_remove_button(add_radiology_investigation_service[i]);
+}
+
+function add_remove_button(add_radiology_investigation_service){
+  $(add_radiology_investigation_service).find(".btn-add-radiology_investigation-service").hide()
+  $(add_radiology_investigation_service).find(".btn-add-radiology_investigation-service:last").show()
+
+  if($(add_radiology_investigation_service).find(".is_active").val() == undefined){
+    if($(add_radiology_investigation_service).find(".radiology_investigation-service-details").length > 1){
+      $(add_radiology_investigation_service).find(".btn-remove-radiology_investigation-service:first").show()
+    } else {
+      $(add_radiology_investigation_service).find(".btn-remove-radiology_investigation-service").hide()
+    }
+  } else {
+    if($(add_radiology_investigation_service).find(".is_active").val() == "true"){
+      $(add_radiology_investigation_service).find(".btn-remove-radiology_investigation-service:first").show()
+      $(add_radiology_investigation_service).find(".btn-activate-radiology_investigation-service:first").hide()
+    } else {
+      $(add_radiology_investigation_service).find(".btn-remove-radiology_investigation-service:first").hide()
+      $(add_radiology_investigation_service).find(".btn-activate-radiology_investigation-service:first").show()
+    }
+  }
+}
+
+function _renumber_service_row(){
+  var services = $(".radiology_investigation-service-details")
+  for (var i = services.length - 1; i >= 0; i--) {
+    $(services[i]).find(".service_id").attr("name", `service_master[${i}][id]`)
+    $(services[i]).find(".is_active").attr("name", `service_master[${i}][is_active]`)
+    $(services[i]).find(".is_updated").attr("name", `service_master[${i}][is_updated]`)
+    $(services[i]).find(".service_type").attr("name", `service_master[${i}][service_type]`)
+    $(services[i]).find(".service_type_code").attr("name", `service_master[${i}][service_type_code]`)
+    $(services[i]).find(".service_type_code_name").attr("name", `service_master[${i}][service_type_code_name]`)
+    $(services[i]).find(".service_type_code_type").attr("name", `service_master[${i}][service_type_code_type]`)
+    $(services[i]).find(".service_group_list").attr("name", `service_master[${i}][service_group_id]`)
+    $(services[i]).find(".service_sub_group_list").attr("name", `service_master[${i}][service_sub_group_id]`)
+    $(services[i]).find(".service_name").attr("name", `service_master[${i}][service_name]`)
+    $(services[i]).find(".organisation_service_code").attr("name", `service_master[${i}][organisation_service_code]`)
+    $(services[i]).find(".service_amount").attr("name", `service_master[${i}][service_amount]`)
+    $(services[i]).find(".department_dropdown").attr("name", `service_master[${i}][department_ids][]`)
+  }
+}

@@ -1,0 +1,311 @@
+jQuery("#inventory-modal").html("<%= escape_javascript(render '/inventory/order/indents/new_transaction.html.erb') %>")
+jQuery("#inventory-modal").modal("show")
+
+// $('.exp_datepicker').datepicker({
+//   dateFormat: "dd/mm/yy",
+//   minDate: -0,
+//   changeMonth: true,
+//   changeYear: true
+// });
+
+function validate_inventory_purchase_orders_form() {
+  $("#validate_inventory_purchase_orders_form").validate({
+    rules: {
+      "inventory_order_purchase[vendor_id]": {
+        required: true,
+      },
+      "inventory_order_purchase[total_cost]": {
+        required: true,
+      },
+      "inventory_order_purchase[mode_of_payment]": {
+        required: true,
+      },
+      "inventory_order_purchase[bill_type]": {
+        required: true
+      },
+      "inventory_order_purchase[bill_number]": {
+        required: true
+      },
+      "inventory_order_purchase[bill_date]": {
+        required: true
+      } ,
+      "inventory_order_purchase[challan_number]": {
+        required: true
+      },
+      "inventory_order_purchase[challan_date]": {
+        required: true
+      },
+      "global_discount": {
+        min: 0
+      }
+    },
+    messages: {
+      "inventory_order_purchase[total_cost]": {
+        required: "Required"
+      },
+      "global_discount": {
+        min: 'Discount has to be more than 0'
+      }
+    },
+    errorPlacement: function (error, element) {
+      var elem = $(element);
+      error.insertAfter(element);
+      if(elem.hasClass("select2-hidden-accessible")) {
+        element = $("#select2-" + elem.attr("id") + "-container").parent();
+        error.insertAfter(element);
+      } else {
+        error.insertAfter(element);
+      }
+    }
+  });
+}
+validate_inventory_purchase_orders_form()
+set_index()
+$('#inventory_order_purchase_vendor_id').on('change', function() {
+  var vendor_id = $('#inventory_order_purchase_vendor_id').val()
+  if (vendor_id != '') {
+    $.ajax({
+      type: "GET",
+      dataType: "JSON",
+      data: { id: vendor_id },
+      url: "/inventory/order/purchases/vendor_details",
+      success: function(response) {
+        po_expiry_date = response.po_expiry_date
+        credit_days = response.credit_days
+        $('#inventory_order_purchase_vendor_credit_days').val(credit_days)
+        $('#inventory_order_purchase_po_expiry_date').val(po_expiry_date)
+      }
+    })
+  }
+})
+
+
+// $.validator.addClassRules("exp_datepicker", { required: true });
+
+function setPurchaseTime() {
+  let date = $('#inventory_order_purchase_order_date').val().split('/')
+  let new_date = date[2]+ "/" + date[1] + "/" + date[0]
+  date_time = new_date + " " + $("#inventory_order_purchase_order_time_picker").val()
+  date_time = moment(date_time).format('YYYY-MM-DD HH:mm:ssZ')
+  $('#inventory_order_purchase_order_date_time').val(date_time)
+}
+
+$('.order-datepicker').datepicker({
+    dateFormat: "dd/mm/yy",
+    maxDate: -0
+}).on('change', function(e) {
+  validateMaxTime()
+  setPurchaseTime()
+});
+
+function validateMaxTime()
+{
+  var picker_time = moment($('.order-timepicker').val(), 'HH:mm a')
+  if ( ($('.order-datepicker').val() == "<%= Date.current.strftime("%d/%m/%Y") %>") && (moment().isBefore(picker_time)) )
+  {
+    $('.order-timepicker').timepicker('setTime', moment().format('HH:mm a'))
+  }
+}
+
+$('.order-timepicker').timepicker({
+  defaultTime: 'current',
+  TimeFormat: 'HH:mm a',
+    minuteStep: 1
+  }).on('changeTime.timepicker', function(e) {
+    validateMaxTime()
+    setPurchaseTime()
+  });
+
+$('#inventory_order_purchase_vendor_location_id').select2()
+$('#inventory_order_purchase_po_type').select2()
+$('#inventory_order_purchase_vendor_credit_days').val('<%= @vendor&.credit_days %>')
+
+$.validator.addMethod("Number", $.validator.methods.digits, "Quantity Should be Number");
+$.validator.addMethod("checkQuantity", function(value, element, options) {
+  var id = $(element).attr("id")
+  var item_quantity = $('#'+id).val()
+  var item_max_quantity = $('#'+id).siblings(".item_max_quantity").val()
+  if (!item_max_quantity) {
+    return true
+  }
+  else{
+    return this.optional(element) || parseFloat(item_quantity) <= parseFloat(item_max_quantity);
+  }
+}, "Cannot Checkout more than Indent Qty.");
+
+
+$.validator.addMethod("checkFreeQty", function(value, element, options) {
+  var id = $(element).attr("id")
+  var key = parseInt(element.id.split("_")[5])
+  var stock = parseFloat($("#item_max_quantity_"+key).val())
+  if (id.includes('stock_free_unit')){
+    var free_stock = parseFloat($(element).val());
+    var paid_stock = parseFloat($("#" + id.replace("stock_free_unit","paid_stock")).val())
+  }else{
+    var paid_stock = parseFloat($(element).val());
+    var free_stock = parseFloat($("#" + id.replace("paid_stock","stock_free_unit")).val())
+  }
+  if (free_stock > paid_stock){
+    return false
+  }else{
+    return true
+  }
+}, "Cannot checkout more than Paid Qty.");
+
+$.validator.addMethod("checkPaidQty", function(value, element, options) {
+  var id = $(element).attr("id")
+  var key = parseInt(element.id.split("_")[5])
+  var stock = parseFloat($("#item_max_quantity_"+key).val())
+  if (id.includes('stock_free_unit')){
+    // var free_stock = parseFloat($(element).val());
+    var paid_stock = parseFloat($("#" + id.replace("stock_free_unit","paid_stock")).val())
+  }else{
+    var paid_stock = parseFloat($(element).val());
+    // var free_stock = parseFloat($("#" + id.replace("paid_stock","stock_free_unit")).val())
+  }
+   total = paid_stock
+   if (total > stock){
+    // $("#inventory_order_purchase_items_attributes_0_stock_free_unit-error").hide();
+    // $("#" + id.replace("stock_free_unit","stock_free_unit-error")).hide();
+    return false
+   }else{
+    $("#inventory_order_purchase_items_attributes_0_stock_free_unit-error").text("")
+    return true
+   }
+}, "Cannot checkout more than Pending Qty");
+
+$('#inventory_order_purchase_ship_to_store').select2()
+$('#inventory_order_purchase_bill_to_store').select2()
+
+$.validator.addClassRules("item_quantity", { number: true, checkQuantity: true, required: true, min: 0 });
+
+$.validator.addClassRules("unit_price_including_tax", { number: true, required: true, min: 0 });
+
+// $.validator.addClassRules("free_stock", { number: true, checkFreeQty: true, required: true, min: 0});
+
+$.validator.addClassRules("check_order_quantity", { number: true, checkPaidQty: true,  min: 0});
+
+jQuery.extend(jQuery.validator.messages, {
+  required: "Required",
+  remote: "Please fix this field.",
+  email: "Please enter a valid email address.",
+  url: "Please enter a valid URL.",
+  date: "Please enter a valid date.",
+  dateISO: "Invalid date.",
+  number: "Invalid No.",
+  digits: "Please enter only digits.",
+  creditcard: "Please enter a valid credit card number.",
+  equalTo: "Please enter the same value again.",
+  accept: "Please enter a value with a valid extension.",
+  maxlength: jQuery.validator.format("Please enter no more than {0} characters."),
+  minlength: jQuery.validator.format("Please enter at least {0} characters."),
+  rangelength: jQuery.validator.format("Please enter a value between {0} and {1} characters long."),
+  range: jQuery.validator.format("Please enter a value between {0} and {1}."),
+  max: jQuery.validator.format("Please enter a value less than or equal to {0}."),
+  min: jQuery.validator.format("Please enter a value greater than or equal to {0}.")
+});
+
+// Global discount validation
+function validate_global_discount_amount(){
+  var is_valid_discount = false;
+  var discount_percentage = 0;
+  var total_amount = $('#inventory_order_purchase_total_cost').val();
+  var global_discount = $('.global_discount').val();
+  var global_discount_type = $('.global_discount_type').val();
+  var total_items = $(".purchase-order-log-item").length
+  var unit_costs = 0
+  $(".purchase-order-log-item").each(function(){
+    var unit_cost = $(this).find(".unit_price_excluding_tax").val()
+    if(parseInt(unit_cost) >= 0){
+      unit_costs += 1
+    }
+  });
+  if(total_items == unit_costs && parseFloat(global_discount) >= 0 && parseFloat(total_amount) > 0) {
+    if(global_discount_type == '%') {
+      if(parseFloat(global_discount) <= 100){
+        is_valid_discount = true;
+        discount_percentage = global_discount;
+      } else {
+        is_valid_discount = false;
+      }
+    } else {
+      if(parseFloat(global_discount) <= parseFloat(total_amount)) {
+        is_valid_discount = true;
+        discount_percentage = parseFloat((parseFloat(global_discount) * 100) / parseFloat(total_amount));
+      } else {
+        is_valid_discount = false;
+      }
+    }    
+  } else {
+    is_valid_discount = false;
+  }
+  if(is_valid_discount) {
+    $('.apply_global_discount').removeClass('disabled')
+    $('.hdn_global_discount').val(discount_percentage);
+    $('#inventory_order_purchase_hdn_global_discount').val(discount_percentage)
+    $('#inventory_order_purchase_global_discount').val(global_discount)
+    $('#inventory_order_purchase_global_discount_type').val(global_discount_type)
+  } else {
+    $('.global_discount').val(0);
+    $('.hdn_global_discount').val(0);
+    $('.apply_global_discount').addClass('disabled')
+  }
+}
+
+$('.global_discount').on('keyup', function() {
+  validate_global_discount_amount();
+});
+
+$('.global_discount_type').on('change', function() {
+  validate_global_discount_amount();
+});
+
+$('.apply_global_discount').on('click', function() {
+  var x=confirm( "Are you sure you want to apply global discount on all items?");
+  if(x){
+    calculate_global_discount();
+  }
+});
+
+$('.delete_empty_item').on('click', function() {
+  calculate_purchase_order_tax();
+  validate_global_discount_amount();
+  calculate_global_discount();
+});
+
+$('.purchase-order-log-item').on('change', '.unit_price_excluding_tax', function(){
+  validate_global_discount_amount();
+});
+
+$('.purchase-order-log-item').on('change', '.item_quantity', function(){
+  validate_global_discount_amount();
+});
+
+validate_global_discount();
+// EOF Global discount validation
+
+function calculate_global_discount(){
+  var total_amount = parseFloat($('#inventory_order_purchase_total_cost').val());
+  var discount_percentage = $('.hdn_global_discount').val();
+  var discount_amount = $('.global_discount').val();
+  var discount_type = $('.global_discount_type').val();
+  var num_items = $('.purchase-order-log-item').length
+  $(".purchase-order-log-item").each(function(){
+    if(discount_type == '%'){
+      $(this).find(".item_discount").val(discount_percentage)
+      $(this).find(".item_discount_show").val(discount_percentage)
+    } else {
+      if(num_items > 1) {
+        item_total_amount = $(this).find('.cost_before_discount').val() || 0;
+        amount_after_discount = ((parseFloat(item_total_amount) * parseFloat(discount_percentage)) / 100);
+        $(this).find(".item_discount").val(parseFloat(amount_after_discount));
+        $(this).find(".item_discount_show").val(parseFloat(amount_after_discount.toFixed(2)));
+      } else {
+        $(this).find(".item_discount").val(discount_amount);
+        $(this).find(".item_discount_show").val(parseFloat(discount_amount).toFixed(2));
+      }
+    }
+    $(this).find('.item_discount_type').val(discount_type).trigger("click");
+  });
+}
+  

@@ -1,0 +1,224 @@
+<%= render partial: 'opd_appointments/common_css_opd.html.erb' %>
+<div class="row" style="display:none;">
+  <!-- All controls -->
+  <div class="department-filter"></div>
+  <div class="user-filter"></div>
+  <div class="facility-filter"></div>
+  <div class="status-filter"></div>
+  <div class="filter-title"></div>
+</div>
+
+<div class="col-sm-6 patient-list" style="height: 100%; background: white;">
+  <div id="toolbar_area">
+    <div class="toolbar">
+      <nav class="navbar navbar-secondary navbar-inverse navbar-fixed-top" style="margin-top: 50px; left: auto; right: auto; width: 50%;z-index:auto;">
+        <div class="container-fluid" style="padding-right:0;border-right: 1px solid #aaa;">
+          <div class="col-md-4" style="padding-left:initial">
+            <%unless current_user.has_role?(:optometrist) or current_user.has_role?(:counsellor)%>
+              <%= link_to opd_appointments_showcalendar_path, :data => {:remote => true}, :class => "ps btn btn-primary navbar-btn", :id => "show_calender_view", :title => "Calender View" do %>Calender View<% end %>
+            <%end%>
+            <i class="fa fa-refresh refreshappointmentlist" id="refreshappointmentlist"></i>
+          </div>
+
+
+
+          <div class="col-md-2 text-center">
+            <% if @current_date == Date.current %>
+              <button class="btn btn-danger navbar-btn navbar-btn-hover ps" style="padding-left: 8.4px !important;padding-right: 8.4px !important;background:transparent;" disabled="disabled"> Today</button>
+            <% else %>
+              <%= link_to opd_appointments_path(Date.current.strftime('%d-%b-%Y')), :class => "btn btn-danger navbar-btn navbar-btn-hover ps", :id => "admission_today_jump", style: "padding-left: 8.4px !important;padding-right: 8.4px !important;background:transparent;", :data => {:remote => true} do %> Today<% end %>
+            <% end %>
+          </div>
+          <div class="col-md-5 text-center">
+            <%= link_to opd_appointments_path("#{@current_date.yesterday.strftime("%d-%b-%Y")}"), :class => "btn btn-success  navbar-btn navbar-btn-hover ps", :id => "a_date_back_app",style: "padding-left: 8.4px !important;padding-right: 8.4px !important;border: none;margin-top:10px !important;font-size: 14px;padding-left:15px;!important", :data => {:remote => true} do %> <i class="fa fa-chevron-left"></i> <% end %>
+
+            <span style="font-size:16px;"><%= @current_date.strftime("%b %d, %Y") %></span>
+
+            <%= link_to opd_appointments_path("#{@current_date.tomorrow.strftime("%d-%b-%Y")}"), :class => "btn btn-success  navbar-btn navbar-btn-hover ps", :id => "a_date_back_app",style: "padding-left: 8.4px !important;padding-right: 8.4px !important;border: none;margin-top:10px !important;font-size: 14px;padding-left:15px;!important", :data => {:remote => true} do %> <i class="fa fa-chevron-right"></i> <% end %>
+          </div>
+          <div class="col-md-1 row text-right">
+            <input type="text" id="appointment-datepicker-inline" style="display: none;">
+            <!-- Logic in admission_management.js.erb -->
+          </div>
+
+        </div>
+      </nav>
+    </div>
+  </div><!-- #toolbar_area -->
+  <div class="sidebar_area_content" style="height: calc(100% - 50px);">
+    <% if (current_user.role_ids[0] == 106292003 && current_facility.clinical_workflow == false) && @current_facility_doctors.count > 1%>
+      <div class="col-sm-4 sidebar_pane sidebar-doctors-appointment no_padding" id="sidebar_doctors">
+      </div>
+      <div class="col-sm-8 sidebar_pane no_padding" id="sidebar_summary">
+    <% elsif (current_user.role_ids[0] == 159561009 && current_facility.clinical_workflow == false) && @current_facility_doctors.count > 1 %>
+        <div class="col-sm-4 sidebar_pane sidebar-doctors-appointment no_padding" id="sidebar_doctors">
+        </div>
+        <div class="col-sm-8 sidebar_pane no_padding" id="sidebar_summary">
+
+    <% else %>
+      <div class="col-sm-12 sidebar_pane no_padding" id="sidebar_summary">
+    <% end %>
+        <!-- <div class="row no_margin no_padding">
+          <div class="col-xs-3">X</div>
+          <div class="col-xs-3">X</div>
+          <div class="col-xs-3">X</div>
+          <div class="col-xs-3">X</div>
+        </div> -->
+        <div class="sidebar-summary-appointment">
+        </div>
+      </div>
+  </div>
+</div>
+
+<div class="col-sm-6 patient-details" style="height: 100%;padding: 0;">
+  <div class="toolbar">
+    <nav class="navbar navbar-secondary navbar-inverse navbar-fixed-top " style="margin-top: 50px; left: auto; right: auto; width: 50%;z-index:1000;">
+      <div class="container-fluid">
+        <div class="col-md-4">
+          <% unless current_user.has_role?(:counsellor)%>
+            <h4 style="margin:13px 0 0 0;font-size:18px;">Visit Details</h4>
+          <% else %>
+            <h4 style="margin:13px 0 0 0;font-size:18px;">Patient Details</h4>
+          <%end%>
+        </div>
+        <%unless current_user.has_role?(:optometrist) || current_user.has_role?(:counsellor) %>
+          <% if current_facility.show_finances? %>
+            <div class="col-md-4 text-right">
+          <% else %>
+            <div class="col-md-4 text-right">
+          <% end %>
+            <%= link_to opd_appointments_newappointment_path(:appointmentdate => "#{@datepicker_date}"), :class => "btn btn-danger navbar-btn navbar-btn-hover",:id=>"add-appointment-btn", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#appointment-modal', method: :post } do %> <i class="glyphicon glyphicon-plus"></i>&nbsp; Add<% end %>
+            <% unless current_facility.clinical_workflow %>
+              <button type="button"  class="btn btn-info navbar-btn navbar-btn-hover" data-toggle="dropdown">
+                <span class=""><i class="fa fa-print"></i> Print</span>&nbsp;
+                <span class="caret fa-color"></span>
+              </button>
+              <ul class="dropdown-menu children" style="margin-left:30px;">
+                <li>
+                  <%= link_to opd_appointments_printopdappointmentlist_path(:appointmentdate => Date.strptime("#{@datepicker_date}", "%Y-%m-%d"),:format => :pdf), :class => "text-center", :target => "_blank" do %>All<% end %>
+                </li>
+                <li>
+                  <%= link_to appointments_print_path(:appointmentdate =>  Date.strptime("#{@datepicker_date}", "%Y-%m-%d"), list_type: "scheduled",:format => :pdf), :class => "text-center", :target => "_blank" do %>Scheduled<% end %>
+                </li>
+                <li>
+                  <%= link_to appointments_print_path(:appointmentdate =>  Date.strptime("#{@datepicker_date}", "%Y-%m-%d"), list_type: "waiting",:format => :pdf), :class => "text-center", :target => "_blank" do %>Waiting<% end %>
+                </li>
+                <li>
+                  <%= link_to appointments_print_path(:appointmentdate =>  Date.strptime("#{@datepicker_date}", "%Y-%m-%d"), list_type: "engaged",:format => :pdf), :class => "text-center", :target => "_blank" do %>Engaged<% end %>
+                </li>
+                <li>
+                  <%= link_to appointments_print_path(:appointmentdate =>  Date.strptime("#{@datepicker_date}", "%Y-%m-%d"), list_type: "seen",:format => :pdf), :class => "text-center", :target => "_blank" do %>Seen (Finished)<% end %>
+                </li>
+              </ul>
+            <% else %>
+              <%= link_to opd_appointments_printopdappointmentlist_path(:appointmentdate => Date.strptime("#{@datepicker_date}", "%Y-%m-%d"), :format => :pdf), :class => "btn btn-info navbar-btn navbar-btn-hover", :target => "_blank" do %> <i class="fa fa-print"></i>&nbsp; Print<% end %>
+            <% end %>
+          </div>
+        <% end %>
+        <% unless current_user.has_role?(:optometrist)%>
+          <% if current_facility.show_finances? %>
+            <div class="col-md-2 text-right">
+              <button type="button"  class="btn btn-info navbar-btn navbar-btn-hover" data-toggle="dropdown">
+                <span class=""><i class="fa fa-file"></i> Reports</span>&nbsp;
+                <span class="caret fa-color"></span>
+              </button>
+              <ul class="dropdown-menu children" style="margin-left:-60px;">
+                <li>
+                  <%= link_to reports_daily_report_all_path(:date => Date.strptime("#{@datepicker_date}", "%Y-%m-%d"), location: "OPD", :format => :pdf), :class => "", style:"border-color:#FF8735", :target => "_blank" do %> All<% end %>
+                </li>
+                <li>
+                  <%= link_to reports_daily_report_path(:date => Date.strptime("#{@datepicker_date}", "%Y-%m-%d"), location: "OPD Invoice", :format => :pdf), :class => "", style:"border-color:#FF8735", :target => "_blank" do %> Receipt<% end %>
+                </li>
+                <li>
+                  <%= link_to reports_daily_report_path(:date => Date.strptime("#{@datepicker_date}", "%Y-%m-%d"), location: "OPD Cash", :format => :pdf), :class => "", style:"border-color:#FF8735", :target => "_blank" do %> Cash Register<% end %>
+                </li>
+              </ul>
+            </div>
+          <% end %>
+        <% end %>
+        <% @current_facility_counsellor = User.where(:facility_ids.in => [current_facility.id],:role_ids.in => [499992366],is_active: true)%>
+        <% if @current_facility_counsellor.count > 0 %>
+            <% if current_user.has_role?(:counsellor) || current_user.has_role?(:doctor)%>
+                <div class="col-md-2 pull-right">
+                  <a type="button"  href="/opd_clinical_workflow/open_counsellor_reports" data-remote="true" class="btn btn-info navbar-btn navbar-btn-hover " id="counselling_report">
+                    <span class=""><i class="fa fa-line-chart fa-xs"></i>Counselling</span>&nbsp;
+                  </a>
+                </div>
+            <% end %>
+        <% end %>
+        <% if current_user.organisation.paid_for_data == true%>
+            <div class="col-md-2 pull-right">
+              <%= link_to patients_preview_patient_excel_path(:current_date => Date.strptime("#{@datepicker_date}", "%Y-%m-%d")), :class => "btn btn-info navbar-btn navbar-btn-hover", style:"border-color:#FF8735", :data => {remote: true} do %> <i class="fa fa-download">&nbsp;</i>Excel<% end %>
+            </div>
+        <% end %>
+      </div>
+    </nav>
+
+  </div>
+
+  <div id="appointment-details" style="height: calc(100% - 50px); margin-top: 50px; overflow-y: auto;">
+    <div class="row no_margin" style="padding: 10px 10px 10px 20px;">
+      <div class="appointment-details">
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="empty_appointment_details_template" style="display:none;">
+  <!-- <div class="center-box text-center" style="border: 5px dashed #fff;color:#fff;width:100%;height:100%;padding:30% 10px;">
+    <h3>Please Add An Appointment<br><br><br>OR<br><br><br>Select Patient From The Left Patient List</h3>
+  </div> -->
+</div>
+
+<script type="text/javascript">
+  $("#navbar-btn-refresh").on('click', function(e){
+    e.preventDefault();
+    window.Showday.fetchAppointmentData();
+  });
+
+
+
+  $("#refreshappointmentlist").on("click",function(){
+    <% if current_user.has_role?'counsellor'%>
+      var app_id =  $(".appointments_today").find(".active").find(".active").attr("data-appointment-id")
+      var tab =  $(".appointments_today").find(".active").find(".active").attr("data-appointment-tab")
+      console.log("refresh",app_id,tab)
+      $.ajax({
+          data: {appointment_id: app_id,tab: tab,source: "counsellor"},
+          url: "/opd_appointments/showday/"+<%= @datepicker_date%>,
+
+      })
+
+//      $('*[data-appointment-tab='+ tab+']').find('a').click();
+
+
+//      $(".appointments_today").find('*[data-appointment-tab='+ tab+']').find('*[data-appointment-id='+ app_id+']').click()
+
+
+    <%else%>
+      Showday.fetchAppointmentData($(".appointments_today").find(".active").find(".active").attr("data-appointment-id"),$(".appointments_today").find(".active").find(".active").attr("data-appointment-tab"))
+    <%end%>
+  })
+
+
+
+  $("#counselling_report").on("click",function(){
+
+  })
+</script>
+
+
+  <style>
+    .refreshappointmentlist:hover {
+      border: white 1px solid;
+      padding: 5px;
+      border-radius: 3px;
+      background: #495A84;
+    }
+
+    .refreshappointmentlist {
+      padding: 6px;
+    }
+
+
+  </style>

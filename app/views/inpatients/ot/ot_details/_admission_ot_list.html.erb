@@ -1,0 +1,86 @@
+<div class="row no_margin">
+  <% if @ot.admission && @ot.admission.isdischarged %>
+    <div class="col-md-12 mb5">
+      <span class="label label-danger">Note: The OTs Created From Here Won't Be TIED<br> to this ADMISSION - as Patient is already DISCHARGED.</span>
+    </div>
+  <% end %>
+  <div class="col-md-12">
+    <h4 class="" style="display: inline">
+    <% if @ot_schedules.not.where(id: @ot.id).count == 0 %>
+      No Other OTs
+    <% else %>
+      Other OTs Scheduled
+    <% end %>
+    </h4>
+    <%= link_to new_ot_path(patient_id: @ot.patient_id, date: Date.current, time: Time.current, direct: true, specialty_id: @ot.specialty_id, facility_id: @ot.facility_id), class: 'btn btn-info btn-xs pull-right', data: { :remote => true, 'toggle' => 'modal', 'target' => '#ot-modal' } do %> Schedule OT<% end %>
+    <%# if @ot.admission && @ot.admission.isdischarged == false %>
+      <%#= link_to ipd_patients_scheduleot_path(:admission_id => @ot.admission.id, :patient_id => @ot.patient.id, ottime: "current_time"), id: "schedule-ot-btn", class: "btn btn-info btn-xs pull-right", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#templates-modal'} do %> <!-- Schedule OT --><%# end %>
+    <%# else %>
+      <%#= link_to ipd_patients_scheduleot_path(:patient_id => @ot.patient.id, ottime: "current_time"), id: "schedule-ot-btn", class: "btn btn-info btn-xs pull-right", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#templates-modal'} do %> <!-- Schedule OT --><%# end %>
+    <%# end %>
+  </div>
+  <ul class="col-md-12 mt5" style="padding-left:5px;list-style-type:none;">
+    <% @ot_schedules.where(:id.ne => @ot.id).each.with_index do |otschedule,i| %>
+      <% ot_list_view = @ot_list_views.find { |olv| otschedule.id.to_s == olv[:ot_id].to_s } %>
+      <div class="row mt10">
+        <li>
+          <div class="col-md-6">
+            <% if @location == "List" %>
+              <a href="" class="link-to-ot" data-ot-date="<%= otschedule.otdate %>" data-ot-id="<%= otschedule.id %>" data-ot-state="<%= ot_list_view[:state] %>"><%= otschedule.ottime.strftime('%d %b at %I:%M %p') %></a>
+            <% else %>
+              <span><%= otschedule.try(:ottime).try(:strftime, '%d %b at %I:%M %p') %></span>
+            <% end %>
+          </div>
+          <div class="col-md-6 text-right">
+            <% if otschedule.admission_id %>
+              <% unless otschedule.operation_done || otschedule.is_engaged %>
+                <%= link_to ot_unlink_ot_path(id: otschedule.id,ot_id: otschedule.id),class: "btn btn-link btn-xs otschedule_list engage_ot",method: 'get', :data => {:remote => true}, style: "color:#f00;" do %>Unlink<% end %>
+              <% end %>
+            <% else %>
+              <% ot_case_sheet_id = otschedule.case_sheet_id %>
+              <% if @admission_list_views.count > 1 %>
+                <button class="btn btn-link btn-xs" data-toggle="dropdown">Link</button>
+                <ul class="dropdown-menu dropdown-menu-right" role="menu" aria-labelledby="admissions-ot-dropdown">
+                  <% @admission_list_views.each do |alv| %>
+                    <% admission_case_sheet = alv.admission.case_sheet %>
+                    <% if admission_case_sheet.id.to_s != ot_case_sheet_id.to_s %>
+                      <% confirm_message = "<ul><li>ADMISSION CASE : #{admission_case_sheet&.case_id} - #{admission_case_sheet&.case_name}(#{admission_case_sheet&.start_date&.strftime('%d/%m/%Y')})</li><li>OT CASE : #{otschedule.case_sheet.case_id} - #{otschedule.case_sheet.case_name}(#{otschedule.case_sheet&.start_date&.strftime('%d/%m/%Y')})</li><li>The Cases of OT & Admission are not same. This may result into changes in OT case ID changing to Admission Case ID.Please make sure you want to this change?</li></ul>".html_safe %>
+                      <li>
+                        <%= link_to ot_link_ot_path(id: otschedule.id,ot_id: otschedule.id, admission_id: alv.admission_id), title: 'Link this OT ?', data: { remote: true, confirm: confirm_message, commit: 'I am Aware' } do %><%= alv.admission_time.strftime('%I:%M %p, %d/%m/%Y') %><% end %>
+                      </li>
+                    <% else %>
+                      <li>
+                        <%= link_to ot_link_ot_path(id: otschedule.id, ot_id: otschedule.id, admission_id: alv.admission_id), data: { remote: true } do %><%= alv.admission_time.strftime('%I:%M %p, %d/%m/%Y') %><% end %>
+                      </li>
+                    <% end %>
+                  <% end %>
+                </ul>
+              <% elsif @admission_list_views.count > 0 %>
+                <% alv = @admission_list_views[0] %>
+                <% admission_case_sheet = alv.admission.case_sheet %>
+                <% if admission_case_sheet.id.to_s != ot_case_sheet_id.to_s %>
+                  <% confirm_message = "<ul><li>ADMISSION CASE : #{admission_case_sheet&.case_id} - #{admission_case_sheet&.case_name}(#{admission_case_sheet&.start_date&.strftime('%d/%m/%Y')})</li><li>OT CASE : #{otschedule.case_sheet.case_id} - #{otschedule.case_sheet.case_name}(#{otschedule.case_sheet&.start_date&.strftime('%d/%m/%Y')})</li><li>The Cases of OT & Admission are not same. This may result into changes in OT case ID changing to Admission Case ID.Please make sure you want to this change?</li></ul>".html_safe %>
+                  <%= link_to ot_link_ot_path(id: otschedule.id, ot_id: otschedule.id, admission_id: alv.admission_id), class: 'btn btn-link btn-xs otschedule_list engage_ot', title: 'Link this OT ?', data: { remote: true, confirm: confirm_message, commit: 'I am Aware' }, style: 'color: #f00;' do %>Link<% end %>
+                <% else %>
+                  <%= link_to ot_link_ot_path(id: otschedule.id, ot_id: otschedule.id, admission_id: alv.admission_id), class: 'btn btn-link btn-xs otschedule_list engage_ot', data: { remote: true }, style: 'color: #f00;' do %>Link<% end %>
+                <% end %>
+              <% end %>
+            <% end %>
+            <% unless otschedule.operation_done || otschedule.is_engaged %>
+              <%= link_to ipd_patients_deleteot_path(id: otschedule.id,active_id: otschedule.id),class: "btn btn-link btn-xs otschedule_list",method: 'delete', :title => "Delete this OT ?", :data => {:remote => true, :confirm => "<h4>Are you sure that you want to delete OT for #{otschedule.patient.fullname} ?</h4>".html_safe, :commit => 'Delete OT' }, style: "color:#f00;" do %>Delete<% end %>
+            <% else %>
+              <% if otschedule.operation_done %>
+                <button style="margin-left:20px;" class="btn btn-link btn-xs" disabled="disabled" style="margin-top:0px;">OT Completed</button>
+              <% else %>
+                <button style="margin-left:20px;" class="btn btn-link btn-xs" disabled="disabled" style="margin-top:0px;">OT Engaged</button>
+              <% end %>
+            <% end %>
+          </div>
+          <div class="col-md-12">
+            <p style="margin-bottom:0;margin-top:-10px;"><b style="font-size:10px;">by <%= User.find(otschedule.user_id).fullname %></b></p>
+          </div>
+        </li>
+      </div>
+    <% end %>
+  </ul>
+</div>

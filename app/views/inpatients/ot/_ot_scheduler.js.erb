@@ -1,0 +1,237 @@
+// Window Size
+var window_height = $(window).height() - 50
+$(".sidebar_area").css('height',window_height)
+$(".ot-main-calendar").css('height',window_height)
+
+$(window).resize(function() {
+  var window_height = $(window).height() - 50
+  $(".sidebar_area").css('height',window_height)
+  $(".ot_main_content").css('height',window_height)
+  asp_rat = $(".ot-main-calendar").width() / (($(".ot-main-calendar").height() - 50));
+})
+
+$(".sidebar-summary").html("<%= escape_javascript(render 'inpatients/ot/calendar_sidebar_summary') %>");
+$(".sidebar-doctors").html("<%= escape_javascript(render 'inpatients/ot/calendar_sidebar_doctors') %>");
+$(document).ready(function(){
+  // Everything Related to Full Calender
+  asp_rat = $(".ot-main-calendar").width() / (($(".ot-main-calendar").height() - 50));
+  calendar_options = {
+    header: {
+      left:   'today',
+      center: 'prev title next',
+      right: 'agendaWeek,agendaDay'
+    },
+    slotDuration: '00:15:00',
+    scrollTime :  '<%= Time.current.strftime("%H:%M:%S").to_s %>',
+    editable: true,
+    defaultView: "agendaWeek",
+    allDaySlot: false,
+    slotEventOverlap: false,
+    eventLimit: true, // allow "more" link when too many events
+    selectable: true,
+    selectHelper: true,
+    unselectAuto: true,
+    aspectRatio: asp_rat,
+    firstDay: '<%= Date.current.strftime("%w").to_i %>',
+    events: {
+      url: '/inpatients/ot_calendar_data',
+      type: 'get',
+      data: function(){
+          return {
+              doctor_id: $(".users_list").find(".active").find('a').attr('data-user-id')
+          }
+      },
+      success: function(res){
+        $("#ot-calendar").find(".loading_dots").remove()
+        updateSummary(res);
+      },
+      error: function() {
+          alert('there was an error while fetching events!');
+      }
+    },
+    // Select an empty event on Calender
+    select: function( start, end, jsEvent, view ){
+      $.ajax({
+        type: "get",
+        dataType: "script",
+        url: "/patients/search",
+        data: {
+          remote: "true",
+          // current_doctor: $(".users_list").find(".active").find('a').attr('data-user-id'),
+          'toggle': "modal",
+          'target': '#ot-modal',
+          'current_date': start.format('DD-MM-YYYY'),
+          'current_time': start.format('HH:mm'),
+          'url': "/ots/new",
+          'modal': 'ot-modal'
+        }
+      })
+    },
+    // When Event Is Clicked
+    eventClick: function(calEvent, jsEvent, view) {
+      $(".summary_ot[data-ot-id='" + calEvent.ot_id + "']").trigger('click');
+    },
+    // When Event Times are Changed(Resized)
+    eventResize: function(event, delta, revertFunc, jsEvent, ui, view ) {
+      if(event.current_state == "Scheduled" || event.current_state == "Admitted"){
+        $.ajax({
+          type: "GET",
+          url: "/ipd_patients/edit_otcalendar_event",
+          data: {
+            ot_id: event.ot_id,
+            ot_new_start: event.start.format(),
+            ot_new_end: event.end.format()
+          },
+          success: function(res){
+            $("#ot-calendar").fullCalendar('refetchEvents');
+          },
+          error: function(err){
+          }
+        });
+      } else {
+        $("#ot-calendar").fullCalendar("refetchEvents");
+        if ($(".ui-pnotify").length > 0) { $(".ui-pnotify").remove() }
+        notice = new PNotify({
+          title: 'Error',
+          text: 'Engaged or Completed OT Cannot Be Rescheduled',
+          icon: 'fa fa-error',
+          type: 'error'
+        })
+        notice.get().click(function(){ notice.remove() });
+      }
+    },
+    // When Event is dropped(moved)
+    eventDrop: function(event, delta, revertFunc, jsEvent, ui, view  ) {
+      if(event.current_state == "Scheduled" || event.current_state == "Admitted"){
+        $.ajax({
+          type: "GET",
+          url: "/ipd_patients/edit_otcalendar_event",
+          data: {
+            ot_id: event.ot_id,
+            ot_new_start: event.start.format(),
+            ot_new_end: event.end.format()
+          },
+          success: function(res){
+            $("#ot-calendar").fullCalendar('refetchEvents');
+          },
+          error: function(err){
+          }
+        });
+      } else {
+        $("#ot-calendar").fullCalendar("refetchEvents");
+        if ($(".ui-pnotify").length > 0) { $(".ui-pnotify").remove() }
+        notice = new PNotify({
+          title: 'Error',
+          text: 'Engaged or Completed OT Cannot Be Rescheduled',
+          icon: 'fa fa-error',
+          type: 'error'
+        })
+        notice.get().click(function(){ notice.remove() });
+      }
+    },
+  }
+
+  $("#ot-calendar").fullCalendar(calendar_options);
+  // Update Side Summary
+  function updateSummary(arr){
+    $("#today_ot_list").html("");
+    $("#future_scheduled_list").html("");
+    $("#past_completed_list").html("");
+    today = moment.tz('<%= current_facility.time_zone %>').format("MM-DD-YYYY")
+    ot_type_count = new Array(0,0,0)
+    scheduled_today = []
+    scheduled_future = []
+    scheduled_past = []
+    for (var i = arr.length - 1; i >= 0; i--) {
+      if(today == moment.tz(arr[i].start, '<%= current_facility.time_zone %>').format("MM-DD-YYYY")){
+        ot_type_count[0]++;
+        scheduled_today.push(arr[i]);
+        createSummaryOt(arr[i], '.ot_calender_list #today_ot_list');
+      } else if(today < moment.tz(arr[i].start, '<%= current_facility.time_zone %>').format("MM-DD-YYYY")) {
+        ot_type_count[1]++;
+        scheduled_future.push(arr[i]);
+        createSummaryOt(arr[i], '.ot_calender_list #future_scheduled_list');
+      } else {
+        ot_type_count[2]++;
+        scheduled_past.push(arr[i]);
+        createSummaryOt(arr[i], '.ot_calender_list #past_completed_list');
+      }
+    }
+    activateSummaryOt();
+
+    $(".scheduled_today_list_count").html("").text(ot_type_count[0])
+    $(".scheduled_future_list_count").html("").text(ot_type_count[1])
+    $(".scheduled_past_list_count").html("").text(ot_type_count[2])
+
+    //Update already exisiting modal's content
+    if (($("#modalCalendarOtDetails").data('bs.modal') || {}).isShown){
+      var ot_id = $("#ot_refresher").val();
+
+      $("#modalCalendarOtDetailsBody").html("<div class='loading_dots'><span></span>&nbsp;<span></span>&nbsp;<span></span></div>");
+      // $("#modalCalendarOtDetails").modal('show');
+      $.ajax({
+        url: "/inpatients/ot_details",
+        data: {
+          ot_id: ot_id
+        },
+        dataType: 'html',
+        success: function(res){
+          $("#modalCalendarOtDetails").find("#modalCalendarOtDetailsBody").html(res);
+        },
+        error: function(err){
+        }
+      });
+    }
+  }
+
+  function createSummaryOt(ot, container){
+    $(container).append("<div class='row no_margin summary_ot summary_ot_clickable' style='border-color:" + ot.current_state_color +"' data-ot-id='" + ot.ot_id + "'><div class='col-xs-6 no_padding text-left' style='overflow: hidden;white-space: nowrap; text-overflow: ellipsis;'><span>" + ot.title + "</span></div><div class='col-xs-6 no_padding text-right'><span style='font-size: 12px;'>" + moment.tz(ot.start, '<%= current_facility.time_zone%>').format("hh:mm A (DMMM)") + "</span></div><div class='col-xs-6 no_padding text-left' style='overflow: hidden;white-space: nowrap; text-overflow: ellipsis;'>Rsn : <b style='font-size:12px;'>" + ot.reason_for_admission + "</b></div><div class='col-xs-6 no_padding text-right' style='overflow: hidden;white-space: nowrap; text-overflow: ellipsis;'><b style='font-size:12px;'>" + ot.operating_doctor + "</b></div></div>")
+
+    // Hook To trigger Click on btn-admit-btn
+    $(".btn-admit-patient").on('click', function(e){
+      e.stopPropagation()
+      $.ajax({
+        type: "GET",
+        dataType: "script",
+        url: "/ots/"+ ot.ot_id +"/patient_arrived",
+        data: {
+          id: ot.ot_id,
+          view: 'Calendar'
+        },
+        success: function(res){
+          $("#ot-calendar").fullCalendar('refetchEvents');
+        }
+      })
+    })
+  }
+
+  function activateSummaryOt(){
+    $('#modalCalendarOtDetails').unbind('hidden.bs.modal');
+    $(".summary_ot_clickable").on('click', function(e){
+      $("#modalCalendarOtDetailsBody").html("<div class='loading_dots'><span></span>&nbsp;<span></span>&nbsp;<span></span></div>");
+      $("#modalCalendarOtDetails").modal('show');
+      ot_id = $(this).attr('data-ot-id');
+
+      $.ajax({
+        url: "/inpatients/ot_details",
+        data: {
+          ot_id: ot_id
+        },
+        dataType: 'html',
+        success: function(res){
+          $("#modalCalendarOtDetails").find("#modalCalendarOtDetailsBody").html(res);
+        },
+        error: function(err){
+        }
+      })
+    });
+  }
+
+  $(document).on('show.bs.modal', '.modal', function (event) {
+    var zIndex = 1040 + (10 * $('.modal:visible').length);
+    $(this).css('z-index', zIndex);
+    setTimeout(function() {
+      $('.modal-backdrop').not('.modal-stack').css('z-index', zIndex - 1).addClass('modal-stack');
+    }, 0);
+  });
+});

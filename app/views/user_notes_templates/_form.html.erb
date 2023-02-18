@@ -1,0 +1,139 @@
+<%= javascript_include_tag "application-loggedin", "data-turbolinks-track" => true %>
+<div class="modal-dialog modal-lg">
+  <%= form_for(@user_notes_template, html: {id: 'user_notes_template'}, remote: true) do |f| %>
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <div class="row">
+          <div class="col-md-9 col-lg-7 col-sm-9 col-xs-9">
+            <h4 class="modal-title pull-right" id="myHeader">Create Template</h4>
+          </div>
+          <div class="col-md-5 col-lg-5 col-sm-12 col-xs-12">
+            <div class="pull-right">
+              <%= f.submit "Submit",{class: 'btn btn-success', onclick: 'user_notes_template()'}%>
+                <button type="button" class="btn btn-default" data-dismiss="modal" id="close_medication_list_btn">Close</button>
+            </div>
+          </div>
+        </div>
+    	</div>
+
+  		<div class="modal-body">
+  			<%= f.text_field :user_id, { type: "hidden", value: @userid } %>
+        <%= f.hidden_field :level, value: @level %>
+        <%= f.hidden_field :organisation_id, value: current_user.organisation_id %>
+        <%= f.hidden_field :facility_id, value: current_facility.id %>
+
+        <div class="form-inputs">
+            <div class="row mb15">
+              <div class="col-lg-6 col-md-6 col-sm-12 col-xs-12">
+                <div class="col-md-12">
+                  <label>Select Type: </label>
+                </div>
+                <div class="col-md-12">
+                <%= f.select :type, options_for_select(Global.send('user_notes_types')[:template_types].map { |k,v| [k[:name], k[:label]]}, @type), {}, { class: 'form-control' } %>
+                </div>
+              </div>
+            </div>
+        </div>
+        <hr>
+    
+  			<div class="row form-group">
+          <div class="col-md-6 col-lg-6 col-sm-12 col-xs-12">
+            <div class="col-md-12"><b><%= f.label "Name :" %></b></div>
+            <div class="col-md-12"><%= f.text_field "name",{class: 'form-control Certificate-name-validation'} %></div>
+          </div>
+
+          <div class="col-sm-6">
+            <div class="col-sm-10">
+              <div class="col-md-12"><b><%= f.label "Specialty :" %></b></div>
+                <%= f.select :specialty_id, options_for_select(@available_specialties.pluck(:name, :id), selected: @user_notes_template.try(:specialty_id)),{ include_blank: 'Select any Specialty' }, { id: 'opdrecord_specalityid', class: 'form-control specialty_dropdown' } %>
+            </div>
+          </div>
+  			</div>
+  			<hr>
+
+        <div class="form-inputs">
+          <div class="row mb15">
+            <div class="col-lg-6 col-md-6 col-sm-12 col-xs-12">
+              <div class="col-md-12">
+                <label>Heading: </label>
+              </div>
+              <div class="col-md-12">
+              <% category = @template_details['category'] if @template_details.present? %>
+              <%= text_field_tag "user_notes_template[template_details][category]", category, class: 'form-control' %>
+                
+              </div>
+            </div>
+            <div class="col-lg-6 col-md-6 col-sm-12 col-xs-12">
+              <div class="col-md-12">
+                <label>Subject: </label>
+              </div>
+              <div class="col-md-12">
+              <% medical_subject = @template_details['medical_subject'] if @template_details.present? %>
+                <%= text_field_tag "user_notes_template[template_details][medical_subject]", medical_subject, class: 'form-control' %>
+              </div>
+            </div>
+          </div>
+
+          <div class="row mb15">
+            <div class="col-md-12 col-lg-12 col-sm-12 col-xs-12">
+              <div class="col-md-12">
+                <label>Content:</label>
+              </div>
+            </div>
+            <div class="col-md-12 col-lg-12 col-sm-12 col-xs-12">
+              <div class="col-md-12">
+              <% medical_body = @template_details['medical_body'] if @template_details.present? %>
+                <%= text_area_tag "user_notes_template[template_details][medical_body]", medical_body, class: 'form-control', rows: "10"  %>
+              </div>
+            </div>
+          </div>
+        </div>
+  		</div>
+
+      <div class="modal-footer" style="text-align: left;">
+        <strong style="color: #428BCA">*Note:In the "Content:" you can use the following placeholders: %p_name% for Patient Name, %p_age% for Patient Age, %p_gender% for Patient Gender, %p_dob% for Patient Birthday, %p_mobile% for Patient Mobile No, %d_name% for Doctor Name, %ref_doc% for Referring Doctor.<!--, %p_diagnosis% for Latest OPD Diagnosis, %p_procedure% for Latest OPD Procedure--></strong><br>
+
+        For eg. &nbsp;&nbsp; <strong> "I, Dr.%d_name% certify %p_name% to be fit." </strong>&nbsp;&nbsp;  will converted to  &nbsp;&nbsp;<strong> "I, Dr.<%=current_user.fullname%> certify Jon Doe  to be fit."</strong>
+
+      </div>
+    </div>
+  <% end %>
+</div>
+
+
+<style type="text/css">
+
+  input.error, select.error {
+    border-color: #b94a48;
+    background-image: none;
+  }
+  input.valid, select.valid {
+    border-color: #468847;
+    background-image: none;
+  }
+  .panel-default > .panel-heading {
+    background-color: #1CAF9A;
+  }
+  .note-editable.panel-body{
+    line-height: 1.42857143;
+    color: #555;
+    background-color: #fff;
+    background-image: none;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    -webkit-box-shadow: inset 0 1px 1px rgba(0,0,0,.075);
+    box-shadow: inset 0 1px 1px rgba(0,0,0,.075);
+    -webkit-transition: border-color ease-in-out .15s,-webkit-box-shadow ease-in-out .15s;
+    -o-transition: border-color ease-in-out .15s,box-shadow ease-in-out .15s;
+    transition: border-color ease-in-out .15s,box-shadow ease-in-out .15s;
+  }
+</style>
+
+
+<script type="text/javascript">
+  $('#user_notes_template_type').on('change', function() {
+    var s_t = $(this).find('option:selected').html()
+     $('#myHeader').html(`Create ${s_t}`)
+  }).trigger(`change`)
+</script>

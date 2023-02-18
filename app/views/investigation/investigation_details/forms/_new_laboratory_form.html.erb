@@ -1,0 +1,130 @@
+<div class="row">
+  <div class="col-sm-12">
+    <div class="col-md-2"></div>
+    <div class="rdio rdio-primary col-md-4">
+      <div id="standard_lab_inv" class="standard_lab_inv" style="margin-bottom:15px;">
+        <%= radio_button_tag "laboratory_inv_type", "standard_opthal_investigation", true, {:class => 'laboratory_inv_type', :id => "OphthalRadio1"} %>
+        <label for="OphthalRadio1">Standard Investigations</label>
+      </div>
+    </div>
+    <div class="rdio rdio-primary col-md-6 custom_lab_inv" id="custom_lab_inv">
+      <%= radio_button_tag "laboratory_inv_type", "custom_opthal_investigation", false, {:class => 'laboratory_inv_type', :id => "OphthalRadio2"} %>
+      <label for="OphthalRadio2">Custom Investigations</label>
+    </div>
+  </div>
+</div>
+
+<div class="col-sm-2">
+  <b>Laboratory Sets</b>
+  <%= select_tag "toplaboratoryset", options_for_select(@set_type) ,{ multiple: true, :style => 'height: 250px; width:100%', :class => 'form-control' } %>
+</div>
+
+<div class="col-sm-3 standard-lab-investigations">
+  <b>Laboratory Tests</b>
+  <% @laboratory_investigations = @laboratory_investigations.sort_by!{ |investigation| investigation.investigation_name.downcase } %>
+  <%= select_tag "toplaboratoryinvestigation", options_for_select(@laboratory_investigations.map{|inv| [ inv.investigation_name, inv.loinc_code]}),{ multiple: true, :style => 'height: 250px; width:100%', :class => 'form-control' } %>
+</div>
+
+<div class="col-sm-3 custom-lab-investigations">
+  <b>Laboratory Tests</b>
+  <% @custom_laboratory_investigations = @custom_laboratory_investigations.sort_by!{ |investigation| investigation.investigation_name.downcase } %>
+  <%= select_tag "ophthal_set", options_for_select(@custom_laboratory_investigations.map{|inv| [ inv.investigation_name, inv.loinc_code]}) ,{ multiple: true, :style => 'height: 250px; width:100%', :class => 'form-control opdrecord_custom_eyeinvestigations' } %>
+</div>
+
+
+<div class="col-sm-7">
+  <b>Selected Tests</b>
+  <div class="row selected-investigations">
+  </div>
+</div>
+
+<script type="text/javascript">
+  jQuery(document).ready(function() {
+    jQuery(".custom-lab-investigations").hide();
+    jQuery("input[name='laboratory_inv_type']").on('click', function () {
+      var laboratory_inv_type = jQuery("input[name='laboratory_inv_type']:checked").val();
+      if (laboratory_inv_type == 'standard_opthal_investigation') {
+        jQuery(".standard-lab-investigations").show();
+        jQuery(".custom-lab-investigations").hide();
+      }
+       else if (laboratory_inv_type == 'custom_opthal_investigation') {
+        jQuery(".standard-lab-investigations").hide();
+        jQuery(".custom-lab-investigations").show();
+      }
+    });
+  });
+
+  $(".opdrecord_custom_eyeinvestigations").on('change', function(){
+    var this_length = $(".selected-investigations").find('.laboratory-investigation-row').length
+    $(".selected-investigations").append("<div class='col-sm-6 laboratory-investigation-row mb5'><div class='row'><input type='hidden' name='laboratory_investigation[" + this_length + "][investigation_id]' class='form-control investigation_id' value='"+ $(".opdrecord_custom_eyeinvestigations option:selected").val() +"'><input type='hidden' name='laboratory_investigation[" + this_length + "][order_item_advised_id]' class='form-control order_item_advised_id' value='"+ "<%= BSON::ObjectId.new.to_s %>" +"'> <input type='hidden' name='laboratory_investigation[" + this_length + "][is_custom]' class='form-control is_custom' value='true'> <input type='hidden' name='laboratory_investigation[" + this_length + "][loinc_code]' class='form-control loinc_code' value='" + $(".opdrecord_custom_eyeinvestigations option:selected").val() + "'><div class='col-sm-10'><input type='text' name='laboratory_investigation[" + this_length + "][investigationname]' class='form-control investigationname p5_10' value='" + $(".opdrecord_custom_eyeinvestigations option:selected").text().replace(/'/g,"&apos;") + "'></div><div class='col-sm-2'><button class='btn btn-danger btn-xs delete-row'>&times;</button></div></div></div>")
+
+        $(".delete-row").on('click', function(){
+          $(this).closest('.laboratory-investigation-row').remove()
+          renumber_investigation_rows()
+        })
+    $('.opdrecord_custom_eyeinvestigations option:selected').removeAttr('selected');
+  })
+
+  $("#toplaboratoryinvestigation").on('change', function(){
+    var params = { laboratorysetname: $("#toplaboratoryinvestigation option:selected").text(), loinc_code: $("#toplaboratoryinvestigation option:selected").val() };
+    $.ajax({
+      dataType: "JSON",
+      type: "GET",
+      url: "/icdtree/fetchlaboratorytests",
+      data: {laboratory: params, remote: "true" },
+      success: function(response){        
+        var this_length = $(".selected-investigations").find('.laboratory-investigation-row').length
+        $(".selected-investigations").append("<div class='col-sm-6 laboratory-investigation-row mb5'><div class='row'><input type='hidden' name='laboratory_investigation[" + this_length + "][investigation_id]' class='form-control investigation_id' value='" + response[0]['investigation_id'] + "'><input type='hidden' name='laboratory_investigation[" + this_length + "][order_item_advised_id]' class='form-control order_item_advised_id' value='" + "<%= BSON::ObjectId.new.to_s %>" + "'><input type='hidden' name='laboratory_investigation[" + this_length + "][loinc_class]' class='form-control loinc_class' value='" + response[0]['loinc_class'] + "'><input type='hidden' name='laboratory_investigation[" + this_length + "][loinc_code]' class='form-control loinc_code' value='" + response[0]['loinc_code'] + "'><div class='col-sm-10'><input type='text' name='laboratory_investigation[" + this_length + "][investigationname]' class='form-control investigationname p5_10' value='" + response[0]['investigation_name'].replace(/'/g,"&apos;") + "'></div><div class='col-sm-2'><button class='btn btn-danger btn-xs delete-row'>&times;</button></div></div></div>")
+
+        $(".delete-row").on('click', function(){
+          $(this).closest('.laboratory-investigation-row').remove()
+          renumber_investigation_rows()
+        })
+      }
+    });
+    $('#toplaboratoryinvestigation option:selected').removeAttr('selected');
+  })
+
+  $("#toplaboratoryset").on('change', function(){
+    var params = { laboratorysetname: $("#toplaboratoryset option:selected").text(), laboratorysetid: $("#toplaboratoryset option:selected").val() };
+    $.ajax({
+      dataType: "JSON",
+      type: "GET",
+      url: "/icdtree/get_my_laboratory_set",
+      data: { laboratory: params, q: $("#toplaboratoryset option:selected").val(), remote: "true" },
+      success: function(response){
+        var this_length = $(".selected-investigations").find('.laboratory-investigation-row').length
+        
+        for (var i = 0; i < response['my_data'].length; i++){
+          var numbering = i + this_length
+          $(".selected-investigations").append("<div class='col-sm-6 laboratory-investigation-row mb5'><div class='row'><input type='hidden' name='laboratory_investigation[" + numbering + "][investigation_id]' class='form-control investigation_id' value='" + response['my_data'][i]['investigation_id'] + "'><input type='hidden' name='laboratory_investigation[" + numbering + "][order_item_advised_id]' class='form-control order_item_advised_id' value='" + "<%= BSON::ObjectId.new.to_s %>" + "'><input type='hidden' name='laboratory_investigation[" + numbering + "][loinc_class]' class='form-control loinc_class' value='" + response['my_data'][i]['loinc_class'] + "'><input type='hidden' name='laboratory_investigation[" + numbering + "][loinc_code]' class='form-control loinc_code' value='" + response['my_data'][i]['loinc_code'] + "'><div class='col-sm-10'><input type='text' name='laboratory_investigation[" + numbering + "][investigationname]' class='form-control investigationname p5_10' value='" + response['my_data'][i]['investigationname'] + "'></div><div class='col-sm-2'><button class='btn btn-danger btn-xs delete-row'>&times;</button></div></div></div>")
+          $(".delete-row").on('click', function(){
+            $(this).closest('.laboratory-investigation-row').remove()
+            renumber_investigation_rows()
+          })
+        }
+      }
+    })
+  });
+
+  function renumber_investigation_rows(){
+    var laboratory_investigation_rows = $(".selected-investigations").find('.laboratory-investigation-row')
+    for (var i = laboratory_investigation_rows.length - 1; i >= 0; i--) {
+      $(laboratory_investigation_rows[i]).find('.investigationname').attr('name','laboratory_investigation[' + i + '][investigationname]')
+      $(laboratory_investigation_rows[i]).find('.investigation_id').attr('name','laboratory_investigation[' + i + '][investigation_id]')
+      $(laboratory_investigation_rows[i]).find('.loinc_class').attr('name','laboratory_investigation[' + i + '][loinc_class]')
+      $(laboratory_investigation_rows[i]).find('.loinc_code').attr('name','laboratory_investigation[' + i + '][loinc_code]')
+      $(laboratory_investigation_rows[i]).find('.entered_by_id').attr('name','laboratory_investigation[' + i + '][entered_by_id]')
+      $(laboratory_investigation_rows[i]).find('.order_item_advised_id').attr('name','laboratory_investigation[' + i + '][order_item_advised_id]')
+      $(laboratory_investigation_rows[i]).find('.entered_by').attr('name','laboratory_investigation[' + i + '][entered_by]')
+      $(laboratory_investigation_rows[i]).find('.entered_at_facility_id').attr('name','laboratory_investigation[' + i + '][entered_at_facility_id]')
+      $(laboratory_investigation_rows[i]).find('.entered_at_facility').attr('name','laboratory_investigation[' + i + '][entered_at_facility]')
+      $(laboratory_investigation_rows[i]).find('.entered_datetime').attr('name','laboratory_investigation[' + i + '][entered_datetime]')
+      $(laboratory_investigation_rows[i]).find('.advised_by_id').attr('name','laboratory_investigation[' + i + '][advised_by_id]')
+      $(laboratory_investigation_rows[i]).find('.advised_by').attr('name','laboratory_investigation[' + i + '][advised_by]')
+      $(laboratory_investigation_rows[i]).find('.advised_at_facility_id').attr('name','laboratory_investigation[' + i + '][advised_at_facility_id]')
+      $(laboratory_investigation_rows[i]).find('.advised_at_facility').attr('name','laboratory_investigation[' + i + '][advised_at_facility]')
+      $(laboratory_investigation_rows[i]).find('.advised_datetime').attr('name','laboratory_investigation[' + i + '][advised_datetime]')
+    }
+  }
+</script>

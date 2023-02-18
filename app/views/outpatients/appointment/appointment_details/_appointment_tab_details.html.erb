@@ -1,0 +1,85 @@
+<div class="row mt10">
+  <div id="ApptWizard" class="basic-wizard">
+    <ul class="nav nav-pills nav-justified tab_active_inv">
+      <% @all_tabs.each_with_index do |tab, index| %>
+        <% next if
+          # Non Ophthal
+          (tab[:tab_id] == 'glasses-tab' && @appointment.specialty_id != '309988001') ||
+          # Non Finance
+          (tab[:tab_id] == 'bills-tab' && !current_facility.show_finances) ||
+          # Disable Investigations for Cambodia
+          (tab[:tab_id] == 'investigations-tab' && current_facility.country_id == 'KH_039') ||
+          # Disable Investigation for Past Dates
+          (tab[:tab_id] == 'investigations-tab' && @current_date < Date.current) ||
+          # Disable Investigation for Non-reg patient
+          (tab[:tab_id] == 'investigations-tab' && @patient.try(:reg_status) == false)
+        %>
+        <% active = params[:rhs_tab] == tab[:tab_id] || (!params[:rhs_tab] && tab[:tab_id] == 'appointment-overview-tab') %>
+        <% if Authorization::PolicyHelper.verification(current_user.id, "HGP-102-104-"+(104+index).to_s) %>
+          <li role="presentation" class="<%= 'active' if active %>" data-tab-id="<%= tab[:tab_id] %>">
+            <a href="#<%= tab[:tab_id] %>" class="tab-link <%= tab[:tab_id] %>" data-toggle="tab">
+              <label>
+                <span class="material-icons"><%= tab[:tab_icon] %></span><br>
+                <span class='tab-text'><%= tab[:tab_name] %></span>
+              </label>
+            </a>
+          </li>
+        <% end %>
+      <% end %>
+    </ul>
+    <div class="tab-content outpatient-content">
+      <% @all_tabs.each_with_index do |tab, index| %>
+        <% active = params[:rhs_tab] == tab[:tab_id] || (!params[:rhs_tab] && tab[:tab_id] == 'appointment-overview-tab') %>
+        <% if Authorization::PolicyHelper.verification(current_user.id, "HGP-102-104-"+(104+index).to_s) %>
+          <div class="tab-pane <%= 'active' if active %>" id="<%= tab[:tab_id] %>">
+            <%= render partial: "outpatients/appointment/appointment_details/tab_details/#{tab[:tab_path]}/index.html.erb", locals: { tab_id: tab[:tab_id] } if tab[:tab_path] %>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<style type="text/css">
+  #ApptWizard .outpatient-content {
+    min-height: 500px;
+  }
+
+  #ApptWizard .material-icons {
+    font-family: 'Material Icons';
+    padding-top: 5px;
+    padding-right: 5px;
+  }
+
+  #ApptWizard .tab-link {
+    border: 1px solid #eee;
+  }
+
+  /* DataTable Overwrite CSS */
+  #ApptWizard .paginate_button {
+    background: transparent !important;
+  }
+
+  #ApptWizard .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+    color: #000 !important;
+  }
+
+  #ApptWizard table.dataTable thead th,
+  #ApptWizard table.dataTable tbody td,
+  #ApptWizard table.dataTable tfoot td {
+    width: auto !important;
+    padding: 10px !important;
+  }
+
+  #ApptWizard b {
+    color: #444;
+  }
+
+  #ApptWizard .tab-text {
+    white-space: nowrap;
+  }
+</style>
+
+<script type="text/javascript">
+  <%= render partial: 'outpatients/appointment/appointment_details/appointment_tab_details.js.erb' %>
+</script>

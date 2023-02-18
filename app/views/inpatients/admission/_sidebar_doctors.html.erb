@@ -1,0 +1,64 @@
+<div class="row no_margin mt5">
+  <ul class="nav nav-pills nav-stacked users_list">
+    <% all_active = (@active_user.nil? || @active_user == 'all' || @users['doctor'].count == 0 || (@users[current_user.primary_role.to_s].try(:count).to_i == 0 if @clinical_workflow)) %>
+    <li class="sidebar-user-filter-admission current_user_admission <%= 'active' if all_active %>"><a href="javascript:void(0)" data-user-id="all">All</a></li>
+  </ul>
+</div>
+<% @users.each do |label, users| %>
+  <% if users.count > 0 %>
+    <div class="row no_margin text-center">
+      <h4 style="border-top: 1px solid #aaa;border-bottom: 1px solid #aaa;"><%= label.to_s.pluralize.titleize %></h4>
+    </div>
+    <div class="row no_margin">
+      <ul class="nav nav-pills nav-stacked users_list">
+        <% uniq_user_array = [] %>
+        <% users.each do |user| %>
+          <% if uniq_user_array.exclude?(user[0].to_s) %>
+            <% if user[0].to_s == @active_user.to_s %>
+              <li class="sidebar-user-filter-admission active"><a href="javascript:void(0)" data-user-id="<%= user[0].to_s %>"><%= user[1] %></a></li>
+            <% else %>
+              <li class="sidebar-user-filter-admission"><a href="javascript:void(0)" data-user-id="<%= user[0].to_s %>"><%= user[1] %></a></li>
+            <% end %>
+            <% uniq_user_array << user[0].to_s %>
+          <% end %>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+<% end %>
+
+<script type="text/javascript">
+  $(".sidebar-user-filter-admission").find('a').on('click', function(e, triggered){
+    $('.sidebar-user-filter-admission').removeClass('active')
+    $(this).closest('.sidebar-user-filter-admission').addClass('active')
+    var user_id = $(this).attr('data-user-id')
+
+    if(triggered == true){
+      var active_tab = "<%= @active_tab %>"
+      var admission_id = "<%= @admission_id %>"
+      var users_list = "<%= @users_list %>"
+    } else {
+      var active_tab = $(".tab_active").find(".active").attr('data-tab-id')
+      var admission_id = $('.active-admission').attr("data-admission-id")
+      var users_list = $('.toggle-sidebar-users').attr("data-toggle-position")
+    }
+
+    $.ajax({
+      type: "GET",
+      dataType: "script",
+      data: {
+        current_date: "<%= @current_date %>",
+        active_tab: active_tab,
+        source: "",
+        active_user: user_id,
+        admission_id: admission_id,
+        users_list: users_list,
+        specialty_id: "<%= @selected_specialty %>"
+      },
+      url: "/inpatients/admission_list",
+      success: function(){}
+    })
+  })
+
+  $(".users_list").find(".active").find("a").trigger("click", true)
+</script>

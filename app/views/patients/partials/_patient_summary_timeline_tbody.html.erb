@@ -1,0 +1,90 @@
+<% count = 1 %>
+<% @patient_timelines.not.where(:templatetype.in => ['admissionnote','dischargenote','operativenote','wardnote']).order(encounterdate: :desc).each do |timeline| %>
+  <% if timeline.templatetype != "Ward Note" || count == 1 %>
+    <% if timeline.templatetype == "Ward Note" %>
+      <% count += 1 %>
+    <% end %>
+    <tr>
+      <td style="padding:2px 10px;width:16%;font-size:12px;"><%= timeline.encounterdate.strftime("%d %B, %Y") %></td>
+      <td style="padding:2px 10px;width:16%;"><span class="label label-default"><%= timeline.encountertype %></span></td>
+      <td style="padding:2px 10px;width:16%;text-align:left;">
+        <span class="label label-primary">
+          <% if timeline.encountertype == "OPD" %>
+            <%= timeline.templatetype.capitalize %>
+          <% elsif timeline.templatetype == "Clinical Note" %>
+            Admission Note
+          <% else %>
+            <%= timeline.templatetype %>
+          <% end %>
+        </span>
+      </td>
+      <td style="padding:2px 10px;width:16%;"><%= timeline.facility_name || Facility.find(timeline.facility_id).name %></td>
+      <% if !timeline.user_id.nil? %>
+        <%created_by =  timeline.user_name || User.find_by(id: timeline.user_id).fullname %>
+        <td style="padding:2px 10px;width:16%;"><% @doc_name = created_by.split(" ") %><span class="label label-default" title="<%=created_by%>"><% @doc_name.each do |doc_name| %><%=doc_name[0].capitalize%><%end%></span></td>
+      <% end %>
+      <td style="padding:2px 10px;width:16%;text-align:center;">
+        <% if timeline.encountertype == "OPD" %>
+          <div class="btn-group" style="margin-bottom:0px;">
+            <% @edit_opd_link = "edit_opd_records_"+@speciality_folder_name+"_note_path('#{timeline.record_id}',:opdrecordid => '#{timeline.record_id}', :patientid => '#{timeline.patient_id}', :appointmentid => '#{timeline.appointment_id}', :templatetype => '#{timeline.templatetype}')"%>
+            <%= link_to eval(@edit_opd_link), :class => "timeline-viewsummary-html btn btn-default btn-xs", :title => "Edit OPD Summary", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#templates-modal', method: :get } do %>E<% end %>
+            <%= link_to opd_records_view_opd_summary_path(:opdrecordid => "#{timeline.record_id}", :patientid => "#{timeline.patient_id}", :appointmentid => "#{timeline.appointment_id}", :specality => "#{timeline.specalityname}", :templatetype => "#{timeline.templatetype}"), :class => "timeline-viewsummary-html btn btn-default btn-xs", :id => "timeline-viewsummary-html", :title => "View OPD Summary", :data => {:remote => true, 'toggle' =>  "tooltip", 'target' =>'#templates-modal'} do %>V<% end %>
+            <%= link_to opd_records_print_opd_record_path(:opdrecordid => "#{timeline.record_id}", :patientid => "#{timeline.patient_id}", :appointmentid => "#{timeline.appointment_id}", :specality => "#{timeline.specalityname}", :templatetype => "#{timeline.templatetype}", :format => :pdf), :class => " timeline-viewsummary-print btn btn-default btn-xs", :id => "timeline-viewsummary-print", :target => "_blank", :title => "Print OPD Summary", :data => {method: :get,toggle: "tooltip"} do %> <i class="fa fa-print"></i><% end %>
+            <%opd_record = OpdRecord.find_by(id: timeline.record_id)%>
+
+            <%if @appointment.present?%>
+              <%appointmentid = @appointment.id%>
+            <%else%>
+              <%appointmentid = opd_record.appointmentid%>
+            <%end%>
+            <% unless params[:action] == 'patientsearchresult' %>
+              <%if OpdRecord.find_by(appointmentid: appointmentid.to_s,templatetype: timeline.templatetype ).present? %>
+                  <a class='btn btn-default btn-xs' title ="Only One Template For One Day" style="cursor: not-allowed;">C</a>
+              <%else%>
+                    <% @department_link = "new_opd_records_"+@speciality_folder_name+"_note_path(:patientid => opd_record.patientid, :appointmentid => appointmentid, :templatetype => '#{opd_record.templatetype}',:flag=>'clone',:opd_record_id=>opd_record.id)"%>
+                <%= link_to eval(@department_link),:class=>'btn btn-default btn-xs', :title => "Clone OPD Summary", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#templates-modal'} do %>C<% end %>
+              <%end%>
+            <% end %>
+            <% unless true %>
+              <% unless @patient_prescriptions.find_by(record_id: timeline.record_id) == nil %>
+                <%= link_to patients_view_prescription_path(:appointmentid => "#{timeline.appointment_id}",:opdrecordid => "#{timeline.record_id}", :patientid => "#{timeline.patient_id}", :specality => "#{timeline.specalityname}", :templatetype => "#{timeline.templatetype}"), :class => "hg-tooltip btn btn-xs btn-success prescription-viewsummary-html", :id => "prescription-viewsummary-html", :title => "Prescription Summary", :data => {:remote => true} do %>P<% end %>
+              <% end %>
+            <% end %>
+          </div>
+        <% elsif timeline.encountertype == "IPD" %>
+          <div class="btn-group" style="margin-bottom:0px;">
+            <% unless timeline.templatetype == "Ward Note" %>
+              <% template_type = timeline.templatetype.split(" ").join("_").downcase %>
+              <% @edit = "edit_inpatient_ipd_record_" + template_type + "_" + speciality_folder_name.to_s.downcase + "_note_path(id: timeline.record_id, admission_id: timeline.admission_id.to_s)" %>
+              <%= link_to eval(@edit), :class => "timeline-viewsummary-html btn btn-default btn-xs hg-tooltip", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#ipdrecord-modal', method: :get } do %>E<% end %>
+              <% @show = "inpatient_ipd_record_" + template_type + "_" + speciality_folder_name.to_s.downcase + "_note_path(id: timeline.record_id, admission_id: timeline.admission_id.to_s)" %>
+              <%= link_to eval(@show), :class => "timeline-viewsummary-html btn btn-default btn-xs hg-tooltip", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#ipdrecord-modal', method: :get } do %>V<% end %>
+              <button class="btn btn-default btn-xs" data-toggle="dropdown"><i class="fa fa-print"></i></button>
+              <ul class="dropdown-menu children" style="margin-left:-60px;">
+                <li class="text-center">
+                  <% @print = "inpatient_ipd_record_" + template_type + "_" + speciality_folder_name.to_s.downcase + "_note_print_path(id: timeline.record_id, " + speciality_folder_name.to_s.downcase + "_note_id: timeline.record_id, admission_id: timeline.admission_id.to_s, view: 'Summary', format: 'pdf')" %>
+                  <%= link_to eval(@print), :target => "_blank", :data => {method: :get} do %><i class="fa fa-print"></i> Summary <% end %>
+                </li>
+                <li><hr style="margin: 0px;"></li>
+                <li class="text-center">
+                  <% @print = "inpatient_ipd_record_" + template_type + "_" + speciality_folder_name.to_s.downcase + "_note_print_path(id: timeline.record_id, " + speciality_folder_name.to_s.downcase + "_note_id: timeline.record_id, admission_id: timeline.admission_id.to_s, view: 'Note', format: 'pdf')" %>
+                  <%= link_to eval(@print), :target => "_blank", :data => {method: :get} do %><i class="fa fa-print"></i> Note <% end %>
+                </li>
+              </ul>
+              <% unless true %>
+                <% unless @patient_prescriptions.find_by(record_id: timeline.record_id) == nil %>
+                  <%= link_to patients_view_prescription_path(:admissionid => "#{timeline.admission_id}",:ipdrecordid => "#{timeline.record_id}", :patientid => "#{timeline.patient_id}", :specality => "#{timeline.specalityname}", :templatetype => "#{timeline.templatetype}"), :class => "hg-tooltip btn btn-xs btn-success prescription-viewsummary-html", :id => "prescription-viewsummary-html", :title => "Prescription Summary", :data => {:remote => true} do %>P<% end %>
+                <% end %>
+              <% end %>
+            <% else %>
+              <% @index = "inpatient_ipd_record_ward_note_" + speciality_folder_name.to_s.downcase + "_notes_path(admission_id: timeline.admission_id.to_s)" %>
+              <%= link_to eval(@index), class: "btn btn-default btn-xs", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#ipdrecord-modal'} do %>View All<% end %>
+            <% end %>
+          </div>
+        <% end %>
+      </td>
+    </tr>
+  <% end %>
+<% end %>
+
+

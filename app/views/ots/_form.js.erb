@@ -1,0 +1,457 @@
+// Set Form Height
+$(".ot-form-body").css('height', $(window).height() - 230 + "px").css('overflow', 'scroll')
+
+$(window).resize(function() {
+  $(".ot-form-body").css('height', $(window).height() - 230 + "px").css('overflow', 'scroll')
+})
+
+// Appointment DateTime Picker
+$('.ot_schedule-datepicker').datepicker({ dateFormat: "dd/mm/yy" });
+$('.ot_schedule-timepicker').timepicker({minuteStep: 15});
+$('.ot_schedule_end-timepicker').timepicker({minuteStep: 15});
+
+// This Code to Set Date for Time as Date Selected
+$(".ot_schedule-datepicker").on('change', function(){
+  $('.ot_confirm_msg').hide()
+  var timestamp_start = $(this).val() + " " + $(".ot_schedule-timepicker").val()
+  var timestamp_end = $(this).val() + " " + $(".ot_schedule_end-timepicker").val()
+  $("#ot_schedule_ottime").attr("value", timestamp_start)
+  $("#ot_schedule_otendtime").attr("value", timestamp_end)
+  check_end_date_time()
+}).trigger('change')
+
+$(".ot_schedule-timepicker").on('change', function(){
+  $('.ot_confirm_msg').hide()
+  var timestamp_start = $(".ot_schedule-datepicker").val() + " " + $(this).val()
+  $("#ot_schedule_ottime").attr("value", timestamp_start)
+  check_end_date_time()
+}).trigger('change')
+
+$(".ot_schedule_end-timepicker").on('change', function(){
+  $('.ot_confirm_msg').hide()
+  var timestamp_end = $(".ot_schedule-datepicker").val() + " " + $(this).val()
+  $("#ot_schedule_otendtime").attr("value", timestamp_end)
+  check_end_date_time()
+}).trigger('change')
+
+//OT start date-time should not be greater than or equal to OT end date-time
+function check_end_date_time(){
+  let start_date = $("#ot_schedule_otdate").val().split('/')
+  let new_start_date = start_date[2]+ "/" + start_date[1] + "/" + start_date[0]
+  let end_date = $("#ot_schedule_otenddate").val().split('/')
+  let new_end_date = end_date[2]+ "/" + end_date[1] + "/" + end_date[0]
+  let start_date_time = new_start_date + " " + $("#ot_schedule_time").val()
+  let end_date_time =  new_end_date + " " + $("#ot_schedule_end_time").val()
+  let start_date_time_to_date = new Date(start_date_time)
+  let end_date_time_to_date = new Date(end_date_time)
+  if(start_date_time_to_date.getTime() >= end_date_time_to_date.getTime()) {
+    $(".label_end_date_time").css('text-shadow','red 0px 0px 10px').css('color','#333')
+    $("#ot_schedule_end_time").css('border','2px solid red')
+    $("#ot_schedule_otenddate").css('border','2px solid red')
+    $(".schedule_ot").prop('disabled', true);
+  } else{
+    $(".label_end_date_time").css('text-shadow','none').css('color','#000')
+    $("#ot_schedule_end_time").css('border','1px solid #ccc')
+    $("#ot_schedule_otenddate").css('border','1px solid #ccc')
+    $(".schedule_ot").prop('disabled', false);
+  }
+}
+
+// temporarily done, need changes wrt CaseSheet
+<% if params[:action] == 'edit' %>
+  $("#ot_schedule_facility_id").attr('disabled','disabled')
+  $("#ot_schedule_specialty_id").attr('disabled','disabled')
+  // $("#ot_schedule_surgeonname").attr('disabled','disabled')
+<% end %>
+
+function toggle_specialty_dropdown(){
+  if($('#ot_schedule_specialty_id').find('option').length === 1){
+   $(".specialty_dropdown_div").hide();
+  } else {
+    $(".specialty_dropdown_div").show();
+  }
+}
+toggle_specialty_dropdown();
+
+function get_facility_specialties(facility_id){
+  $.ajax({
+    type: "GET",
+    dataType: "json",
+    url: "/ots/get_facility_specialties",
+    data: { facility_id: facility_id },
+    success: function(response){
+      $('#ot_schedule_specialty_id').children().remove();
+      $('#ot_schedule_surgeonname').children().remove();
+
+      if (response.length == 0){
+        $('#ot_schedule_specialty_id').append($("<option></option>").attr("value","").text("No Specialty Available")).trigger('change.select2');
+        $('#ot_schedule_surgeonname').append($("<option></option>").attr("value","").text("No Doctors Available for this specialty")).trigger('change.select2');
+      } else {
+        $.each(response, function(key, value) {
+          $('#ot_schedule_specialty_id').append($("<option></option>").attr("value",value["_id"]).text(value["name"])).trigger('change.select2');
+        });
+
+        $('#ot_schedule_specialty_id').siblings(".select2").children().children().css("background-color",'rgb(247, 232, 225)')
+        setTimeout(function(argument) {
+          $('#ot_schedule_specialty_id').siblings(".select2").children().children().css("background-color",'')
+        }, 300)
+
+        var specialty_id = $('#ot_schedule_specialty_id').val();
+        get_specialty_users(facility_id, specialty_id)
+        get_specialty_otroom(facility_id, specialty_id)
+      }
+
+      toggle_specialty_dropdown();
+
+      var specialty_id = $('#ot_schedule_specialty_id').val();
+      get_specialty_case_sheets(specialty_id)
+    }
+  })
+}
+
+function get_specialty_users(facility_id, specialty_id){
+  $.ajax({
+    type: "GET",
+    dataType: "json",
+    url: "/ots/get_users_from_specialty",
+    data: { facility_id: facility_id, specialty_id: specialty_id },
+    success: function(response){
+      $('#ot_schedule_surgeonname').children().remove();
+
+      if (response.length == 0){
+        $('#ot_schedule_surgeonname').append($("<option></option>").attr("value","").text("No Doctors Available for this specialty")).trigger('change.select2');
+      } else {
+        $.each(response, function(key, value) {
+          if(value[2] == undefined){
+            text_value = value[0]
+          } else {
+            text_value = value[0] + " | " + value[2]
+          }
+          $('#ot_schedule_surgeonname').append($("<option></option>").attr("value",value[1]).text(text_value)).trigger('change.select2');
+        });
+      }
+
+      $('#ot_schedule_surgeonname').siblings(".select2").children().children().css("background-color",'rgb(247, 232, 225)')
+      setTimeout(function(argument) {
+        $('#ot_schedule_surgeonname').siblings(".select2").children().children().css("background-color",'')
+      }, 300)
+    }
+  });
+}
+
+function get_specialty_otroom(facility_id, specialty_id){
+  $.ajax({
+    type: "GET",
+    dataType: "json",
+    url: "/ots/search_ot_rooms",
+    data: { facility_id: facility_id, specialty_id: specialty_id },
+    success: function(response){
+      $('#ot_schedule_theatreno').children().remove();
+      if (response.length == 0){
+        $('#ot_schedule_theatreno').append($("<option></option>").attr("value","").text("No OT Room Available")).trigger('change.select2');
+      } else {
+        $('#ot_schedule_theatreno').append("<option value=''>Select Operation Theatre</option>")
+        $.each(response, function(key, value) {
+          if(value[2] == undefined){
+            text_value = value[0]
+          } else {
+            text_value = value[0] + " | " + value[2]
+          }
+          $('#ot_schedule_theatreno').append($("<option></option>").attr("value",value[1]).text(text_value)).trigger('change.select2');
+        });
+      }
+
+      $('#ot_schedule_theatreno').siblings(".select2").children().children().css("background-color",'rgb(247, 232, 225)')
+      setTimeout(function(argument) {
+        $('#ot_schedule_theatreno').siblings(".select2").children().children().css("background-color",'')
+      }, 300)
+    }
+  });
+}
+
+function get_specialty_case_sheets(specialty_id){
+  $.ajax({
+    type: "GET",
+    dataType: "json",
+    url: "/admissions/get_specialty_case_sheets",
+    data: { specialty_id: specialty_id, patient_id: '<%= @patient.try(:id) %>'},
+    success: function(response){
+      $('#ot_schedule_case_sheet_id').children().remove();
+      $('#ot_schedule_case_sheet_id').append($("<option></option>"))
+
+      $.each(response, function(key, value) {
+        date = moment(value[3]).format('DD/MM/YYYY')
+        case_name = value[1] + " - " +  value[2] + "(" + date + ")"
+        $('#ot_schedule_case_sheet_id').append($("<option></option>").attr("value", value[0]).text(case_name))
+      });
+      $('#ot_schedule_case_sheet_id').append($("<option></option>").attr("value", 'new_case').text('Add New Case'))
+      $('#ot_schedule_case_sheet_id').attr('text', "").trigger('change.select2');
+
+      if (response.length > 0){
+        data = { source: "OT", patient_id: '<%= @patient.try(:id) %>' , id: response[0][0], specialty_id: specialty_id }
+        $('.hidden_case_sheet_id').val(response[0][0])
+        $('#ot_schedule_case_sheet_id').val(response[0][0]).trigger('change.select2')
+
+      } else {
+        data = { source: "OT", patient_id: '<%= @patient.try(:id) %>' , id: 'new_case', specialty_id: specialty_id }
+        $('#ot_schedule_case_sheet_id').val('new_case').trigger('change.select2')
+        $('.hidden_case_sheet_id').attr('value', '')
+      }
+
+      $.ajax({
+        type: "GET",
+        url: "/case_sheets/get_case_sheet_details",
+        data: data,
+      })
+
+    }
+  })
+}
+
+// Change specialties onChange Facility
+$("#ot_schedule_facility_id").on('change', function(){
+  var facility_id = $("#ot_schedule_facility_id").val();
+
+  get_facility_specialties(facility_id)
+})
+
+// to get doctors only when specialty dropdown changes
+$("#ot_schedule_specialty_id").on('change', function(){
+  var facility_id = $("#ot_schedule_facility_id").val();
+  var specialty_id = $(this).val()
+
+  get_specialty_users(facility_id, specialty_id)
+  get_specialty_otroom(facility_id, specialty_id)
+  get_specialty_case_sheets(specialty_id)
+})
+
+// var specialty_id = $('#ot_schedule_specialty_id').val();
+// get_specialty_case_sheets(specialty_id)
+
+// CaseSheet Change
+$(".case_sheet_list").select2();
+$(".case_sheet_list").on('change', function(){
+  var case_id = $(this).val()
+  var specialty_id = $("#ot_schedule_specialty_id").val()
+  if(case_id != ""){
+    $.ajax({
+      dataType: "script",
+      type: 'get',
+      url: '/case_sheets/get_case_sheet_details',
+      data: {
+        id: case_id,
+        specialty_id: specialty_id,
+        patient_id: "<%= @patient.try(:id).to_s %>",
+        source: "OT"
+      },
+      success: function(response){
+        // $("#case_details").html(response)
+      }
+    });
+  } else {
+    $("#case_details").html("")
+    $("#ot_schedule_admission_id").val("<%= @admission.try(:id) %>")
+  }
+})
+
+function show_confirm_ot_msg(){
+  if($('#confirm_ot').is(':checked') == false) {
+    $('.ot_confirm_msg').show()
+  }
+}
+
+$('.schedule_ot').on('click', function(e){
+  if($('#confirm_ot').is(':checked') == false) {
+    check_ot_overlap(e)
+  }
+});
+
+function check_ot_overlap(e){
+  let facility_id = $("#ot_schedule_facility_id").val();
+  let surgeon_id = $('#ot_schedule_surgeonname').val()
+  let theatreno = $("#ot_schedule_theatreno").val()
+  let start_date = $("#ot_schedule_otdate").val()
+  let start_time = $("#ot_schedule_time").val()
+  let end_date = $("#ot_schedule_otenddate").val()
+  let end_time = $("#ot_schedule_end_time").val()
+  let ot_schedule_id = $("#ot_schedule_id").val()
+  $.ajax({
+    type: "GET",
+    dataType: "json",
+    async: false,
+    url: "/ots/check_ot_overlap",
+    data: { facility_id: facility_id,
+            theatreno: theatreno,
+            surgeon_id: surgeon_id,
+            start_date: start_date,
+            start_time: start_time,
+            end_date: end_date,
+            end_time: end_time,
+            ot_schedule_id: ot_schedule_id
+          },
+    success: function(response){
+      if (response > 0) {
+        e.preventDefault()
+        $("#confirm_ot").prop('required', true);
+        show_confirm_ot_msg()
+        $('#confirm_ot').on('click', function(){
+          show_confirm_ot_msg()
+        });
+      } else {
+        $("#confirm_ot").prop('required', false);
+        $('.ot_confirm_msg').hide()
+      }
+    }
+  });
+}
+
+$('#ot_schedule_theatreno').on('change', function() {
+  $('.ot_confirm_msg').hide()
+})
+
+$('#ot_schedule_surgeonname').on('change', function() {
+  $('.ot_confirm_msg').hide()
+})
+
+const country_id = "<%= current_facility.country_id %>"
+// Validate Form
+function ot_schedule_page(case_form_id) {
+  $(".patient-details").trigger('click')
+  $(case_form_id).trigger('click')
+  if ($('#ot_schedule_surgeonname').val() == "" || $('#confirm_ot').is(':checked') == false) {
+    $('.ot-details').trigger('click')
+  }
+
+  $(".ot-form").validate({
+    rules: {
+      "patient[fullname]": {
+        required: true,
+        noSpace: true
+      },
+      "patient[firstname]": {
+        required: true,
+        noSpace: true
+      },
+      "patient[mobilenumber]": {
+        required: true,
+        number: true,
+        noSpace: true
+      },
+      "patient_other_identifier[mr_no]": {
+        remote: "/patients/check_mrn?existing_mrn=<%= @patient.try(:patient_mrn) %>"
+      },
+      "patient[city]": {
+        minlength: 3,
+        remote: "/locations/check_city?country_id=" + country_id
+      },
+      "patient[state]": {
+        minlength: 3,
+        remote: "/locations/check_state?country_id=" + country_id
+      },
+      "patient[pincode]": {
+        minlength: 3,
+        remote: "/locations/check_pincode?country_id=" + country_id
+      },
+      "patient[commune]": {
+        minlength: 3,
+        remote: "/locations/check_commune?country_id=" + country_id
+      },
+      "patient[district]": {
+        minlength: 3,
+        remote: "/locations/check_district?country_id=" + country_id
+      },
+      "patient[email]": {
+        mymail: true
+      },
+      "ot_schedule[facility_id]": {
+        required: true,
+      },
+      "ot_schedule[surgeonname]": {
+        required: true,
+      },
+      "ot_schedule[case_sheet_id]": {
+        required: true,
+      },
+      "ot_schedule[specialty_id]": {
+        required: true,
+      },
+    },
+    messages: {
+      "patient[fullname]": {
+        required: "Full Name is Required."
+      },
+      "patient[firstname]": {
+        required: "First Name is Required."
+      },
+      "patient[mobilenumber]": {
+        required: "Number is Required",
+      },
+      "patient_other_identifier[mr_no]": {
+        remote: "MRN Already Taken",
+      },
+      "patient[city]": {
+        remote: "Select from List"
+      },
+      "patient[state]": {
+        remote: "Select form List"
+      },
+      "patient[pincode]": {
+        remote: "Select from List"
+      },
+      "patient[commune]": {
+        remote: "Select from List"
+      },
+      "patient[district]": {
+        remote: "Select from List"
+      },
+      "ot_schedule[facility_id]": {
+        required: " - Location is Required",
+      },
+      "ot_schedule[surgeonname]": {
+        required: " - Doctor is Required",
+      },
+      "ot_schedule[case_sheet_id]": {
+        required: "Please select Case",
+      },
+      "ot_schedule[specialty_id]":{
+        required: "Any Specialty Required"
+      }
+    },
+    errorPlacement: function (error, element) {
+      var name = $(element).attr('name')
+      if((name == "patient[firstname]") || (name == "patient[mobilenumber]")) {
+        $(".required-message").find('b').css('text-shadow','red 0px 0px 10px').css('color','#333')
+      } else if(name == "patient[gender]") {
+        $(".patient-gender").siblings("label").css('text-shadow','red 0px 0px 10px')
+      } else if(name == "patient[dob]") {
+        $(".dob-error-message").text('Invalid Format.').css('text-shadow','red 0px 0px 10px')
+      } else if((name == "patient[pincode]") || (name == "patient[state]") || (name == "patient[city]") || (name == "patient[commune]") || (name == "patient[district]")) {
+        $(".patient_address_label").find('b').css('text-shadow','red 0px 0px 10px');
+      } else if($(element).hasClass("select2-hidden-accessible")) {
+        element = $("#select2-" + $(element).attr("id") + "-container").parent();
+        error.insertAfter(element);
+      }
+    }
+  });
+
+  jQuery.validator.addMethod("noSpace", function(value, element) {
+    return value == '' || value.trim().length != 0;
+  });
+
+  jQuery.validator.addMethod("validDate", function(value, element) {
+    return value == '' || moment(value, 'DD/MM/YYYY', true).isValid();
+  });
+
+  $.validator.addMethod("mymail", function(value, element) {
+    return this.optional( element ) || /^([a-zA-Z0-9_\.\-])+\@(([a-zA-Z0-9\-])+\.)+([a-zA-Z0-9]{2,4})+$/.test( value );
+  }, "Enter valid email!");
+
+  $.validator.addClassRules("patient-dob", { validDate: true });
+
+  var validationArray = <%=raw @organisation_setting.try(:validate_patient) || [] %>;
+
+  for(let field of validationArray){
+    $.validator.addClassRules(`${field}`, { required: true });
+  }
+}
+ot_schedule_page()

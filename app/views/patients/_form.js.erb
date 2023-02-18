@@ -1,0 +1,930 @@
+// Set Form Height
+
+function resize_patient_form() {
+  <% if @type == "appointment" %>
+    window_height = ($(window).height()*2/3) - 130
+  <% else %>
+    window_height = $(window).height() - 230
+  <% end %>
+
+  $(".patient-form-body").css('height', window_height + "px").css('overflow', 'scroll')
+}
+
+function resize_patient_view() {
+  <% if @type == "appointment" %>
+    window_height = ($(window).height()*2/3) - 130
+  <% else %>
+    window_height = $(window).height() - 230
+  <% end %>
+
+  $(".patient-view-body").css('height', window_height + "px").css('overflow', 'scroll')
+}
+
+resize_patient_form()
+resize_patient_view()
+
+$(window).resize(function() {
+  resize_patient_form()
+  resize_patient_view()
+})
+
+// DOB Datepicker
+dob_datepicker_options = {
+  maxDate: -0,
+  yearRange: "c-120:c",
+  dateFormat: "dd/mm/yy",
+  changeMonth: true,
+  changeYear: true
+}
+
+// Camp Datepicker
+camp_datepicker_options = {
+  maxDate: -0,
+  dateFormat: "dd/mm/yy"
+}
+
+$(".patient-dob").datepicker(dob_datepicker_options)
+$("#patient_registration_source_source_date").datepicker(camp_datepicker_options)
+
+// Calculate Age
+$(".patient-dob").on('keyup', function(){
+  $(".dob-error-message").text('').css('text-shadow','none')
+})
+
+$(".patient-dob").on('change', function(){
+  $(".dob-error-message").text('').css('text-shadow','none')
+  var patientdobday, patientdobmonth, patientdobyear
+  var isValid = moment($(".patient-dob").val(), 'DD/MM/YYYY', true).isValid()
+  if(isValid){
+    patientdobday = "0" + moment($(".patient-dob").val(), "DD/MM/YYYY").date()
+    patientdobmonth = "0" + moment($(".patient-dob").val(), "DD/MM/YYYY").month()
+    patientdobyear = moment($(".patient-dob").val(), "DD/MM/YYYY").year()
+    var birthdate = new Date (patientdobyear, patientdobmonth, patientdobday)
+    var currentdate = new Date();
+    var currentyear = currentdate.getYear();
+    var currentmonth = currentdate.getMonth();
+    var currentday = currentdate.getDate();
+    // month_logic calculation
+    if ((currentmonth > patientdobmonth) || ((currentmonth == patientdobmonth) && (currentday >= patientdobday))) {
+      var month_logic = 0;
+    } else {
+      var month_logic = 1;
+    }
+
+    var year = (1900 + currentyear - patientdobyear - month_logic);
+    var month = (currentmonth - patientdobmonth);
+    var day = (currentday - patientdobday);
+    
+    // month calculation
+    if (month < 0) {
+      month += 12;
+    }
+    if ((day < 0) && (month != 0)) {
+        month -= 1;
+    } else if ((month == 0) && (day < 0)){
+        month = 11;
+    }
+    
+    var age_year = year
+    var age_month = month
+    $("#patient_age").val(age_year).prop('readonly', true)
+    $("#patient_age_month").val(age_month).prop('readonly', true)
+    $(".clear-date").show()
+  }
+}).trigger('change')
+
+// Clear DOB
+$(".clear-date").on('click', function(e){
+  e.preventDefault()
+  $(".patient-dob").val("")
+  $("#patient_age").prop('readonly', false).val("")
+  $("#patient_age_month").prop('readonly', false).val("")
+  $(".clear-date").hide()
+})
+
+// Js Validation on month field not to exceed 12
+$(".age_month").keyup(function(){
+  if($(this).val() > 11){
+    $(this).val('12');
+  }
+})
+
+
+function auto_gender_selection() {
+  $('#patient_salutation').on('change', function(){
+    patient_salutation = $(this).val()
+    male_array = ['Mr.', 'Mst.']
+    female_array = ['Ms.', 'Mrs.']
+    if(jQuery.inArray(patient_salutation, male_array) !== -1) {
+      $('#gender_male').prop("checked", true)
+    } else if (jQuery.inArray(patient_salutation, female_array) !== -1) {
+      $('#gender_female').prop("checked", true)
+    }
+  })
+}
+auto_gender_selection()
+
+// Patient Language
+$(".patient-language").select2()
+//$(".patient-country").select2({dropdownCssClass : 'bigdrop'})
+
+// Patient Relative
+toggle_patient_relative_name_section()
+$(".patient-relative-relation").select2()
+$(".patient-relative-relation").on('change', function () {
+  $('.patient-relative-name').val('')
+  toggle_patient_relative_name_section()
+})
+function toggle_patient_relative_name_section(){
+  patient_relative_relation = $('.patient-relative-relation').val()
+  if (patient_relative_relation == ''){
+    $('.patient-relative-name-section').hide()
+  } else {
+    $('.patient-relative-name-section').show()
+    $('.patient-relative-name').attr('placeholder',patient_relative_relation + ' name')
+  }
+}
+
+// Clear Patient Asset
+$(".clear-patient-asset").on('click', function(e){
+  e.preventDefault()
+  $(".btn-patient-asset").html('<img width="75" height="75" class="thumb this-image" src="/assets/photos/no_picture_available.png" alt="No picture available">')
+  $(".this-image").on('click', function(){
+    $('#upload-patient-picture').trigger('click');
+  })
+});
+
+// Clear Special Status
+$(".clear-special-status").on('click', function(e){
+  e.preventDefault()
+  $("#specialstatus_pregnant").removeAttr('checked','checked')
+  $("#specialstatus_breastfeeding").removeAttr('checked','checked')
+});
+
+if($("#patient_diff_wearing_glasses").val() != "" && $("#patient_diff_wearing_glasses").val() != null){
+  $("#clear_diff_wearing_glasses").css("display", "inline");
+}
+
+$("#clear_diff_wearing_glasses").on('click', function(){
+  $("#patient_diff_wearing_glasses").val("");
+  $("#patient_diff_wearing_glasses").parent().prev().children().removeClass("btn-brown");
+  $("#clear_diff_wearing_glasses").css("display", "none")
+});
+
+$(".diff_wearing_glasses").on('click', function(){
+  $("#clear_diff_wearing_glasses").css("display", "inline");
+});
+
+if($("#patient_diff_hearing_aid").val() != "" && $("#patient_diff_hearing_aid").val() != null){
+  $("#clear_diff_hearing_aid").css("display", "inline");
+}
+
+$("#clear_diff_hearing_aid").on('click', function(){
+  $("#patient_diff_hearing_aid").val("");
+  $("#patient_diff_hearing_aid").parent().prev().children().removeClass("btn-brown");
+  $("#clear_diff_hearing_aid").css("display", "none")
+});
+
+$(".diff_hearing_aid").on('click', function(){
+  $("#clear_diff_hearing_aid").css("display", "inline");
+});
+
+if($("#patient_diff_walking_climbing").val() != "" && $("#patient_diff_walking_climbing").val() != null){
+  $("#clear_diff_walking_climbing").css("display", "inline");
+}
+
+$("#clear_diff_walking_climbing").on('click', function(){
+  $("#patient_diff_walking_climbing").val("");
+  $("#patient_diff_walking_climbing").parent().prev().children().removeClass("btn-brown");
+  $("#clear_diff_walking_climbing").css("display", "none")
+});
+
+$(".diff_walking_climbing").on('click', function(){
+  $("#clear_diff_walking_climbing").css("display", "inline");
+});
+
+if($("#patient_diff_remembring_concentrating").val() != "" && $("#patient_diff_remembring_concentrating").val() != null){
+  $("#clear_diff_remembring_concentrating").css("display", "inline");
+}
+
+$("#clear_diff_remembring_concentrating").on('click', function(){
+  $("#patient_diff_remembring_concentrating").val("");
+  $("#patient_diff_remembring_concentrating").parent().prev().children().removeClass("btn-brown");
+  $("#clear_diff_remembring_concentrating").css("display", "none")
+});
+
+$(".diff_remembring_concentrating").on('click', function(){
+  $("#clear_diff_remembring_concentrating").css("display", "inline");
+});
+
+if($("#patient_diff_selfcare").val() != "" && $("#patient_diff_selfcare").val() != null){
+  $("#clear_diff_selfcare").css("display", "inline");
+}
+
+$("#clear_diff_selfcare").on('click', function(){
+  $("#patient_diff_selfcare").val("");
+  $("#patient_diff_selfcare").parent().prev().children().removeClass("btn-brown");
+  $("#clear_diff_selfcare").css("display", "none")
+});
+
+$(".diff_selfcare").on('click', function(){
+  $("#clear_diff_selfcare").css("display", "inline");
+});
+
+if($("#patient_diff_communicate").val() != "" && $("#patient_diff_communicate").val() != null){
+  $("#clear_diff_communicate").css("display", "inline");
+}
+
+$("#clear_diff_communicate").on('click', function(){
+  $("#patient_diff_communicate").val("");
+  $("#patient_diff_communicate").parent().prev().children().removeClass("btn-brown");
+  $("#clear_diff_communicate").css("display", "none")
+});
+
+$(".diff_communicate").on('click', function(){
+  $("#clear_diff_communicate").css("display", "inline");
+});
+
+// Toggle Patient History Duration
+$(".patient-history").on('click', function(){
+  var patient_history = $(this).closest('.patient-history-content')
+  if($(this).prop("checked")== true){
+    $(patient_history).find('.patient-history-duration').show()
+    $(patient_history).find(".hidden-history").attr('disabled','disabled')
+  } else {
+    $(patient_history).find('.patient-history-duration').hide()
+    $(patient_history).find(".hidden-history").removeAttr('disabled','disabled')
+  }
+})
+
+if($("#patient_nutritional_assessment").val() == ""){
+  $("#clear_nutritional_assessment").hide()
+}
+else {
+  $("#clear_nutritional_assessment").show()
+}
+
+$(".nutritional_assessment").on("click",function(){
+  setTimeout(function(){
+    if ($("#patient_nutritional_assessment").val() == ""){
+      $("#clear_nutritional_assessment").hide()
+    }
+    else{
+      $("#clear_nutritional_assessment").show()
+    }
+  }, 200);
+});
+
+$("#clear_nutritional_assessment").on("click",function(){
+  deselected_radiobutton("nutritional_assessment", "patient_nutritional_assessment", "");
+  $("#clear_nutritional_assessment").hide()
+});
+
+
+if($("#patient_immunization_assessment").val() == ""){
+  $("#clear_immunization_assessment").hide()
+}
+else {
+  $("#clear_immunization_assessment").show()
+}
+
+$(".immunization_assessment").on("click",function(){
+  setTimeout(function(){
+    if ($("#patient_immunization_assessment").val() == ""){
+      $("#clear_immunization_assessment").hide()
+    }
+    else{
+      $("#clear_immunization_assessment").show()
+    }
+  }, 200);
+});
+
+$("#clear_immunization_assessment").on("click",function(){
+  deselected_radiobutton("immunization_assessment", "patient_immunization_assessment", "");
+  $("#clear_immunization_assessment").hide()
+});
+
+function deselected_radiobutton(fieldname, input_fieldname, value) {
+  jQuery.each(jQuery("." + fieldname), function(index, button) {
+    if (jQuery(button).attr("input-value") === value) {
+      jQuery(button).addClass("btn-brown");
+      jQuery("#" + input_fieldname).val(value);
+    } else {
+      jQuery(button).removeClass("btn-brown");
+      jQuery("#" + input_fieldname).val(value);
+    }
+  });
+}
+
+// PatientType Comment Box
+$(".patient-patient_type_id").on('change', function(){
+  if($(this).val().trim() != ""){
+    $(".show-patient-type-comment").show()
+  } else {
+    $(".show-patient-type-comment").hide()
+    $(".show-patient-type-comment").find('#patient_patient_type_comment').val("")
+  }
+}).trigger('change')
+
+// Upload Image
+function readURL(input) {
+  if (input.files && input.files[0]) {
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      $(input).parent().find(".thumb").attr('src', e.target.result);
+    }
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+
+toggle_special_status()
+
+$(".patient-gender").on('click change', function () {
+  toggle_special_status()
+})
+
+function toggle_special_status(){
+  var patient_gender = $("input[name='patient[gender]']:checked").val()
+  if (patient_gender == 'Female' ){
+    $('.patient-special-status').show()
+  }
+  else {
+    $('.patient-special-status').hide()
+  }
+}
+
+const country_id = "<%= current_facility.country_id %>"
+
+if("<%= ['admissions', 'appointments', 'ots'].include?(params[:controller]) %>" == 'false'){
+  // Validate Form
+  function patient_page() {
+    $(".patient-details").trigger('click')
+
+    $(".patient-form").validate({
+      rules: {
+        "patient[fullname]": {
+          required: true,
+          noSpace: true
+        },
+        "patient[firstname]": {
+          required: true,
+          noSpace: true
+        },
+        "patient[mobilenumber]": {
+          required: true,
+          number: true,
+          noSpace: true
+        },
+        "patient_other_identifier[mr_no]": {
+          remote: "/patients/check_mrn?existing_mrn=<%= @patient.try(:patient_mrn) %>"
+        },
+        "patient[city]": {
+          minlength: 3,
+          remote: "/locations/check_city?country_id=" + country_id
+        },
+        "patient[state]": {
+          minlength: 3,
+          remote: "/locations/check_state?country_id=" + country_id
+        },
+        "patient[pincode]": {
+          minlength: 3,
+          remote: "/locations/check_pincode?country_id=" + country_id
+        },
+        "patient[commune]": {
+          minlength: 3,
+          remote: "/locations/check_commune?country_id=" + country_id
+        },
+        "patient[district]": {
+          minlength: 3,
+          remote: "/locations/check_district?country_id=" + country_id
+        },
+        "patient[email]": {
+          mymail: true
+        }
+      },
+      messages: {
+        "patient[fullname]": {
+          required: "Full Name is Required."
+        },
+        "patient[firstname]": {
+          required: "First Name is Required."
+        },
+        "patient[mobilenumber]": {
+          required: "Number is Required",
+        },
+        "patient_other_identifier[mr_no]": {
+          remote: "MRN Already Taken",
+        },
+        "patient[city]": {
+          remote: "Select from List"
+        },
+        "patient[state]": {
+          remote: "Select form List"
+        },
+        "patient[pincode]": {
+          remote: "Select from List"
+        },
+        "patient[commune]": {
+          remote: "Select from List"
+        },
+        "patient[district]": {
+          remote: "Select from List"
+        },
+      },
+      errorPlacement: function (error, element) {
+        var name = $(element).attr('name')
+        if((name == "patient[firstname]") || (name == "patient[mobilenumber]")) {
+          $(".required-message").find('b').css('text-shadow','red 0px 0px 10px').css('color','#333')
+        } else if(name == "patient[gender]") {
+          $(".patient-gender").siblings("label").css('text-shadow','red 0px 0px 10px')
+        } else if(name == "patient[dob]") {
+          $(".dob-error-message").text('Invalid Format.').css('text-shadow','red 0px 0px 10px')
+        } else if((name == "patient[pincode]") || (name == "patient[state]") || (name == "patient[city]") || (name == "patient[commune]") || (name == "patient[district]")) {
+          $(".patient_address_label").find('b').css('text-shadow','red 0px 0px 10px');
+        } else if(name == "patient_other_identifier[mr_no]") {
+          error.insertAfter(element);
+        }
+      }
+    });
+
+    jQuery.validator.addMethod("noSpace", function(value, element) {
+      return value == '' || value.trim().length != 0;
+    });
+
+    jQuery.validator.addMethod("validDate", function(value, element) {
+      return value == '' || moment(value, 'DD/MM/YYYY', true).isValid();
+    });
+
+    $.validator.addMethod("mymail", function(value, element) {
+      return this.optional( element ) || /^([a-zA-Z0-9_\.\-])+\@(([a-zA-Z0-9\-])+\.)+([a-zA-Z0-9]{2,4})+$/.test( value );
+    }, "Enter valid email!");
+
+    $.validator.addClassRules("patient-dob", { validDate: true });
+
+    var validationArray = <%= raw @organisation_setting.try(:validate_patient) || [] %>;
+
+    for(let field of validationArray){
+      $.validator.addClassRules(`${field}`, { required: true });
+    }
+  }
+  patient_page()
+}
+
+if (country_id == 'IN_108'){
+  //Search State
+  jQuery('#search_state').autocomplete({
+      minLength: 3,
+      source: function(request, response) {
+          jQuery.ajax({
+              dataType: "json",
+              type : 'get',
+              url: '/locations/search_state',
+              data: {q: request.term, country_id: country_id, remote: "true" },
+              success: function(data) {
+                  response(data);
+              },
+              error: function(data) {
+              }
+          });
+      },
+      select: function( event, ui ) {
+        name = ui.item["state"]
+        setTimeout(function() {
+        jQuery("#search_state").val(name)
+        jQuery('#search_state').blur()
+      }, 20);
+      },
+      create: function () {
+        $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+          return $('<li>')
+              .append('<a style=\"color:#000;text-shadow: 2px\">' + item.state  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+              .appendTo(ul);
+        };
+     }
+  });
+
+  //Search City
+  jQuery('#search_city').autocomplete({
+    minLength: 3,
+    source: function(request,response){
+      var state = jQuery('#search_state').val();
+      jQuery.ajax({
+        dataType: "json",
+        type : 'get',
+        url: '/locations/search_city',
+        data: {q: request.term, state: state, remote: "true"},
+        success: function(data){
+          response(data);
+        },
+        error: function(data){
+
+        }
+      });
+    },
+    select: function( event, ui ) {
+        city  = ui.item["city"]
+        state = ui.item["state"]
+        setTimeout(function() {
+        jQuery("#search_city").val(city)
+        jQuery("#search_state").val(state)
+        jQuery('#search_city').blur()
+      }, 20);
+      },
+    create: function () {
+        $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+          return $('<li>')
+              .append('<a style=\"color:#000;text-shadow: 2px\">' + item.city  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+              .appendTo(ul);
+        };
+    }
+  });
+
+  //Search Pincode
+  jQuery('#search_pincode').autocomplete({
+    minLength: 3,
+    source: function(request,response){
+      var state = jQuery('#search_state').val();
+      var city = jQuery('#search_city').val();
+      jQuery.ajax({
+        dataType: "json",
+        type : 'get',
+        url: '/locations/search_pincode',
+        data: {q: request.term, state: state, city: city, remote: "true"},
+        success: function(data){
+          response(data);
+        },
+        error: function(data){
+
+        }
+      });
+    },
+    select: function( event, ui ) {
+        pincode = ui.item["pincode"]
+        city  = ui.item["city"]
+        state = ui.item["state"]
+        area_managers = ui.item["area_managers"]
+        location_id = ui.item["location_id"]
+        $('#patient_location_id').val(location_id);
+        setTimeout(function() {
+        jQuery("#search_pincode").prop('readonly',true).val(pincode)
+        jQuery("#search_state").prop('readonly', true).val(state)
+        jQuery("#search_city").prop('readonly', true).val(city)
+        jQuery(".clear-pincode").show()
+        jQuery('#search_pincode').blur()
+        $("#search_state").removeClass('error');
+        $("#search_city").removeClass('error');
+        // area dropdown
+        $("#patient_area_manager_id").val('').trigger('change')
+        $('#patient_area_manager_id').children().remove();
+        $('#patient_area_manager_id').append($("<option></option>").attr("value",'').text('Select Area'));
+        $.each(area_managers, function(key, value) {
+          var area_name = value['area_name'];
+          $('#patient_area_manager_id').append($("<option></option>").attr("value",value["_id"]).text(area_name));
+        });
+        // EOF area dropdown
+      }, 20);
+    },
+    create: function () {
+      $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+        return $('<li>')
+            .append('<a style=\"color:#000;text-shadow: 2px; text-align: center;\">' + item.pincode  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+            .appendTo(ul);
+      };
+    }
+  });
+
+  // Clear pincode
+  $(".clear-pincode").on('click', function(e){
+    e.preventDefault()
+    $("#search_pincode").prop('readonly',false).val("")
+    $("#search_state").prop('readonly', false).val("")
+    $("#search_city").prop('readonly', false).val("")
+    $("#patient_area_manager_id").val('').trigger('change')
+    $('#patient_area_manager_id').children().remove();
+    $('#patient_area_manager_id').append($("<option></option>").attr("value",'').text('Select Area'));
+    $(".clear-pincode").hide()
+  });
+} else if (country_id == 'VN_254') {
+  //Search City
+  jQuery('#search_city').autocomplete({
+    minLength: 2,
+    source: function(request,response){
+      jQuery.ajax({
+        dataType: "json",
+        type : 'get',
+        url: '/locations/search_city',
+        data: {q: request.term, remote: "true"},
+        success: function(data){
+          response(data);
+        },
+        error: function(data){
+
+        }
+      });
+    },
+    select: function( event, ui ) {
+        city  = ui.item["city"]
+        state = ui.item["state"]
+        setTimeout(function() {
+        jQuery("#search_city").val(city)
+        jQuery("#search_state").val(state)
+        jQuery('#search_city').blur()
+        $("#search_state").removeClass('error');
+        $("#search_city").removeClass('error');
+      }, 20);
+      },
+    create: function () {
+        $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+          return $('<li>')
+              .append('<a style=\"color:#000;text-shadow: 2px\">' + item.city  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+              .appendTo(ul);
+        };
+    }
+  });
+
+  //Search City
+  jQuery('#search_district').autocomplete({
+    minLength: 2,
+    source: function(request,response){
+      var city = jQuery('#search_city').val();
+      jQuery.ajax({
+        dataType: "json",
+        type : 'get',
+        url: '/locations/search_district',
+        data: {q: request.term, city: city, remote: "true"},
+        success: function(data){
+          response(data);
+        },
+        error: function(data){
+
+        }
+      });
+    },
+    select: function( event, ui ) {
+        district = ui.item["district"]
+        city  = ui.item["city"]
+        setTimeout(function() {
+          jQuery("#search_district").val(district)
+          jQuery("#search_city").val(city)
+          jQuery('#search_district').blur()
+        }, 20);
+      },
+    create: function () {
+        $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+          return $('<li>')
+              .append('<a style=\"color:#000;text-shadow: 2px\">' + item.district  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+              .appendTo(ul);
+        };
+    }
+  });
+
+  //Search Commune
+  jQuery('#search_commune').autocomplete({
+    minLength: 2,
+    source: function(request,response){
+      var city = jQuery('#search_city').val();
+      var district = jQuery('#search_district').val();
+      jQuery.ajax({
+        dataType: "json",
+        type : 'get',
+        url: '/locations/search_commune',
+        data: {q: request.term, city: city, district: district, remote: "true"},
+        success: function(data){
+          response(data);
+        },
+        error: function(data){
+
+        }
+      });
+    },
+    select: function( event, ui ) {
+        commune = ui.item["commune"]
+        district  = ui.item["district"]
+        city = ui.item["city"]
+        setTimeout(function() {
+        jQuery("#search_commune").prop('readonly',true).val(commune)
+        jQuery("#search_city").prop('readonly', true).val(city)
+        jQuery("#search_district").prop('readonly', true).val(district)
+        jQuery(".clear-commune").show()
+        jQuery('#search_commune').blur()
+      }, 20);
+      },
+    create: function () {
+        $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+          return $('<li>')
+              .append('<a style=\"color:#000;text-shadow: 2px; text-align: center;\">' + item.commune + ' (' + item.district + ')' + '&nbsp; &nbsp; &nbsp;' + '</a>')
+              .appendTo(ul);
+        };
+    }
+  });
+
+  // Clear pincode
+  $(".clear-commune").on('click', function(e){
+    e.preventDefault()
+    $("#search_commune").prop('readonly',false).val("")
+    $("#search_district").prop('readonly', false).val("")
+    $("#search_city").prop('readonly', false).val("")
+    $(".clear-commune").hide()
+  });
+
+} else if (country_id == 'KH_039') {
+  $('#search_pincode_cambodia').autocomplete({
+    minLength: 3,
+    source: function(request,response){
+      //var country_id = $("#facility_country_id").val()
+      var state = $('#search_state_cambodia').val();
+      var district = $('#search_district_cambodia').val();
+      var commune = $('#search_commune_cambodia').val();
+      $.ajax({
+        dataType: "json",
+        type : 'get',
+        url: '/locations/search_pincode',
+        data: {q: request.term, country_id: country_id, state: state, district: district, commune: commune, remote: "true"},
+        success: function(data){
+          response(data);
+        },
+        error: function(data){
+        }
+      });
+    },
+    select: function( event, ui ) {
+      pincode = ui.item["pincode"]
+      state = ui.item["state"]
+      district = ui.item["district"]
+      commune = ui.item["commune"]
+      setTimeout(function() {
+        $(".patient-pincode").prop('readonly',true).val(pincode)
+        $(".patient-state").prop('readonly', true).val(state)
+        $(".patient-district").prop('readonly', true).val(district)
+        $(".patient-commune").prop('readonly', true).val(commune)
+        $(".clear-pincode").show()
+        $('.patient-pincode').blur()
+      }, 20);
+    },
+    create: function () {
+      $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+      return $('<li>')
+        .append('<a style=\"color:#000;text-shadow: 2px; text-align: center;\">' + item.pincode  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+        .appendTo(ul);
+      };
+    }
+  });
+
+  $('#search_state_cambodia').autocomplete({
+    minLength: 3,
+    source: function(request, response) {
+      //var country_id = $("#facility_country_id").val()
+      $.ajax({
+        dataType: "json",
+        type : 'get',
+        url: '/locations/search_state',
+        data: {q: request.term, country_id: country_id, remote: "true" },
+        success: function(data) {
+          response(data);
+        },
+        error: function(data) {
+        }
+      });
+    },
+    select: function( event, ui ) {
+      state = ui.item["state"]
+      setTimeout(function() {
+        $(".patient-state").val(state)
+        $('.patient-state').blur()
+      }, 20);
+    },
+    create: function () {
+      $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+        return $('<li>')
+          .append('<a style=\"color:#000;text-shadow: 2px\">' + item.state  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+          .appendTo(ul);
+      };
+    }
+  });
+
+  $('#search_district_cambodia').autocomplete({
+    minLength: 2,
+    source: function(request,response) {
+      //var country_id = jQuery('#facility_country_id').val()
+      var state = jQuery('#search_state_cambodia').val();
+      jQuery.ajax({
+        dataType: "json",
+        type : 'get',
+        url: '/locations/search_district',
+        data: {q: request.term, state: state, country_id: country_id, remote: "true"},
+        success: function(data){
+          response(data);
+        },
+        error: function(data){
+        }
+      });
+    },
+    select: function( event, ui ) {
+      district = ui.item["district"]
+      state  = ui.item["state"]
+      setTimeout(function() {
+        jQuery(".patient-district").val(district)
+        jQuery(".patient-state").val(state)
+        jQuery('.patient-district').blur()
+      }, 20);
+    },
+    create: function () {
+      $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+        return $('<li>')
+          .append('<a style=\"color:#000;text-shadow: 2px\">' + item.district  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+          .appendTo(ul);
+      };
+    }
+  });
+
+  $('#search_commune_cambodia').autocomplete({
+    minLength: 2,
+    source: function(request,response) {
+      //var country_id = jQuery('#facility_country_id').val()
+      var state = jQuery('#search_state_cambodia').val();
+      var district = jQuery('#search_district_cambodia').val();
+      jQuery.ajax({
+        dataType: "json",
+        type : 'get',
+        url: '/locations/search_commune',
+        data: {q: request.term, state: state, district: district, country_id: country_id, remote: "true"},
+        success: function(data){
+          response(data);
+        },
+        error: function(data){
+
+        }
+      });
+    },
+    select: function( event, ui ) {
+      commune = ui.item["commune"]
+      district  = ui.item["district"]
+      state = ui.item["state"]
+      setTimeout(function() {
+        jQuery(".patient-commune").prop('readonly',true).val(commune)
+        jQuery(".patient-state").prop('readonly', true).val(state)
+        jQuery(".patient-district").prop('readonly', true).val(district)
+        jQuery(".clear-commune").show()
+        jQuery('.patient-commune').blur()
+      }, 20);
+    },
+    create: function () {
+      $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+        return $('<li>')
+          .append('<a style=\"color:#000;text-shadow: 2px; text-align: center;\">' + item.commune + ' (' + item.district + ')' + '&nbsp; &nbsp; &nbsp;' + '</a>')
+          .appendTo(ul);
+      };
+    }
+  });
+
+  // Clear pincode
+  $(".clear-pincode").on('click', function(e){
+    e.preventDefault()
+    $(".patient-pincode").prop('readonly',false).val("")
+    $(".patient-state").prop('readonly', false).val("")
+    $(".patient-city").prop('readonly', false).val("")
+    $(".patient-district").prop('readonly',false).val("")
+    $(".patient-commune").prop('readonly', false).val("")
+    $('#patient_area_manager_id').empty();
+    $('#select2-patient_area_manager_id-container').val('');
+    $('#select2-patient_area_manager_id-container').attr('title', '');
+    $('#patient_area_manager_id').append($("<option></option>").attr("value",'').text('Select Area'));
+    $(".clear-pincode").hide()
+  });
+
+  // Clear pincode
+  $(".clear-commune").on('click', function(e){
+    e.preventDefault()
+    $(".patient-commune").prop('readonly',false).val("")
+    $(".patient-district").prop('readonly', false).val("")
+    $(".patient-city").prop('readonly', false).val("")
+    $(".patient-state").prop('readonly', false).val("")
+    $(".patient-pincode").prop('readonly',false).val("")
+    $(".clear-commune").hide()
+  });
+}
+
+$("#open_webcam").on('click', function(e) {
+  $("#webcam-modal").html("<%= escape_javascript(render partial: 'patients/webcam_modal') %>");
+  $("#webcam-modal").modal("show");
+});
+
+$("#image_clear_button").on("click", function(e) {
+  e.preventDefault();
+  $("#patient_patientassets_attributes_0_asset_path_data_uri").val("");
+});
+
+$(".patient-occupation-dropdown").select2();
+$(".patient-area_manager_id").select2();
+
+<%= render partial: 'patients/form/history.js.erb' %>
+<%= render partial: 'patients/form/allergy.js.erb' %>
+
+$('#patient_area_manager_id').on('change', function(){
+  area_manager_name = $('#patient_area_manager_id option:selected').text();
+  if(area_manager_name != 'Select Area' && area_manager_name != ''){
+    $('#patient_area_manager_name').val(area_manager_name);
+  } else {
+    $('#patient_area_manager_name').val('');
+  }
+});

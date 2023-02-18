@@ -1,0 +1,353 @@
+const facilityId = "<%= current_facility.id.to_s %>"
+const organisationId = "<%= current_facility.organisation_id.to_s %>"
+
+const wardValidation = () => {
+  $("#new-ward-form").validate({
+    rules: {
+      "ward[name]": {
+        required: true,
+      },
+      "ward[code]": {
+        required: true,
+      },
+    },
+    messages: {
+      "ward[name]": {
+        required: "Name is required."
+      },
+      "ward[code]": {
+        required: "Code is required."
+      },
+    },
+  });
+
+  // Room Validation
+  $.validator.addClassRules("room-name", { required: true });
+  $.validator.addClassRules("room-type", { required: true });
+  $.validator.addClassRules("room-code", { required: true });
+
+  // Bed Validation
+  $.validator.addClassRules("bed-bed_name", { required: true });
+  $.validator.addClassRules("bed-bed_code", { required: true });
+  $.validator.addClassRules("bed-total_beds", { required: true });
+  $.validator.addClassRules("bed-bed_price", { required: true });
+};
+wardValidation();
+
+const addFirstRoom = () => {
+  if($(".room-form").length === 0){
+    $("#btn-add-room").trigger("click");
+  }
+};
+
+const generateCode = (name) => {
+  let trimName = name.trim();
+  let text = ""
+  if (trimName.length > 0) {
+    name_compute = trimName.split(" ").filter(i => i);
+    if (name_compute.length >= 2) {
+      text = name_compute[0][0] + name_compute[1][0];
+    } else if(name_compute[0].length > 1) {
+      text = name_compute[0][0] + name_compute[0][1];
+    }
+  }
+  return text.toUpperCase();
+};
+
+const totalRooms = () => {
+  let total_rooms = $(".room-row:visible").length
+  $("#ward_total_rooms").val(total_rooms)
+}
+
+const totalBeds = (roomRow) => {
+  let total_beds = 0
+
+  $(roomRow).find(".bed-total_beds").each(function(){
+    total_beds += parseInt($(this).val());
+  });
+  $(roomRow).find(".room-total_beds").val(total_beds)
+}
+
+const addBedRow = (roomRowCount, bedRowCount) => {
+  let bedRowHeader = ""
+  if(bedRowCount == 0) {
+    bedRowHeader = `<div class="col-md-10 col-md-offset-1 bed-header">
+      <div class="row" style="margin:0 10px">
+        <div class="col-md-4">
+          <b style="color:#000;">Bed Name</b>
+          <span style="font-size:12px;color:#3071a9">(Max: 50 Beds)</span>
+        </div>
+        <div class="col-md-2">
+          <b style="color:#000;">Bed Code</b>
+        </div>
+        <div class="col-md-2">
+          <b style="color:#000;">Total Beds</b>
+        </div>
+        <div class="col-md-2">
+          <b style="color:#000;">Bed Price</b>
+        </div>
+        <div class="col-md-2">
+          <b style="color:#000;">Actions</b>
+        </div>
+      </div>
+    </div>`
+  }
+  let bedRow = `
+    ${bedRowHeader}
+    <div class="col-md-10 col-md-offset-1 bed-row">
+      <div class="row bed-form">
+        <div class="col-md-4">
+          <input type="text" class="form-control p5_10 bed-bed_name" name="ward[rooms_attributes][${roomRowCount}][beds_attributes][${bedRowCount}][bed_name]">
+        </div>
+        <div class="col-md-2">
+          <input type="text" class="form-control p5_10 bed-bed_code" name="ward[rooms_attributes][${roomRowCount}][beds_attributes][${bedRowCount}][bed_code]" maxlength="3" style="text-transform: uppercase;">
+        </div>
+        <div class="col-md-2">
+          <input type="number" class="form-control p5_10 bed-total_beds" name="ward[rooms_attributes][${roomRowCount}][beds_attributes][${bedRowCount}][total_beds]">
+        </div>
+        <div class="col-md-2">
+          <input type="number" class="form-control p5_10 bed-bed_price" name="ward[rooms_attributes][${roomRowCount}][beds_attributes][${bedRowCount}][bed_price]">
+        </div>
+        <div class="col-md-2">
+          <button class="btn btn-danger btn-remove-bed btn-xs removeable"><i class="fa fa-trash-alt"></i></button>
+        </div>
+        <div class="col-md-12 beds_breakup"></div>
+      </div>
+    </div>
+  `
+  return bedRow
+};
+
+const updateBedFields = (_this, name, code, price, group_id, update_destroy=false) => {
+  hidden_beds = $(_this).closest(".bed-form").find(".bed-hidden-fields")
+  for (let i = hidden_beds.length - 1; i >= 0; i--) {
+    if(update_destroy){ $(hidden_beds[i]).find(".bed-_destroy").val("0") }
+    if(update_destroy){ $(hidden_beds[i]).find(".bed-is_deleted").val("0") }
+    if(group_id.length > 0){ $(hidden_beds[i]).find(".bed-group_id").val(group_id) }
+    if(name.length > 0){ $(hidden_beds[i]).find(".bed-name").val(name) }
+    if(code.length > 0){ $(hidden_beds[i]).find(".bed-code").val((code + String(i+1)).toUpperCase()) }
+    if(price.length > 0){ $(hidden_beds[i]).find(".bed-price").val(price) }
+  }
+};
+
+const indexResetLogic = () => {
+  let roomRows = $("#room-block").find(".room-row")
+  renumberIndex(roomRows, ["input", "select", "button"], 1, [".bed-hidden-fields"])
+};
+
+// Generate Code from Ward Name
+$("#ward_name").on("focusout", function(){
+  ward_name = $(this).val()
+  ward_code = generateCode(ward_name)
+  $("#ward_code").val(ward_code)
+});
+
+// Add Rooms
+$("#btn-add-room").on("click", function(e){
+  e.preventDefault();
+  let roomRowCount = $(".room-row").length
+  let roomDetails = `
+    <div class="row room-form">
+      <hr/>
+      <input type="hidden" name="ward[rooms_attributes][${roomRowCount}][organisation_id]" id="ward_rooms_attributes_${roomRowCount}_organisation_id" value="${organisationId}">
+      <input type="hidden" name="ward[rooms_attributes][${roomRowCount}][facility_id]" id="ward_rooms_attributes_${roomRowCount}_facility_id" value="${facilityId}">
+      <input type="hidden" name="ward[rooms_attributes][${roomRowCount}][total_beds]" id="ward_rooms_attributes_${roomRowCount}_total_beds" class="room-total_beds" value="0">
+      <div class="col-md-5">
+        <b style="color:#000;">Room Name</b>
+        <input type="text" class="form-control p5_10 room-name" name="ward[rooms_attributes][${roomRowCount}][name]" id="ward_rooms_attributes_${roomRowCount}_name">
+      </div>
+      <div class="col-md-3">
+        <b style="color:#000;">Room Type</b>
+        <select class="form-control room-type" name="ward[rooms_attributes][${roomRowCount}][type]" id="ward_rooms_attributes_${roomRowCount}_type">
+          <option value=""></option>
+          <% @room_types.each do |room_type| %>
+            <option value="<%= room_type[:abbreviation] %>"><%= room_type[:name] %></option>
+          <% end %>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <b style="color:#000;">Room Code</b>
+        <input type="text" class="form-control p5_10 room-code" name="ward[rooms_attributes][${roomRowCount}][code]" id="ward_rooms_attributes_${roomRowCount}_code" maxlength="3" style="text-transform: uppercase;">
+      </div>
+      <div class="col-md-2">
+        <b style="color:#000;">Actions</b><br/>
+        <button class="btn btn-primary btn-add-bed btn-xs" id="ward_rooms_attributes_${roomRowCount}_add"><i class="fa fa-bed"></i></button>
+        <button class="btn btn-danger btn-remove-room btn-xs removeable" id="ward_rooms_attributes_${roomRowCount}_remove"><i class="fa fa-trash-alt"></i></button>
+      </div>
+    </div>
+  `
+
+  let bedDetails = addBedRow(roomRowCount, 0)
+
+  let roomRow = `
+    <div class="col-md-12 room-row">
+      ${roomDetails}
+      <div class="row bed-form-row">
+        ${bedDetails}
+      </div>
+    </div>
+  `
+
+  $(".room-form-row").append(roomRow)
+
+  totalRooms();
+});
+addFirstRoom(); // Function called here so that it is triggered once "#btn-add-room" click event is initialized
+
+// Generate Code from Room Name
+$("#room-block").on("focusout", ".room-name", function(){
+  room_name = $(this).val()
+  room_code = generateCode(room_name)
+  $(this).closest(".room-row").find(".room-code").val(room_code)
+});
+
+// Add Beds
+$("#room-block").on("click", ".btn-add-bed", function(e){
+  e.preventDefault();
+  let roomRow = $(this).closest(".room-row")
+  let roomRowCount = parseInt($(this).attr("id").match(/\d+/)[0])
+  let bedRowCount = $(roomRow).find(".bed-row").length
+
+  let bedDetails = addBedRow(roomRowCount, bedRowCount)
+
+  $(roomRow).find(".bed-form-row").append(bedDetails)
+  $(roomRow).find(".bed-header:first").show()
+  $(roomRow).find('.bed-header:first').siblings(".bed-header").remove()
+});
+
+// Remove Rooms
+$("#room-block").on("click", ".btn-remove-room", function(e){
+  e.preventDefault();
+  if($(this).hasClass("removeable")){
+    // Remove Beds added via Javascript
+    $(this).closest(".room-row").remove();
+    indexResetLogic();
+  } else {
+    // Remove Rooms already in Database by changing _destroy from 0 to 1
+    $(this).closest(".room-row").find(".room-_destroy").val("1")
+    $(this).closest(".room-row").find(".room-is_deleted").val("1")
+    $(this).closest(".room-row").hide();
+  }
+
+  totalRooms();
+});
+
+// Remove Beds
+$("#room-block").on("click", ".btn-remove-bed", function(e){
+  e.preventDefault();
+  let roomRow = $(this).closest(".room-row")
+  let bedFormRow = $(this).closest(".bed-form-row")
+  let bedRowCount = $(roomRow).find(".bed-row").length
+  let visibleBedRowCount = $(roomRow).find(".bed-row:visible").length
+
+  if($(this).hasClass("removeable")){
+    // Remove Beds added via Javascript
+    $(this).closest(".bed-row").remove();
+    indexResetLogic();
+  } else {
+    // Remove Beds already in Database by changing _destroy from 0 to 1
+    let hidden_beds = $(this).closest(".bed-row").find(".bed-hidden-fields")
+    for (let i = hidden_beds.length - 1; i >= 0; i--) {
+      let destroy = $(hidden_beds[i]).find(".bed-_destroy")
+      let is_deleted = $(hidden_beds[i]).find(".bed-is_deleted")
+      if(destroy.length > 0){
+        $(destroy).val("1")
+        $(is_deleted).val("1")
+      } else {
+        $(hidden_beds[i]).remove();
+      }
+    }
+    $(this).closest(".bed-row").hide();
+  }
+
+  if(visibleBedRowCount <= 1){
+    $(roomRow).find('.bed-header:first').hide()
+    $(roomRow).find('.bed-header:first').siblings(".bed-header").remove()
+  }
+
+  totalBeds(roomRow);
+});
+
+// Create Beds based on Total Beds
+$("#room-block").on("keyup", ".bed-total_beds", function(){
+  let total_beds = parseInt($(this).val())
+  let beds_in_use = parseInt($(this).attr("data-use-beds"))
+  let roomRow = $(this).closest(".room-row")
+
+  let hidden_beds = $(this).closest(".bed-form").find(".bed-hidden-fields")
+  let beds_length = hidden_beds.length
+
+  if(total_beds <= 0) { $(this).val(1); } // Min 1 Bed/Room
+  if(total_beds > 50) { $(this).val(50); } // Max 50 Beds/Room
+
+  if(total_beds < beds_in_use){ $(this).val(beds_in_use) } // Beds "in_use" should be <= "total_beds"
+
+  total_beds = parseInt($(this).val())
+
+  let bed_name = $(this).closest(".bed-form").find(".bed-bed_name").val()
+  let bed_price = $(this).closest(".bed-form").find(".bed-bed_price").val()
+  let bed_code = generateCode(bed_name)
+  let bed_group_id = beds_length > 0 ? $(hidden_beds).find(".bed-group_id").val() : new Date().getUTCMilliseconds()
+
+  let roomRowCount = $(this).closest(".room-row").find(".room-name").attr("id").match(/\d+/)[0][0]
+
+  updateBedFields(this, bed_name, bed_code, bed_price, bed_group_id, true)
+
+  if(total_beds > beds_length){
+    for (let i = beds_length; i < total_beds; i++) {
+      bedDetails = `
+        <div class="bed-hidden-fields">
+          <input type="hidden" class="bed-facility_id" name="ward[rooms_attributes][${roomRowCount}][beds_attributes][${i}][facility_id]" id="ward_rooms_attributes_${roomRowCount}_beds_attributes_${i}_facility_id" value="${facilityId}">
+          <input type="hidden" class="bed-organisation_id" name="ward[rooms_attributes][${roomRowCount}][beds_attributes][${i}][organisation_id]" id="ward_rooms_attributes_${roomRowCount}_beds_attributes_${i}_organisation_id" value="${organisationId}">
+          <input type="hidden" class="bed-group_id" name="ward[rooms_attributes][${roomRowCount}][beds_attributes][${i}][group_id]" id="ward_rooms_attributes_${roomRowCount}_beds_attributes_${i}_group_id" value="${bed_group_id}">
+          <input type="hidden" class="bed-name" name="ward[rooms_attributes][${roomRowCount}][beds_attributes][${i}][name]" id="ward_rooms_attributes_${roomRowCount}_beds_attributes_${i}_name" value="${bed_name}">
+          <input type="hidden" class="bed-price" name="ward[rooms_attributes][${roomRowCount}][beds_attributes][${i}][price]" id="ward_rooms_attributes_${roomRowCount}_beds_attributes_${i}_price" value="${bed_price}">
+          <input type="hidden" class="bed-code" name="ward[rooms_attributes][${roomRowCount}][beds_attributes][${i}][code]" id="ward_rooms_attributes_${roomRowCount}_beds_attributes_${i}_code" value="${(bed_code + String(i+1)).toUpperCase()}">
+        </div>
+      `
+      // "i" in beds_attributes are of no use as below using "renumberIndex()" they will be renumbered
+      $(this).closest(".bed-form").find(".beds_breakup").append(bedDetails)
+    }
+
+    let allHiddenBeds = $(this).closest(".bed-form-row").find(".bed-hidden-fields")
+    renumberIndex(allHiddenBeds, "input", 2)
+  } else if(total_beds < beds_length){
+    // Loop through all the beds and mark delete 0 for difference beds
+    for (let i = total_beds; i < beds_length; i++) {
+      if($(hidden_beds[i]).find(".bed-_id").length == 0){
+        $(hidden_beds[i]).remove();
+      } else {
+        $(hidden_beds[i]).find(".bed-_destroy").val("1")
+        $(hidden_beds[i]).find(".bed-is_deleted").val("1")
+      }
+    }
+  }
+
+  totalBeds(roomRow);
+});
+
+// ReName Beds with base Bed Name
+$("#room-block").on("keyup", ".bed-bed_name", function(){
+  let bed_name = $(this).val()
+  let bed_code = generateCode(bed_name)
+
+  $(this).closest(".bed-form").find(".bed-bed_code").val(bed_code)
+
+  updateBedFields(this, bed_name, bed_code, "", "")
+});
+
+// ReCode Beds with base Bed Code
+$("#room-block").on("keyup", ".bed-bed_code", function(){
+  let bed_code = $(this).val()
+  updateBedFields(this, "", bed_code, "", "")
+});
+
+// RePrice Beds with base Bed Price
+$("#room-block").on("keyup", ".bed-bed_price", function(){
+  let bed_price = parseFloat($(this).val())
+
+  if(bed_price <= 0) { $(this).val(0); }
+  bed_price = $(this).val()
+
+  updateBedFields(this, "", "", bed_price, "")
+});

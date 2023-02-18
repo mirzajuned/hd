@@ -1,0 +1,1122 @@
+$(document).ready(function(){
+  const renderAction = "<%= params[:action] %>"
+  const invoiceUType = "<%= _type %>"
+  const invoiceUTypeId = "<%= _type == 'opd' ? '485396012' : '486546481' %>"
+  const specialty_id = $("#invoice_" + invoiceUType + "_specialty_id").val();
+  const delete_service_array = []
+  const datepicker_options = { dateFormat: "dd/mm/yy" }
+
+  // Get Insurance Contact Details in case of "insurance"
+  const payerOptions = (requestFrom) => {
+    let generalOption = `<option value="general" selected="selected">General</option>`
+    let patientOption = `<option value="<%= @invoice.patient_id.to_s %>" selected="selected"><%= @invoice.patient.fullname %></option>`
+    let selectedOption = (requestFrom == "servicePanel") ? generalOption : patientOption
+    let payerFields;
+
+    if($('.invoice_payer_master_id').val() == ''){
+      payerFields = selectedOption
+    } else if($('.invoice_payer_master_id').val() != ''){
+      payerFields = `<option value="${$('.invoice_payer_master_id').val()}">${$('.invoice_payer_master_id').find('option:selected').html()}</option>`
+    } else {
+      payerFields = ``
+    }
+
+    return payerFields
+  }
+
+  let invoice_type, old_invoice_type; // Used in invoice_type method
+
+  $("#services_items_invoice_" + invoiceUType).find(".i_description").select2({matcher: modelMatcher});
+  $("#services_items_invoice_" + invoiceUType).find(".i_payer_master_id").select2();
+  $("#payment_received_details").find(".payment_received_breakups_date").datepicker(datepicker_options);
+  $("#payment_received_details").find(".payment_received_breakups_time").timepicker({minuteStep: 5});
+  $(".payment_received_breakups_cheque_date").datepicker(datepicker_options)
+  $(".payment_received_breakups_transfer_date").datepicker(datepicker_options)
+
+  // Add New Service
+  $(".add_service_item").on("click", function(e){
+    e.preventDefault();
+    let parentServiceRow = $(this).closest(".service_row_count").find(".service_item_row_count");
+    let item_row_count = $(parentServiceRow).children().length
+
+    let hidden_fields = `
+      <div class="field_for_date">
+        <div class="tax_fields"></div>
+        <input type="hidden" name="invoice_${invoiceUType}[services][${item_row_count}][item_entry_date]" class="i_item_entry_date" value="<%= Time.current %>">
+        <input type="hidden" name="invoice_${invoiceUType}[services][${item_row_count}][added_by_id]" class="i_added_by_id" value="<%= current_user.id.to_s %>">
+        <input type="hidden" name="invoice_${invoiceUType}[services][${item_row_count}][advised_by_id]" class="i_advised_by_id" value="<%= doctor %>">
+        <input type="hidden" name="invoice_${invoiceUType}[services][${item_row_count}][counselled_by_id]" class="i_counselled_by_id" value="">
+        <input type="hidden" name="invoice_${invoiceUType}[services][${item_row_count}][sub_specialty_id]" class="i_sub_specialty_id" value="">
+        <input type="hidden" name="invoice_${invoiceUType}[services][${item_row_count}][entry_type]" class="i_entry_type" value="service">
+        <input type="hidden" name="invoice_${invoiceUType}[services][${item_row_count}][exception_id]" class="i_exception_id" value="">
+      </div>`
+
+    let payer_dropdown = `
+      <div class="col-md-1 col-md-3-shared field_for_payer" style="display:none;">
+        <select class="form-control i_payer_master_id" name="invoice_${invoiceUType}[services][${item_row_count}][payer_master_id]">
+          ${payerOptions("servicePanel")}
+        </select>
+      </div>`
+
+    let description_dropdown = `
+      <div class="col-md-2 field_for_description">
+        <select class="form-control i_description" name="invoice_${invoiceUType}[services][${item_row_count}][description]" id="invoice_${invoiceUType}_services_${item_row_count}_description">
+          <option value="">Select Service</option>
+        </select>
+      </div>`
+
+    let quantity_field = `
+      <div class="col-md-1 field_for_quantity">
+        <input name="invoice_${invoiceUType}[services][${item_row_count}][quantity]" style="padding:5px 10px;" class="form-control i_quantity" placeholder="Quantity" maxlength="4" value="1" type="text">
+      </div>`
+
+    let unit_price_field = `
+      <div class="col-md-2 col-md-3-shared field_for_unit_price">
+        <input name="invoice_${invoiceUType}[services][${item_row_count}][unit_price]" style="padding:5px 10px;" class="form-control i_unit_price" placeholder="Unit Price" maxlength="12" type="text">
+      </div>`
+
+    let tax_group_id_field = `
+      <div class="col-md-2 col-md-3-shared field_for_tax_group_id">
+        <select name="invoice_${invoiceUType}[services][${item_row_count}][tax_group_id]" class="form-control i_tax_group">
+          <option value="" data-tax-rate="0"> </option>
+          <% @tax_groups.each do |tax_group| %>
+            <option value="<%= tax_group.id.to_s %>" data-tax-rate="<%= tax_group.rate %>">
+              <span><%= tax_group.name %> - <%= tax_group.rate %>%</span>
+            </option>
+          <% end %>
+        </select>
+      </div>`
+
+    let tax_inclusive_field = `
+      <div class="col-md-1 field_for_tax_inclusive">
+        <input type="hidden" name="invoice_${invoiceUType}[services][${item_row_count}][tax_inclusive]" value="false">
+        <div class="ckbox ckbox-primary">
+          <input type="checkbox" name="invoice_${invoiceUType}[services][${item_row_count}][tax_inclusive]" id="tax_inclusive_${item_row_count}" class="i_tax_inclusive" value="true">
+          <label for="tax_inclusive_${item_row_count}"></label>
+        </div>
+      </div>`
+
+    let taxable_amount_field = `
+      <div class="col-md-1 field_for_taxable_amount">
+        <input name="invoice_${invoiceUType}[services][${item_row_count}][non_taxable_amount]" style="padding:5px 10px;" class="form-control i_non_taxable_amount text-right" id="i_non_taxable_amount" placeholder="Total" readonly="readonly" type="hidden" value="0">
+        <input name="invoice_${invoiceUType}[services][${item_row_count}][taxable_amount]" style="padding:5px 10px;" class="form-control i_taxable_amount text-right" id="i_taxable_amount" placeholder="Total" readonly="readonly" type="text" value="0">
+      </div>`
+
+    let price_field = `
+      <div class="col-md-2 col-md-3-shared field_for_price">
+        <input name="invoice_${invoiceUType}[services][${item_row_count}][price]" style="padding:5px 10px;" class="form-control i_price" id="i_price" placeholder="Total" readonly="readonly" type="text">
+      </div>`
+
+    let service_actions = `
+      <div class="col-md-1">
+        <button class="btn btn-danger btn-xs remove_service" style="padding:0 5px;margin-top:3px;"><i class="fa fa-trash-alt"></i> Remove</button>
+      </div>`
+
+    let exceptionDetails = `
+      <div class="col-md-12">
+        <span class="exception_details" style='display:none;'>Exception : <a class="change-exception" style="cursor: pointer;"></a></span>
+      </div>`
+
+    let newServiceRow = `
+      <div class="invoice_service_item_row row mt5" id="invoice_service_item_row" style="padding-left:20px;">
+        <div class="col-md-12">
+          ${hidden_fields}
+          ${payer_dropdown}
+          ${description_dropdown}
+          ${quantity_field}
+          ${unit_price_field}
+          ${tax_group_id_field}
+          ${tax_inclusive_field}
+          ${taxable_amount_field}
+          ${price_field}
+          ${service_actions}
+          ${exceptionDetails}
+        </div>
+      </div>`
+
+    $(parentServiceRow).append(newServiceRow)
+    $(parentServiceRow).find(".i_payer_master_id:last").select2();
+    $(parentServiceRow).find(".i_description:last").select2({matcher: modelMatcher});
+
+    $(".i_payer_master_id:last").trigger("change");
+
+    // Create Hook To Remove Item Button Of The Newly Created Item
+    get_service_details($(parentServiceRow).find(".i_description:last"));
+
+    // Calculate Tax
+    calculate_tax($(parentServiceRow).find(".i_quantity:last"))
+  });
+
+  // Add New Service Package
+  $(".add_service_package").on("click", function(e){
+    e.preventDefault();
+    let parentServiceRow = $(this).closest(".service_row_count").find(".service_item_row_count");
+    let item_row_count = $(parentServiceRow).children().length
+
+    let hidden_fields = `
+      <div class="field_for_date">
+        <div class="tax_fields"></div>
+        <input type="hidden" name="invoice_${invoiceUType}[services][${item_row_count}][item_entry_date]" class="i_item_entry_date" value="<%= Time.current %>">
+        <input type="hidden" name="invoice_${invoiceUType}[services][${item_row_count}][added_by_id]" class="i_added_by_id" value="<%= current_user.id.to_s %>">
+        <input type="hidden" name="invoice_${invoiceUType}[services][${item_row_count}][advised_by_id]" class="i_advised_by_id" value="<%= doctor %>">
+        <input type="hidden" name="invoice_${invoiceUType}[services][${item_row_count}][counselled_by_id]" class="i_counselled_by_id" value="">
+        <input type="hidden" name="invoice_${invoiceUType}[services][${item_row_count}][sub_specialty_id]" class="i_sub_specialty_id" value="">
+        <input type="hidden" name="invoice_${invoiceUType}[services][${item_row_count}][entry_type]" class="i_entry_type" value="surgery_package">
+        <input type="hidden" name="invoice_${invoiceUType}[services][${item_row_count}][exception_id]" class="i_exception_id" value="">
+      </div>`
+
+    let payer_dropdown = `
+      <div class="col-md-1 col-md-3-shared field_for_payer" style="display:none;">
+        <select class="form-control i_payer_master_id" name="invoice_${invoiceUType}[services][${item_row_count}][payer_master_id]">
+          ${payerOptions("servicePanel")}
+        </select>
+      </div>`
+
+    let description_dropdown = `
+      <div class="col-md-2 field_for_description">
+        <select class="form-control i_description" name="invoice_${invoiceUType}[services][${item_row_count}][description]" id="invoice_${invoiceUType}_services_${item_row_count}_description" data-type="surgery_package">
+          <option value="">Select Package</option>
+        </select>
+      </div>`
+
+    let quantity_field = `
+      <div class="col-md-1 field_for_quantity">
+        <input type="text" name="invoice_${invoiceUType}[services][${item_row_count}][quantity]" style="padding:5px 10px;" class="form-control i_quantity" placeholder="Quantity" maxlength="4" value="1" readonly="readonly">
+      </div>`
+
+    let unit_price_field = `
+      <div class="col-md-2 col-md-3-shared field_for_unit_price">
+        <input type="text" name="invoice_${invoiceUType}[services][${item_row_count}][unit_price]" style="padding:5px 10px;" class="form-control i_unit_price" placeholder="Unit Price" maxlength="12" readonly="readonly">
+      </div>`
+
+    let tax_group_field = `<div class="col-md-2 col-md-3-shared field_for_tax_group_id">-</div>`
+
+    let tax_inclusive_field = `<div class="col-md-1 field_for_tax_inclusive">-</div>`
+
+    let taxable_amount_field = `
+      <div class="col-md-1 field_for_taxable_amount">
+        <input name="invoice_${invoiceUType}[services][${item_row_count}][non_taxable_amount]" style="padding:5px 10px;" class="form-control i_non_taxable_amount text-right" id="i_non_taxable_amount" placeholder="Total" readonly="readonly" type="hidden" value="0">-
+      </div>`
+
+    let price_field = `
+      <div class="col-md-2 col-md-3-shared field_for_price">
+        <input type="text" name="invoice_${invoiceUType}[services][${item_row_count}][price]" style="padding:5px 10px;" class="form-control i_price" id="i_price" placeholder="Total" readonly="readonly">
+      </div>`
+
+    let package_actions = `
+      <div class="col-md-1">
+        <button class="btn btn-danger btn-xs remove_service" style="padding:0 5px;margin-top:3px;"><i class="fa fa-trash-alt"></i> Remove</button>
+      </div>`
+
+    let newPackageRow = `
+      <div class="invoice_service_item_row row mt5" id="invoice_service_item_row" style="padding-left:20px;">
+        <div class="col-md-12">
+          ${hidden_fields}
+          ${payer_dropdown}
+          ${description_dropdown}
+          ${quantity_field}
+          ${unit_price_field}
+          ${tax_group_field}
+          ${tax_inclusive_field}
+          ${taxable_amount_field}
+          ${price_field}
+          ${package_actions}
+        </div>
+        <div class="col-md-12 package-breakup"></div>
+      </div>`
+
+    $(parentServiceRow).append(newPackageRow)
+    $(parentServiceRow).find(".i_payer_master_id:last").select2();
+    $(parentServiceRow).find(".i_description:last").select2({matcher: modelMatcher});
+
+    $(".i_payer_master_id:last").trigger("change");
+
+    get_service_details($(parentServiceRow).find(".i_description:last"));
+
+    // Calculate Tax
+    calculate_tax($(parentServiceRow).find(".i_quantity:last"))
+  });
+
+  // Contact Changes
+  $("#services_items_invoice_" + invoiceUType).on("change", ".i_payer_master_id", function(){
+    let activeServiceRow = $(this).closest(".invoice_service_item_row")
+    let payer_master_id = $(this).val();
+    let service_type = '<%= @service_type.to_s %>'
+    let i_entry_type = $(activeServiceRow).find(".i_entry_type").val()
+
+    if(payer_master_id != "" && payer_master_id != null){
+      fetch(`/invoice/invoices/set_invoice_pricing_masters?payer_master_id=${payer_master_id}&case_sheet_id=<%= case_sheet_id %>&entry_type=${i_entry_type}&specialty_id=${specialty_id}&department_id=${invoiceUTypeId}&service_type=${service_type}`)
+            .then(data => data.text())
+            .then(pricingMasterList => $(activeServiceRow).find(".i_description").html(pricingMasterList).trigger("change"))
+    }
+  })
+
+  // Quantity Changes
+  $("#services_items_invoice_" + invoiceUType).on("keyup focusout", ".i_quantity", function(){
+    let quantity = $(this).val()
+    let unit_price = $(this).closest(".invoice_service_item_row").find(".i_unit_price").val()
+
+    calculate_price(this, quantity, unit_price)
+  });
+
+  // Unit Price Changes
+  $("#services_items_invoice_" + invoiceUType).on("keyup focusout", ".i_unit_price", function(){
+    let unit_price = $(this).val()
+    let quantity = $(this).closest(".invoice_service_item_row").find(".i_quantity").val()
+
+    calculate_price(this, quantity, unit_price)
+  });
+
+  // Tax Group Changes
+  $("#services_items_invoice_" + invoiceUType).on("change", ".i_tax_group", function(){
+    calculate_tax(this)
+  })
+
+  // Tax Inclusive Changes
+  $("#services_items_invoice_" + invoiceUType).on("click", ".i_tax_inclusive", function(){
+    calculate_tax(this)
+  })
+
+  // Price Changes
+  $("#services_items_invoice_" + invoiceUType).on("change", ".i_price", function(){
+    let activeServiceRow = $(this).closest(".service_item_row_count")
+    calculation_invoice_total(activeServiceRow);
+
+    change_invoice_total_payment()
+  });
+
+  // Remove Service
+  $("#services_items_invoice_" + invoiceUType).on("click", ".remove_service", function(e){
+    e.preventDefault();
+    let service_row = $(this).closest(".service_item_row_count");
+    let activeServiceRow = $(this).closest(".invoice_service_item_row")
+    let service_id = $(activeServiceRow).find(".i_id").val()
+    if(service_id !== NaN){
+      delete_service_array.push(service_id)
+      $("#deleted-services").val(delete_service_array)
+    }
+    $(activeServiceRow).remove();
+
+    // Re-Calculate Invoice Total
+    calculation_invoice_total(service_row);
+
+    // Reset Counter Logic
+    remove_reset_logic();
+
+    let allServiceRows = $(".invoice_service_item_row")
+    for (let i = allServiceRows.length - 1; i >= 0; i--) {
+      calculate_tax($(allServiceRows[i]).find(".i_quantity"))
+    }
+  });
+
+  // Exception Change
+  $("#services_items_invoice_" + invoiceUType).on("click", ".change-exception", function(e){
+    e.preventDefault();
+    let pricing_master_id = $(this).attr('data-master-id')
+    let html_reference_id = $(this).attr('data-html-id')
+    let exception_id = $(this).attr('data-exception-id')
+
+    $.ajax({
+      type: "get",
+      dataType: "script",
+      url: "/invoice/invoices/set_pricing_exceptions",
+      data: { pricing_master_id: pricing_master_id,
+              html_reference_id: html_reference_id,
+              exception_id: exception_id }
+    })
+  });
+
+  // Calculate Price of Service
+  function calculate_price(_this, quantity=0, unit_price=0) {
+    let price = (quantity * unit_price).toFixed(2);
+
+    $(_this).closest(".invoice_service_item_row").find(".i_price").val(price).trigger("change");
+
+    calculate_tax(_this)
+  }
+
+  // Calculation Changes in Discount Change
+  $(".discount_amount").on("keyup focusout", function(){
+    let discount = $(this).val()
+    let discount_amount = (discount.length > 0) ? parseFloat(discount) : 0.00
+    let gross_amount =  parseFloat($(".invoice_gross_total").val())
+    let final_discount = discount_amount < gross_amount ? discount_amount : gross_amount
+    let net_total = (gross_amount - final_discount).toFixed(2)
+
+    $(this).val(final_discount)
+    $(".invoice_net_total").val(net_total).trigger("change")
+
+    change_invoice_total_payment()
+  });
+
+  // Function For Calculating Invoice Based Total
+  function calculation_invoice_total(serviceRow) {
+    let total = 0
+    let total_gross = 0
+    let discount = parseFloat($(".discount_amount").val()) || 0
+    let prices = $(serviceRow).find(".i_price")
+
+    // Service Total Calculation(Hidden Field)
+    for (let i = prices.length - 1; i >= 0; i--) {
+      total += parseFloat($(prices[i]).val())
+    };
+    $(serviceRow).closest(".service_row_count").find(".service_total").val(total)
+
+    // Gross Amount Calculation
+    let service_prices = $("#services_items_invoice_" + invoiceUType).find(".service_total")
+    for (let i = service_prices.length - 1; i >= 0; i--) {
+      total_gross += parseFloat($(service_prices[i]).val())
+    };
+    $("#invoice_gross_total").val(total_gross.toFixed(2))
+
+    // Net Amount Calculation
+    let net_total = (total_gross - discount).toFixed(2)
+    let net_total_rounded = Math.round(net_total)
+    $("#invoice_net_total").val(net_total_rounded).trigger("change")
+
+    let rounded_amount = (net_total - net_total_rounded).toFixed(2)
+    $("#round_amount").val(rounded_amount)
+  }
+
+  // Logic For Remove Reset
+  function remove_reset_logic() {
+    let allServiceRow = $(".invoice_service_item_row")
+    for (let i = 0; i < allServiceRow.length; i++) {
+      $(allServiceRow[i]).find(".i_id").attr("name", "invoice_" + invoiceUType + "[services][" + i + "][_id]")
+      $(allServiceRow[i]).find(".i_payer_master_id").attr("name", "invoice_" + invoiceUType + "[services][" + i + "][payer_master_id]")
+      $(allServiceRow[i]).find(".i_description").attr("name", "invoice_" + invoiceUType + "[services][" + i + "][description]")
+      $(allServiceRow[i]).find(".i_description").attr("id", "invoice_" + invoiceUType + "_services_"+ i +"_description")
+      $(allServiceRow[i]).find(".i_quantity").attr("name", "invoice_" + invoiceUType + "[services][" + i + "][quantity]")
+      $(allServiceRow[i]).find(".i_unit_price").attr("name", "invoice_" + invoiceUType + "[services][" + i + "][unit_price]")
+      $(allServiceRow[i]).find(".i_price").attr("name", "invoice_" + invoiceUType + "[services][" + i + "][price]")
+      $(allServiceRow[i]).find(".i_tax_group").attr("name", "invoice_" + invoiceUType + "[services][" + i + "][tax_group_id]")
+      $(allServiceRow[i]).find(".i_tax_inclusive").attr("name", "invoice_" + invoiceUType + "[services][" + i + "][tax_inclusive]")
+      $(allServiceRow[i]).find(".i_tax_inclusive").attr("id", "tax_inclusive_" + i)
+      $(allServiceRow[i]).find(".field_for_tax_inclusive").find("label").attr("for", "tax_inclusive_" + i)
+      $(allServiceRow[i]).find(".i_non_taxable_amount").attr("name", "invoice_" + invoiceUType + "[services][" + i + "][non_taxable_amount]")
+      $(allServiceRow[i]).find(".i_taxable_amount").attr("name", "invoice_" + invoiceUType + "[services][" + i + "][taxable_amount]")
+      $(allServiceRow[i]).find(".i_patient_payed").attr("name", "invoice_" + invoiceUType + "[services][" + i + "][patient_payed]")
+      $(allServiceRow[i]).find(".i_item_entry_date").attr("name", "invoice_" + invoiceUType + "[services][" + i + "][item_entry_date]")
+      $(allServiceRow[i]).find(".i_entry_type").attr("name", "invoice_" + invoiceUType + "[services][" + i + "][entry_type]")
+      $(allServiceRow[i]).find(".i_added_by_id").attr("name", "invoice_" + invoiceUType + "[services][" + i + "][added_by_id]")
+      $(allServiceRow[i]).find(".i_advised_by_id").attr("name", "invoice_" + invoiceUType + "[services][" + i + "][advised_by_id]")
+      $(allServiceRow[i]).find(".i_counselled_by_id").attr("name", "invoice_" + invoiceUType + "[services][" + i + "][counselled_by_id]")
+      $(allServiceRow[i]).find(".i_sub_specialty_id").attr("name", "invoice_" + invoiceUType + "[services][" + i + "][sub_specialty_id]")
+      $(allServiceRow[i]).find(".i_exception_id").attr("name", "invoice_" + invoiceUType + "[services]["+ i +"][exception_id]")
+
+      let taxBox = $(allServiceRow[i]).find(".tax_box")
+      for (let j = taxBox.length - 1; j >= 0; j--) {
+        $(taxBox[j]).find(".i_tax_group_amount").attr("name", "invoice_" + invoiceUType + "[services][" + i + "][tax_group][][amount]")
+        $(taxBox[j]).find(".i_tax_group_name").attr("name", "invoice_" + invoiceUType + "[services][" + i + "][tax_group][][name]")
+        $(taxBox[j]).find(".i_tax_group_id").attr("name", "invoice_" + invoiceUType + "[services][" + i + "][tax_group][][id]")
+      }
+    }
+  }
+
+  // Net Total Changes
+  $("#invoice_net_total").on("change", function(){
+    let net_amount = $(this).val();
+    let paymentRecievedRows = $(".payment_received_breakups_amount")
+
+    if(paymentRecievedRows.length == 1){
+      paymentRecievedRows.first().val(net_amount).trigger("keyup")
+    }
+  })
+
+  // Get Service Details
+  function get_service_details(description){
+    $(description).on("change", function(){
+      let _this = this
+      let description_id = $(this).val();
+      let counter = $(this).attr("name").replace(/[^0-9]/g, '')[0];
+      let service_amount = $("option:selected", this).attr("data-amount");
+      let data_type = $(this).attr("data-type");
+      let activeServiceRow = $(this).closest(".invoice_service_item_row");
+
+      $(activeServiceRow).find(".i_quantity").val(1)
+
+      if($("option:selected", this).attr("data-exception") == 'true'){
+        $.ajax({
+          type: "get",
+          dataType: "script",
+          url: "/invoice/invoices/set_pricing_exceptions",
+          data: { pricing_master_id: description_id, html_reference_id: $(_this).attr('id') }
+        })
+      } else {
+        $(activeServiceRow).find(".i_unit_price").val(service_amount)
+        $(activeServiceRow).find(".i_non_taxable_amount").val(service_amount)
+        $(activeServiceRow).find(".i_unit_price").trigger("focusout")
+      }
+
+      $(activeServiceRow).find(".exception_details").hide();
+
+      if(data_type == "surgery_package"){
+        if(description_id != ""){
+          fetch(`/surgery_packages/${description_id}/set_package_services?counter=${counter}&tax_enabled=true`)
+            .then(data => data.text())
+            .then(packageBreakupHtml => $(activeServiceRow).find(".package-breakup").html(packageBreakupHtml))
+        } else {
+          $(activeServiceRow).find(".package-breakup").html("")
+        }
+      } else {
+        let advised_by_id = $("option:selected", this).attr("data-advised_by_id");
+        let counselled_by_id = $("option:selected", this).attr("data-counselled_by_id");
+
+        $(activeServiceRow).find(".i_advised_by_id").val(advised_by_id)
+        $(activeServiceRow).find(".i_counselled_by_id").val(counselled_by_id)
+      }
+
+      let sub_specialty_id = $("option:selected", this).attr("data-sub_specialty_id");
+      $(activeServiceRow).find(".i_sub_specialty_id").val(sub_specialty_id)
+
+      change_invoice_total_payment()
+
+      calculate_tax(this)
+    })
+  }
+  for (var i = $('.i_description').length - 1; i >= 0; i--) {
+    get_service_details($('.i_description')[i])
+  }
+
+  // Get Fields for MOP
+  $(".payment-received-details").on("change", ".payment_received_breakups_mode_of_payment", function(){
+    let payment_received_row = $(this).closest(".payment_received_row")
+    let mode_of_payment = $(this).val()
+    let counter = $(this).attr("data-index")
+    let amount = $(payment_received_row).find(".payment_received_breakups_amount").val()
+    let mopDetails = $(payment_received_row).find(".mop_details")
+    let mop_nil = reset_mop_fields(mode_of_payment, counter)
+
+    switch(mode_of_payment) {
+      case "Cash":
+        let mopCash = `
+          ${mop_nil}
+          <div class="row">
+            <div class="cash_details">
+              <input type="hidden" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][cash]" class="form-control payment_received_breakups_cash" value="${amount}">
+            </div>
+          </div>`
+        $(mopDetails).html(mopCash).hide()
+        break;
+      case "Card":
+        let mopCard = `
+          ${mop_nil}
+          <div class="row">
+            <div class="card_details">
+              <div class="col-md-6">
+                <b style="font-size:12px;">Card Number</b>
+                <input type="hidden" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][card]" class="form-control payment_received_breakups_card" value="${amount}">
+                <input type="text" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][card_number]" class="form-control payment_received_breakups_card_number p3_10" minlength="4" maxlength="4" onKeyPress="return event.charCode >= 48 && event.charCode <= 57" value="" placeholder="Card Number">
+              </div>
+            </div>
+          </div>`
+        $(mopDetails).html(mopCard).show()
+        break;
+      case "Cheque":
+        let mopCheque = `
+          ${mop_nil}
+          <div class="row">
+            <div class="cheque_details">
+              <div class="col-md-6">
+                <b style="font-size:12px;">Cheque Date</b>
+                <input type="text" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][cheque_date]" class="form-control payment_received_breakups_cheque_date p3_10" placeholder="Cheque Date" readonly="readonly">
+              </div>
+              <div class="col-md-6">
+                <b style="font-size:12px;">Cheque Note</b>
+                <input type="text" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][cheque_note]" class="form-control payment_received_breakups_cheque_note p3_10" value="" placeholder="Cheque Note">
+              </div>
+            </div>
+          </div>`
+        $(mopDetails).html(mopCheque).show()
+        $(".payment_received_breakups_cheque_date").datepicker(datepicker_options)
+        break;
+      case "Online Transfer":
+        let mopOnlineTransfer = `
+          ${mop_nil}
+          <div class="row">
+            <div class="transfer_details">
+              <div class="col-md-6">
+                <b style="font-size:12px;">Transfer Date</b>
+                <input type="text" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][transfer_date]" class="form-control payment_received_breakups_transfer_date p3_10" placeholder="Transfer Date" readonly="readonly">
+              </div>
+              <div class="col-md-6">
+                <b style="font-size:12px;">Transfer Note</b>
+                <input type="text" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][transfer_note]" class="form-control payment_received_breakups_transfer_note p3_10" value="" placeholder="Transfer Note">
+              </div>
+            </div>
+          </div>`
+        $(mopDetails).html(mopOnlineTransfer).show()
+        $(".payment_received_breakups_transfer_date").datepicker(datepicker_options)
+        break;
+      case "Others":
+        let mopOthers = `
+          ${mop_nil}
+          <div class="row">
+            <div class="other_details">
+              <div class="col-md-6">
+                <b style="font-size:12px;">Note</b>
+                <input type="text" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][other_note]" class="form-control payment_received_breakups_other_note p3_10" value="" placeholder="Note">
+              </div>
+            </div>
+          </div>`
+        $(mopDetails).html(mopOthers).show()
+        break;
+      default:
+        $(mopDetails).html(mop_nil)
+        $(mopDetails).hide()
+        break;
+    }
+  });
+
+  function reset_mop_fields(mode_of_payment, counter){
+    let cash_nil = `<input type="hidden" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][cash]" class="form-control payment_received_breakups_cash" value="">`
+    let card_nil = `<input type="hidden" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][card]" class="form-control payment_received_breakups_card" value=""><input type="hidden" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][card_number]" class="form-control payment_received_breakups_card_number" value="">`
+    let cheque_nil = `<input type="hidden" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][cheque_date]" class="form-control payment_received_breakups_cheque_date" value=""><input type="hidden" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][cheque_note]" class="form-control payment_received_breakups_cheque_note" value="">`
+    let transfer_nil = `<input type="hidden" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][transfer_date]" class="form-control payment_received_breakups_transfer_date" value=""><input type="hidden" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][transfer_note]" class="form-control payment_received_breakups_transfer_note" value="">`
+    let others_nil = `<input type="hidden" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][other_note]" class="form-control payment_received_breakups_other_note" value="">`
+
+    switch(mode_of_payment) {
+      case "Cash":
+        mop_nil = card_nil + cheque_nil + transfer_nil + others_nil;
+        break;
+      case "Card":
+        mop_nil = cash_nil + cheque_nil + transfer_nil + others_nil;
+        break;
+      case "Cheque":
+        mop_nil = cash_nil + card_nil + transfer_nil + others_nil;
+        break;
+      case "Online Transfer":
+        mop_nil = cash_nil + card_nil + cheque_nil + others_nil;
+        break;
+      case "Others":
+        mop_nil = cash_nil + card_nil + cheque_nil + transfer_nil;
+        break;
+      default:
+        mop_nil = cash_nil + card_nil + cheque_nil + transfer_nil + others_nil;
+        break;
+    }
+    return mop_nil
+  }
+
+  // Add New Payment Received
+  $("#add_payment_received").on("click", function(e){
+    e.preventDefault();
+    let counter = $(".payment_received_row").length
+    let counter_visible = $(".payment_received_row:visible").length
+    let received_by = `<input type="hidden" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][received_by]" class="form-control payment_received_breakups_received_by p3_10" value="<%= current_user.id.to_s %>">`
+
+    let currency_fields = `
+      <input type="hidden" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][currency_symbol]" class="form-control payment_received_breakups_currency_symbol p3_10" value="<%= @currency.symbol %>">
+      <input type="hidden" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][currency_id]" class="form-control payment_received_breakups_currency_id p3_10" value="<%= @currency.id.to_s %>">`
+
+    let sno = `
+      <div class="col-md-1">
+        <span class="payment_received_breakups_sno">${counter_visible + 1}</span>
+      </div>`
+
+    let payer_master_id = $('.invoice_payer_master_id').val()
+    let payer_name = $('.invoice_payer_master_id').find('option:selected').html()
+    let payer_option = payer_master_id ? `<option value="${payer_master_id}">${payer_name}</option>` : ``
+
+    let payee = `
+      <div class="col-md-2">
+        <select class="form-control payment_received_breakups_received_from" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][received_from]" style="height: 25px;padding:3px;">
+          <option value="<%= @invoice.patient_id.to_s %>" selected="selected"><%= @invoice.patient.fullname %></option>
+          ${payer_option}
+        </select>
+      </div>`
+
+    let mode_of_payment = `
+      <div class="col-md-2">
+        <% mop_list = Invoice::InvoicesHelper.mop_list(current_facility.country_id)%>
+          <select class="form-control payment_received_breakups_mode_of_payment" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][mode_of_payment]" style="height: 25px;padding:3px;" data-index="${counter}">
+          <option value=""></option>
+          <% mop_list.each do |mop| %>
+            <option value="<%= mop %>"><%= mop %></option>
+          <% end %>
+        </select>
+      </div>`
+
+    let date = `
+      <div class="col-md-2">
+        <input type="text" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][date]" class="form-control payment_received_breakups_date p3_10" value="<%= Date.current.strftime('%d/%m/%Y') %>" readonly="readonly">
+      </div>`
+
+    let time = `
+      <div class="col-md-2">
+        <div class="bootstrap-timepicker timepicker">
+          <input type="text" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][time]" class="form-control payment_received_breakups_time p3_10" value="<%= Time.current.strftime('%I:%M %p') %>">
+        </div>
+      </div>`
+
+    let amount = `
+      <div class="col-md-2">
+        <div class="input-group">
+          <span class="input-group-addon" style="padding: 5px 10px;font-size:10px;"><%= current_facility.currency_symbol %></span>
+          <input type="number" name="invoice_${invoiceUType}[payment_received_breakups_attributes][${counter}][amount]" class="form-control payment_received_breakups_amount p3_10" min="0" value="0">
+        </div>
+      </div>`
+
+    let remove_button = `
+      <div class="col-md-1">
+        <button class="btn btn-link btn-xs remove_payment_received">&times;</button>
+      </div>`
+
+    let mop_details = `
+      <div class="col-md-4 col-md-offset-3 mt10 mop_details" style="display: none;border: 1px solid #ccc;padding: 5px;"></div>`
+
+    $("#payment_received_details").append(`
+      <div class="row payment_received_row mb10">
+        ${received_by}
+        ${currency_fields}
+        ${sno}
+        ${payee}
+        ${mode_of_payment}
+        ${date}
+        ${time}
+        ${amount}
+        ${remove_button}
+        ${mop_details}
+      </div>`)
+
+    $(".payment_received_breakups_date").datepicker(datepicker_options);
+    $(".payment_received_breakups_time").timepicker({minuteStep: 5});
+  })
+
+  // Add New Payment Pending
+  $("#add_payment_pending").on("click", function(e){
+    e.preventDefault();
+    let counter = $(".payment_pending_row").length
+    let counter_visible = $(".payment_pending_row:visible").length
+    let currency_fields = `
+      <input type="hidden" name="invoice_${invoiceUType}[payment_pending_breakups_attributes][${counter}][currency_symbol]" class="form-control payment_pending_breakups_currency_symbol p3_10" value="<%= @currency.symbol %>">
+      <input type="hidden" name="invoice_${invoiceUType}[payment_pending_breakups_attributes][${counter}][currency_id]" class="form-control payment_pending_breakups_currency_id p3_10" value="<%= @currency.id.to_s %>">`
+
+    let sno = `
+      <div class="col-md-1">
+        <span class="payment_pending_breakups_sno">${counter_visible + 1}.</span>
+      </div>`
+
+    let payer_master_id = $('.invoice_payer_master_id').val()
+    let payer_name = $('.invoice_payer_master_id').find('option:selected').html()
+    let payer_option_selected = payer_master_id ? `<option value="${payer_master_id}" selected="selected">${payer_name}</option>` : ``
+
+    let payee = `
+      <div class="col-md-2">
+        <select class="form-control payment_pending_breakups_received_from" name="invoice_${invoiceUType}[payment_pending_breakups_attributes][${counter}][received_from]" style="height: 25px;padding:3px;">
+          ${payer_option_selected}
+          <option value="<%= @invoice.patient_id.to_s %>"><%= @invoice.patient.fullname %></option>
+        </select>
+      </div>`
+
+    let mode_of_payment = `<div class="col-md-2">-</div>`
+
+    let date = `<div class="col-md-2"><input type="hidden" name="invoice_${invoiceUType}[payment_pending_breakups_attributes][${counter}][date]" class="form-control payment_pending_breakups_date p3_10" value="<%= Date.current %>">-</div>`
+
+    let time = `<div class="col-md-2"><input type="hidden" name="invoice_${invoiceUType}[payment_pending_breakups_attributes][${counter}][time]" class="form-control payment_pending_breakups_time p3_10" value="<%= DateTime.current.utc %>">-</div>`
+
+    let amount = `
+      <div class="col-md-2">
+        <div class="input-group">
+          <span class="input-group-addon" style="padding: 5px 10px;font-size:10px;"><%= current_facility.currency_symbol %></span>
+          <input type="number" name="invoice_${invoiceUType}[payment_pending_breakups_attributes][${counter}][amount]" class="form-control payment_pending_breakups_amount p3_10" min="0" value="0">
+        </div>
+      </div>`
+
+    let remove_button = `
+      <div class="col-md-1">
+        <button class="btn btn-link btn-xs remove_payment_pending">&times;</button>
+      </div>`
+
+    $("#payment_pending_details").append(`
+      <div class="row payment_pending_row mb10">
+        ${currency_fields}
+        ${sno}
+        ${payee}
+        ${mode_of_payment}
+        ${date}
+        ${time}
+        ${amount}
+        ${remove_button}
+      </div>`)
+  })
+
+  // Advance Payment Amount Changes
+  $("#advance_payment_details").on("keyup change", ".advance_payment_breakups_amount", function(){
+    let advance_amount = $(this).closest(".advance_payment_row").find(".advance_payment_breakups_advance_amount").val()
+    if(parseFloat($(this).val()) > parseFloat(advance_amount)){
+      $(this).val(advance_amount)
+    }
+
+    calculate_advance_payment_total()
+  })
+
+  // Payment Received Amount Changes
+  $(".payment-received-details").on("keyup change", ".payment_received_breakups_amount", function(){
+    let payment_received_row = $(this).closest(".payment_received_row")
+    let received_amount = $(this).val()
+    let mode_of_payment = $(payment_received_row).find(".payment_received_breakups_mode_of_payment").val()
+    if(mode_of_payment == "Cash"){
+      $(payment_received_row).find(".payment_received_breakups_cash").val(received_amount)
+    } else if(mode_of_payment == "Card"){
+      $(payment_received_row).find(".payment_received_breakups_card").val(received_amount)
+    }
+
+    calculate_payment_received_total()
+  })
+
+  // Reason: Invoice Template
+  if(renderAction != "edit"){
+    $(".payment_received_breakups_amount").first().val($("#invoice_net_total").val()).trigger("keyup")
+  }
+
+  // Payment Pending Amount Changes
+  $(".payment-pending-details").on("keyup change", ".payment_pending_breakups_amount", function(){
+    calculate_payment_pending_total()
+  })
+
+  // Remove Payment Received
+  $(".payment-received-details").on("click", ".remove_payment_received", function(e){
+    e.preventDefault();
+    let _destroy = $(this).closest(".payment_received_row").find(".payment_received_breakups_destroy")
+    if(_destroy.length > 0){
+      $(_destroy).val("1")
+      $(this).closest(".payment_received_row").hide()
+    } else {
+      $(this).closest(".payment_received_row").remove()
+    }
+
+    remove_reset_payment_logic("received")
+
+    calculate_payment_received_total()
+  })
+
+  // Remove Payment Pending
+  $(".payment-pending-details").on("click", ".remove_payment_pending", function(e){
+    e.preventDefault();
+    let _destroy = $(this).closest(".payment_pending_row").find(".payment_pending_breakups_destroy")
+    if(_destroy.length > 0){
+      $(_destroy).val("1")
+      $(this).closest(".payment_pending_row").hide()
+    } else {
+      $(this).closest(".payment_pending_row").remove()
+    }
+
+    remove_reset_payment_logic("pending")
+
+    calculate_payment_pending_total()
+  })
+
+  // Calculate Advance Total
+  function calculate_advance_payment_total(){
+    // Calculate PaymentReceived Total
+    let advance_payment_breakups_amount = $(".advance_payment_breakups_amount")
+    let invoice_advance_payment_total = 0
+    for (let i = advance_payment_breakups_amount.length - 1; i >= 0; i--) {
+      amount = $(advance_payment_breakups_amount[i]).val()
+      if(amount != ""){
+        invoice_advance_payment_total = invoice_advance_payment_total + parseFloat(amount)
+      }
+    }
+    $("#invoice_advance_payment_total").val(invoice_advance_payment_total)
+    change_invoice_total_payment()
+  }
+
+  // Calculate Payment Received Total
+  function calculate_payment_received_total(){
+    // Calculate PaymentReceived Total
+    let payment_received_breakups_amount = $(".payment_received_breakups_amount:visible")
+    let invoice_payment_received_total = 0
+    for (let i = payment_received_breakups_amount.length - 1; i >= 0; i--) {
+      amount = $(payment_received_breakups_amount[i]).val()
+      if(amount != ""){
+        invoice_payment_received_total = invoice_payment_received_total + parseFloat(amount)
+      }
+    }
+    $("#invoice_payment_received_total").val(invoice_payment_received_total)
+    change_invoice_total_payment()
+  }
+
+  // Calculate Payment Pending Total
+  function calculate_payment_pending_total(){
+    // Calculate PaymentPending Total
+    let payment_pending_breakups_amount = $(".payment_pending_breakups_amount:visible")
+    let invoice_payment_pending_total = 0
+    for (let i = payment_pending_breakups_amount.length - 1; i >= 0; i--) {
+      amount = $(payment_pending_breakups_amount[i]).val()
+      if(amount != ""){
+        invoice_payment_pending_total = invoice_payment_pending_total + parseFloat(amount)
+      }
+    }
+    $("#invoice_payment_pending_total").val(invoice_payment_pending_total)
+    change_invoice_total_payment()
+  }
+
+  // Calculate Total Payment(Advance + Received + Pending)
+  function change_invoice_total_payment(){
+    let invoice_advance_payment_total = parseFloat($("#invoice_advance_payment_total").val())
+    let invoice_payment_received_total = parseFloat($("#invoice_payment_received_total").val())
+    let invoice_payment_pending_total = parseFloat($("#invoice_payment_pending_total").val())
+    $("#invoice_total_payment").val(invoice_advance_payment_total + invoice_payment_received_total + invoice_payment_pending_total)
+
+    let invoice_total_payment_remaining = parseFloat($("#invoice_net_total").val()) - parseFloat($("#invoice_total_payment").val())
+    $("#invoice_total_payment_remaining").val(invoice_total_payment_remaining)
+  }
+
+  // Logic For Remove Reset Payment Index Keys
+  function remove_reset_payment_logic(reset_location){
+    if(reset_location == "received"){
+      let received_counter = $("#payment_received_details").find(".payment_received_row").length
+      let payment_received_row = $("#payment_received_details").find(".payment_received_row")
+      for (let i = payment_received_row.length - 1; i >= 0; i--) {
+        if($(payment_received_row).is(":visible")){
+          $(payment_received_row[i]).find(".payment_received_breakups_sno").html((received_counter - 1) + ".")
+          received_counter = received_counter - 1
+        }
+        $(payment_received_row[i]).find(".payment_received_breakups_id").attr("name", "invoice_" + invoiceUType + "[payment_received_breakups_attributes][" + i + "][id]")
+        $(payment_received_row[i]).find(".payment_received_breakups_destroy").attr("name", "invoice_" + invoiceUType + "[payment_received_breakups_attributes][" + i + "][_destroy]")
+        $(payment_received_row[i]).find(".payment_received_breakups_received_from").attr("name", "invoice_" + invoiceUType + "[payment_received_breakups_attributes][" + i + "][received_from]")
+        $(payment_received_row[i]).find(".payment_received_breakups_currency_symbol").attr("name", "invoice_" + invoiceUType + "[payment_received_breakups_attributes][" + i + "][currency_symbol]")
+        $(payment_received_row[i]).find(".payment_received_breakups_currency_id").attr("name", "invoice_" + invoiceUType + "[payment_received_breakups_attributes][" + i + "][currency_id]")
+        $(payment_received_row[i]).find(".payment_received_breakups_mode_of_payment").attr("name", "invoice_" + invoiceUType + "[payment_received_breakups_attributes][" + i + "][mode_of_payment]").attr("data-index", i)
+        $(payment_received_row[i]).find(".payment_received_breakups_date").attr("name", "invoice_" + invoiceUType + "[payment_received_breakups_attributes][" + i + "][date]")
+        $(payment_received_row[i]).find(".payment_received_breakups_time").attr("name", "invoice_" + invoiceUType + "[payment_received_breakups_attributes][" + i + "][time]")
+        $(payment_received_row[i]).find(".payment_received_breakups_amount").attr("name", "invoice_" + invoiceUType + "[payment_received_breakups_attributes][" + i + "][amount]")
+        $(payment_received_row[i]).find(".payment_received_breakups_cash").attr("name", "invoice_" + invoiceUType + "[payment_received_breakups_attributes][" + i + "][cash]")
+        $(payment_received_row[i]).find(".payment_received_breakups_card").attr("name", "invoice_" + invoiceUType + "[payment_received_breakups_attributes][" + i + "][card]")
+        $(payment_received_row[i]).find(".payment_received_breakups_amount").attr("name", "invoice_" + invoiceUType + "[payment_received_breakups_attributes][" + i + "][amount]")
+        $(payment_received_row[i]).find(".payment_received_breakups_cheque_date").attr("name", "invoice_" + invoiceUType + "[payment_received_breakups_attributes][" + i + "][cheque_date]")
+        $(payment_received_row[i]).find(".payment_received_breakups_cheque_note").attr("name", "invoice_" + invoiceUType + "[payment_received_breakups_attributes][" + i + "][cheque_note]")
+        $(payment_received_row[i]).find(".payment_received_breakups_transfer_date").attr("name", "invoice_" + invoiceUType + "[payment_received_breakups_attributes][" + i + "][transfer_date]")
+        $(payment_received_row[i]).find(".payment_received_breakups_transfer_note").attr("name", "invoice_" + invoiceUType + "[payment_received_breakups_attributes][" + i + "][transfer_note]")
+        $(payment_received_row[i]).find(".payment_received_breakups_other_note").attr("name", "invoice_" + invoiceUType + "[payment_received_breakups_attributes][" + i + "][other_note]")
+      }
+    } else if(reset_location == "pending"){
+      let pending_counter = $("#payment_pending_details").find(".payment_pending_row").length
+      let payment_pending_row = $("#payment_pending_details").find(".payment_pending_row")
+      for (let i = payment_pending_row.length - 1; i >= 0; i--) {
+        if($(payment_pending_row).is(":visible")){
+          $(payment_pending_row[i]).find(".payment_pending_breakups_sno").html((pending_counter - 1) + ".")
+          pending_counter = pending_counter - 1
+        }
+        $(payment_pending_row[i]).find(".payment_pending_breakups_id").attr("name", "invoice_" + invoiceUType + "[payment_pending_breakups_attributes][" + i + "][id]")
+        $(payment_pending_row[i]).find(".payment_pending_breakups_destroy").attr("name", "invoice_" + invoiceUType + "[payment_pending_breakups_attributes][" + i + "][_destroy]")
+        $(payment_pending_row[i]).find(".payment_pending_breakups_received_from").attr("name", "invoice_" + invoiceUType + "[payment_pending_breakups_attributes][" + i + "][received_from]")
+        $(payment_pending_row[i]).find(".payment_pending_breakups_currency_symbol").attr("name", "invoice_" + invoiceUType + "[payment_pending_breakups_attributes][" + i + "][currency_symbol]")
+        $(payment_pending_row[i]).find(".payment_pending_breakups_currency_id").attr("name", "invoice_" + invoiceUType + "[payment_pending_breakups_attributes][" + i + "][currency_id]")
+        $(payment_pending_row[i]).find(".payment_pending_breakups_amount").attr("name", "invoice_" + invoiceUType + "[payment_pending_breakups_attributes][" + i + "][amount]")
+        $(payment_pending_row[i]).find(".payment_pending_breakups_amount").attr("name", "invoice_" + invoiceUType + "[payment_pending_breakups_attributes][" + i + "][date]")
+        $(payment_pending_row[i]).find(".payment_pending_breakups_amount").attr("name", "invoice_" + invoiceUType + "[payment_pending_breakups_attributes][" + i + "][time]")
+      }
+    }
+  }
+
+  function calculate_tax(_this){
+    let currentServiceRow = $(_this).closest(".invoice_service_item_row")
+    let quantity = parseFloat($(currentServiceRow).find(".i_quantity").val()) || 0
+    let amount = (parseFloat($(currentServiceRow).find(".i_unit_price").val()) * quantity) || 0
+    let taxGroupField = $(currentServiceRow).find(".i_tax_group")
+    let tax_rate = ($(taxGroupField).length > 0) ? parseFloat($(taxGroupField).find(":selected").attr("data-tax-rate")) : 0
+    let inclusive = $(currentServiceRow).find(".i_tax_inclusive").is(":checked")
+    let tax_group_id = $(taxGroupField).val() || ""
+    let taxable_amount, non_taxable_amount, total_amount
+
+    if(inclusive){
+        taxable_amount = (amount * tax_rate)/(100 + tax_rate)
+        non_taxable_amount = amount - taxable_amount
+        total_amount = amount
+      } else {
+        taxable_amount = (amount * tax_rate)/100
+        non_taxable_amount = amount
+        total_amount = amount + taxable_amount
+      }
+
+    $(currentServiceRow).find(".i_taxable_amount").val(taxable_amount.toFixed(2))
+    $(currentServiceRow).find(".i_non_taxable_amount").val(non_taxable_amount.toFixed(2))
+    $(currentServiceRow).find(".i_price").val(total_amount.toFixed(2))
+    $(currentServiceRow).find(".i_tax_group").attr("data-amount", amount)
+    $(currentServiceRow).find(".i_price").trigger("change")
+
+    let get_item_count = $(".invoice_service_item_row").length - 1
+
+    fetch(`/invoice/invoices/tax_breakup?tax_group_id=${tax_group_id}&taxable_amount=${taxable_amount}`)
+      .then(data => data.json())
+      .then((taxDetails) => {
+        $(currentServiceRow).find(".tax_fields").html("")
+
+        $.each(taxDetails.tax, function(key, value) {
+          let [id, name, amount] = value
+          let tax_fields = `
+            <div class="tax_box">
+              <input type="hidden" name="invoice_${invoiceUType}[services][${get_item_count}][tax_group][][amount]" value="${parseFloat(amount).toFixed(2)}" class="i_tax_group_amount">
+              <input type="hidden" name="invoice_${invoiceUType}[services][${get_item_count}][tax_group][][name]" value="${name}" class="i_tax_group_name">
+              <input type="hidden" name="invoice_${invoiceUType}[services][${get_item_count}][tax_group][][_id]" value="${id}" class="i_tax_group_id">
+            </div>`
+          $(currentServiceRow).find(".tax_fields").append(tax_fields)
+        });
+
+        $("#invoice_gross_total").trigger("change")
+      })
+  }
+
+  $("#invoice_gross_total").on("change", function(){
+    $("#tax-cage").html("")
+
+    let tax_box = $(".tax_box")
+    for (let i = tax_box.length - 1; i >= 0; i--) {
+      let tax_group_id = $(tax_box[i]).find(".i_tax_group_id").val()
+      let tax_cage_group_id = $("#tax-cage").find(".tax_group_" + tax_group_id)
+      let tax_group_name = $(tax_box[i]).find(".i_tax_group_name").val()
+      let tax_group_amount = parseFloat($(tax_box[i]).find(".i_tax_group_amount").val()) || 0
+
+      if(tax_cage_group_id.length <= 0){
+        let taxableHtml = `
+          <div class="row mb5 tax_group_${tax_group_id}">
+            <div class="col-md-5 text-right">
+              <b>${tax_group_name} :</b>
+            </div>
+            <div class="col-md-3 text-right">
+              <input style="padding:5px 10px 0;border: none;border-bottom: 1px solid #aaa;" class="form-control text-right tax_cage_group_id_${tax_group_id}" value="${tax_group_id}" type="hidden" name="invoice_${invoiceUType}[tax_breakup][][_id]" readonly="readonly">
+              <input style="padding:5px 10px 0;border: none;border-bottom: 1px solid #aaa;" class="form-control text-right tax_cage_group_id_${tax_group_id}" value="${tax_group_name}" type="hidden" name="invoice_${invoiceUType}[tax_breakup][][name]" readonly="readonly">
+              <input style="padding:5px 10px 0;border: none;border-bottom: 1px solid #aaa;" class="form-control text-right tax_group_amount_${tax_group_id}" value="${tax_group_amount}" type="text" name="invoice_${invoiceUType}[tax_breakup][][amount]" readonly="readonly">
+            </div>
+          </div>`
+        $("#tax-cage").prepend(taxableHtml)
+      } else {
+        let old_value = $(tax_cage_group_id).find(".tax_group_amount_" + tax_group_id).val()
+        let new_value = (parseFloat(tax_group_amount) + parseFloat(old_value)).toFixed(2)
+
+        $(tax_cage_group_id).find(".tax_group_amount_" + tax_group_id).val(new_value)
+      }
+    }
+    non_taxable_amount()
+  })
+
+  function non_taxable_amount(){
+    let non_taxable_amount = 0.0
+    let non_taxable_amount_field = $(".i_non_taxable_amount")
+    for (let i = non_taxable_amount_field.length - 1; i >= 0; i--) {
+      non_taxable_amount = (parseFloat(non_taxable_amount) + parseFloat($(non_taxable_amount_field[i]).val())).toFixed(2)
+    }
+    if(non_taxable_amount != 0.00){
+      let nonTaxableHtml = `
+        <div class="row mb5 non_taxable_amount">
+          <div class="col-md-5 text-right">
+            <b>Non-Taxable Amount :</b>
+          </div>
+          <div class="col-md-3 text-right">
+            <input style="padding:5px 10px 0;border: none;border-bottom: 1px solid #aaa;" class="form-control text-right non_taxable_amount" value="${non_taxable_amount}" type="text" name="invoice_${invoiceUType}[non_taxable_amount]" readonly="readonly">
+          </div>
+        </div>`
+      $("#tax-cage").prepend(nonTaxableHtml)
+
+      $("#tax-cage").attr("style", "background: #eee;padding: 10px;margin-bottom: 10px;")
+    }
+  }
+  non_taxable_amount()
+
+  // Code for Invoice Type
+  function toggle_payment_pending(invoice_type="", auto=false){
+    switch(invoice_type) {
+      case "cash": case "":
+        $("#payment-pending-form").hide();
+        $('#payer_display_dropdowns').hide();
+
+        let actionNew = renderAction == 'new' && '<%= params[:invoice_template_id].nil? %>' == 'true'
+        if((auto == false && $('.invoice_payer_master_id').val() != '') || actionNew){
+          for (var i = $('.i_description').length - 1; i >= 0; i--) {
+            reset_payer_dropdown()
+          }
+          $('.invoice_contact_group_id').val('').trigger('change');
+        }
+
+        $(".remove_payment_pending").trigger("click");
+        break;
+      case "credit":
+        $('#payer_display_dropdowns').show();
+
+        $("#payment-pending-form").show()
+        if($(".payment_pending_row").length == 0){ $("#add_payment_pending").trigger("click") }
+        break;
+    }
+  }
+  toggle_payment_pending($('.invoice_type:checked').val(), true)
+
+  function reset_payer_dropdown(){
+    $('.invoice_service_item_row:first').siblings().remove()
+    let payer_dropdowns = $(".i_payer_master_id")
+    for (let i = payer_dropdowns.length - 1; i >= 0; i--) {
+      $(payer_dropdowns[i]).html("").append(`${payerOptions("servicePanel")}`).trigger("change")
+    }
+
+    let patient_id = '<%= @invoice.patient_id.to_s %>'
+    let patient_name = '<%= @invoice.patient.fullname.to_s %>'
+    let payer_master_id = $('.invoice_payer_master_id').val()
+    let payer_name = $('.invoice_payer_master_id').find('option:selected').html()
+    let payer_option = payer_master_id ? `<option value="${payer_master_id}">${payer_name}</option>` : ``
+    let payer_option_selected = payer_master_id ? `<option value="${payer_master_id}" selected="selected">${payer_name}</option>` : ``
+
+    let received_payer_dropdowns = $(".payment_received_breakups_received_from")
+    for (let j = received_payer_dropdowns.length - 1; j >= 0; j--) {
+      $(received_payer_dropdowns[j]).html("").append(`
+        <option value="${patient_id}" selected="selected">${patient_name}</option>
+        ${payer_option}`
+      ).trigger("change")
+    }
+
+    let pending_payer_dropdowns = $(".payment_pending_breakups_received_from")
+    for (let k = pending_payer_dropdowns.length - 1; k >= 0; k--) {
+      $(pending_payer_dropdowns[k]).html("").append(`
+        ${payer_option_selected}
+        <option value="${patient_id}">${patient_name}</option>`
+      ).trigger("change")
+
+      console.log($(pending_payer_dropdowns[k]).html())
+    }
+  }
+
+  $(".invoice_type").on("click", function(){
+    old_invoice_type = invoice_type
+    invoice_type = $(this).val()
+    if(old_invoice_type !== invoice_type){
+      toggle_payment_pending(invoice_type)
+    }
+  });
+
+  $(".invoice_contact_group_id").select2()
+  $(".invoice_payer_master_id").select2()
+
+  $('.invoice_contact_group_id').on('change', function(e, triggered=false){
+    let contact_group_id = $(this).val();
+
+    if(contact_group_id != ""){
+      fetch(`/payer_masters/set_payers_list?contact_group_id=${contact_group_id}&facility_id=<%= current_facility.id.to_s %>`)
+      .then(response => response.json())
+      .then(function(data){
+        $(".invoice_payer_master_id").children().remove();
+        $(".invoice_payer_master_id").append($("<option></option>").attr("value", "").text("Select Contact"))
+        $.each(data.payer_fields, function(key, value) {
+          if(value[0] == '<%= @invoice.payer_master_id %>'){
+            $(".invoice_payer_master_id").append($("<option selected='selected'></option>").attr("value",value[0]).text(value[1]));
+          } else {
+            $(".invoice_payer_master_id").append($("<option></option>").attr("value",value[0]).text(value[1]));
+          }
+        });
+
+        $(".invoice_payer_master_id").trigger('change.select2');
+      })
+    } else {
+      $(".invoice_payer_master_id").children().remove();
+      $(".invoice_payer_master_id").append($("<option></option>").attr("value", "").text("Select Contact"))
+
+      $(".invoice_payer_master_id").trigger('change.select2');
+    }
+    if(triggered == false){ reset_payer_dropdown() }
+  }).trigger('change', true);
+
+  $(".invoice_payer_master_id").on('change', function(){
+    for (var i = $('.i_payer_master_id').length - 1; i >= 0; i--) {
+      reset_payer_dropdown()
+    }
+  })
+});

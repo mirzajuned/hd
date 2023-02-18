@@ -1,0 +1,251 @@
+<div class="fuelux">
+  <div class="wizard" id="admissionWizard">
+    <ul class="steps" id="admission-note-steps">
+        <li data-step="1" class="admission-form-steps admission-details-step active"><span class="badge">1</span> Admission Details <span class="chevron"></span></li>
+        <li data-step="2" class="admission-form-steps patient-details-step"><span class="badge">2</span> Patient Details <span class="chevron"></span></li>
+        <li data-step="3" class="admission-form-steps additional-details-step"><span class="badge">3</span> Additional Details <span class="chevron"></span></li>
+    </ul>
+
+    <div class="actions">
+      <button type="button" class="btn btn-default btn-prev" disabled="disabled"><span class="glyphicon glyphicon-arrow-left"></span>Prev</button>
+      <button type="button" class="btn btn-default btn-next">Next<span class="glyphicon glyphicon-arrow-right"></span></button>
+    </div>
+    
+    <div class="step-content admission-form-content" style="overflow:scroll;">
+      <div class="step-pane active" id="step1" data-step="1">
+        <%= f.fields_for :admission do |adm| %>
+            <%= render partial: "/inpatient/ipd_record/admission_note/common/admission_details.html.erb", locals: { f: f, patient: @patient, admission: @admission,adm: adm} %>
+        <% end %>
+      </div>
+
+      <div class="step-pane" data-step="2">
+        <%= render partial: "/inpatient/ipd_record/admission_note/common/patient_details.html.erb", locals: { f: f, patient: @patient, admission: @admission} %>
+      </div>
+
+      <div class="step-pane" data-step="3">
+        <%= render partial: "/inpatient/ipd_record/admission_note/common/additional_details.html.erb", locals: { f: f, patient: @patient, admission: @admission} %>
+      </div>
+    </div>
+  </div>
+</div>
+<style type="text/css">
+  .admission-form-steps, .picker {
+    cursor: pointer !important;
+  }
+
+  .picker {
+    background-color: #fff !important;
+  }
+
+  .ui-menu-item a.ui-state-focus {
+    background-color: #929090; 
+    color: #fff; 
+  }
+
+</style>
+
+<script type="text/javascript">
+  $(document).ready(function(){
+    var wind = $(window).height()
+    $(".admission-form-content").css('height', wind - 320)
+    // Initialize Wizard
+    $("#admissionWizard").wizard();
+    // Disable Enable Prev Next On First and Last Step respectively
+    $('#admissionWizard').on('actionclicked.fu.wizard', function (evt, data) {
+      // Disable Prev Button on First Step
+      if(data.step == 0 || (data.step == 2 && data.direction == "previous")) {
+        $(".btn-prev").attr('disabled','disabled');
+      } else {
+        $(".btn-prev").removeAttr('disabled','disabled');
+      }
+      // Disable Next Button on First Step
+      if(data.step == 2 && data.direction == "next") {
+        $(".btn-next").attr('disabled','disabled');
+      } else {
+        $(".btn-next").removeAttr('disabled','disabled');
+      }
+    });
+
+    //  Step Name Click Option
+    $(".admission-form-steps").on('click',function(){
+      // Disable Enable Prev Next button
+      if($(this).attr('data-step') == 1) {
+        $(".btn-prev").attr('disabled','disabled');
+      } else {
+        $(".btn-prev").removeAttr('disabled','disabled');
+      }
+
+      if($(this).attr('data-step') == 3) {
+        $(".btn-next").attr('disabled','disabled');
+        $("#admissionWizard").wizard('next').wizard('next')
+      } else {
+        $(".btn-next").removeAttr('disabled','disabled');
+      }
+
+      if($(this).attr('data-step') == 2) {
+        $("#admissionWizard").wizard('next');
+      }
+    });
+
+var country_id = "<%= current_facility.country_id %>"
+if (country_id == 'IN_108'){
+//Search State   
+jQuery('#search_state').autocomplete({
+    minLength: 3,
+    source: function(request, response) {
+        jQuery.ajax({
+            dataType: "json",
+            type : 'get',
+            url: '/locations/search_state',
+            data: {q: request.term, country_id: country_id, remote: "true" },
+            success: function(data) {
+                response(data);
+            },
+            error: function(data) {
+            }
+        });
+    },
+    select: function( event, ui ) {
+      name = ui.item["state"]
+      setTimeout(function() {
+      jQuery("#search_state").val(name)
+      jQuery('#search_state').blur()
+    }, 20);
+    },
+    create: function () {
+      $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+        return $('<li>')
+            .append('<a style=\"color:#000;text-shadow: 2px\">' + item.state  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+            .appendTo(ul);
+      };
+   }
+});
+
+//Search City
+jQuery('#search_city').autocomplete({
+  minLength: 3,
+  source: function(request,response){
+    var state = jQuery('#search_state').val();
+    jQuery.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/locations/search_city',
+      data: {q: request.term, state: state, remote: "true"},
+      success: function(data){
+        response(data);
+      },
+      error: function(data){
+
+      }
+    });
+  },
+  select: function( event, ui ) {
+      city  = ui.item["city"]
+      state = ui.item["state"]
+      setTimeout(function() {
+      jQuery("#search_city").val(city)
+      jQuery("#search_state").val(state)
+      jQuery('#search_city').blur()
+    }, 20);
+    },
+  create: function () {
+      $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+        return $('<li>')
+            .append('<a style=\"color:#000;text-shadow: 2px\">' + item.city  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+            .appendTo(ul);
+      };
+  }
+});
+
+//Search Pincode 
+jQuery('#search_pincode').autocomplete({
+  minLength: 3,
+  source: function(request,response){
+    var state = jQuery('#search_state').val();
+    var city = jQuery('#search_city').val();
+    jQuery.ajax({
+      dataType: "json",
+      type : 'get',
+      url: '/locations/search_pincode',
+      data: {q: request.term, state: state, city: city, remote: "true"},
+      success: function(data){
+        response(data);
+      },
+      error: function(data){
+
+      }
+    });
+  },
+  select: function( event, ui ) {
+      pincode = ui.item["pincode"]
+      city  = ui.item["city"]
+      state = ui.item["state"]
+      setTimeout(function() {
+      jQuery("#search_pincode").prop('readonly',true).val(pincode)
+      jQuery("#search_state").prop('readonly', true).val(state)
+      jQuery("#search_city").prop('readonly', true).val(city)
+      jQuery(".clear-pincode").show()
+      jQuery('#search_pincode').blur()
+    }, 20);
+    },
+  create: function () {
+      $(this).data('ui-autocomplete')._renderItem = function (ul, item) {
+        return $('<li>')
+            .append('<a style=\"color:#000;text-shadow: 2px; text-align: center;\">' + item.pincode  + '&nbsp; &nbsp; &nbsp;' + '</a>')
+            .appendTo(ul);
+      };
+  }
+});
+
+// Clear pincode
+$(".clear-pincode").on('click', function(e){
+  e.preventDefault()
+  $("#search_pincode").prop('readonly',false).val("")
+  $("#search_state").prop('readonly', false).val("")
+  $("#search_city").prop('readonly', false).val("")
+  $(".clear-pincode").hide()
+});
+}
+//admission_note_validation
+function admission_note_page() {
+  $(".admission-note_form").validate({
+      rules: {
+        "inpatient_ipd_record[patient_attributes][city]": {
+          minlength: 3 ,
+          remote: "/locations/check_city?country_id=" + country_id
+        },
+        "inpatient_ipd_record[patient_attributes][state]": {
+          minlength: 3,
+          remote: "/locations/check_state?country_id=" + country_id
+        },
+        "inpatient_ipd_record[patient_attributes][pincode]": {
+          minlength: 3,
+          remote: "/locations/check_pincode?country_id=" + country_id
+        }
+      },
+      messages: {
+        "inpatient_ipd_record[patient_attributes][city]": {
+          remote: "Select from List" 
+        },
+        "inpatient_ipd_record[patient_attributes][state]": {
+          remote: "Select form List" 
+        },
+        "inpatient_ipd_record[patient_attributes][pincode]": {
+          remote: "Select from List" 
+        }
+      },
+      errorPlacement: function (error, element) {
+        var name = $(element).attr('name')
+        if((name == "patient[firstname]") || (name == "patient[mobilenumber]")) {
+          $(".required-message").find('b').css('text-shadow','red 0px 0px 10px').css('color','#333')
+        } else if(name == 'patient_referral_type[sub_referral_type_id]') {
+          $(".sub-referral-types-section").append(error)
+        } else {
+          error.insertAfter(element);
+        }
+      }
+    });
+  }
+admission_note_page()
+});
+</script>

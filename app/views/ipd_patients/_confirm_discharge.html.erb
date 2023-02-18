@@ -1,0 +1,138 @@
+<%= javascript_include_tag 'application-loggedin', 'data-turbolinks-track' => true %>
+<div class="modal-dialog" style="width:40%;">
+  <div class="modal-content">
+    <div class="modal-header text-center modal-title">
+      Discharge Patient
+    </div>
+    <%= form_tag '/ipd_patients/discharge', method: 'post', remote: true, id: 'ipd_patients_discharge', html: { class: 'discharge-form' } do %>
+      <%= hidden_field_tag 'admission_id', @admission.id %>
+      <%= hidden_field_tag 'patient_id', @patient.id %>
+      <%= hidden_field_tag 'admission[dischargetime]', '' %>
+      <div class="modal-body">
+        <div class="row mb20">
+          <div class="col-md-12">
+            <b style="color:#000;">Notes Filled</b>
+          </div>
+          <div class="col-md-6">
+            <b>
+              <% if @ipd_record.clinical_note.present? %>
+                <i class="fa fa-check" style="color:#17a08c;"></i>
+              <% else %>
+                <i class="fa fa-times" style="color:#d9534f;"></i>
+              <% end %>
+              &emsp;Clinical Note
+            </b>
+          </div>
+          <div class="col-md-6">
+            <b>
+              <% if @ipd_record.operative_notes.count > 0 %>
+                <i class="fa fa-check" style="color:#17a08c;"></i>
+              <% else %>
+                <i class="fa fa-times" style="color:#d9534f;"></i>
+              <% end %>
+              &emsp;Operative Note
+            </b>
+          </div>
+          <div class="col-md-6">
+            <b>
+              <% if @ipd_record.discharge_note.present? %>
+                <i class="fa fa-check" style="color:#17a08c;"></i>
+              <% else %>
+                <i class="fa fa-times" style="color:#d9534f;"></i>
+              <% end %>
+              &emsp;Discharge Note
+            </b>
+          </div>
+        </div>
+        <div class="row mb20">
+          <div class="col-sm-6">
+            <b style="color:#000;">Discharge Date </b>
+          </div>
+          <div class="col-sm-6">
+            <b style="color:#000;">Discharge Time</b>
+          </div>
+          <div class="col-sm-6">
+            <%= text_field_tag 'admission[dischargedate]', @admission.try(:dischargedate).try(:strftime, '%d/%m/%Y'), class: 'form-control p7_10 discharge-datepicker', readonly: 'readonly' %>
+          </div>
+          <div class="col-sm-6">
+            <div class="bootstrap-timepicker timepicker">
+              <%= text_field_tag :dischargetime, @admission.dischargetime.present? ? @admission.dischargetime.strftime('%I:%M %p') : Time.current.strftime("%I:%M %p"), class: 'form-control p7_10 discharge-timepicker' %>
+            </div>
+          </div>
+        </div>
+        <div class="row show_warning">
+          <div class="col-sm-12">
+            <b style="color:#f00;">NOTE: DISCHARGE DATE IS NOT TODAY'S DATE</b>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <%= submit_tag 'Discharge', class: 'btn btn-danger', onClick: 'ipd_patients_discharge_form()' %>
+        <button class="btn cancel btn-default" data-dismiss="modal" aria-hidden="true">Cancel</button>
+      </div>
+    <% end %>
+  </div>
+</div>
+<script type="text/javascript">
+  $('.discharge-datepicker').on('change', function(){
+    if($(this).val() !== "" && $(this).val() !== "<%= Date.current.strftime('%d/%m/%Y') %>"){
+      $(".show_warning").show()
+    } else {
+      $(".show_warning").hide()
+    }
+  })
+
+  $('.discharge-datepicker').datepicker({
+    dateFormat: "dd/mm/yy",
+    minDate: "-<%= (Date.today - @admission.admissiondate).to_i %>"
+  });
+
+  $('.discharge-timepicker').timepicker({minuteStep: 15});
+  if("<%= @admission.dischargetime %>" === ""){
+    $('.discharge-timepicker').val("");
+    $('.discharge-timepicker').on('click', function(){
+      $(".discharge-timepicker").val("<%= Time.current.strftime("%I:%M %p") %>")
+    })
+  }
+
+  $(".discharge-datepicker").on('change', function(){
+    var timestamp = $(this).val() + " " + $(".discharge-timepicker").val()
+    $("#admission_dischargetime").attr("value", timestamp)
+  }).trigger('change')
+
+  $(".discharge-timepicker").on('change', function(){
+    var timestamp = $(".discharge-datepicker").val() + " " + $(this).val()
+    $("#admission_dischargetime").attr("value", timestamp)
+  }).trigger('change')
+
+  function ipd_patients_discharge_form() {
+    $("#ipd_patients_discharge").validate({
+      rules: {
+        "admission[dischargedate]": {
+          required: true,
+        },
+        "dischargetime": {
+          required: true,
+        }
+      },
+      messages: {
+        "admission[dischargedate]": {
+          required: "*Required",
+        },
+        "dischargetime": {
+          required: "*Required",
+        }
+      },
+      errorPlacement: function (error, element) {
+        error.insertAfter(element);
+      }
+    });
+  }
+  ipd_patients_discharge_form()
+</script>
+<style type="text/css">
+  .discharge-datepicker,.discharge-timepicker{
+    cursor: pointer !important;
+    background-color: #fff !important;
+  }
+</style>

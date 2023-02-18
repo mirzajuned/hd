@@ -1,0 +1,112 @@
+var tax_breakup = {}
+$("#inventory-modal")
+  .html("<%= escape_javascript(render '/inventory/order/purchases/edit.html.erb') %>")
+  .modal("show")
+$("#tax-cage").html("<%= escape_javascript(render '/inventory/order/purchases/tax_breakup.html.erb')%>")
+  .attr('style', 'background: #eee;padding: 5px;font-size: smaller;')
+<%= render 'new.js' %>
+calculate_purchase_order_tax()
+$('.purchase-order-log-item').find('.item_discount_type').trigger('click')
+
+function validate_global_discount_amount(){
+  var is_valid_discount = false;
+  var discount_percentage = 0;
+  var total_amount = $('#inventory_order_purchase_total_cost').val();
+  var global_discount = $('.global_discount').val();
+  var global_discount_type = $('.global_discount_type').val();
+  var total_items = $(".purchase-order-log-item").length
+  var unit_costs = 0
+  $(".purchase-order-log-item").each(function(){
+    var unit_cost = $(this).find(".unit_price_excluding_tax").val()
+    if(parseInt(unit_cost) >= 0){
+      unit_costs += 1
+    }
+  });
+  if(total_items == unit_costs && parseFloat(global_discount) >= 0 && parseFloat(total_amount) > 0) {
+    if(global_discount_type == '%') {
+      if(parseFloat(global_discount) <= 100){
+        is_valid_discount = true;
+        discount_percentage = global_discount;
+      } else {
+        is_valid_discount = false;
+      }
+    } else {
+      if(parseFloat(global_discount) <= parseFloat(total_amount)) {
+        is_valid_discount = true;
+        discount_percentage = parseFloat((parseFloat(global_discount) * 100) / parseFloat(total_amount));
+      } else {
+        is_valid_discount = false;
+      }
+    }    
+  } else {
+    is_valid_discount = false;
+  }
+  if(is_valid_discount) {
+    $('.apply_global_discount').removeClass('disabled')
+    $('.hdn_global_discount').val(discount_percentage);
+    $('#inventory_order_purchase_hdn_global_discount').val(discount_percentage);
+    $('#inventory_order_purchase_global_discount').val(global_discount);
+    $('#inventory_order_purchase_global_discount_type').val(global_discount_type);
+  } else {
+    $('.global_discount').val(0);
+    $('.hdn_global_discount').val(0);
+    $('.apply_global_discount').addClass('disabled')
+  }
+}
+
+$('.global_discount').on('keyup', function() {
+  validate_global_discount_amount();
+});
+
+$('.global_discount_type').on('change', function() {
+  validate_global_discount_amount();
+});
+
+$('.apply_global_discount').on('click', function() {
+  var x=confirm( "Are you sure you want to apply global discount on all items?");
+  if(x){
+    calculate_global_discount();
+  }
+});
+
+$('.delete_empty_item').on('click', function() {
+  calculate_purchase_order_tax()
+  validate_global_discount_amount();
+  calculate_global_discount();
+});
+
+$('.purchase-order-log-item').on('change', '.unit_price_excluding_tax', function(){
+  validate_global_discount_amount();
+});
+
+$('.purchase-order-log-item').on('change', '.item_quantity', function(){
+  validate_global_discount_amount();
+});
+
+validate_global_discount();
+// EOF Global discount validation
+
+function calculate_global_discount(){
+  var total_amount = parseFloat($('#inventory_order_purchase_total_cost').val());
+  var discount_percentage = $('.hdn_global_discount').val();
+  var discount_amount = $('.global_discount').val();
+  var discount_type = $('.global_discount_type').val();
+  var num_items = $('.purchase-order-log-item').length
+  $(".purchase-order-log-item").each(function(){
+    if(discount_type == '%'){
+      $(this).find(".item_discount").val(discount_percentage)
+      $(this).find(".item_discount_show").val(discount_percentage)
+    } else {
+      if(num_items > 1) {
+        item_total_amount = $(this).find('.cost_before_discount').val() || 0;
+        amount_after_discount = ((parseFloat(item_total_amount) * parseFloat(discount_percentage)) / 100);
+        $(this).find(".item_discount").val(parseFloat(amount_after_discount));
+        $(this).find(".item_discount_show").val(parseFloat(amount_after_discount.toFixed(2)));
+      } else {
+        $(this).find(".item_discount").val(discount_amount);
+        $(this).find(".item_discount_show").val(parseFloat(discount_amount).toFixed(2));
+      }
+    }
+    $(this).find('.item_discount_type').val(discount_type).trigger("click");
+  });
+}

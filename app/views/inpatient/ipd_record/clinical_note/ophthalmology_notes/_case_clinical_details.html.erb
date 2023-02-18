@@ -1,0 +1,230 @@
+<% if @case_sheet.free_form_histories.try(:count) > 0 %>
+  <div class="row mb20">
+    <div class="col-md-12">
+      <b>Clinical History:</b>
+      <% @case_sheet.free_form_histories.each do |key, history| %>
+        <li style="margin-left: 10px"><%= history[:content].to_s.html_safe() %></li>
+      <% end %>
+    </div>
+  </div>
+<% end %>
+<% if @case_sheet.diagnoses.try(:count) > 0 %>
+  <div class="row mb20">
+    <div class="col-md-3">
+      <b>Diagnosis:</b>
+    </div>
+    <div class="col-md-8">
+      <% @case_sheet.diagnoses.each do |diagnosis| %>
+          <% if diagnosis.created_from == "migration"%>
+              <li style="margin-left: 10px"> <%= diagnosis.diagnosisname.capitalize %></li>
+          <%else%>
+            <% icd_type = diagnosis.icd_type %>
+            <% icd_code = diagnosis.icddiagnosiscode %>
+            <% if icd_type == 'IcdDiagnosis' %>
+              <% diagnosis_code = '- ' +  icd_code.upcase.insert(3, '.') %>
+            <%else%>
+              <% diagnosis_code = '' %>
+            <% end %>
+              <li style="margin-left: 10px"> <%= diagnosis.diagnosisoriginalname.capitalize %><b><%= diagnosis_code %></b></li>
+          <%end%>
+      <% end %>
+    </div>
+  </div>
+<% end %>
+<% if @case_sheet.free_form_diagnoses.try(:count) > 0 %>
+  <div class="row mb20">
+    <div class="col-md-12">
+      <b>Diagnosis:</b>
+      <% uniq_array = [] %>
+      <% @case_sheet.free_form_diagnoses.each do |key, diagnosis| %>
+        <% unless uniq_array.include?(diagnosis[:content].to_s.html_safe()) %>
+          <li style="margin-left: 10px"><%= diagnosis[:content].to_s.html_safe() %></li>
+          <% uniq_array << diagnosis[:content].to_s.html_safe() %>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+<% end %>
+
+<% if @case_sheet.procedures.where(is_performed: false, is_removed: false, has_declined: false).count > 0 %>
+  <div class="row mb20">
+    <div class="col-md-12">
+      <b>Care Plan:</b>
+      <% @case_sheet.procedures.where(is_performed: false, is_removed: false, has_declined: false).each do |i| %>
+        <li style="margin-left: 10px"><%= i.procedurename + ', ' + i.get_label_for_procedure_side(i.procedureside)%> </li>
+      <%end%>
+    </div>
+  </div>
+<% end %>
+<% if @case_sheet.free_form_procedures.try(:count) > 0 %>
+  <div class="row mb20">
+    <div class="col-md-12">
+      <b>Procedure:</b>
+      <% @case_sheet.free_form_procedures.each do |key, procedure| %>
+        <li style="margin-left: 10px"><%= procedure[:content].to_s.html_safe() %></li>
+      <% end %>
+    </div>
+  </div>
+<% end %>
+<% if @case_sheet.procedures.where(is_performed: true).count > 0 %>
+  <div class="row mb20">
+    <div class="col-md-3 ">
+      <b> Procedure Performed:</b>
+    </div>
+    <div class="col-md-8">
+      <table class="table table-bordered">
+        <tr>
+          <th>Name Of Surgery</th>
+          <th>Eye Operated</th>
+          <th>Date of Surgery</th>
+        </tr>
+        <% @case_sheet.procedures.where(is_performed: true).each_with_index do |procedure| %>
+          <tr>
+            <% procedurecode = procedure.try(:procedurefullcode) %>
+            <% display_name = CustomCommonProcedure.find_by(code: procedurecode, organisation_id: @case_sheet.try(:organisation_id)).try(:display_name) %>
+            <% if display_name.present? %>
+              <td><%= display_name %></td>
+            <% else %>
+              <td><%= procedure.procedurename %></td>
+            <% end %>
+            <% if procedure.procedureside == "8966001" %>
+              <td>Left Eye</td>
+            <% elsif procedure.procedureside == "18944008" %>
+              <td>Right Eye</td>
+            <% elsif procedure.procedureside == "40638003" %>
+              <td>Both Eyes</td>
+            <%end%>
+            <td><%= procedure.performed_datetime %></td>
+          </tr>
+        <%end%>
+      </table>
+    </div>
+  </div>
+<% end %>
+
+<% if @ophthal_investigations.count > 0 || @laboratory_investigations.count > 0 || @radiology_investigations.count > 0 || @free_form_investigations.count > 0 %>
+  <% if @ophthal_investigations.count > 0 || @laboratory_investigations.count > 0 || @radiology_investigations.count > 0 %>
+    <div class="row mb5">
+      <div class="col-md-12">
+        <b>Investigations :</b>
+      </div>
+    </div>
+    <div class="row mb5" style="margin-left: 5px;">
+      <div class="col-md-2">
+        <b>Ophthal :</b>
+      </div>
+      <div class="col-md-10">
+        <% if @ophthal_investigations.count > 0 %>
+          <!-- Opthhal -->
+          <% ophthal_advised = [] %>
+          <% ophthal_performed = [] %>
+          <% @ophthal_investigations.where(is_performed: false, has_declined: false, is_removed: false).each do |ophthal_investigation| %>
+            <% ophthal_advised << (ophthal_investigation.investigationname.to_s + ', ' + ophthal_investigation.get_label_for_ophthal_investigation_side(ophthal_investigation.investigationside)) %>
+          <% end %>
+          <% @ophthal_investigations.where(is_performed: true).each do |ophthal_investigation| %>
+            <% ophthal_performed << (ophthal_investigation.investigationname.to_s + ', ' + ophthal_investigation.get_label_for_ophthal_investigation_side(ophthal_investigation.investigationside)) %>
+          <% end %>
+          <% if ophthal_advised.count > 0 %>
+            <div class="row">
+              <div class="col-md-12">
+                <b>Advised:</b>&emsp;
+                <span><%= ophthal_advised.join(" | ") %></span>
+              </div>
+            </div>
+          <% end %>
+          <% if ophthal_performed.count > 0 %>
+            <div class="row">
+              <div class="col-md-12">
+                <b>Performed:</b>&emsp;
+                <span><%= ophthal_performed.join(" | ") %></span>
+              </div>
+            </div>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+    <div class="row mb5" style="margin-left: 5px;">
+      <div class="col-md-2">
+        <b>Laboratory :</b>
+      </div>
+      <div class="col-md-10">
+        <% if @laboratory_investigations.count > 0 %>
+          <!-- Laboratory -->
+          <% laboratory_advised = [] %>
+          <% laboratory_performed = [] %>
+          <% @laboratory_investigations.where(is_performed: false, has_declined: false, is_removed: false).each do |laboratory_investigation| %>
+            <% laboratory_advised << (laboratory_investigation.investigationname.to_s) %>
+          <% end %>
+          <% @laboratory_investigations.where(is_performed: true).each do |laboratory_investigation| %>
+            <% laboratory_performed << (laboratory_investigation.investigationname.to_s) %>
+          <% end %>
+          <% if laboratory_advised.count > 0 %>
+            <div class="row">
+              <div class="col-md-12">
+                <b>Advised:</b>&emsp;
+                <span><%= laboratory_advised.join(" | ") %></span>
+              </div>
+            </div>
+          <% end %>
+          <% if laboratory_performed.count > 0 %>
+            <div class="row">
+              <div class="col-md-12">
+                <b>Performed:</b>&emsp;
+                <span><%= laboratory_performed.join(" | ") %></span>
+              </div>
+            </div>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="row mb5" style="margin-left: 5px;">
+      <div class="col-md-2">
+        <b>Radiology :</b>
+      </div>
+      <div class="col-md-10">
+        <% if @radiology_investigations.count > 0 %>
+          <!-- Radiology -->
+          <% radiology_advised = [] %>
+          <% radiology_performed = [] %>
+          <% @radiology_investigations.where(is_performed: false, has_declined: false, is_removed: false).each do |radiology_investigation| %>
+            <% radiology_advised << (radiology_investigation.investigationname.to_s + ', ' + radiology_investigation.get_label_for_radiology_option(radiology_investigation.radiologyoptions)) %>
+          <% end %>
+          <% @radiology_investigations.where(is_performed: true).each do |radiology_investigation| %>
+            <% radiology_performed << (radiology_investigation.investigationname.to_s + ', ' + radiology_investigation.get_label_for_radiology_option(radiology_investigation.radiologyoptions)) %>
+          <% end %>
+          <% if radiology_advised.count > 0 %>
+            <div class="row">
+              <div class="col-md-12">
+                <b>Advised:</b>&emsp;
+                <span><%= radiology_advised.join(" | ") %></span>
+              </div>
+            </div>
+          <% end %>
+          <% if radiology_performed.count > 0 %>
+            <div class="row">
+              <div class="col-md-12">
+                <b>Performed:</b>&emsp;
+                <span><%= radiology_performed.join(" | ") %></span>
+              </div>
+            </div>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+  <% if @case_sheet.free_form_investigations.try(:count) > 0 %>
+    <div class="row mb20">
+      <div class="col-md-12">
+        <b>Investigation:</b>
+        <% uniq_array = [] %>
+        <% @case_sheet.free_form_investigations.each do |key, investigation| %>
+          <% unless uniq_array.include?(investigation[:content].to_s.html_safe()) %>
+            <li style="margin-left: 10px"><%= investigation[:content].to_s.html_safe() %></li>
+            <% uniq_array << investigation[:content].to_s.html_safe() %>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+<% end %>

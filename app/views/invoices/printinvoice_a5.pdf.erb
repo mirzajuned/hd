@@ -1,0 +1,123 @@
+<div style="font-family: '<%= UsersSetting.find_by(user_id: current_user.id).font_style %>';">
+  <div class="row mb10" style="margin-top:5px;">
+    <div class="col-md-12" style="background-color:#f2f2f2;margin-bottom:5px;">
+      <p style="font-size:12px;text-align:center;margin:0 auto;"><b>Receipt</b></p>
+    </div>
+    <div class="col-md-4">
+      <p style="font-size:10px;">Patient ID : <b style="font-size:10px;"><%= PatientIdentifier.find_by(:patient_id => @invoice.patient_id,:organisation_id => current_user.organisation_id).try(:patient_org_id) %></b></p>
+      <p style="font-size:10px;">Doctor Name :
+        <b style="font-size:10px;">
+          <% if @invoice.appointment != nil %>
+            <% @doctor_name = @invoice.appointment.consultant_id.to_s %>
+            Dr. <%= User.find_by(:id => @doctor_name).fullname %>
+          <%elsif @invoice.admission != nil %>
+            <% @doctor_name = @invoice.admission.doctor.to_s %>
+            Dr. <%= User.find_by(:id => @doctor_name).fullname %>
+          <% end %>
+        </b>
+      </p>
+    </div>
+    <div class="col-md-4">
+      <p style="font-size:10px;">Patient Name : <b style="font-size:10px;"><%= @patient_details.fullname.capitalize %></b></p>
+      <p style="font-size:10px;">Age/Sex : <b style="font-size:10px;"><% if @patient_details.age? %><%= @patient_details.age %><% else %>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<% end%>/<%= @patient_details.gender %></b></p>
+    </div>
+    <div class="col-md-4">
+      <p style="font-size:10px;">Receipt No. : <b style="font-size:10px;"><%= @invoice.try(:bill_number) %></b></p>
+      <p style="font-size:10px;">Receipt Date : <b style="font-size:10px;"><%= @invoice.created_at.strftime("%d-%b-%y") %></b></p>
+    </div>
+  </div>
+
+  <div class="row" style="background-color:#f2f2f2;font-family:monospace;">
+    <div class="col-md-1 text-center">
+      <span style="font-size:10px;"><b>#</b></span>
+    </div>
+    <div class="col-md-3">
+      <span style="font-size:10px;"><b>Particulars</b></span>
+    </div>
+    <div class="col-md-2 text-right">
+      <span style="font-size:10px;"><b>Unit Price</b></span>
+    </div>
+    <div class="col-md-2 text-right">
+      <span style="font-size:10px;"><b>Total Units</b></span>
+    </div>
+    <div class="col-md-3 text-right">
+      <span style="font-size:10px;"><b>Amount</b></span>
+    </div>
+    <div class="col-md-1"></div>
+  </div>
+
+
+  <div class="row" style="border-bottom:1px solid #eee;font-family:monospace;">
+    <% detail_count = 1 %>
+    <% @invoice.services.map do |each_detail| %>
+      <div class="col-md-1 text-right"  style="margin-top:-5px;">
+        <span style="font-size:10px;"><%= detail_count %>.</span>
+      </div>
+      <div class="col-md-3" style="margin-top:-5px;">
+        <span id="tmp_item_description" style="font-size:10px;"><%= each_detail['label'] %></span>
+      </div>
+      <div class="col-md-2 text-right" style="margin-top:-5px;">
+        <span id="tmp_item_qty"  style="font-size:10px;"><%= each_detail['unit_price'] %></span>
+      </div>
+      <div class="col-md-2 text-center" style="margin-top:-5px;">
+        <span id="tmp_item_rate" style="font-size:10px;"><%= each_detail['total_units'] %></span>
+      </div>
+      <div class="col-md-3 text-right" style="margin-top:-5px;">
+        <span id="tmp_item_amount" style="font-size:10px;"><%= each_detail['unit_price'] * each_detail['total_units'].to_i %></span>
+      </div>
+      <div class="col-md-1" style="margin-top:-5px; color:#fff;">|</div>
+    <%  detail_count+=1 %>
+    <% end %>
+  </div>
+
+  <div class="row" style="font-family:monospace;">
+    <div class="col-md-offset-6 col-md-3">
+      <span style="font-size:10px;"><b>Tax (%)</b></span>
+    </div>
+    <div class="col-md-2 text-right">
+      <span style="font-size:10px;"><%= @invoice.tax %></td></span>
+    </div>
+    <div class="col-md-1" style="color:#fff;">|</div>
+  </div>
+  <div class="row" style="font-family:monospace;">
+    <div class="col-md-offset-6 col-md-3">
+      <span style="font-size:10px;"><b>Discount (Rs)</b></span>
+    </div>
+    <div class="col-md-2 text-right">
+      <span style="font-size:10px;"><%= @invoice.additional_discount %></td></span>
+    </div>
+    <div class="col-md-1" style="color:#fff;">|</div>
+  </div>
+  <div class="row" style="font-family:monospace;">
+    <div class="col-md-offset-6 col-md-3" style="border-bottom:1px solid #eee;">
+      <span style="font-size:10px;"><b>Advance Payment</b></span>
+    </div>
+    <div class="col-md-2 text-right" style="border-bottom:1px solid #eee;">
+      <span style="font-size:10px;"><%= @invoice.advance_payment %></td></span>
+    </div>
+    <div class="col-md-1" style="border-bottom:1px solid #eee;color:#fff;">|</div>
+  </div>
+  <div class="row" style="margin-bottom:25px; font-family:monospace;">
+    <div class="col-md-offset-6 col-md-3" style="border-bottom:1px solid #eee;">
+      <span style="font-size:10px;"><b>Total</b></span>
+    </div>
+    <div class="col-md-2 text-right"  style="border-bottom:1px solid #eee;">
+      <span style="font-size:10px;"><%= @invoice.total %></td></span>
+    </div>
+    <div class="col-md-1" style="border-bottom:1px solid #eee;color:#fff;">|</div>
+  </div>
+  <div class="row">
+    <div class="col-md-9">
+      <p style="font-size:10px;"><b>Mode of payment:</b> <%= @mop %></p>
+    </div>
+    <div class="col-md-3">
+      <span style="font-size:10px;"><b>(Authorised Signature)</b></span>
+    </div>
+  </div>
+
+</div>
+<style type="text/css">
+* {
+  color:#333;
+}
+</style>

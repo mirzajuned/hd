@@ -1,0 +1,160 @@
+<% aod_counter = 0 %>
+<% if @discharge_note.treatmentmedication.count > 0 || @discharge_note.read_attribute(:precautions).present? || @discharge_note.read_attribute(:followup_date).present? || @discharge_note.read_attribute(:physiotherapy).present? || @discharge_note.read_attribute(:advicemanagementplan).present? %>
+  <% aod_counter = aod_counter + 1 %>
+<% end %>
+
+<% if aod_counter > 0 %>
+  <div class="row mb10">
+    <div class="col-md-12 replace_ipd_medicine" style="page-break-inside: avoid !important;">
+      <div class="row">
+        <strong>Advice On Discharge : Never miss the Post OP Reviews.</strong>
+        <div class="summary-line-border"></div>
+        <% if @discharge_note.read_attribute(:physiotherapy).present? %>
+          <div class="row mb10">
+            <div class="col-md-12">
+              <b>Physiotherapy:</b> <%= @discharge_note.read_attribute(:physiotherapy) %>
+            </div>
+          </div>
+        <% end %>
+        <% if @discharge_note.read_attribute(:precautions).present? %>
+          <div class="row mb10">
+            <div class="col-md-12">
+              <b>Precautions:</b> <%= @discharge_note.read_attribute(:precautions) %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+      <div class="row">
+        <strong>Medication(Rx) :</strong>
+        <% if @discharge_note.treatmentmedication.count > 0 %>
+          <% if @mail_job == false %>
+            <% unless params[:action] == "print" || params[:action] == "print_all_notes" %>
+              <div class="btn-group pull-right" style="margin-top: -31px">
+                <%= link_to new_mail_record_tracker_path(:record_name => 'Medication Prescription', :record_id => @discharge_note.id, :record_model => 'Inpatient::IpdRecord',admission_id: @admission.id.to_s, speciality: @discharge_note.specalityname.downcase, speciality_id: @specialty_id), :class => "btn btn-xs btn-primary", :data => {:remote => true, 'disable-with' =>  "Please Wait..."} do %> <i class="fa fa-print"></i> Email<% end %>
+                <% if @print_settings.count > 1 %>
+                  <div class="btn-group">
+                    <button type="button" class="btn btn-primary btn-xs dropdown-toggle" data-toggle="dropdown"><i class="fa fa-print mr5"></i> Print <i class="fa fa-caret-down"></i></button>
+                    <ul class="dropdown-menu dropdown-menu-right dropdown-left-manual" role="menu" aria-labelledby="summary-print-dropdown" style="">
+                      <% @print_settings.each do |print_setting| %>
+                        <li style="text-align:left" class="multi-print">
+                          <% print_medication = "inpatient_ipd_record_discharge_note_orthopedics_note_print_path(id: @discharge_note.id, orthopedics_note_id: @discharge_note.id, admission_id: @admission.id.to_s, view: 'Medication', print_setting_id: print_setting.id, format: 'pdf')" %>
+                          <%= link_to eval(print_medication), :class => "full_print",:style => "color: #d9534f;",:target => "_blank", :data => {method: :get} do %> <i class="fa fa-print mr5"></i> <%= print_setting.name %> <% end %>
+                        </li>
+                      <% end %>
+                    </ul>
+                  </div>
+                <% else %>
+                  <% print_medication = "inpatient_ipd_record_discharge_note_orthopedics_note_print_path(id: @discharge_note.id, orthopedics_note_id: @discharge_note.id, admission_id: @admission.id.to_s, view: 'Medication', print_setting_id: @print_settings[0].id, format: 'pdf')" %>
+                  <%= link_to eval(print_medication), :class => "btn btn-primary btn-xs full_print",:target => "_blank", :data => {method: :get} do %> <i class="fa fa-print mr5"></i> Print <% end %>
+                <% end %>
+              </div>
+            <% end %>
+          <% end %>
+        <% end %>
+      </div>
+      <% if @discharge_note.treatmentmedication.count > 0 %>
+        <div class="mb10 check_font" style="font-family: Verdana;">
+          <table class="table table-bordered">
+            <thead>
+              <tr>
+                <th width="5%">S.No.</th>
+                <th width="25%">Name</th>
+                <!-- <th width="5%">Quantity</th> -->
+                <th class="text-center" width="40%">Frequency</th>
+                <th width="10%">Duration</th>
+                <th width="25%">Instruction</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @medication_set_arr = Global.send("medication_instruction_option").send('sets')%>
+              <% @discharge_note.treatmentmedication.each.with_index do |medication,i| %>
+                <tr>
+                  <td><%= i + 1 %></td>
+                  <td><b><%= medication.medicinename.to_s.upcase %><% if medication.medicinetype? %> - <%= medication.medicinetype.to_s.upcase %><% end %></b></td>
+                  <!-- <td class="text-right"><%= medication.read_attribute(:medicinequantity) %></td> -->
+                  <td class="text-center">
+                    <% if Array['1-1-1', '1-1-0', '1-0-1', '0-1-1', '1-0-0', '0-1-0', '0-0-1','2-2-2','2-0-2', '1-1-1-1'].include?(medication.read_attribute(:medicinefrequency)) %>
+                      <% frequency = medication.read_attribute(:medicinefrequency).split('-') %>
+                      <% unless frequency[3] == nil %>
+                        <div class="row">
+                          <div class="col-md-2 text-center"><%= frequency[0] %><br>Mrng</div>
+                          <div class="col-md-1">-</div>
+                          <div class="col-md-2 text-center"><%= frequency[1] %><br>Noon</div>
+                          <div class="col-md-1">-</div>
+                          <div class="col-md-2 text-center"><%= frequency[2] %><br>Evng</div>
+                          <div class="col-md-1">-</div>
+                          <div class="col-md-2 text-center"><%= frequency[3] %><br>Night</div>
+                        </div>
+                      <% else %>
+                        <div class="row">
+                          <div class="col-md-3 text-center"><%= frequency[0] %><br>Morning</div>
+                          <div class="col-md-1">-</div>
+                          <div class="col-md-3 text-center"><%= frequency[1] %><br>Afternoon</div>
+                          <div class="col-md-1">-</div>
+                          <div class="col-md-3 text-center"><%= frequency[2] %><br>Evening</div>
+                        </div>
+                      <% end %>
+                    <% else %>
+                      <%= medication.read_attribute(:medicinefrequency) %>
+                    <% end %>
+                  </td>
+                  <td>
+                    <% unless medication.read_attribute(:medicinedurationoption) == "F" %>
+                      <% if medication.read_attribute(:medicinedurationoption) == "W" %>
+                        <%= pluralize(medication.read_attribute(:medicineduration), 'Week') %>
+                      <% elsif medication.read_attribute(:medicinedurationoption) == "M" %>
+                        <%= pluralize(medication.read_attribute(:medicineduration), 'Month') %>
+                      <% else medication.read_attribute(:medicinedurationoption) == "D" %>
+                        <%= pluralize(medication.read_attribute(:medicineduration), 'Day') %>
+                      <% end %>
+                    <% else %>
+                      Next Followup
+                    <% end %>
+                  </td>
+                  <td>
+                    <%if medication.medicineinstructions.present?%>
+                      <%=medication.medicineinstructions%>
+                    <%elsif medication.instruction.present?%>
+                      <% @set = @medication_set_arr.select{|medi| medi["id"] == medication.instruction} %>
+                      <%if @set[0].present?%>
+                        <%if @language_flag.present?%>
+                          <%=@set[0]["#{@advice_language}"]%>
+                        <%else%>
+                          <%=@set[0]["en"]%>
+                        <%end%>
+                      <%end%>
+                    <%end%>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% end %>
+      <% if @discharge_note.read_attribute(:advicemanagementplan).present? %>
+        <div class="row mb10">
+          <div class="col-md-12">
+            <b>Management Plan :</b> <%= @discharge_note.read_attribute(:advicemanagementplan) %>
+          </div>
+        </div>
+      <% end %>
+      <% if @discharge_note.read_attribute(:followup_date).present? && @followup_doctor.present?%>
+        <div class="row mb10">
+          <div class="col-md-12">
+            <% if @followup_facility %>
+              <b>For Followup:</b> Visit <b><%= @followup_doctor.salutation %> <%= @followup_doctor.fullname %></b> at <b><%= @followup_facility.name %></b> on <b><%= @discharge_note.read_attribute(:followup_date) %></b> at <b><%= @discharge_note.read_attribute(:followup_time) %></b>
+            <% else %>
+              <b>For Followup:</b> Visit <b><%= @followup_doctor.salutation %> <%= @followup_doctor.fullname %></b> on <b><%= @discharge_note.read_attribute(:followup_date) %></b> at <b><%= @discharge_note.read_attribute(:followup_time) %></b>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+<% end %>
+
+<style type="text/css">
+  .table thead tr th, .table tbody tr td {
+    padding: 3px;
+  }
+</style>

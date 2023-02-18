@@ -1,0 +1,179 @@
+<% if (@appointment.appointmentdate.to_date == Date.today.to_date) %>
+  <div class=" well">
+    <div class="row no_margin no_padding" style="padding: 5px;">
+      <div class="col-md-12">
+        <h4>Please Fill Visit Details</h4>
+      </div>
+    </div>
+
+    <% if @type.present? %>
+      <% display_type_option = "none" %>
+    <% else %>
+      <% display_type_option = "block" %>
+    <% end %>
+
+    <div class="row mb10" style="display: <%= display_type_option %>">
+      <div class="col-sm-12">
+        <b style="color:#000;">Type</b>
+      </div>
+      <div class="col-md-5">
+        <div class="rdio rdio-primary">
+          <input id="appointmenttype_walkin" name="appointment[appointmenttype]" type="radio" value="walkin" <%= 'checked' if (@appointment.appointmenttype == "walkin" || @type == "walkin") %> />
+          <label for="appointmenttype_walkin">Walk-in</label>
+        </div>
+      </div>
+      <div class="col-md-7">
+        <div class="rdio rdio-primary">
+          <input id="appointmenttype_appointment" name="appointment[appointmenttype]" type="radio" value="appointment" <%= 'checked' if (@appointment.appointmenttype == "appointment"|| @type == "appointment") %> />
+          <label for="appointmenttype_appointment">Appointment</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="row no_margin no_padding" style="padding: 5px;">
+      <div class="col-md-12 text-center error-box"></div>
+      <div class="col-sm-4">
+        <input type="hidden" name="" value="<%= @appointment.try(:appointment_type_id) %>" id="hidden_appointment_type">
+        <b style="color:#000;"> Visit Type</b>
+        <div class="appointment_types">
+          <% if @appointment.present? %>
+            <%= render partial: 'appointments/appointment_type_partial', locals: { name_attr:"appointment[appointment_type_id]", option_values: @appointment_types, selected: @appointment.try(:appointment_type_id).to_s } %>
+          <% else %>
+              <%= render partial: 'appointments/appointment_type_partial', locals: { name_attr:"appointment[appointment_type_id]", option_values: @appointment_types, selected: "" } %>
+          <% end %>
+        </div>
+      </div>
+      <div class="col-sm-4">
+        <!-- Appointment Category -->
+        <% if @sub_appointment_types.count > 0 %>
+          <div class="row mb20">
+            <div class="col-sm-12">
+              <b style="color:#000;"> Visit Category</b>
+              <br>
+              <%= select_tag("appointment[appointment_category_id]", options_for_select(@sub_appointment_types.map {|apt_cat| [apt_cat.label, apt_cat.id ]}, @appointment.try(:appointment_category_id)),{prompt: 'Select', class: "form-control p7_10 appointment_category_class appointment_category_dropdown"})%>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+    <div class="row no_margin no_padding" style="padding: 5px;">
+      <% if (@appointment.appointmentdate == Date.current) && (@appointment_list_view.try(:current_state).to_s == "Scheduled") %>
+        <div class="col-sm-4">
+          <div class="ckbox ckbox-primary">
+            <input type="checkbox" class="mark-arrived" id="mark-arrived" value="mark_arrived" checked='checked'>
+            <label for="mark-arrived">Mark as Arrived </label>
+          </div>
+        </div>
+      <% end %>
+      <div class="col-sm-2">
+        <button class="btn btn-success btn-xs btn-save-appointment-type">Save</button>
+      </div>
+    </div>
+  </div>
+<% end %>
+
+<div class="row no_margin no_padding" style="padding: 5px;">
+  <% if @appointment_list_view&.current_state != 'Completed' %>
+    <%# if @appointment.try(:created_from) == 'Integration' %>
+    <div class="col-md-3">
+      <% if (@appointment.try(:organisation_id).to_s == '5e21ffd6cd29ba0ce0bf5a1e') && (@appointment.try(:created_from) == 'Integration') %>
+        <label class="label label-info">Created From Integration</label>
+      <% else %>
+        <%= link_to edit_appointment_path(:id => @appointment.id, current_date: @current_date), :class => "btn btn-success btn-success-transparent btn-xs", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#appointment-modal'} do %><i class="fa fa-edit "></i> Edit<% end %>
+      <% end %>
+    </div>
+  <% end %>
+</div>
+<div class="row no_margin no_padding" style="padding: 10px;">
+  <div class="row no_margin yes_padding">
+    <div class="col-sm-2 no_padding text-left">Consultant</div>
+    <div class="col-sm-1 no_padding text-left">:</div>
+    <div class="col-sm-3 no_padding"><b><%= @appointment_list_view.try(:consulting_doctor) %></b></div>
+    <div class="col-sm-2 no_padding text-left">Appt/OP  ID</div>
+    <div class="col-sm-1 no_padding text-left">:</div>
+    <div class="col-sm-3 no_padding"><%= @appointment.display_id %></div>
+  </div>
+  <div class="row no_margin yes_padding">
+    <div class="col-sm-2 no_padding text-left">Scheduled By</div>
+    <div class="col-sm-1 no_padding text-left">:</div>
+    <div class="col-sm-3 no_padding"><%= @appointment_list_view.try(:scheduling_user) %></div>
+    <% unless @appointment.ref_doc_name.blank? %>
+      <div class="col-sm-2 no_padding text-left">Referred By</div>
+      <div class="col-sm-1 no_padding text-left">:</div>
+      <div class="col-sm-3 no_padding">Dr. <%= @appointment.ref_doc_name %></div>
+    <% end %>
+  </div>
+
+  <div class="row no_margin yes_padding">
+    <div class="col-sm-2 no_padding text-left">Scheduled Time</div>
+    <div class="col-sm-1 no_padding text-left">:</div>
+    <div class="col-sm-3 no_padding"><%= @appointment.scheduling_time.try(:strftime, '%d %b at %I:%M %p')  %></div>
+    <div class="col-sm-2 no_padding text-left">Booking Time</div>
+    <div class="col-sm-1 no_padding text-left">:</div>
+    <div class="col-sm-3 no_padding"><%= @appointment.created_at.try(:strftime, '%d %b at %I:%M %p') %></div>
+  </div>
+  <div class="row no_margin yes_padding mb10">
+    <div class="col-sm-2 no_padding text-left">Appointment Type</div>
+    <div class="col-sm-1 no_padding text-left">:</div>
+    <div class="col-sm-9 no_padding">
+      <% if @appointment.appointment_type.present? %>
+        <% if @appointment.appointmenttype.present? && @appointment.appointmenttype == 'walkin' %>
+          <span class="label label-default" style="background: <%= @appointment.appointment_type.background %>;margin-left: 0"><%= @appointment.appointment_type.label %><%= " | Walk-in" %></span>
+        <% else %>
+          <span class="label label-default" style="background: <%= @appointment.appointment_type.background %>;margin-left: 0"><%= @appointment.appointment_type.label %><%= " | #{@appointment.appointmenttype.titleize}" if @appointment.appointmenttype %></span>
+        <% end %>
+      <% else %>
+        Please Update Appointment Type
+      <% end %>
+    </div>
+  </div>
+
+  <% if current_facility.consultancy_type_enabled %>
+    <div class="row no_margin yes_padding mb10">
+      <div class="col-sm-2 no_padding text-left">Consultancy Type</div>
+      <div class="col-sm-1 no_padding text-left">:</div>
+      <div class="col-sm-6 no_padding">
+        <% consultancy_type = @appointment.consultancy_type %>
+        <% consultancy_type_reason = @appointment.consultancy_type_reason %>
+        <% consultancy_type_by = @appointment.consultancy_type_by %>
+        <% if consultancy_type.present? %>
+          <% is_free = (consultancy_type == "h1.001") %>
+          <span class="label label-default" style="background: <%= is_free ? "#d9534f" : "#1CAF9A" %>;margin-left: 0"><%= is_free ? "Free" : "Paid" %><%= consultancy_type_reason.present? ? " - #{consultancy_type_reason}" : "" %> <%= consultancy_type_by.present? ? "(#{consultancy_type_by})" : "" %></span>
+        <% elsif current_facility.show_finances %>
+          <span class="label label-default" style="background: <%= (@past_invoices == []) ? "#d9534f" : "#1CAF9A" %>;margin-left: 0"><%= (@past_invoices == []) ? "Free" : "Paid" %><%= consultancy_type_reason.present? ? " - #{consultancy_type_reason}" : "" %> <%= consultancy_type_by.present? ? "(#{consultancy_type_by})" : "" %></span>
+        <% else %>
+          -
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <div class="row no_margin yes_padding" style="margin-top:5px;">
+    <div class="col-sm-2 no_padding text-left">Appointment Actions</div>
+    <div class="col-sm-1 no_padding text-left">:</div>
+    <div class="col-sm-5 no_padding">
+      <%# if @appointment.try(:created_from) == 'Integration' %>
+      <% if (@appointment.try(:organisation_id).to_s == '5e21ffd6cd29ba0ce0bf5a1e') && (@appointment.try(:created_from) == 'Integration') %>
+        N.A
+      <% else %>
+        <% if @appointment_list_view&.current_state != 'Scheduled' || @invoices&.count.to_i > 0 || @appointment_opd_records&.count.to_i > 0 %>
+          <button class="btn btn-danger btn-danger-transparent btn-xs btn-cancel">Cancel</button>
+        <% else %>
+          <%= link_to opd_appointments_cancelappointmentform_path(:appointment_id => @appointment.id), :class => "btn btn-danger btn-xs btn-danger-transparent", :id => "cancel_appointment"+@appointment.id.to_s , :title => "Cancel Appointment", :data => {:remote => true, 'toggle' =>  "modal", 'target' => '#appointment-modal'} do %> <i class="fa fa-trash-alt"></i> Cancel<% end %>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<div class="row mb10 past-visit-details">
+  <% if @past_appointment.present? %>
+    <%= render partial: 'appointments/form/past_visit_details.html.erb' %>
+  <% end %>
+</div>
+
+<%= render partial: 'outpatients/appointment/appointment_details/patient_notes_details.html.erb' %>
+
+<script type="text/javascript">
+  $(".appointment_category_class").select2();
+</script>

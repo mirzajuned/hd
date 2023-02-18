@@ -1,0 +1,180 @@
+
+$(".invoice_contact_group").select2({dropdownAutoWidth : true, theme: "bootstrap", containerCssClass: "form-control select2-height"})
+$(".invoice_payer_master").select2({dropdownAutoWidth : true, theme: "bootstrap", containerCssClass: "form-control select2-height"})
+$("#since_last").select2({dropdownAutoWidth : true, theme: "bootstrap", containerCssClass: "form-control select2-height"})
+
+$('.invoice_contact_group').on('change', function(e, triggered=false){
+let contact_group_id = $(this).val();
+if(contact_group_id != ""){
+  fetch(`/payer_masters/set_payers_list?contact_group_id=${contact_group_id}&facility_id=<%= current_facility.id.to_s %>`)
+  .then(response => response.json())
+  .then(function(data){
+    $(".invoice_payer_master").children().remove();
+    $(".invoice_payer_master").append($("<option></option>").attr("value", "").text("Select contact type"))
+    $.each(data.payer_fields, function(key, value) {
+      $(".invoice_payer_master").append($("<option></option>").attr("value",value[0]).text(value[1]));
+    });
+    $(".invoice_payer_master").trigger('change.select2');
+  })
+} else {
+  $(".invoice_payer_master").children().remove();
+  $(".invoice_payer_master").append($("<option></option>").attr("value", "").text("Select contact type"))
+  $(".invoice_payer_master").trigger('change.select2');
+}
+})
+
+<% column_name =  @is_draft == 'true' ? 'Created By' : 'Amount Settled' %>
+
+function settleBillTable(since_last, payer, contact_group_id, search_type, search_text) {
+  $('.search-button').prop('disabled', 'disabled')
+  $('#settle_invoices_table').dataTable({
+    "bProcessing": true,
+    "sDom": "<'top'p>",
+    "bLength": false,
+    "bFilter": false,
+    "bInfo": false,
+    "bDestroy": true,
+    "sPaginationType": "full_numbers",
+    "iDisplayStart": parseInt("<%= params[:iDisplayStart] || 0 %>"),
+    "iDisplayLength": parseInt("<%= params[:iDisplayLength] || 100 %>"),
+    "bServerSide": true,
+    "autoWidth": false,
+    "sAjaxSource":"<%= invoice_invoices_settle_invoices_filter_url(type: @invoice_type) %>&since_last="+since_last+"&payer="+payer+"&contact_group_id="+contact_group_id+"&search_type="+search_type+"&search_text="+search_text+"&is_draft=<%=@is_draft%>",
+    "aoColumns": [
+      { "sTitle": "Billed On", "sClass": "text-center billed-on","sWidth": "7%", "bSortable": true },
+      { "sTitle": "Patient Details", "sClass": "text-left patient-details", "sWidth": "12%", "bSortable": false },
+      { "sTitle": "Patient Id/ MRN", "sClass": "text-center", "sWidth": "10%", "bSortable": false },
+      { "sTitle": "Bill", "sClass": "text-left", "sWidth": "10%", "bSortable": false },
+      { "sTitle": "Payers", "sClass": "text-left payers","sWidth": "16%", "bSortable": false },
+      { "sTitle": "Bill Amount", "sClass": "text-center", "sWidth": "10%", "bSortable": false },
+      { "sTitle": "<%= column_name %>", "sClass": "text-center", "sWidth": "10%", "bSortable": false },
+      { "sTitle": "Amount Pending", "sClass": "text-center amount-pending", "sWidth": "10%", "bSortable": true },
+    ],
+    fixedColumns: true,
+    "oLanguage": {
+      "sZeroRecords": "Nothing to Display",
+      "sLoadingRecords": "Please wait - loading reports..."
+    },
+    "fnDrawCallback": function( oSettings ) {
+      totalAmountArray = oSettings.json.totalAmountArray
+      if (oSettings.json.iTotalDisplayRecords > 0)
+      {
+        $('.total-amounts-table').show()
+        tr = $('#settle_invoices_table tbody tr:first')
+        $('.total-amounts-table').css('width', tr.width())
+        $('.total-amounts-table tr').html(tr.html())
+        $('.total-amounts-table td').html('')
+        $('.total-amounts-table td').eq(4).html("<b style='text-align:right;'>Total</b>")
+        $('.total-amounts-table td').eq(5).text(totalAmountArray.total_bill_amount)
+        <% if @is_draft == 'true' %>
+          $('.total-amounts-table td').eq(6).text("")
+        <% else %>
+          $('.total-amounts-table td').eq(6).text(totalAmountArray.total_amount_settled)
+        <% end %>
+        $('.total-amounts-table td').eq(7).text(totalAmountArray.total_amount_pending)
+      }else{
+        $('.total-amounts-table tr').html("")
+        $('.total-amounts-table').hide()
+      }
+      $('#search-patient').trigger('change')
+      $('.search-button').prop('disabled', '')
+
+    }
+  })
+}
+
+$('#since_last, .invoice_payer_master, .invoice_contact_group').on('change', function(){
+
+  var since_last = $('#since_last').val()
+  var payer = $('.invoice_payer_master').val()
+  var contact_group_id = $('.invoice_contact_group').val()
+  if (since_last.length > 0)
+  {
+    $('#clear-since-last').show()
+  }else{
+    $('#clear-since-last').hide()
+  }
+
+  if ((payer.length > 0) || (contact_group_id.length > 0))
+  {
+    $('#clear-claim-processor').show()
+  }else{
+    $('#clear-claim-processor').hide()
+  }
+})
+
+$('.search-button').on('click', function(){
+  var since_last = $('#since_last').val()
+  var payer = $('.invoice_payer_master').val()
+  var contact_group_id = $('.invoice_contact_group').val()
+  var patient_search_type = $('#patient_search').val()
+  var patient_search_text = $('#search-patient').val()
+  settleBillTable(since_last, payer, contact_group_id, patient_search_type, patient_search_text)
+})
+
+$('#search-patient').on('input propertychange paste', function(){
+  if ($(this).val().length > 0) {
+    $('#clear-patient-search').css('display', 'inline')
+  } else {
+    $('#clear-patient-search').hide()
+  }
+  patient_search_error()
+})
+
+$('#clear-patient-search').on('click', function(){
+  $('#search-patient').val("")
+  $(this).hide()
+  $('.search-button').trigger('click')
+})
+
+$('#clear-since-last').on('click', function(){
+  $('#since_last').val("").trigger("change")
+  $('.search-button').trigger('click')
+})
+
+$('#clear-claim-processor').on('click', function(){
+  $('.invoice_contact_group').val("").trigger("change")
+  $('.search-button').trigger('click')
+})
+
+$('.search-box-patient').on('change', function(){
+  patient_search_error()
+})
+
+$('#is_draft').on('change', function(){
+  $.ajax(
+    "<%= invoice_invoices_settle_invoices_path(type: @invoice_type) %>", {
+      data: {
+        is_draft: $(this).val()
+      }
+    }
+  )
+})
+
+function patient_search_error(){
+  search_length = $('#search-patient').val().replace(/\s+/g, '').length
+  if ($('.search-box-patient').val() == 'Mobile No.') {
+    $('#search-patient').attr('placeholder', 'Enter between 6-10 digits.')
+    if (search_length < 6 || search_length > 10)
+    {
+      $('.patient-search-error-msg').html('Enter between 6-10 digits.')
+      $('.search-button').prop('disabled', 'disabled')
+    } else {
+      $('.patient-search-error-msg').html("")
+      $('.search-button').prop('disabled', '')
+    }
+  } else {
+    $('#search-patient').attr('placeholder', 'Enter atleast 5 characters.')
+    if (search_length < 5){
+      $('.patient-search-error-msg').html('Enter atleast 5 characters.')
+      $('.search-button').prop('disabled', 'disabled')
+    } else {
+      $('.patient-search-error-msg').html('')
+      $('.search-button').prop('disabled', '')
+    }
+  }
+  if (search_length == 0){
+    $('.search-button').prop('disabled', '')
+  }
+
+}

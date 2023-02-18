@@ -1,0 +1,79 @@
+<% item_types = Global.surgery_package_item.types %>
+const userId = "<%= current_user.id %>"
+const organisationId = "<%= current_user.organisation_id %>"
+
+// Validation
+const validateItem = () => {
+  $("#surgery-package-item-form").validate({
+    rules: {},
+    messages: {}
+  });
+
+  // Surgery Package Item Fields
+  $.validator.addClassRules("item_name", { required: true });
+  $.validator.addClassRules("item_type", { required: true });
+};
+validateItem();
+
+$(".facility_id").select2();
+$('.item_type').select2();
+
+$('.facility_id').on('change', function(){
+  let facilityId = $(this).val()
+
+  $.ajax({
+    type: "GET",
+    dataType: "script",
+    url: "/surgery_package/items/new_multiple",
+    data: {
+      facility_id: facilityId
+    },
+    success: function(response){ }
+  })
+})
+
+$('.btn-add-item').on('click', function(e){
+  e.preventDefault();
+  let facilityId = $('.facility_id').val()
+  let counter = $('.surgery-package-items').length
+
+  $('#surgery_package_items').append(`
+    <div class="row surgery-package-items mb10">
+      <input type="hidden" name="items[${counter}][organisation_id]" value='${organisationId}'>
+      <input type="hidden" name="items[${counter}][facility_id]" value='${facilityId}'>
+      <input type="hidden" name="items[${counter}][user_id]" value='${userId}'>
+      <div class="col-md-5">
+        <input type="text" name="items[${counter}][name]" class='item_name form-control p5_10'>
+      </div>
+      <div class="col-md-5">
+        <select name="items[${counter}][type]" class='item_type form-control' style='height:30px;padding:5px;'>
+          <option value=''></option>
+          <% item_types.each do |type| %>
+            <option value='<%= type %>'><%= type %></option>
+          <% end %>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <button class="btn btn-danger btn-xs btn-remove-item">&times;</button>
+      </div>
+    </div>
+  `)
+
+  $('.item_type:last').select2();
+
+  if(counter > 0){
+    $('.btn-remove-item').removeAttr('disabled', 'disabled')
+  }
+})
+
+$('#surgery_package_items').on('click', '.btn-remove-item', function(e){
+  e.preventDefault();
+  $(this).closest('.surgery-package-items').remove();
+
+  renumberIndex($('.surgery-package-items'), ['input', 'select'])
+
+  let counter = $('.surgery-package-items').length
+  if(counter == 1){
+    $('.btn-remove-item:first').attr('disabled', 'disabled')
+  }
+})

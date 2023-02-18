@@ -1,0 +1,96 @@
+<table class="table table-danger mb30">
+  <thead>
+    <tr>
+      <th style="width:5%;font-size:12px;">#</th>
+      <th style="width:30%;font-size:12px;">Patient Name</th>
+      <th style="width:30%;font-size:12px;">OT Time</th>
+      <th style="width:35%;font-size:12px;">Procedure</th>
+    </tr>
+  </thead>
+  <tbody>
+
+    <% if @facility == "all" %>
+      <% @fac_list = current_user.organisation.facilities.where(is_active: true) %>
+      <% if current_user.has_role?(:doctor) %>
+        <% @ot_list = OtSchedule.where(:surgeonname => current_user.id, :otdate.gte => @current_date, :otdate.lt => @current_date + 1, is_deleted: false) %>
+      <% else %>
+        <% if @user.nil? %>
+          <% @ot_list = OtSchedule.where(:facility_id.in => current_user.facility_ids, :otdate.gte => @current_date, :otdate.lt => @current_date + 1, is_deleted: false) %>
+        <% else %>
+          <% @ot_list = OtSchedule.where(:otdate.gte => @current_date, :otdate.lt => @current_date + 1, :surgeonname => @user.id.to_s, is_deleted: false) %>
+        <% end %>
+      <% end %>
+    <%else%>
+      <% @fac_list = [@facility] %>
+      <% if current_user.has_role?(:doctor) %>
+        <% @ot_list = OtSchedule.where(:facility_id => @facility.id.to_s ,:surgeonname => current_user.id, :otdate.gte => @current_date, :otdate.lt => @current_date + 1, is_deleted: false) %>
+      <% else %>
+        <% if @user.nil? %>
+          <% @ot_list = OtSchedule.where(:facility_id => @facility.id.to_s, :otdate.gte => @current_date, :otdate.lt => @current_date + 1, is_deleted: false) %>
+        <% else %>
+          <% @ot_list = OtSchedule.where(:facility_id => @facility.id.to_s, :otdate.gte => @current_date, :otdate.lt => @current_date + 1, :surgeonname => @user.id.to_s, is_deleted: false) %>
+        <% end %>
+      <% end %>
+    <%end%>
+
+    <!-- If OT count is more than 0 show "td" -->
+    <% if @ot_list.count > 0 %>
+      <% @fac_list.each do |fac| %>
+        <% if @fac_list.count > 1 && @ot_list.where(facility_id: fac.id.to_s).count > 0 %>
+          <tr>
+            <td style="font-size:12px;text-align:center;background-color:#eee;color:#000;font-weight:bold;" colspan="5"><%= fac.name.upcase %></td>
+          </tr>
+        <% end %>
+        <% @ot_list.where(facility_id: fac.id.to_s).order(ottime: :desc).limit(25).each.with_index do |ot_list,i| %>
+          <% @opdrecord = OpdRecord.where(patientid: ot_list.patient.id.to_s).not.where(templatetype: "optometrist") %>
+          <% if @opdrecord.count > 0 %>
+            <% @opdrecord_last = @opdrecord.order(created_at: :desc)[0] %>
+          <% else %>
+            <% @opdrecord_last = "" %>
+          <% end %>
+          <tr>
+            <td style="font-size:12px;"><%= i+1 %></td>
+            <td style="font-size:12px;"><%= ot_list.patient.fullname %></td>
+            <td style="font-size:12px;"><%= ot_list.ottime.strftime("%I:%M %p, %d/%m") %></td>
+            <td style="font-size:12px;">
+              <% unless @opdrecord_last == "" %>
+                <% if @opdrecord_last.templatetype != "freeform" %>
+                  <% if @opdrecord_last.procedure.count > 0 %>
+                    <% @opdrecord_last.procedure.each do |procedure| %>
+                      <b><%= procedure.procedurename.split("/").join(" /") %>,<%= @opdrecord_last.get_label_for_procedure_side(procedure.procedureside) %>.</b><br>
+                    <% end %>
+                  <% end %>
+                <% else %>
+                  <% unless @opdrecord_last.free_procedure.to_s.html_safe.to_s.strip == "<br>" %>
+                    <b><%= @opdrecord_last.free_procedure.to_s.html_safe.to_s %>.</b><br>
+                  <% end %>
+                <% end %>
+              <% end %>
+            </td>
+          </tr>
+        <%end%>
+      <%end%>
+    <!-- If Appointment count is less than 0 dont show "td" -->
+    <% else %>
+      <td></td>
+      <td colspan="3">No Patients In OT</td>
+    <% end %>
+  </tbody>
+</table>
+
+<div class="pull-left" style="margin-top:-20px;">
+</div>
+<div class="pull-right" style="margin-top:-20px;">
+  <%if @facility == "all" %>
+  <%else%>
+    <% if @user.nil? %>
+      <% if @ot_list.count > 0 %>
+        <%= link_to ipd_patients_printotlist_by_facility_path(:facility_id => @facility.id.to_s, :otdate => @current_date, :organisation => current_user.organisation, :format => :pdf), :class => "btn btn-sm btn-darkblue", :target => "_blank" do %> <i class="fa fa-print"></i> <%=@facility.name%> <% end %>
+      <% end %>
+    <% else %>
+      <% if @ot_list.count > 0 %>
+        <%= link_to ipd_patients_printotlist_by_facility_path(:facility_id => @facility.id.to_s, :otdate => @current_date, :organisation => current_user.organisation,:user_id => @user.id, :format => :pdf), :class => "btn btn-sm btn-darkblue", :target => "_blank" do %> <i class="fa fa-print"></i> <%=@user.fullname%> <% end %>
+      <% end %>
+    <% end %>
+  <% end %>
+</div>

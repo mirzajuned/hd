@@ -1,0 +1,278 @@
+var checkItem = [];
+if ('<%= params[:action] %>' == 'edit') {
+  var lot_ids = '<%= @lot_ids %>'
+  var checkItem = JSON.parse(lot_ids.replace(/&quot;/g,'"'));
+}
+$('.items-lots-list .inventory-list-row').unbind()
+$('.items-lots-list .inventory-list-row').on('click', function(e){
+  e.preventDefault();
+  var lot_name =  $(this).find('.description').text();
+  var id =  $(this).attr('id');
+  if (!checkItem.includes(id)) {
+    checkItem.push(id)
+    $.ajax({
+      type: 'GET',
+      data: {
+        lot_id: id,
+        remote: true
+      },
+      url: '/inventory/transaction/trays/add_lot',
+      success: function(){
+        $('#'+id).css('background-color', '#cfe8d2')
+        $('#'+id).addClass('disabled_row')
+      }
+    })
+  }
+})
+
+var search_type = $("#search_type").val()
+searchTypeForm(search_type)
+
+function searchTypeForm(search_type) {
+  if (search_type == 'Description') {
+    $('.search-barcode').hide();
+    $('#lots_search').show();
+    $('#lots_search_barcode').hide();
+    $('#lots_search_generic_name').hide()
+  } else if (search_type =='GenericName'){
+    $('.search-barcode').hide();
+    $('#lots_search_barcode').hide();
+    $('#lots_search').hide();
+    $('#lots_search_generic_name').show()  
+  } else{
+    $('.search-barcode').show();
+    $('#lots_search_barcode').show();
+    $('#lots_search').hide();
+    $('#lots_search_generic_name').hide()
+  }
+  $(".items-lots-search .fa").trigger('click')
+}
+
+$("#lots_search_barcode").keypress(function(e) {
+  if(e.which == 13) {
+    e.preventDefault();
+    if ($('#lots_search_barcode').val() != '') {
+      $("#search_by_barcode").click();
+    }
+  }
+});
+
+$('#search_by_barcode').on('click', function(e) {
+  $('#show_more_lots').show();
+  var query = $('#lots_search_barcode').val()
+  var searchtype = $("#search_type").val()
+  if (query != '') {
+    $.ajax({
+      type : 'get',
+      url: '/inventory/transaction/trays/filter_lots',
+      data: {
+        q: query,
+        search_type: searchtype,
+        store_id: '<%= @inventory_store.id %>',
+        item_type: 'all_item',
+        remote: 'true'
+      },
+    })
+  }
+})
+
+$("input:text").focus(function() { $(this).select(); } );
+
+$(window).resize(function() {
+  adjust_height()
+})
+
+adjust_height()
+function adjust_height(){
+  modalContentHeigth = $(window).height() - 275
+  $(".items-lots").height(modalContentHeigth)
+  itemsLots = modalContentHeigth - $('.tray-header').height() - 70
+  $('.items-lots-body').height(itemsLots)
+  prescriptionHeight = $('.prescription-information').height()
+  trayInfoHeight = $('.tray-information').height()
+  trayListHeight = modalContentHeigth - $('.tray-title').height() - $('.tray-common-fields').height() - prescriptionHeight - trayInfoHeight  - 70
+  $('.tray-table-body').height(trayListHeight - $('.tray-table-head').height())
+}
+
+$('.transaction-datepicker').datepicker({
+    dateFormat: "dd/mm/yy",
+    maxDate: -0,
+    minDate: -0
+});
+
+function filter_index(query) {
+  if (query.length > 0){
+    $(".items-lots-search").find(".fa").show()
+  }
+  else {
+    $(".items-lots-search").find(".fa").hide()
+  }
+  $('#show_more_lots').show();
+  $.ajax({
+    type : 'get',
+    url: '/inventory/transaction/trays/filter_lots',
+    data: {
+      q: query,
+      store_id: '<%= @inventory_store.id %>',
+      item_type: 'all_item',
+      remote: 'true'
+    },
+  })
+}
+
+$(".items-lots-search").find(".fa").on('click',function(){
+  $("#lots_search").val("")
+  $("#lots_search_barcode").val("")
+  $("#lots_search_generic_name").val("")
+  filter_index("")
+})
+
+$("#lots_search").on("keyup", function () {
+  query = $(this).val()
+  filter_index(query)
+})
+
+$("#lots_search_generic_name").on("keyup", function () {
+  query = $(this).val()
+  if (query.length > 0){
+    $(".items-lots-search").find(".fa").show()
+  }
+  else {
+    $(".items-lots-search").find(".fa").hide()
+  }  
+  $('#show_more_lots').show();
+  searchtype = $("#search_type").val()
+  $.ajax({
+    type : 'get',
+    url: '/inventory/transaction/trays/filter_lots',
+    data: {
+      q: query,
+      search_type: searchtype,
+      store_id: '<%= @inventory_store.id %>',
+      item_type: 'all_item',
+      remote: 'true'
+    },
+  })
+})
+
+$("#lots_search_barcode").on("keyup", function () {
+  query = $(this).val()
+  if (query.length > 0){
+    $(".items-lots-search").find(".fa").show()
+  }
+  else {
+    $(".items-lots-search").find(".fa").hide()
+  }
+})
+
+$('.searchtype').on('click', function() {
+ var search_type = $(this).attr('input-value')
+  searchTypeForm(search_type)
+})
+
+function isScrolledIntoLastRow(last_row_elem, scrollable_container) {
+  if (last_row_elem.length == 1) {
+    var top_of_element = $(last_row_elem).offset().top - $(scrollable_container).offset().top ;
+    var table_height = $(scrollable_container).innerHeight()
+    return top_of_element <= table_height
+  }
+}
+
+scrollinventory()
+function scrollinventory(){
+  $(".items-lots-body").scroll(function() {
+    last_row_elem = $('.items-lots-body').find('tr:nth-last-child(1)')
+    scrollable_container = $(".items-lots-body")
+    if (isScrolledIntoLastRow(last_row_elem, scrollable_container)) {
+      $("#show_more_lots").trigger("click")
+      $(".items-lots-body").off('scroll');
+      setTimeout(function() {   //calls click event after a certain time
+        scrollinventory()
+      }, 500);
+    }
+  })
+}
+$("#show_more_lots:visible").on('click', function(e){
+  e.preventDefault();
+  var total_count_row =  $('.items-lots-body tr').length;
+  var query =  $("#lots_search").val()
+  $.ajax({
+    type: 'GET',
+    dataType: 'script',
+    data: {
+      total_count_row: total_count_row,
+      item_type: 'all_item',
+      store_id: '<%= @inventory_store.id %>',
+      q:query
+    },
+    url: "/inventory/transaction/trays/append_lots",
+  })
+})
+
+
+function validate_inventory_ot_tray_form() {
+
+  $("#inventory_ot_tray_form").validate({
+    rules: {
+      "inventory_transaction_tray[total_cost]": {
+        required: true,
+      },
+    },
+    messages: {
+      "inventory_transaction_tray[total_cost]": {
+        required: "No Item Added"
+      },
+
+    },
+    errorPlacement: function (error, element) {
+      var id = $(element).attr("id");
+      var parent = $("#"+id).parents(".input-group").length
+      if(parent == 0){
+        error.insertAfter(element);
+      } else {
+        error.insertAfter($("#"+id).parents(".input-group"));
+      }
+    }
+  });
+}
+
+validate_inventory_ot_tray_form()
+
+$.validator.addMethod("Number", $.validator.methods.digits, "Quantity Should be Number");
+$.validator.addMethod("checkQuantity", function(value, element, options) {
+  var id = $(element).attr("id")
+  var item_quantity = $('#'+id).val()
+  var item_max_quantity = $('#'+id).siblings(".item_max_quantity").val()
+  var initial_stock_id = $('#'+id).siblings(".initial_stock").attr("id")
+  $('#'+initial_stock_id).val(item_quantity)
+  if (!item_max_quantity) {
+    return true
+  }
+  else{
+    return this.optional(element) || parseFloat(item_quantity) <= parseFloat(item_max_quantity);
+  }
+}, "Cannot Checkout more than stock");
+
+$.validator.addClassRules("item_quantity", { number: true, checkQuantity: true, required: true, min: 1});
+$.validator.addClassRules("item_total_price", { required: true, number: true});
+
+jQuery.extend(jQuery.validator.messages, {
+  required: "Required",
+  remote: "Please fix this field.",
+  email: "Please enter a valid email address.",
+  url: "Please enter a valid URL.",
+  date: "Please enter a valid date.",
+  dateISO: "Invalid date.",
+  number: "Invalid No.",
+  digits: "Please enter only digits.",
+  creditcard: "Please enter a valid credit card number.",
+  equalTo: "Please enter the same value again.",
+  accept: "Please enter a value with a valid extension.",
+  maxlength: jQuery.validator.format("Please enter no more than {0} characters."),
+  minlength: jQuery.validator.format("Please enter at least {0} characters."),
+  rangelength: jQuery.validator.format("Please enter a value between {0} and {1} characters long."),
+  range: jQuery.validator.format("Please enter a value between {0} and {1}."),
+  max: jQuery.validator.format("Please enter a value less than or equal to {0}."),
+  min: jQuery.validator.format("Please enter a value greater than or equal to {0}.")
+});
+

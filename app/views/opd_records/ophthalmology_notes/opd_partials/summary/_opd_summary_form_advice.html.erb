@@ -1,0 +1,230 @@
+<% if opdrecord.send("#{@flag}_advice_flag") == "1" %>
+    <div class="advice mb5 advice_set_replacement" id="advice" style="<%= text_font_size %>">
+      <% if opdrecord.has_advice? || opdrecord.has_inter_facility_referral? || opdrecord.has_intra_facility_referral? || opdrecord.has_outside_organisation_referral? %>
+          <% advice_counter = 0 %>
+          <% advice_content_counter = 0 %>
+          <% precaution_counter = 0 %>
+          <% referral_counter = 0 %>
+          <% followup_counter = 0 %>
+          <% preop_instruction_counter = 0 %>
+          <% immunization_counter = 0 %>
+          <% advice_opdfollowuptimeframe = '' %>
+          <% if advice.try(:opdfollowuptimeframe).try(:length).to_i > 0 %>
+            <% advice_opdfollowuptimeframe = OpdRecordsHelper.get_label_for_opd_followup_timeframe(opdrecord.advice.opdfollowuptimeframe) %>
+            <% advice_counter += 1 %>
+          <% end %>
+          <% if advice_opdfollowuptimeframe.length > 0 || opdrecord.advice.attributes['opdfollowupdate'].present? %>
+            <% followup_counter += 1 %>
+          <% end %>
+
+          <% if opdrecord.immunization_nutrition == 'true' || opdrecord.immunization_nutrition_comment.present? %>
+            <% immunization_counter = immunization_counter + 1 %>
+          <% end %>
+
+          <% if opdrecord.has_inter_facility_referral? || opdrecord.has_intra_facility_referral? || opdrecord.has_outside_organisation_referral? %>
+            <% advice_counter += 1 %>
+            <% referral_counter += 1 %>
+          <% end %>
+
+          <% unless opdrecord.advice_content.blank? || opdrecord.advice_content == "<br>" %>
+            <% @id = opdrecord.advice_set_id.to_s %>
+            <% if @id.length > 2 && @id.present? %>
+              <% advice_set = AdviceSet.find_by(id: opdrecord.advice_set_id) %>
+              <% if advice_set.present? %>
+                <% lcid_code = advice_set.language_advice_subset.first.lcid_code %>
+                <% advice_content = advice_set.language_advice_subset.find_by(lcid_code: lcid_code).try(:content).to_s.html_safe.to_s %>
+                <% if advice_content == "" %>
+                  <% advice_content = advice_set.language_advice_subset.find_by(lcid_code: lcid_code).content.to_s.html_safe.to_s %>
+                <% end %>
+              <% end %>
+            <% elsif @id.length == 2 && @id.present? && @advice_language.present? %>
+              <% @advice_set_arr = Global.send('ophthal_advice_option').send('sets') %>
+              <% @set = @advice_set_arr.select { |advice| advice['id'] == @id } %>
+              <% advice_content = @set[0][advice_language.to_s].to_s.html_safe.to_s %>
+            <% else %>
+              <% advice_content = opdrecord.advice_content.to_s.html_safe.to_s %>
+            <% end %>
+            <% advice_counter += 1 %>
+            <% advice_content_counter += 1 %>
+          <% end %>
+
+          <% if advice.opdprecautions.present? %>
+            <% if advice.opdprecautions.length > 0 %>
+              <% !advice.opdprecautions.empty? %>
+              <% advice_precaution = advice.opdprecautions %>
+              <% precaution_counter += 1 %>
+            <% end %>
+          <% end %>
+
+          <% if advice.opdpreop_instruction.present? %>
+          <% if advice.opdpreop_instruction.length > 0 %>
+
+              <% !advice.opdpreop_instruction.empty? %>
+              <% advice_preop_instruction = advice.opdpreop_instruction %>
+              <% preop_instruction_counter += 1 %>
+          <% end %>
+          <% end %>
+
+          <% mail_job = begin
+                          mail_job
+                        rescue StandardError
+                          @mail_job
+                        end %>
+          <% chk_mgt_plan = (mail_job == false && params[:action] != 'print_opd_record' && opdrecord.management_personal_cmt.present?) %>
+
+          <% if advice_counter > 0 || precaution_counter > 0 || immunization_counter > 0 || preop_instruction_counter > 0 || opdrecord.advice.attributes['opdfollowupdate'].present? || opdrecord.advicemanagementplan.present? || chk_mgt_plan %>
+            <% if !opdrecord.has_treatmentmedication? && !opdrecord.medicationcomments.present? %>
+              <div class="row">
+                <strong>ADVICE</strong>
+                <div class="summary-line-border"></div>
+              </div>
+            <% end %>
+          <% end %>
+
+          <div class="col-md-12 col-sm-12">
+            <% if referral_counter > 0 %>
+              <div class="col-md-2 col-sm-2" style="margin: 0px; padding: 0px"><strong>For Referral : </strong></div>
+            <% end %>
+            <div class="col-md-10 col-sm-10">
+              <% if opdrecord.has_inter_facility_referral? %>
+                  <% opdrecord.inter_facility_referral.each_with_index do |elem, i| %>
+                      <div><div style="display: inline">- Visit <b>Dr. <%= User.find_by(id: elem.to_user).try(:fullname).try(:upcase) %></b> at <b><%= Facility.find_by(id: elem.to_facility).name.titlecase %></b> on <b><%= Date.strptime(elem.read_attribute(:referraldate).to_s, '%Y-%m-%d').strftime('%a %b %d, %Y').to_s %></b> at <b><%= Time.strptime(elem.referraltime.to_s, '%Y-%m-%d %H:%M:%S').strftime('%I:%M %p').to_s %></b></div></div>
+                      <% if elem.referralnote.present? %>
+                        <div>Note:</div>
+                          <span style="white-space: pre-line"><%= elem.referralnote %></span>
+                      <% end %>
+                  <% end %>
+              <% end %>
+
+              <% if opdrecord.has_intra_facility_referral? %>
+                  <% opdrecord.intra_facility_referral.each_with_index do |elem, i| %>
+                      <div><div style="display: inline">- Visit <b>Dr. <%= User.find_by(id: elem.to_user).try(:fullname).try(:upcase) %></b> at <b><%= Facility.find_by(id: elem.facility_id).name.titlecase %></b> on <b><%= Date.strptime(elem.read_attribute(:referraldate).to_s, '%Y-%m-%d').strftime('%a %b %d, %Y').to_s %></b> at <b><%= Time.strptime(elem.referraltime.to_s, '%Y-%m-%d %H:%M:%S').strftime('%I:%M %p').to_s %></b></div></div>
+                      <% if elem.referralnote.present? %>
+                        <div>Note:</div>
+                          <span style="white-space: pre-line"><%= elem.referralnote %></span>
+                      <% end %>
+                  <% end %>
+              <% end %>
+
+              <% if opdrecord.has_outside_organisation_referral? %>
+                <% opdrecord.outside_organisation_referral.each_with_index do |elem, i| %>
+                  <div><div style="display: inline" >- Visit <b><% if @current_facility.country_id != 'KH_039' %>Dr. <% end %> <%=elem.referred_doctor_name.upcase%></b><% if elem.referred_facility_name.present? %> at <b><%= elem.referred_facility_name.titlecase %></b><% end %><% if elem.referraldate.present? %> on <b><%= Date.strptime(elem.read_attribute(:referraldate).to_s, '%Y-%m-%d').strftime('%a %b %d, %Y').to_s %></b><% end %></div></div>
+                  <% if elem.referralnote.present? %>
+                    <div>Note:</div>
+                    <span style="white-space: pre-line"><%= elem.referralnote %></span>
+                  <% end %>
+                <% end %>
+              <% end %>
+            </div>
+          </div>
+
+          <% if immunization_counter > 0 %>
+            <div class="row">
+              <div class="col-md-12 col-sm-12">
+                <% if opdrecord.immunization_nutrition == 'true' && opdrecord.immunization_nutrition_comment.present? %>
+                  <span style="white-space: pre-line"><strong>Immunization and Nutrition awareness is Done </strong><br><span style="white-space: pre-line"> - <%= opdrecord.immunization_nutrition_comment %></span>
+                <% elsif opdrecord.immunization_nutrition == 'true' %>
+                  <strong>Immunization and Nutrition awareness is Done </strong>
+                <% elsif opdrecord.immunization_nutrition_comment.present? %>
+                  <span style="white-space: pre-line"><strong>Immunization and Nutrition awareness Comment </strong><br><span style="white-space: pre-line"> - <%= opdrecord.immunization_nutrition_comment %></span>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+
+          <% if precaution_counter > 0 %>
+            <div class="row">
+              <div class="col-md-12 col-sm-12">
+                <% if advice_precaution != 0 %>
+                  <strong>Advice & Precautions : </strong>
+                  <%= advice_precaution %>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+
+          <% if advice_content_counter > 0 %>
+            <div class="row">
+              <div class="col-md-12 col-sm-12">
+                <strong>Advice & Precautions : </strong>
+                <%= advice_content %>
+              </div>
+            </div>
+          <% end %>
+
+          <% if preop_instruction_counter > 0 %>
+            <div class="row">
+              <div class="col-md-12 col-sm-12">
+                <% if advice_preop_instruction != 0 %>
+                  <strong>Pre-operative instructions : </strong>
+                  <%= advice_preop_instruction %>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+
+          <% if opdrecord.advicemanagementplan.present? %>
+            <div class="row">
+              <div class="col-md-12 col-sm-12">
+                <strong>Management Plan: </strong><br>
+                <span style="white-space: pre-line"><%= opdrecord.advicemanagementplan %></span>
+              </div>
+            </div>
+          <% end %>
+
+          <% if followup_counter > 0 %>
+            <div class="row">
+              <div class="col-md-12 col-sm-12">
+                <% if advice_opdfollowuptimeframe.length > 0 || opdrecord.advice.attributes['opdfollowupdate'].present? %>
+                  <div class="col-md-2 col-sm-2" style="margin: 0px; padding: 0px"> <strong>For Followup : </strong></div>
+                  <div class="col-md-10 col-sm-10">
+                    <% if opdrecord.advice.attributes['opdfollowupdate'].present? %>
+                      - Visit <b>
+                      <% if current_facility.clinical_workflow %>
+                        <% doctor_id = OpdClinicalWorkflow.find_by(appointment_id: @appointment.id.to_s).try(:consultant_ids).try(:last) %>
+                        <% if doctor_id %>
+                          <span><b><% if @current_facility.country_id != 'KH_039' %>Dr.<% end %>  <%= User.find_by(id: opdrecord.advice.appointment_doctor).fullname.upcase %></b></span>
+                        <% else %>
+                          <span><b><% if @current_facility.country_id != 'KH_039' %>Dr.<% end %>  <%= User.find_by(id: opdrecord.advice.appointment_doctor).fullname.upcase %></b></span>
+                        <% end %>
+                      <% else %>
+                        <span><b>Dr. <%= User.find_by(id: opdrecord.advice.appointment_doctor).fullname.upcase %></b></span>
+                      <% end %>
+                      </b>
+                      <% if User.find_by(:id=> opdrecord.advice.appointment_doctor).facilities.all.count>1 %>
+                        <% if opdrecord.advice.appointment_facility.present? %>
+                          at <b><%= Facility.find(opdrecord.advice.appointment_facility).try(:name) %></b>
+                        <% end %>
+                      <% end %>
+                      <% if opdrecord.advice.attributes['opdfollowupdate'].to_s.present? %>
+                      on
+                        <b><%= Date.parse(opdrecord.advice.attributes['opdfollowupdate'].to_s).strftime('%a %b %d, %Y') %></b>
+                      <% end %>
+                      <% if opdrecord.advice.attributes['opdfollowuptime'].to_s.present? %>
+                        at <b><%= Time.zone.parse(opdrecord.advice.attributes['opdfollowuptime'].to_s).strftime('%I:%M %p') %></b>
+                      <% end %>
+                      <% else %>
+                        - Visit <b> Dr. <%= User.find_by(id: opdrecord.advice.appointment_doctor).fullname.upcase %> </b> <%= OpdRecordsHelper.get_label_for_opd_followup_timeframe(opdrecord.advice.opdfollowuptimeframe) %>
+                          <% if User.find_by(:id=> opdrecord.advice.appointment_doctor).facilities.all.count>1 %>
+                            <% if opdrecord.advice.appointment_facility.present? %>
+                              at <%= Facility.find(opdrecord.advice.appointment_facility).try(:name) %>
+                            <% end %>
+                          <% end %>
+                      <% end %>
+                    <% end %>
+                  </div>
+              </div>
+            </div>
+          <% end %>
+
+          <% if chk_mgt_plan %>
+            <div class="row">
+              <div class="col-md-12 col-sm-12">
+                <strong>Personal Comments: </strong><br>
+                <span style="white-space: pre-line"><%= opdrecord.management_personal_cmt %></span>
+              </div>
+            </div>
+          <% end %>
+      <% end %>
+    </div>
+<% end %>

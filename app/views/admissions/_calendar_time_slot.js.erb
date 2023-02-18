@@ -1,0 +1,187 @@
+var calendar = $("#admission-slot-calendar").fullCalendar({
+  contentHeight: $(window).height() * 0.70,
+  header: {
+    left: 'today',
+    center: 'prev title next',
+    right: ''
+  },
+  firstDay: '<%= Date.current.strftime("%w").to_i %>',
+  scrollTime: $.fullCalendar.moment().format('HH:MM:SS'),
+  slotDuration: '00:<%= @user_time_slot.calendar_duration %>:00',
+  // Workaround to disable entire Calendar
+  businessHours: {
+    dow: [0, 1, 2, 3, 4, 5, 6],
+    start: $.fullCalendar.moment(),
+    end: $.fullCalendar.moment()
+  },
+  selectConstraint: 'businessHours',
+  defaultView: "agendaWeek",
+  allDaySlot: false,
+  selectable: true,
+  select: function(start, end, view) {
+    alert(`
+      Date: ${$.fullCalendar.moment(start).format('DD/MM/YYYY')}
+      Time: ${$.fullCalendar.moment(start).format('hh:mm A')}
+    `);
+  },
+  events: {
+    type: 'get',
+    data: function(){
+      return {
+        facility_id: '<%= params[:facility_id] %>',
+        department_id: '<%= params[:department_id] %>',
+        admission_type: $('.admission_hospitalization_type:checked').val()
+      }
+    },
+    url: '/user_time_slots/<%= @user_time_slot.id.to_s %>/show_calendar_data?user_id=<%= @user_time_slot.user_id.to_s %>',
+    error: function() {
+      alert('Error Fetching Data!')
+    }
+  },
+  eventClick: function(calEvent) {
+    if (Date.parse(calEvent.start) < $.now()){
+      if ($('.ui-pnotify').length > 0) $('.ui-pnotify').remove();
+      notice = new PNotify({ title: 'Information', text: 'Please select valid time slot', icon: 'fa fa-info-circle', type: 'error' });
+      notice.get().click(function() { return notice.remove(); });
+      } else if (['Planned Leave', 'Meeting', 'Sick Leave', 'Emergency Leave', 'Personal Leave', 'Break'].includes(calEvent.title)) {
+        notice = new PNotify({ title: 'Information', text: `Doctor not available on selected slot, Please select available time slot.`, icon: 'fa fa-info-circle', type: 'error' });
+        notice.get().click(function() { return notice.remove(); });
+      } else if (calEvent.full) {
+      if ($('.ui-pnotify').length > 0) $('.ui-pnotify').remove();
+
+      notice = new PNotify({ title: 'Information', text: 'The slot is fully booked.', icon: 'fa fa-info-circle', type: 'error' });
+      notice.get().click(function() { return notice.remove(); });
+    } else {
+      let date = $.fullCalendar.moment(calEvent.start).format('DD/MM/YYYY');
+      let time = $.fullCalendar.moment(calEvent.start).format('hh:mm A');
+
+      $('#admission_admissiondate').val(date)
+      $('#admission_time').val(time)
+      $('#admission_admissiontime').val(`${date} ${time}`);
+
+      $('#calendar-modal').modal('hide');
+    }
+  }
+});
+
+$('#time_slot_user_id').on('change', function(){
+  if ($('#time_slot_user_id').val().length > 0){
+    var slotDuration = 110
+    var id = ''
+    var user_id = $('#time_slot_user_id').val()
+    var facility_id = $('#time_slot_facility_id').val()
+    var dept_id = $('#time_slot_dept_id').val()
+
+    $.ajax({
+      type: "POST",
+      dataType: "json",
+      url: "/admissions/get_calendar_duration",
+      data: { user_id: $('#time_slot_user_id').val()},
+      success: function(response){
+        slotDuration = response['time_duration']
+        id = response['id']
+        $("#admission-slot-calendar").detach()
+        $('.ipd-calendar-body').prepend("<div id='admission-slot-calendar'></div>");
+        calendar = $("#admission-slot-calendar").fullCalendar({
+          contentHeight: $(window).height() * 0.70,
+          header: {
+            left: 'today',
+            center: 'prev title next',
+            right: ''
+          },
+          firstDay: '<%= Date.current.strftime("%w").to_i %>',
+          scrollTime: $.fullCalendar.moment().format('HH:MM:SS'),
+          // slotDuration: '00:<%= @user_time_slot.calendar_duration %>:00',
+          // slotDuration: `00:${slotDuration}:00`,
+          slotDuration: `00:${slotDuration}:00`,
+
+
+          // Workaround to disable entire Calendar
+          businessHours: {
+            dow: [0, 1, 2, 3, 4, 5, 6],
+            start: $.fullCalendar.moment(),
+            end: $.fullCalendar.moment()
+          },
+          selectConstraint: 'businessHours',
+          defaultView: "agendaWeek",
+          allDaySlot: false,
+          selectable: true,
+          select: function(start, end, view) {
+            alert(`
+              Date: ${$.fullCalendar.moment(start).format('DD/MM/YYYY')}
+              Time: ${$.fullCalendar.moment(start).format('hh:mm A')}
+            `);
+          },
+          events: {
+            type: 'get',
+            data: function(){
+              return {
+                facility_id: facility_id,
+                department_id: dept_id,
+                admission_type: $('.admission_hospitalization_type:checked').val()
+              }
+            },
+            url: `/user_time_slots/${id}/show_calendar_data?user_id=${user_id}&facility_id=${facility_id}&department_id=${dept_id}`,
+            error: function() {
+              alert('Error Fetching Data!')
+            }
+          },
+          eventClick: function(calEvent) {
+            if (Date.parse(calEvent.start) < $.now()){
+              if ($('.ui-pnotify').length > 0) $('.ui-pnotify').remove();
+
+              notice = new PNotify({ title: 'Error', text: 'Invalid slot time', icon: 'fa fa-stop', type: 'error' });
+              notice.get().click(function() { return notice.remove(); });
+            } else if (calEvent.full) {
+              if ($('.ui-pnotify').length > 0) $('.ui-pnotify').remove();
+
+              notice = new PNotify({ title: 'Error', text: 'The slot is fully booked.', icon: 'fa fa-stop', type: 'error' });
+              notice.get().click(function() { return notice.remove(); });
+            } else {
+              let date = $.fullCalendar.moment(calEvent.start).format('DD/MM/YYYY');
+              let time = $.fullCalendar.moment(calEvent.start).format('hh:mm A');
+              // if(!!($('#admission_facility_id').val(`${$('#time_slot_facility_id').val()}`).trigger('change', [{user_id: $('#time_slot_user_id').val()}]))){
+                // $('#admission_doctor').val(`${$('#time_slot_user_id').val()}`).trigger('change')
+
+              // }
+              $('#admission_facility_id').val(`${$('#time_slot_facility_id').val()}`).trigger('change', [{user_id: $('#time_slot_user_id').val(), admissiondate: date, admissiontime: `${date} ${time}`, time: time}])
+              // doing these actions in form.js 
+              // $('#admission_admissiondate').val(date)
+              // $('#admission_time').val(time)
+              // $('#admission_admissiontime').val(`${date} ${time}`);
+              $('#calendar-modal').modal('hide');
+
+            }
+          }
+        });
+        calendar.fullCalendar('render')
+      }
+    });
+  }
+});
+
+$('#time_slot_facility_id').on('change', function(){
+  var facility_id = $('#time_slot_facility_id').val()
+    $.ajax({
+    type: "POST",
+    dataType: "json",
+    url: "/admissions/get_ipd_slot_users",
+    data: { facility_id: $('#time_slot_facility_id').val(), specialty_id: $('#time_slot_specialty_id').val(), department_id: $('#time_slot_dept_id').val()},
+    success: function(response){
+      var newUsers = response
+      $('#time_slot_user_id').children().remove();       
+      if(newUsers.length == 0){
+        $('#time_slot_user_id').append($("<option></option>").attr("value","").text("No Doctors Available for this specialty")) //.trigger('change.select2');
+        calendar.fullCalendar('removeEvents')
+      }else{
+        calendar.fullCalendar('removeEvents')
+
+        $('#time_slot_user_id').append($("<option></option>").attr("value","").text("Please select")) // .trigger('change.select2');
+        newUsers.forEach( (user) => {
+          $('#time_slot_user_id').append($("<option></option>").attr("value",user[1]).text(user[0])) //.trigger('change.select2');
+        })
+      }
+      $('#time_slot_user_id').trigger('change')
+    }
+  });
+})
